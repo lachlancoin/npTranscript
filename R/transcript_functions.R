@@ -351,9 +351,9 @@ split1<-function(fi) strsplit(fi,"_")[[1]][1]
 
 
 
-plotClusters<-function(df, totalReadCount, t, fimo, rawdepth = F, title = "",  logy=F, leg_size = 6, xlim  = NULL, show=F, updatenmes = F){
-  if(!is.factor(df$type)) df$type = as.factor(df$type)  #types[df$type]
-  names(df)[3] = "depth"
+plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = F, title = "",  logy=F, leg_size = 6, xlim  = NULL, show=F, updatenmes = F){
+  if(!is.factor(df$clusterID)) df$clusterID = as.factor(df$clusterID)  #types[df$type]
+ # names(df)[3] = "depth"
   #ids =  as.character(rel_count$ID)
   #if(max(rel_count[,2])>1) stop('this should not happen')
   if(!rawdepth){
@@ -361,9 +361,9 @@ plotClusters<-function(df, totalReadCount, t, fimo, rawdepth = F, title = "",  l
     #for(i in 1:length(ids)){
     #  df[df$type== ids[i],2] = (df[df$type== ids[i],2] * rel_count[i,2])
     #}
-    df$depth = df$depth*(1e6/totalReadCount)
+    df[,k1]  = df[,k1]*(1e6/totalReadCount)
   }
-  ggp<-ggplot(df, aes_string(x="pos", fill="type", colour = "type", y = "depth")) +geom_line() +theme_bw()
+  ggp<-ggplot(df, aes_string(x="pos", fill="clusterID", colour = "clusterID", y = names(df)[k1])) +geom_line() +theme_bw()
   ggp<-ggp+ggtitle(title)+labs(y= if(rawdepth)  "depth" else "TPM");
   if(logy) ggp<-ggp+scale_y_continuous(trans='log10')
   if(leg_size==0  || length(levels(as.factor(as.character(df$type))))>20){
@@ -401,27 +401,22 @@ plotClusters<-function(df, totalReadCount, t, fimo, rawdepth = F, title = "",  l
 distbin<-function(x) dist(x, method="binary")
 
 
-loess_smooth<-function(clusters, trans0, span = 0.05, inds = grep("depth", names(clusters))){
+loess_smooth<-function(clusters,  inds,span = 0.05){
   nmes = names(clusters)
-  #print(dim(trans0))
-  for(i in 1:(dim(trans0)[1])){
-    #print(paste("i",i))
-    #print(trans0[i,])
-    rangesk = trans0$startPos[i]+1: trans0$endPos[i]
+#print(nmes)
+#print(dim(clusters))
     for(j in inds){	
-    #    print(paste("j",j))
       names(clusters)[j] = "depth"
-      clusterk = clusters[rangesk,,drop=F]
-     # print(max(clusterk$depth, na.rm=T))
-      if(max(clusterk$depth)>0){
-        cars.lo <- stats::loess(depth ~ pos, clusterk, span = span)
-        y = stats::predict(cars.lo, clusterk, se = FALSE)
-        y[clusterk$depth==0] =0
-        clusters[rangesk,j]=  y
+     
+      if(max(clusters$depth)>0){
+        cars.lo <- stats::loess(depth ~ pos, clusters, span = span)
+        y = stats::predict(cars.lo, clusters, se = FALSE)
+        y[clusters$depth==0] =0
+        clusters[,j]=  y
       } 
       names(clusters)[j] = nmes[j]
     }
-  }
+  
   clusters
 }
 
@@ -429,23 +424,43 @@ loess_smooth<-function(clusters, trans0, span = 0.05, inds = grep("depth", names
 
 
 
-makeCovPlots<-function(clusters_,  transcripts_, sums, t, type_nme,  leg_size=6, logy=F, rawdepth = T, xlim = list(NULL),  span=0.0,  count_indf = grep("count[0-9]", names(transcripts_))){
+makeCovPlots<-function(h5file,  transcripts_, header,  sums, t, type_nme,  leg_size=6, logy=F, rawdepth = T, xlim = list(NULL),  span=0.0,  
+count_indf = grep("count[0-9]", names(transcripts_))){
   ccounts = transcripts_$countTotal
+  
+ dinds  = grep("depth", header)
+ pos_ind = which(header=="pos")
+ clusters_ = matrix(NA, nrow =0, ncol = length(header)+1)
+  for(ID in transcripts_$ID){
+	
+	mat = t(h5read(h5file,as.character(ID)))
+	len = dim(mat)[[1]]
+	diff = apply(cbind(mat[-len, pos_ind], mat[-1,pos_ind]), 1, function(x) x[2] - x[1])
+	
+ 	br = which(diff>100)[1]
+	if(!is.na(br)){
+	   zero1 = rep(0, length(header))
+	   zero2 = rep(0, length(header))
+	   zero1[pos_ind] = mat[br,pos_ind]+1
+  	   zero2[pos_ind] = mat[br+1,pos_ind]-1
+	   
+	   mat = rbind(mat[1:br,,drop=F], zero1, zero2, mat[(br+1):len,,drop=F])
+	}
+	mat = data.frame(mat)
+	names(mat) = header
+	if(span>0) mat = loess_smooth(mat, dinds, span)	
+
+	clusterID = rep(ID, dim(mat)[1])
+	mat = cbind(mat,clusterID )
+	clusters_ = rbind(clusters_,mat)
+	
+  } 
+  
+  
   ggps = list()
-  if(span>0){
-    clusters_ = loess_smooth(clusters_, transcripts_, span= span)
-  }
-  startP = transcripts_$startPos[1]+1
-  endPs = transcripts_$endPos
-  endP = endPs[length(endPs)]
-  ranges =startP:endP
-  
-  #sums = apply(transcripts_[,count_indf,drop=F],2,sum)
-  #print(sums)
-  
   for(j in 1:length(xlim)){
     for( k in 1:length(count_indf)){
-      ggps[[length(ggps)+1]] = plotClusters(clusters_[ranges,c(1,2,k+2),drop=F],  sums[k], t, fimo, xlim = xlim[[j]], rawdepth = rawdepth,  
+      ggps[[length(ggps)+1]] = plotClusters(clusters_, dinds[k],  sums[k], t, fimo, xlim = xlim[[j]], rawdepth = rawdepth,  
                                             title =type_nme[k], logy=logy, leg_size =leg_size, show=F)
     }
   }
@@ -1221,14 +1236,19 @@ v1 = abs(v - x)
 ind = which(v1==min(v1))[1]
 c(ind,v1[ind])
 } 
-plotLengthHist<-function(reads,t1,   seqlen, min =0, max =10000, logy = F, binwidth = 10){
+
+#"5_3"     "5_no3"   "no5_3"   "no5_no3"
+plotLengthHist<-function(reads,t1,   seqlen, type_nme, m_thresh = 100, start_thresh = c(T,T,F,F), end_thresh = c(T,F,T,F), min =0, max =10000, logy = F, binwidth = 10){
 ggps = list()
 len = t1$readlen
 perc = rep(c(0.95,1.0), length(len)/2)
 for(j in 1:length(type_nme)){
-	for(k in 1:length(nmes)){
+	
+	for(k in 1:length(start_thresh)){
 		title = paste(type_nme[j], nmes[k])
-		subreads = reads[reads$type==(k-1)  & reads$source==(j-1),,]
+		subinds = if(start_thresh[k]) reads$startPos<m_thresh else reads$startPos>m_thresh
+		subinds= subinds & ( if(end_thresh[k]) reads$endPos> seqlen-m_thresh else reads$endPos<=seqlen-m_thresh)
+		subreads = reads[subinds  & reads$source==(j-1),,]
 		ggp<-ggplot(subreads, aes(length)) + geom_histogram(binwidth = binwidth) + theme_bw()+ggtitle(title)+scale_x_continuous(limits = c(min, max))
 		if(logy) ggp<-ggp+scale_y_continuous(trans='log10', label=scientific_10) else ggp<-ggp+scale_y_continuous(label=scientific_10)
 		if(k==1 || k==3){
@@ -1247,3 +1267,16 @@ for(j in 1:length(type_nme)){
   ml<-marrangeGrob(ggps,ncol = length(type_nme), nrow = length(nmes)) 	
 invisible(ml)
 }
+
+
+.getRatios<-function(clusters, dinds, einds){
+	
+     ratios=  data.frame(matrix(nrow = dim(clusters)[1], ncol = length(dinds)))
+    for(i in 1:length(dinds)){
+      ratios[,i] = clusters[,einds[i]]/clusters[,dinds[i]]
+      ratios[ clusters[,dinds[i]]==0,i] = NA
+    }
+     names(ratios) = paste("ratios",1:length(dinds), sep="")
+  ratios
+}
+

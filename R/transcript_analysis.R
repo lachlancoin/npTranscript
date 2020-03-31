@@ -7,6 +7,7 @@ library(gridExtra)
 library(RColorBrewer)
 library(gplots)
 library(seqinr)
+library(rhdf5)
 args = commandArgs(trailingOnly=TRUE)
 
 type_nme = c( "Cell","Virion") #,"Cell2")

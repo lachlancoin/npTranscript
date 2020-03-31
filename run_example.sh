@@ -1,0 +1,1 @@
+bash $HOME/github/npTranscript/run.sh --bamFile=bins/allreads_fq.bam:virion/sorted.virion_refmap.bam   --reference=wuhan_coronavirus_australia.fasta --maxReads 100   --annotation Coordinates.csv   --overlapThresh 0.9  --resdir results_test_old4 --bin 10 --breakThresh 100
