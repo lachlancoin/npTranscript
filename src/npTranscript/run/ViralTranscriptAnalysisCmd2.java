@@ -147,6 +147,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		PrintWriter genes_all_pw = new PrintWriter(new FileWriter(new File(resdir+"/genes.txt")));
 		for (int jj = 0; jj < genomes.size(); jj++) {
 			Sequence ref = genomes.get(jj);
+			Annotation annot = new Annotation(new File(annot_file), ref.length());
 			List<Integer[]> pos = new ArrayList<Integer[]>();
 			if(positionsFile!=null){
 			BufferedReader br = new BufferedReader(new FileReader(new File(positionsFile)));
@@ -171,7 +172,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 			br.close();
 			}
 			//genes_all.add(genes);
-			profiles.add(new IdentityProfile1(ref, resDir, pos, len,jj,coexp, overlapThresh, startThresh, endThresh));
+			profiles.add(new IdentityProfile1(ref, resDir, pos, len,jj,coexp, overlapThresh, startThresh, endThresh, annot));
 
 		}
 		genes_all_pw.close();
@@ -202,9 +203,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 			int numReads = 0;
 
 			int numNotAligned = 0;
-		//	int max_reads = Integer.MAX_VALUE;
-			// String log =
-			// "###Read_name\tRead_length\tReference_length\tInsertions\tDeletions\tMismatches\n";
+	
 			for (int cntr = 0; samIter.hasNext() && cntr < max_reads; cntr++) {
 				SAMRecord sam = samIter.next();
 
@@ -241,14 +240,9 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 					currentIndex = refIndex;
 					chr = genomes.get(currentIndex);
 				}
-
+				
 				TranscriptUtils.identity1(chr, readSeq, sam, profiles.get(currentIndex), source_index, cluster_reads);
 
-				// log+=sam.getReadName() + "\t" + profile.readBase + "\t" + profile.refBase +
-				// "\t" + profile.baseIns + "\t" + profile.baseDel + "\t" + profile.mismatch+
-				// "\n";
-
-				// numReadsConsidered ++;
 
 			}
 			samReader.close();
@@ -256,10 +250,10 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		}
 		//genes_all_pw.close();
 		
-		Annotation annot = new Annotation(new File(annot_file));
+	
 		for(int i=0; i<profiles.size(); i++) {
 			profiles.get(i).finalise();
-			profiles.get(i).getConsensus(annot);
+			profiles.get(i).getConsensus();
 		//	if(calcTree) profiles.get(i).printTree();
 		}
 		

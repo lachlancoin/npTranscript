@@ -26,14 +26,14 @@ import japsa.seq.SequenceOutputStream;
 
 
 public class IdentityProfile1 {
-	final File outfile, outfile1, outfile2, outfile3, outfile4, outfile5, outfile6, outfile7, outfile8, outfile9;
+	final File outfile, outfile1, outfile2, outfile2_1, outfile3, outfile4, outfile5, outfile6, outfile7, outfile8, outfile8_1, outfile9;
 	//OpenMapRealMatrix
 	SparseFieldMatrix sm;
 	
 	
 	
 	
-	public IdentityProfile1(Sequence refSeq, File resDir, List<Integer[]> positions, int num_sources, int genome_index,  boolean calculateCoExpression, double overlapThresh, int startThresh, int endThresh) throws IOException {
+	public IdentityProfile1(Sequence refSeq, File resDir, List<Integer[]> positions, int num_sources, int genome_index,  boolean calculateCoExpression, double overlapThresh, int startThresh, int endThresh, Annotation annot) throws IOException {
 		//File readClusterFile = new File(outdir, "readclusters.txt.gz");
 		if(positions.size()>0){
 			int rowlen = refSeq.length();
@@ -55,19 +55,23 @@ public class IdentityProfile1 {
 		 outfile = new File(resDir,genome_index+ ".txt");
 		 outfile1 = new File(resDir, genome_index+ "coref.txt");
 		 outfile2 = new File(resDir, genome_index+"clusters.h5");
+		 outfile2_1 = new File(resDir, genome_index+"clusters1.h5");
+
 		 outfile3 = new File(resDir,genome_index+ "readToCluster.txt.gz");
 		 outfile4 = new File(resDir,genome_index+ "exons.txt.gz");
 		 outfile5 = new File(resDir,genome_index+ "clusters.fa.gz");
 		 outfile6 = new File(resDir,genome_index+ "tree.txt.gz");
 		 outfile7 = new File(resDir,genome_index+ "dist.txt.gz");
 		 outfile8 = new File(resDir,genome_index+ "transcripts.txt.gz");
+		 outfile8_1 = new File(resDir,genome_index+ "transcripts1.txt.gz");
+
 		 outfile9 = new File(resDir,genome_index+ "breakpoints.txt.gz");
 
 		 readClusters = new PrintWriter(
 					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outfile3))));
 			//this.readClusters.println("readID,clusterID,index,source_index");//+clusterID+","+index+","+source_index);
-		 
-		readClusters.println("readID\tclusterId\tsource\tbreak_cluster\tlength\tstartPos\tendPos\tbreakStart\tbreakEnd\terrorRatio");
+		 String br_cluster_str = sm==null ? "": "break_cluster\t";
+		readClusters.println("readID\tclusterId\tsource\t"+br_cluster_str+"length\tstartPos\tendPos\tbreakStart\tbreakEnd\terrorRatio\tupstream\tdownstream");
 		
 		/*
 		readClipped = 0;
@@ -97,7 +101,7 @@ public class IdentityProfile1 {
 	//	roundedPositions = roundedPos.toArray(new Integer[0]);
 		//this.depth = new int[roundedPos.size()];
 	
-		all_clusters =new CigarClusters(overlapThresh);
+		all_clusters =new CigarClusters(overlapThresh, refSeq, annot, num_sources);
 		this.breakpoints = new SparseRealMatrix[this.num_sources];
 		this.breakSt = new SparseVector[this.num_sources];
 		this.breakEnd = new SparseVector[this.num_sources];
@@ -121,12 +125,14 @@ public class IdentityProfile1 {
 	//this after all postions in a read processed
 	
 	static double break_round = 10.0;
-	public void processRefPositions(int startPos, int endPos, String id, boolean cluster_reads, int  readLength, int refLength, int src_index) {
+	static String NAstring = "NA";
+	public void processRefPositions(int startPos, int endPos, String id, boolean cluster_reads, int  readLength, int refLength, int src_index ) {
 		List<Integer> breaks  = coRefPositions.breaks;
+		Annotation annot = this.all_clusters.annot;
 		coRefPositions.end = endPos;
 		coRefPositions.start = startPos;
 		breaks.add(coRefPositions.end);
-		int distToEnd = refLength - endPos;	
+		//int distToEnd = refLength - endPos;	
 		int maxg = 0;
 		int maxg_ind = -1;
 		for(int i=1; i<breaks.size()-1; i+=2){
@@ -138,9 +144,13 @@ public class IdentityProfile1 {
 		}
 		int prev_position = -1;
 		int position = -1;
+		String upstream = NAstring;
+		String downstream = NAstring;
 		if(maxg>100){
 			prev_position = breaks.get(maxg_ind);
 			position = breaks.get(maxg_ind+1);
+			downstream = annot.nextDownstream(position, 5);
+			upstream = annot.nextUpstream(prev_position, 5);
 			if(this.sm!=null){
 				 coRefPositions.break_point_cluster = ((IntegerField)this.sm.getEntry(prev_position, position)).getVal();
 				
@@ -151,21 +161,15 @@ public class IdentityProfile1 {
 			this.breakSt[this.source_index].addToEntry(prev_position, 1);
 			this.breakEnd[this.source_index].addToEntry(position,  1);
 		}
-		
-		/*int index = 0;
-		if (startPos < startThresh)
-			index = distToEnd < endThresh ? 0 : 1;
-		else
-			index = distToEnd < endThresh ? 2 : 3;*/
-	//	Iterator<Integer> it = coRefPositions.keys();
-		coRefPositions.breaks.roundBreaks();
-		
-	//	coRefPositions.index = index;
+		coRefPositions.breaks.adjustBreaks(annot);
+	//	coRefPositions.breaks.roundBreaks();
 		int clusterID;
 		if(cluster_reads) clusterID = this.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources); // this also clears current cluster
 		else clusterID = -2;
-		this.readClusters.println(id+"\t"+clusterID+"\t"+source_index+"\t"+coRefPositions.break_point_cluster+"\t"+readLength+"\t"
-		+startPos+"\t"+endPos+"\t"+prev_position+"\t"+position+"\t"+coRefPositions.getError(src_index));
+	//	System.err.println(id);
+		String br_cluster_str = sm==null ? "": coRefPositions.break_point_cluster+"\t";
+		this.readClusters.println(id+"\t"+clusterID+"\t"+source_index+"\t"+br_cluster_str+readLength+"\t"
+		+startPos+"\t"+endPos+"\t"+prev_position+"\t"+position+"\t"+coRefPositions.getError(src_index)+"\t"+upstream+"\t"+downstream);
 	}
 	
 	public void addRefPositions(int position, boolean match) {
@@ -180,7 +184,7 @@ public class IdentityProfile1 {
 	final public SparseRealMatrix[] breakpoints;
 	final public SparseVector[] breakSt, breakEnd;
 	//private Integer[] roundedPositions;// , corefSum;
-	private int[] depth; // convenience matrix for depth
+//	private int[] depth; // convenience matrix for depth
 	//public int[] match, mismatch, refClipped, baseDel, baseIns;
 	//public int numIns, numDel, readClipped,
 	public int refBase, readBase;
@@ -262,29 +266,16 @@ public class IdentityProfile1 {
 
 	
 	
-	public void getConsensus(Annotation annot) throws IOException {
-			//int num_types = this.nmes.length;
-			this.depth = new int[this.genome.length()];
-			//for(int i=0; i<num_types; i++){
-			
+	public void getConsensus() throws IOException {
 			PrintWriter exonsP =new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outfile4))));
-			
 			SequenceOutputStream seqFasta =  new SequenceOutputStream(new GZIPOutputStream(new FileOutputStream(outfile5)));
 			PrintWriter transcriptsP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outfile8))));
-			IHDF5SimpleWriter clusterW = 
-					 HDF5Factory.open(outfile2);
-			//		new PrintWriter(
-				//	new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outfile2+"."+nmes[i]+".gz"))));
-			//}
-			this.all_clusters.getConsensus(annot, this.genome, exonsP, transcriptsP, seqFasta,clusterW, this.depth, this.num_sources);
-		//	for(int i=0; i<num_types; i++){
-			clusterW.close();
+			PrintWriter transcriptsP1 =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outfile8_1))));
+			this.all_clusters.getConsensus(exonsP, transcriptsP, transcriptsP1, seqFasta,outfile2, outfile2_1);
 			exonsP.close();
 			seqFasta.close();
 			transcriptsP.close();
-			
-		
-		
+			transcriptsP1.close();
 	}
 /*	public void printTree() throws IOException{
 		PrintWriter treeP =  new PrintWriter(

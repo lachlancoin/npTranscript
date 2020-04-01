@@ -176,31 +176,27 @@ public class CigarCluster  {
 		
 		int[][] exons;
 		
-		void addZeros(){
+		void addZeros(int seqlen){
 			boolean prev0 = start>1;
 			boolean printPrev = false;
 			//numPos =0;
-		
-			for(int i=this.start; i<this.end; i++) {
-				int depth_i = getDepth(i);
-				if(depth_i>0){
-					if(prev0 && !printPrev){
-					//	numPos++;
-						this.map.addZero(i-1);
-					}
-					//numPos++;
-					prev0 = false;
-					printPrev = true;
-				}else if(!prev0){
-				//	numPos++;
-					printPrev = true;
-					prev0=true;
-				}else{
-					printPrev = false;
-					prev0 = true;
+			List<Integer> breaks = new ArrayList<Integer>();
+			List<Integer> keys = this.map.keys();
+			if(start> 1){
+				map.addToEntry(start-1, 0);
+			}
+			
+			for(int i=1; i<keys.size(); i++){
+				if(keys.get(i)-keys.get(i-1)> 10){
+					map.addToEntry(keys.get(i)-1, 0);
+					map.addToEntry(keys.get(i-1)+1, 0);
 				}
 			}
-			//return numPos;
+			if(end<seqlen){
+				map.addToEntry(end+1, 0);
+			}
+			
+			
 		}
 		
 		public int[][] getClusterDepth(int num_sources) {
@@ -217,8 +213,8 @@ public class CigarCluster  {
 				Integer pos = keys.get(i);
 				int[] row = matr[i];
 				row[0] = pos;
-				getDepthSt(i, row,1, true);
-				getDepthSt(i, row,1 + num_sources, false);
+				getDepthSt(pos, row,1, true);
+				getDepthSt(pos, row,1 + num_sources, false);
 			}
 			return matr;
 			//TranscriptUtils.printedLines[index]+=keys.size();

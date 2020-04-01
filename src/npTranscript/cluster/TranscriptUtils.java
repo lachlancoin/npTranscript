@@ -78,12 +78,8 @@ public class TranscriptUtils {
 
 		int readPos = 0;// start from 0
 		int refPos = sam.getAlignmentStart() - 1;// convert to 0-based index
-		//String id = sam.getHeader().getId();
 		String id = sam.getReadName();
-		//String tocheck = "74a08dea-0a76-4569-9f97-1c27844f507b";
-		//if(id.equals(tocheck)){
-		//	System.err.println("h");
-		//}
+		
 		profile.newRead(source_index);
 		for (final CigarElement e : sam.getCigar().getCigarElements()) {
 			final int length = e.getLength();
@@ -174,6 +170,7 @@ public class TranscriptUtils {
 				throw new IllegalStateException("Case statement didn't deal with cigar op: " + e.getOperator());
 			}// case
 		} // for
+		
 		profile.processRefPositions(sam.getAlignmentStart(), sam.getAlignmentEnd(), id, cluster_reads, readSeq.length(), refSeq.length(), source_index);
 		// \return profile;
 

@@ -1,5 +1,6 @@
 package npTranscript.cluster;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -8,6 +9,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import ch.systemsx.cisd.hdf5.HDF5Factory;
 import ch.systemsx.cisd.hdf5.IHDF5SimpleWriter;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
@@ -24,8 +26,12 @@ public class CigarClusters {
 	
 	final double thresh;
 	
-	CigarClusters(double thresh){
+	CigarClusters(double thresh, Sequence refSeq, Annotation annot, int num_sources){
 		this.thresh = thresh;
+		this.refseq = refSeq;
+		this.seqlen = refSeq.length();
+		this.annot = annot;
+		this.num_sources = num_sources;
 	}
 	/*public DistanceMatrix getDistanceMatrix( PrintWriter pw){
 		CigarCluster[] l1 = this.l.values().toArray(new CigarCluster[0]);
@@ -79,12 +85,66 @@ public class CigarClusters {
 		return clusterID;
 	}
 
-	public void getConsensus(Annotation annot, Sequence refseq,  PrintWriter exonP ,
-			PrintWriter transcriptsP, SequenceOutputStream seqFasta, IHDF5SimpleWriter  clusterW, 
+	/*private void writeSeq(SequenceOutputStream seqFasta,Annotation annot,  PrintWriter exonP, int[][] exons, CigarCluster cc, String refseq, int[] firstlast){
+		StringBuffer descline; String annotline;
+		String id = cc.id+"";
+		int read_count = cc.readCountSum;
+		if(cc.breakSt>0){
+			String leftseq = refseq.subSequence(cc.start, cc.breakSt).toString();
+			String rightseq = refseq.subSequence(cc.breakEnd, cc.end).toString();
+		}else{
+			String rightseq = refseq.subSequence(cc.start, cc.end).toString();
+		}
+		for(int j=0; j<exons.length; j++) {
+			int start = exons[j][0];
+			int end = exons[j][1];
+			exonP.println(id+"\t"+start+"\t"+end+"\t"+read_count);
+
 			
-			int[] depth, int num_sources) throws IOException{
-		int[] first_last = new int[2];
-		int seqlen = refseq.length();
+			annotline.append(annot.calcORFOverlap(start, end, first_last, transcript_len));
+
+			int len = end-start+1;
+			descline.append(";");
+			descline.append(start); descline.append("-"); descline.append(end); descline.append(","); descline.append(len);
+			subseq.append();
+			
+			transcript_len += len;
+			//seqline.append(subseq.toString());
+		}
+		Sequence subseq1 = new Sequence(refseq.alphabet(),subseq.toString().toCharArray(), id);
+	
+		descline.append(" "); descline.append(annotline);
+		subseq1.setDesc(descline.toString());
+		subseq1.writeFasta(seqFasta); 
+	}*/
+	static int tolerance = 5;
+	final Annotation annot;
+	final Sequence  refseq;
+	final int seqlen;
+	final int num_sources;
+	public String process(CigarCluster cc,   PrintWriter transcriptsP, SequenceOutputStream seqFasta,IHDF5SimpleWriter  clusterW ,
+			Map<String, List<CigarHash>> geneToHash, String altID){
+		cc.addZeros(seqlen); 
+		
+		 int[][] matr =cc.getClusterDepth(num_sources);
+		String id = cc.id+"";
+		clusterW.writeIntMatrix(id, matr);
+	
+		String read_count = TranscriptUtils.getString(cc.readCount);
+		String downstream = annot.nextDownstream(cc.breakEnd, tolerance);
+		String upstream = annot.nextUpstream(cc.breakSt, tolerance);
+		String ccid = altID==null ? cc.id+"": altID;
+		transcriptsP.println(ccid+"\t"+cc.start+"\t"+cc.end+"\t"+cc.breaks.toString()+"\t"+cc.breaks.hashCode()+"\t"+
+		cc.breakSt+"\t"+cc.breakEnd+"\t"+
+		upstream+"\t"+downstream+"\t"+
+		cc.totLen+"\t"+cc.readCountSum+"\t"+read_count
+				+"\t"+cc.getTotDepthSt(true)+"\t"+cc.getTotDepthSt(false)+"\t"+cc.getErrorRatioSt());
+		return TranscriptUtils.round(cc.start, 100)+"."+downstream+"."+upstream+"."+TranscriptUtils.round(seqlen-cc.end, 100);
+	}
+	
+	public void getConsensus(  PrintWriter exonP ,
+			PrintWriter transcriptsP, PrintWriter transcriptsP1, SequenceOutputStream seqFasta, File  outfile2, 	File outfile2_1		
+			) throws IOException{
 		List<String> str = new ArrayList<String>();
 		str.add("pos"); //str.add("ẗype"); 
 		for(int j=0; j<num_sources; j++){
@@ -93,68 +153,48 @@ public class CigarClusters {
 		for(int j=0; j<num_sources; j++){
 			str.add("errors"+j);
 		}
-	//	int numcols = str.size();
-		//for(int i=0; i<exonP.length; i++){
 			exonP.println("ID\tstart\tend\t"+TranscriptUtils.getString("count", num_sources,true));
-		//	transcriptsP[i].println("ID,index,start,end,startPos,endPos,totLen,countTotal,"+getString("count", num_sources,true));
-			transcriptsP.println("ID\tstart\tend\tbreaks\thash\tstartBreak\tendBreak\tleftGene\trightGene\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true)
-			+"\t"+TranscriptUtils.getString("depth", num_sources, true)+"\t"+TranscriptUtils.getString("errors", num_sources, true)+"\t"+TranscriptUtils.getString("error_ratio", num_sources, true));
+			String transcriptP_header = "ID\tstart\tend\tbreaks\thash\tstartBreak\tendBreak\tleftGene\trightGene\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true)
+			+"\t"+TranscriptUtils.getString("depth", num_sources, true)+"\t"+TranscriptUtils.getString("errors", num_sources, true)
+			+"\t"+TranscriptUtils.getString("error_ratio", num_sources, true);
+			transcriptsP.println(transcriptP_header);
+			transcriptsP1.println(transcriptP_header);
+			IHDF5SimpleWriter clusterW = 
+					 HDF5Factory.open(outfile2);
 			clusterW.writeStringArray("header", str.toArray(new String[0]));
-		//}
-		
-		
-		int startPos = 0;
-		String sep = "\t";
-		int tolerance = 5 ; //for matching to annotation 
+        Map<String, List<CigarHash>> geneToHash = new HashMap<String, List<CigarHash>>();
 		for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();) {
 			CigarCluster cc = it.next();
-			cc.addZeros(); 
-		
-			 int[][] matr =cc.getClusterDepth(num_sources);
-			String id = cc.id+"";
-			clusterW.writeIntMatrix(id, matr);
-			int[][] exons = cc.getExons( 0.3,10);
-		
-			String read_count = TranscriptUtils.getString(cc.readCount);
-			StringBuffer descline = new StringBuffer();//cc.index+","+read_count);
-			StringBuffer subseq= new StringBuffer();
-			StringBuffer annotline = new StringBuffer();
-			int transcript_len =0;
-			
-			transcriptsP.println(cc.id+"\t"+cc.start+"\t"+cc.end+"\t"+cc.breaks.toString()+"\t"+cc.breaks.hashCode()+"\t"+
-			cc.breakSt+"\t"+cc.breakEnd+"\t"+
-			annot.nextUpstream(cc.breakSt, tolerance)+"\t"+annot.nextDownstream(cc.breakEnd, tolerance)+"\t"+
-			cc.totLen+"\t"+cc.readCountSum+"\t"+read_count
-					+"\t"+cc.getTotDepthSt(true)+"\t"+cc.getTotDepthSt(false)+"\t"+cc.getErrorRatioSt());
-			for(int j=0; j<exons.length; j++) {
-				int start = exons[j][0];
-				int end = exons[j][1];
-				exonP.println(id+"\t"+start+"\t"+end+"\t"+read_count);
-
-				
-				annotline.append(annot.calcORFOverlap(start, end, first_last, transcript_len));
-
-				int len = end-start+1;
-				descline.append(";");
-				descline.append(start); descline.append("-"); descline.append(end); descline.append(","); descline.append(len);
-				
-				//descline.append("|");descline.append(annot.getInfo(first_last[0]));
-				//descline.append("|");descline.append(annot.getInfo(first_last[1]));
-				subseq.append(refseq.subSequence(start, end).toString());
-				
-				//System.err.println(subseq.length());
-				//System.err.println(subseq);
-				//System.err.println("h");
-				transcript_len += len;
-				//seqline.append(subseq.toString());
+			String key = this.process(cc, transcriptsP, seqFasta, clusterW, geneToHash, null);
+			if(geneToHash!=null){
+				List<CigarHash> l;
+				if(!geneToHash.containsKey(key)) geneToHash.put(key, l = new ArrayList<CigarHash>());
+				else  l = geneToHash.get(key);
+				l.add(cc.breaks);
 			}
-			Sequence subseq1 = new Sequence(refseq.alphabet(),subseq.toString().toCharArray(), id);
-		//	subseq1.setName(id);
-			descline.append(" "); descline.append(annotline);
-			subseq1.setDesc(descline.toString());
-			subseq1.writeFasta(seqFasta);
-		//	seqFasta.println(idline.toString());
-		//	seqFasta.println(seqline.toString());
+		}
+		clusterW.close();
+		{
+			IHDF5SimpleWriter clusterW1 = 
+					 HDF5Factory.open(outfile2_1);
+			clusterW1.writeStringArray("header", str.toArray(new String[0]));
+			List<CigarCluster> l1 = new ArrayList<CigarCluster>();
+			for(Iterator<List<CigarHash>> it = geneToHash.values().iterator(); it.hasNext();){
+				List<CigarHash> cl = it.next();
+				CigarCluster cc = l.get(cl.get(0));
+				StringBuffer sb = new StringBuffer();
+				sb.append(cc.id);
+				for(int i=1; i<cl.size(); i++){
+					CigarCluster cc2 = l.remove(cl.get(i));
+					sb.append(";"+cc2.id);
+					cc.merge(cc2);
+				}
+			
+				this.process(cc, transcriptsP1, null, clusterW1, null, sb.toString());
+				//Integer.
+			}
+			clusterW1.close();
+			
 		}
 		
 	}

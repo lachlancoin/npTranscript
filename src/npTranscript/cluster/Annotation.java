@@ -18,48 +18,78 @@ public class Annotation{
 		List<String> genes= new ArrayList<String>();
 		List<Integer> start = new ArrayList<Integer>();
 		List<Integer> end = new ArrayList<Integer>();
-		
+	//	List<Integer> breakSt =  new ArrayList<Integer>();
+		//List<Integer> breakEnd =  new ArrayList<Integer>();
+final int seqlen;
 		int[][] orfs; 
 		//Name,Type,Minimum,Maximum,Length,Direction,gene
 	//	5'UTR,5'UTR,1,265,265,forward,none
 
-		
+		static String NAstring = "NA";
 		public String nextDownstream(int rightBreak, int tolerance){
+			if(rightBreak<0) return NAstring;
 			for(int i=0; i<start.size(); i++){
-				if(rightBreak -tolerance <= start.get(i) && rightBreak < end.get(i)){
+				if(rightBreak -tolerance <= start.get(i) ){//&& rightBreak < end.get(i)){
 					return genes.get(i);
 				}
 			}
-			return "NA";
+			return NAstring;
 		}
 		public String nextUpstream(int leftBreak, int tolerance){
+			if(leftBreak<0) return NAstring;
 			for(int i=start.size()-1; i>=0 ;i--){
-				if(leftBreak >= start.get(i) && leftBreak-tolerance<end.get(i)){
+				if(leftBreak >= start.get(i)){// && leftBreak-tolerance<end.get(i)){
 					return genes.get(i);
 				}
 			}
-			return "NA";
+			return NAstring;
+		}
+	private static int tolerance = 5;
+	private static int correctionDist = 100;
+		
+	public void getBreaks(int[] breaks_in, int[] breaks_out, int refStart, int refEnd){
+		int st = breaks_in[1]; //start after break
+		int en = breaks_in[0];
+		System.arraycopy(breaks_in, 0, breaks_out, 0, 2);
+		for(int i=0; i< this.start.size(); i++){
+			int st_i = start.get(i);
+			if(st - tolerance < st_i) {
+				if(Math.abs(st_i - breaks_in[1]) < correctionDist && st_i <refEnd) {
+					breaks_out[1] = st_i;
+				}
+				break;
+			}
+			if(en+ tolerance > st_i ){
+				if(Math.abs(st_i - breaks_in[0]) < correctionDist && st_i >refStart) {
+					breaks_out[0] = st_i;
+				}
+			}
 		}
 		
-	public	Annotation(File f) throws IOException{
-			
+	}
+	public	Annotation(File f, int seqlen) throws IOException{
+		this.seqlen = seqlen;
 			BufferedReader br = new BufferedReader(new FileReader(f)) ;
 			List<String> header = Arrays.asList(br.readLine().split(","));
 			int gene_ind = header.indexOf("gene");
 			int start_ind = header.indexOf("Minimum");
 			int end_ind = header.indexOf("Maximum");
 			String str = "";
-			while((str=br.readLine())!=null){
+			//int break_start = -1;
+			for(int i=0; (str=br.readLine())!=null; i++){
 				String[] line = str.split(",");
-				String gene = line[gene_ind];
-				if(!gene.equals("none")) {
+				String gene = line[gene_ind];	
 					genes.add(gene);
 					int st = Integer.parseInt(line[start_ind]);
 					int en = Integer.parseInt(line[end_ind]);
 					start.add(st);
 					end.add(en);
-				
-				}
+				//	if(i>0){
+				//		this.breakSt.add(break_start);
+				//		this.breakEnd.add(st);
+				//	}
+					//break_start = st;
+			
 			}
 			br.close();
 			orfs = new int[start.size()][];
