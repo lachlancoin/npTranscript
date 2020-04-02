@@ -17,8 +17,9 @@ fastaseq = paste(fasta[[1]], collapse="")
 
 infiles = grep("clusters.h5", dir(), v=T)
 infilesT = grep("transcripts.txt", dir(), v=T)
+infilesT1 = grep("transcripts1.txt", dir(), v=T)
 infilesE = grep("exons.txt", dir(), v=T)
-infilesBr = grep("breakpoints.txt.[0-9]", dir(), v=T)
+infilesBr = grep("breakpoints.txt.gz.[0-9]", dir(), v=T)
 infilesReads = grep("0readToCluster", dir(), v=T)
 
 nmes = c("5_3", "5_no3","no5_3", "no5_no3")
@@ -37,22 +38,30 @@ leader_ind = c(leader_ind, leader_ind + nchar(leader)-1)
  df = data.frame(min = t1$Minimum[-dim(t1)[1]],max = t1$Minimum[-1], gene = as.character(t1$gene[-1]))
 
 reads=  data.frame(read.table(infilesReads, sep="\t",  head=T))
-rightGene = rep(NA, dim(reads)[1])
-for(i in 1:dim(df)[1]){
-indsi = which(reads$breakEnd-5<= df[i,2]  & reads$breakEnd> df[i,1]+5)
-rightGene[indsi] = rep(as.character(df$gene[i]), length(indsi))
-}
-reads = cbind(reads, rightGene)
-reads$source = as.factor(reads$source)
-write.table(reads, "0readToCluster.mod.txt",sep="\t", row.names=F, col.names=T, quote=F)
-reads_leader = reads[ reads$startPos < 100 & reads$endPos >seqlen-100 ,]
-reads0  = reads[reads$source==0 & reads$startPos < 100 & reads$endPos >seqlen-100 ,]
-reads1  = reads[reads$source==1 & reads$startPos < 100 & reads$endPos >seqlen-100 ,]
-pdf("output.pdf")
-plot(reads$source, reads$errorRatio, main = "Error vs type")
-plot(reads0$rightGene, reads0$errorRatio, main= type_nme[1])
-plot(reads1$rightGene, reads1$errorRatio, main = type_nme[2])
-dev.off()
+gen_inds = c( grep("upstream", names(reads)),grep("downstream", names(reads)))
+comb_l = as.factor(apply(reads[,gen_inds],1,function(x) paste(as.character(x), collapse=".")))
+reads = cbind(reads,comb_l)
+reads$source =  factor(reads$source, levels = 0:(length(type_nme)-1), labels=type_nme)
+
+reads$type = as.factor(reads$type)
+reads$upstream = as.factor(reads$upstream)
+reads$downstream = as.factor(reads$downstream)
+#write.table(reads, "0readToCluster.mod.txt",sep="\t", row.names=F, col.names=T, quote=F)
+reads_leader = reads[ reads$type=="5_3",]
+reads0  = reads[reads$source=="Cell" & reads$type=="5_3" ,]
+reads1  = reads[reads$source=="Virion" & reads$type=="5_3" ,]
+
+
+   # geom_bar(stat="identity", position=position_dodge()) +
+   # geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=.2,
+    #              position=position_dodge(.9))
+
+
+#ggplot(reads_leader, aes(x=source, y=errorRatio)) + geom_violin()+ggtitle("Error vs type")
+ outfile0 = paste(resdir, "/transcript_eror.pdf", sep="");
+ggp<-ggplot(reads[reads$upstream=="LEADER",], aes(x=downstream, y=errorRatio, fill = source)) + geom_violin(draw_quantiles = c(0.25, 0.5, 0.75))+ggtitle("Error vs transcript")
+  try(ggsave(outfile0, plot=ggp, width = 50, height = 30, units = "cm"))
+
 
 
 reads_ml = plotLengthHist(reads,t1, seqlen, type_nme)
@@ -61,33 +70,17 @@ reads_ml = plotLengthHist(reads,t1, seqlen, type_nme)
 
 
 
-transcripts = read.table( infilesT,sep="\t", head=T)
-o = order(transcripts$countTotal, decreasing=T)
-transcripts = transcripts[o,]
-err_ratio_inds = grep("error_ratio", names(transcripts))
-transcripts[,err_ratio_inds] =apply(transcripts[,err_ratio_inds,drop=F], c(1,2), function(x) if(is.na(x)) -0.01 else x)
-
-transcripts_all = list()
-transcripts_all[[1]] = (transcripts[which(transcripts$start<100 & transcripts$end > seqlen -100),, drop=F])
-transcripts_all[[2]] = (transcripts[which(transcripts$start<100 & transcripts$end <= seqlen -100),, drop=F])
-transcripts_all[[3]] =( transcripts[which(transcripts$start>=100 & transcripts$end > seqlen -100),, drop=F])
-transcripts_all[[4]] = (transcripts[which(transcripts$start>=100 & transcripts$end <= seqlen -100),, drop=F])
- 
-
- #ggp2<-ggplot(transcripts_all[[1]],aes_string(x="error_ratio0",y="error_ratio1",fill =  "rightGene" , colour = "rightGene" ))+geom_point(size=.1)# + theme_bw(); #+ggtitle(title2)
+transcripts_all = .readTranscripts(infilesT, seqlen, nmes)
+names(transcripts_all)
 
 
-  
-  #exons = read.table( infilesE,sep="\t", head=F, skip=1)
-  #names(exons) = c(read.table( infilesE,sep="\t", head=F, nrows=1,as.is=T), "type")
-  #exons_all[[ik]] = exons
-transcript_count_matrix = transcripts[,grep('count[0-9]', names(transcripts))]
-total_reads  = apply(transcript_count_matrix,2,sum)
-max_h = max(transcript_count_matrix)
 
-maxpos = max(transcripts$end)
-minpos = min(transcripts$start)
- dev.off()
+transcript_counts = lapply(transcripts_all, function(transcripts)  apply(transcripts[,grep('count[0-9]', names(transcripts)), drop=F], 2,sum))
+total_reads  = apply(data.frame(transcript_counts),1,sum)
+max_h = unlist(lapply(transcripts_all, function(transcripts)  max(transcripts[,grep('count[0-9]', names(transcripts)), drop=F])))
+
+
+
 
 if(dim(transcripts_all[[1]])[1]>0){
   maxpos = max(transcripts_all[[1]]$end)

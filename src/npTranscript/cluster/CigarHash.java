@@ -8,6 +8,7 @@ import java.util.ArrayList;
 
 public class CigarHash extends ArrayList<Integer>{
 		public static int round = 100;
+		public static boolean cluster_by_annotation = true;
 		@Override
 		public String toString(){
 			StringBuffer sb = new StringBuffer();
@@ -24,7 +25,11 @@ public class CigarHash extends ArrayList<Integer>{
 			//if(this.contains(i)) throw new RuntimeException("error");
 			return (super.add(i));
 		}
-		
+		@Override
+		public boolean equals(Object o){
+			if(cluster_by_annotation) return this.secondKey.equals(((CigarHash)o).secondKey);
+			else return super.equals(o);
+		}
 	
 		/*public int hashCode(){
 			//int hash = this.stream() .reduce(0, Integer::sum);
@@ -33,12 +38,14 @@ public class CigarHash extends ArrayList<Integer>{
 		}*/
 		//int hash=0;
 		
-		/*@Override
+		@Override
 		 public void clear() {
-			 hash =0;
-		 }*/
+			secondKey = "";
+			super.clear();
+		 }
 		@Override
 		public int hashCode(){
+			if(cluster_by_annotation) return secondKey.hashCode();
 			StringBuffer sb = new StringBuffer();
 	   		for(int i =0; i<size(); i++){
 	   			sb.append(get(i));
@@ -82,5 +89,11 @@ public boolean equals(Object o){
 			if(annot.seqlen-get(size()-1)<100) set(size()-1,annot.seqlen);
 			this.roundBreaks();
 			
+		}
+
+		String secondKey="";
+		public void setSecondKey(String string) {
+			// TODO Auto-generated method stub
+			this.secondKey = string;
 		}
 	}

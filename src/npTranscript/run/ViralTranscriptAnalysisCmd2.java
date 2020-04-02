@@ -42,7 +42,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
@@ -79,19 +81,21 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		addString("breaks", null, "Position File, for looking for specific breaks");
 		addString("reference", null, "Name of reference genome", true);
 		addString("annotation", null, "ORF annotation file", true);
+		addString("readList", null, "List of reads", false);
 		addString("resdir", "results"+System.currentTimeMillis(), "results directory");
 
 		addInt("maxReads", Integer.MAX_VALUE, "ORF annotation file");
 
 		addString("pattern", null, "Pattern of read name, used for filtering");
 		addInt("qual", 0, "Minimum quality required");
-		addInt("bin", 1, "Bin size for coverage");
+		addInt("bin", 1, "Bin size for numerical hashing");
 		addInt("breakThresh", 10, "Thresh for break points to match clusters");
 
-		addInt("startThresh", 80, "Threshold for having 5'");
-		addInt("endThresh", 80, "Threshold for having 3'");
-		addDouble("overlapThresh", 0.95, "Threshold for overlapping clusters");
-		addBoolean("coexpression", false, "whether to calc coexperssion matrices (large memory for small bin size)");
+		addInt("startThresh", 100, "Threshold for having 5'");
+		addInt("endThresh", 100, "Threshold for having 3'");
+		//addDouble("overlapThresh", 0.95, "Threshold for overlapping clusters");
+	//	addBoolean("coexpression", false, "whether to calc coexperssion matrices (large memory for small bin size)");
+		addBoolean("cluster_by_annotation", false, "whether to cluster purely based on annotation (as well as start end coords");
 		addStdHelp();
 	}
 
@@ -106,17 +110,18 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		String pattern = cmdLine.getStringVal("pattern");
 		String bamFile = cmdLine.getStringVal("bamFile");
 		String annotFile = cmdLine.getStringVal("annotation");
+		String readList = cmdLine.getStringVal("readList");
 		String positionsFile = cmdLine.getStringVal("breaks");
 		String resdir = cmdLine.getStringVal("resdir");
-		boolean coexp = cmdLine.getBooleanVal("coexpression");
-		if(coexp && bin <10) {
-			throw new Error(" this not good idea");
-		}
-		double overlapThresh = cmdLine.getDoubleVal("overlapThresh");
+		boolean cluster_by_annotation  = cmdLine.getBooleanVal("cluster_by_annotation");
+		//if(coexp && bin <10) {
+		//	throw new Error(" this not good idea");
+		//}
+	//	double overlapThresh = cmdLine.getDoubleVal("overlapThresh");
 		int startThresh = cmdLine.getIntVal("startThresh");
 		int endThresh = cmdLine.getIntVal("endThresh");
 		int maxReads = cmdLine.getIntVal("maxReads");
-		errorAnalysis(bamFile, reference, annotFile, positionsFile, resdir,pattern, qual, bin, breakThresh, coexp, overlapThresh, startThresh, endThresh,maxReads);
+		errorAnalysis(bamFile, reference, annotFile,readList,  positionsFile, resdir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads, cluster_by_annotation );
 
 		// paramEst(bamFile, reference, qual);
 	}
@@ -124,12 +129,22 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 	/**
 	 * Error analysis of a bam file. Assume it has been sorted
 	 */
-	static void errorAnalysis(String bamFiles, String refFile, String annot_file, String positionsFile,  String resdir, String pattern, int qual, int round, int break_thresh, final boolean coexp, double overlapThresh, int startThresh, int endThresh, int max_reads) throws IOException {
+	static void errorAnalysis(String bamFiles, String refFile, String annot_file, String readList, String positionsFile,  String resdir, String pattern, int qual, int round, 
+			int break_thresh, int startThresh, int endThresh, int max_reads, boolean cluster_by_annotation ) throws IOException {
 		boolean cluster_reads = true;
+		CigarHash.cluster_by_annotation = cluster_by_annotation;
 		boolean calcTree = false;
 		String[] bamFiles_ = bamFiles.split(":");
-		
-		
+		Set<String> reads = null;
+		if(readList!=null){
+			reads = new HashSet<String>();
+			BufferedReader br = new BufferedReader(new FileReader(new File(readList)));
+			String st;
+			while((st = br.readLine())!=null){
+				reads.add(st);
+			}
+			br.close();
+		}
 		
 		CigarHash.round = round;
 		TranscriptUtils.break_thresh = break_thresh;
@@ -172,7 +187,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 			br.close();
 			}
 			//genes_all.add(genes);
-			profiles.add(new IdentityProfile1(ref, resDir, pos, len,jj,coexp, overlapThresh, startThresh, endThresh, annot));
+			profiles.add(new IdentityProfile1(ref, resDir, pos, len,jj, startThresh, endThresh, annot));
 
 		}
 		genes_all_pw.close();
@@ -204,9 +219,13 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 
 			int numNotAligned = 0;
 	
-			for (int cntr = 0; samIter.hasNext() && cntr < max_reads; cntr++) {
+			outer: for (int cntr = 0; samIter.hasNext() && cntr < max_reads; cntr++) {
 				SAMRecord sam = samIter.next();
-
+				if(readList!=null && !reads.contains(sam.getReadName())){
+					cntr=cntr-1;
+					continue outer;
+					
+				}
 				if (pattern != null && (!sam.getReadName().contains(pattern)))
 					continue;
 

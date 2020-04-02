@@ -24,10 +24,10 @@ public class CigarClusters {
 	
 	
 	
-	final double thresh;
+//	final double thresh;
 	
-	CigarClusters(double thresh, Sequence refSeq, Annotation annot, int num_sources){
-		this.thresh = thresh;
+	CigarClusters( Sequence refSeq, Annotation annot, int num_sources){
+	//	this.thresh = thresh;
 		this.refseq = refSeq;
 		this.seqlen = refSeq.length();
 		this.annot = annot;
@@ -117,7 +117,7 @@ public class CigarClusters {
 		subseq1.setDesc(descline.toString());
 		subseq1.writeFasta(seqFasta); 
 	}*/
-	static int tolerance = 5;
+	//static int tolerance = 10;
 	final Annotation annot;
 	final Sequence  refseq;
 	final int seqlen;
@@ -129,12 +129,14 @@ public class CigarClusters {
 		 int[][] matr =cc.getClusterDepth(num_sources);
 		String id = cc.id+"";
 		clusterW.writeIntMatrix(id, matr);
-	
+		
 		String read_count = TranscriptUtils.getString(cc.readCount);
-		String downstream = annot.nextDownstream(cc.breakEnd, tolerance);
-		String upstream = annot.nextUpstream(cc.breakSt, tolerance);
+		String downstream = annot.nextDownstream(cc.breakEnd);
+		String upstream = annot.nextUpstream(cc.breakSt);
 		String ccid = altID==null ? cc.id+"": altID;
-		transcriptsP.println(ccid+"\t"+cc.start+"\t"+cc.end+"\t"+cc.breaks.toString()+"\t"+cc.breaks.hashCode()+"\t"+
+		transcriptsP.println(
+			ccid+"\t"+cc.start+"\t"+cc.end+"\t"+cc.getTypeNme(seqlen)+"\t"+
+		cc.breaks.toString()+"\t"+cc.breaks.hashCode()+"\t"+
 		cc.breakSt+"\t"+cc.breakEnd+"\t"+
 		upstream+"\t"+downstream+"\t"+
 		cc.totLen+"\t"+cc.readCountSum+"\t"+read_count
@@ -154,7 +156,7 @@ public class CigarClusters {
 			str.add("errors"+j);
 		}
 			exonP.println("ID\tstart\tend\t"+TranscriptUtils.getString("count", num_sources,true));
-			String transcriptP_header = "ID\tstart\tend\tbreaks\thash\tstartBreak\tendBreak\tleftGene\trightGene\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true)
+			String transcriptP_header = "ID\tstart\tend\ttype_nme\tbreaks\thash\tstartBreak\tendBreak\tleftGene\trightGene\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true)
 			+"\t"+TranscriptUtils.getString("depth", num_sources, true)+"\t"+TranscriptUtils.getString("errors", num_sources, true)
 			+"\t"+TranscriptUtils.getString("error_ratio", num_sources, true);
 			transcriptsP.println(transcriptP_header);

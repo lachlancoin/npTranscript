@@ -3,7 +3,7 @@
 
 ##BREAKPOINT ANALYSIS
 breakPs = list()
-for(i in 1:length(infilesBr))  breakPs[[i]] = readBreakPoints(infilesBr[i], i, addOne = addOne) 
+for(i in 1:length(infilesBr))  breakPs[[i]] = readBreakPoints(infilesBr[i], i, addOne = FALSE) 
 names(breakPs) = type_nme[1:length(breakPs)]
 
 genes = grep("UTR", grep("none",t$gene[-2], inv=T, v=T), inv=T, v=T)
@@ -42,11 +42,11 @@ if(RUN_ALL){
 	
 
 	print("special")
-	plotAllHM(special, "special" , resdir,  breakPs, t, fimo, total_reads, type_nme, log=T, todo=todo)	
+	 plotAllHM(special, "special" , resdir,  breakPs, t, fimo, total_reads, type_nme, log=T)	
 	print("endcs_1")
-	plotAllHM(endcs_1[-1], "endcs_1" , resdir,  breakPs, t, fimo, total_reads, type_nme,  log=T,todo=todo)	
+	plotAllHM(endcs_1[-1], "endcs_1" , resdir,  breakPs, t, fimo, total_reads, type_nme,  log=T)	
 print("endcs_2")
-	plotAllHM(endcs_2[-(1)], "endcs_2" , resdir,  breakPs, t, fimo, total_reads, type_nme, plotHM = F,  log=T, todo=todo)	
+	plotAllHM(endcs_2[-(1)], "endcs_2" , resdir,  breakPs, t, fimo, total_reads, type_nme, plotHM = F,  log=T)	
 	
 	
 
@@ -72,7 +72,7 @@ print("endcs_2")
 	
 #	hmClust = getHMClust(breakPs, endcs_2)
 }else{
-  orf10 = data.frame(endcs_2[10])
+  orf10 = data.frame(endcs_2[9])
   #orf10[[1]][1]=c(5000)
 ml1 = plotAllHM(orf10, breakPs, t, fimo, total_reads, type_nme, NULL,NULL, log=T, depth=T)	
 hmClust_b = getHMClust(breakPs, endcs_b_1,fasta,t, mind = c(2,2))

@@ -44,7 +44,8 @@ public class CigarCluster  {
 
 	
 		
-		public void setBreaks(List<Integer> breaks){
+		public void setBreaks(CigarHash breaks){
+			this.breaks.secondKey = breaks.secondKey;
 			this.breaks.addAll(breaks);
 
 		}
@@ -333,6 +334,12 @@ public class CigarCluster  {
 			//if(sum1!=sum2){
 				//throw new RuntimeException("maps not concordant");
 			//}
+		}
+		static String[] nmes = new String[] {"5_3", "5_no3", "no5_3", "5_no3"};
+		public String getTypeNme(int seqlen) {
+			if(start <=100) return end >= seqlen -100 ? nmes[0] : nmes[1];
+			else return end >= seqlen -100 ? nmes[2] : nmes[3];
+			//return null;
 		}
 		
 	}

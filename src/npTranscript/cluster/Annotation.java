@@ -26,7 +26,7 @@ final int seqlen;
 	//	5'UTR,5'UTR,1,265,265,forward,none
 
 		static String NAstring = "NA";
-		public String nextDownstream(int rightBreak, int tolerance){
+		public String nextDownstream(int rightBreak){
 			if(rightBreak<0) return NAstring;
 			for(int i=0; i<start.size(); i++){
 				if(rightBreak -tolerance <= start.get(i) ){//&& rightBreak < end.get(i)){
@@ -35,7 +35,7 @@ final int seqlen;
 			}
 			return NAstring;
 		}
-		public String nextUpstream(int leftBreak, int tolerance){
+		public String nextUpstream(int leftBreak){
 			if(leftBreak<0) return NAstring;
 			for(int i=start.size()-1; i>=0 ;i--){
 				if(leftBreak >= start.get(i)){// && leftBreak-tolerance<end.get(i)){
@@ -44,9 +44,10 @@ final int seqlen;
 			}
 			return NAstring;
 		}
-	private static int tolerance = 5;
-	private static int correctionDist = 100;
-		
+	static int tolerance = 10;
+	 static int correctionDistLeft = 10000;
+	static int correctionDistRight = 10000;
+
 	public void getBreaks(int[] breaks_in, int[] breaks_out, int refStart, int refEnd){
 		int st = breaks_in[1]; //start after break
 		int en = breaks_in[0];
@@ -54,13 +55,14 @@ final int seqlen;
 		for(int i=0; i< this.start.size(); i++){
 			int st_i = start.get(i);
 			if(st - tolerance < st_i) {
-				if(Math.abs(st_i - breaks_in[1]) < correctionDist && st_i <refEnd) {
+				int dist = Math.abs(st_i - st);
+				if(dist < correctionDistRight && st_i <refEnd) {
 					breaks_out[1] = st_i;
 				}
 				break;
 			}
 			if(en+ tolerance > st_i ){
-				if(Math.abs(st_i - breaks_in[0]) < correctionDist && st_i >refStart) {
+				if(Math.abs(st_i - en) < correctionDistLeft && st_i >refStart) {
 					breaks_out[0] = st_i;
 				}
 			}

@@ -423,45 +423,14 @@ loess_smooth<-function(clusters,  inds,span = 0.05){
 
 
 
-
-makeCovPlots<-function(h5file,  transcripts_, header,  sums, t, type_nme,  leg_size=6, logy=F, rawdepth = T, xlim = list(NULL),  span=0.0,  
+makeCovPlots<-function(clusters_,  header, total_reads, t, type_nme,  leg_size=6, logy=F, rawdepth = T, xlim = list(NULL),  span=0.0,  show=F, 
 count_indf = grep("count[0-9]", names(transcripts_))){
-  ccounts = transcripts_$countTotal
-  
  dinds  = grep("depth", header)
- pos_ind = which(header=="pos")
- clusters_ = matrix(NA, nrow =0, ncol = length(header)+1)
-  for(ID in transcripts_$ID){
-	
-	mat = t(h5read(h5file,as.character(ID)))
-	len = dim(mat)[[1]]
-	diff = apply(cbind(mat[-len, pos_ind], mat[-1,pos_ind]), 1, function(x) x[2] - x[1])
-	
- 	br = which(diff>100)[1]
-	if(!is.na(br)){
-	   zero1 = rep(0, length(header))
-	   zero2 = rep(0, length(header))
-	   zero1[pos_ind] = mat[br,pos_ind]+1
-  	   zero2[pos_ind] = mat[br+1,pos_ind]-1
-	   
-	   mat = rbind(mat[1:br,,drop=F], zero1, zero2, mat[(br+1):len,,drop=F])
-	}
-	mat = data.frame(mat)
-	names(mat) = header
-	if(span>0) mat = loess_smooth(mat, dinds, span)	
-
-	clusterID = rep(ID, dim(mat)[1])
-	mat = cbind(mat,clusterID )
-	clusters_ = rbind(clusters_,mat)
-	
-  } 
-  
-  
   ggps = list()
   for(j in 1:length(xlim)){
     for( k in 1:length(count_indf)){
-      ggps[[length(ggps)+1]] = plotClusters(clusters_, dinds[k],  sums[k], t, fimo, xlim = xlim[[j]], rawdepth = rawdepth,  
-                                            title =type_nme[k], logy=logy, leg_size =leg_size, show=F)
+      ggps[[length(ggps)+1]] = plotClusters(clusters_, dinds[k],  total_reads[k], t, fimo, xlim = xlim[[j]], rawdepth = rawdepth,  
+                                            title =type_nme[k], logy=logy, leg_size =leg_size, show=show)
     }
   }
   
@@ -1083,7 +1052,7 @@ order(nme_matrix[,2], decreasing=T)
 
 #	llHM(special, "special" , resdir,  breakPs, t, fimo, total_reads, type_nme, log=T)	
 
-plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo = 1:length(breakPs),  type_nme=names(total_reads ), pdf=T, plotHM = T, plotStEnd = T, logT=T, depth=F){
+plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo = 1:length(breakPs),  type_nme=names(total_reads ), pdf=T, plotHM = T, plotStEnd = T, logT=T, depth=T){
   print(special)
  
   type_nme = type_nme[1:length(breakPs)]
@@ -1091,31 +1060,28 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
   outfile2 = paste(resdir,"/", resname, "_st_end.pdf",sep="")
   if(plotHM && pdf) pdf(outfile1)
   plotsl = list()
-if(FALSE){
+
   for(i1 in 1:length(special)){	
     plots = list()
-	
     for(i in todo){
-	
       mult =  1e6/total_reads[i]
       if(depth)  mult=1
       plots_i = try(plotBreakPIntrons(breakPs[[i]], t,fimo,region =  special[[i1]],  mult =  mult, logT=logT, title= names(special)[i1], subtitle = type_nme[i], plotHM = plotHM))
-if(inherits(plots_i,"try-error")) {
+      if(inherits(plots_i,"try-error")) {
 	print("error with plotBreakPIntrons")
-}
-     names(plots_i) = paste(type_nme[i],names(plots_i), sep="_")
+      }
+      names(plots_i) = paste(type_nme[i],names(plots_i), sep="_")
       if(length(plots_i)>0){
-		 plots = c(plots, plots_i)
-
-	}
+		 plotsl = c(plots, plots_i)
+      }
     }
-}
+  }
    # types = unlist(lapply(plots, typeof));
    # print(types)
     #plots = plots[types=="list"]
     if(length(plots)>0)	plotsl = c(plotsl, plots[.reorder(names(plots))])
     
-  }
+  
   if(pdf && plotHM) dev.off()
   #types = unlist(lapply(plotsl, typeof));
   #plotsl = plotsl[types=="list"]
@@ -1124,11 +1090,34 @@ if(inherits(plots_i,"try-error")) {
   invisible(ml)
 }
 
-plotHeatmap<-function(clusters, transcripts1, jk, logHeatmap = F,xlim = list(c(1,max(clusters$pos+1))),featureName = "depth", Rowv = NA ,  
-                      dinds = grep(featureName, names(clusters)), max_h=0 ,title = ""){
+readH5<-function(h5file, header, transcripts_, span =0.0){
+ dinds  = grep("depth", header)
+ pos_ind = which(header=="pos")
+ clusters_ = matrix(NA, nrow =0, ncol = length(header)+1)
+  for(i in 1:length(IDS)){
+	ID = IDS[i]
+	mat = t(h5read(h5file,as.character(ID)))
+	
+	mat = data.frame(mat)
+	names(mat) = header
+	if(span>0) mat1 = loess_smooth(mat, dinds, span)	
+	cname = paste(transcripts_$leftGene[i], transcripts_$rightGene[i], sep=".")
+	clusterID = rep(cname, dim(mat1)[1])
+	mat1 = cbind(mat1,clusterID )
+	clusters_ = rbind(clusters_,mat1)
+	
+  } 
+clusters_
+
+}
+plotHeatmap<-function(h5file, header,  transcripts1, jk, logHeatmap = F,xlim = list(c(1,max(clusters$pos+1))),featureName = "depth", 
+                      max_h=0 ,title = ""){
   #len = max(clusters[,1]+1)
   if(max_h==0) stop("error must set max_h")
   title = paste(title, featureName)
+#countdf = grep(featureName, names(transcripts1))
+ IDS = transcripts1$ID
+cnames = apply(cbind(as.character(transcripts_$leftGene), as.character(transcripts_$rightGene)), 1, paste, collapse=".")
   for(jj in 1:length(xlim)){
     print(paste('jj',xlim[[jj]]))
     xmin = xlim[[jj]][1]
@@ -1139,12 +1128,23 @@ plotHeatmap<-function(clusters, transcripts1, jk, logHeatmap = F,xlim = list(c(1
  # defaultVal = NA
   if(featureName=="ratios")defaultVal = NA else defaultVal = 0
   heatm =  matrix(defaultVal,nrow = nrows, ncol=  length(x)) 
-  dimnames(heatm) = list(transcripts1$ID, x)
-  for(i in 1:dim(transcripts1)[1]){
-    range = as.numeric(transcripts1[i,5:6])
-    subm =clusters[(range[1]+1):range[2],]
+  dimnames(heatm) = list(cnames, x)
+ dinds = grep(featureName, header)
+
+  for(i in 1:length(IDS)){
+    
+    subm = data.frame(t(h5read(h5file,as.character(IDS[i]))))
+    names(subm) = header
     subm = subm[subm$pos>=xmin & subm$pos<=xmax,,drop=F]
-    heatm[i,subm$pos-xmin+1] = subm[,dinds[jk]]
+    if(length(dinds)==0){
+	ratio =subm[,grep("error", header)[jk]] / subm[,grep("depth", header)[jk]]
+	ratio[is.na(ratio) | ratio>1000] = defaultVal
+ 	heatm[i,subm$pos-xmin+1] = ratio
+    } else{
+	 
+      heatm[i,subm$pos-xmin+1] = subm[,dinds[jk]]
+    }
+   
   }
   
   ccounts = transcripts1$countTotal
@@ -1178,7 +1178,7 @@ plotHeatmap<-function(clusters, transcripts1, jk, logHeatmap = F,xlim = list(c(1
   colnames(clustersLog)  = x
   rowSideCols = getSideCols(x, t)
   if(nrows>1 && length(which(!is.na(clustersLog)))>2){
-    heatmap(clustersLog[nrows:1,,drop=F],scale="none", Colv = NA, Rowv =  Rowv,distfun = distbin, main = title, ColSideColors = rowSideCols, RowSideColors = colSidecols[nrows:1])
+    heatmap(clustersLog[nrows:1,,drop=F],scale="none", Colv = NA,margins = c(5,10), Rowv =  Rowv,distfun = distbin, main = title, ColSideColors = rowSideCols) #RowSideColors = colSidecols[nrows:1])
   }
   #	
   }
@@ -1248,7 +1248,7 @@ for(j in 1:length(type_nme)){
 		title = paste(type_nme[j], nmes[k])
 		subinds = if(start_thresh[k]) reads$startPos<m_thresh else reads$startPos>m_thresh
 		subinds= subinds & ( if(end_thresh[k]) reads$endPos> seqlen-m_thresh else reads$endPos<=seqlen-m_thresh)
-		subreads = reads[subinds  & reads$source==(j-1),,]
+		subreads = reads[subinds  & reads$source==(type_nme[j]),,]
 		ggp<-ggplot(subreads, aes(length)) + geom_histogram(binwidth = binwidth) + theme_bw()+ggtitle(title)+scale_x_continuous(limits = c(min, max))
 		if(logy) ggp<-ggp+scale_y_continuous(trans='log10', label=scientific_10) else ggp<-ggp+scale_y_continuous(label=scientific_10)
 		if(k==1 || k==3){
@@ -1279,4 +1279,33 @@ invisible(ml)
      names(ratios) = paste("ratios",1:length(dinds), sep="")
   ratios
 }
+
+
+.filterT<-function(transcripts, seqlen,  start_end = NULL, lt = c(T,T), leftGene= NULL, rightGene = NULL){
+	inds = rep(T, dim(transcripts)[1])
+	if(!is.null(start_end)){
+		inds = inds & ( if(lt[1]) transcripts$start<start_end[1] else transcripts$start >= start_end[1])
+		inds = inds & (if(lt[2]) (seqlen - transcripts$end<start_end[2]) else (seqlen - transcripts$end) >= start_end[2])
+	}
+	if(!is.null(rightGene)) inds = inds & transcripts$rightGene==rightGene
+	if(!is.null(leftGene)) inds = inds & transcripts$leftGene==leftGene
+	transcripts[inds,,drop=F]
+}
+
+.readTranscripts<-function(infilesT, seqlen, nmes){
+transcripts = read.table( infilesT,sep="\t", head=T)
+o = order(transcripts$countTotal, decreasing=T)
+transcripts = transcripts[o,]
+err_ratio_inds = grep("error_ratio", names(transcripts))
+transcripts[,err_ratio_inds] =apply(transcripts[,err_ratio_inds,drop=F], c(1,2), function(x) if(is.na(x)) -0.01 else x)
+
+transcripts_all = list()
+transcripts_all[[1]] = (transcripts[which(transcripts$start<100 & transcripts$end > seqlen -100),, drop=F])
+transcripts_all[[2]] = (transcripts[which(transcripts$start<100 & transcripts$end <= seqlen -100),, drop=F])
+transcripts_all[[3]] =( transcripts[which(transcripts$start>=100 & transcripts$end > seqlen -100),, drop=F])
+transcripts_all[[4]] = (transcripts[which(transcripts$start>=100 & transcripts$end <= seqlen -100),, drop=F])
+names(transcripts_all) = nmes
+transcripts_all
+}
+
 

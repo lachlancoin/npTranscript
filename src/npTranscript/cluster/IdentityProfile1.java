@@ -33,7 +33,7 @@ public class IdentityProfile1 {
 	
 	
 	
-	public IdentityProfile1(Sequence refSeq, File resDir, List<Integer[]> positions, int num_sources, int genome_index,  boolean calculateCoExpression, double overlapThresh, int startThresh, int endThresh, Annotation annot) throws IOException {
+	public IdentityProfile1(Sequence refSeq, File resDir, List<Integer[]> positions, int num_sources, int genome_index,  int startThresh, int endThresh, Annotation annot) throws IOException {
 		//File readClusterFile = new File(outdir, "readclusters.txt.gz");
 		if(positions.size()>0){
 			int rowlen = refSeq.length();
@@ -51,7 +51,7 @@ public class IdentityProfile1 {
 		this.genome = refSeq;
 		this.startThresh = startThresh; this.endThresh = endThresh;
 		this.source_index = 0;		
-		this.calculateCoExpression = calculateCoExpression;
+		//this.calculateCoExpression = calculateCoExpression;
 		 outfile = new File(resDir,genome_index+ ".txt");
 		 outfile1 = new File(resDir, genome_index+ "coref.txt");
 		 outfile2 = new File(resDir, genome_index+"clusters.h5");
@@ -71,7 +71,7 @@ public class IdentityProfile1 {
 					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outfile3))));
 			//this.readClusters.println("readID,clusterID,index,source_index");//+clusterID+","+index+","+source_index);
 		 String br_cluster_str = sm==null ? "": "break_cluster\t";
-		readClusters.println("readID\tclusterId\tsource\t"+br_cluster_str+"length\tstartPos\tendPos\tbreakStart\tbreakEnd\terrorRatio\tupstream\tdownstream");
+		readClusters.println("readID\tclusterId\tsource\t"+br_cluster_str+"length\ttype_nme\tbreaks\tbreaks_mod\tstartPos\tendPos\tbreakStart\tbreakEnd\terrorRatio\tupstream\tdownstream");
 		
 		/*
 		readClipped = 0;
@@ -101,7 +101,7 @@ public class IdentityProfile1 {
 	//	roundedPositions = roundedPos.toArray(new Integer[0]);
 		//this.depth = new int[roundedPos.size()];
 	
-		all_clusters =new CigarClusters(overlapThresh, refSeq, annot, num_sources);
+		all_clusters =new CigarClusters(refSeq, annot, num_sources);
 		this.breakpoints = new SparseRealMatrix[this.num_sources];
 		this.breakSt = new SparseVector[this.num_sources];
 		this.breakEnd = new SparseVector[this.num_sources];
@@ -118,7 +118,7 @@ public class IdentityProfile1 {
 	final int startThresh, endThresh;
 	
 	//final  double bin ;
-	private final boolean calculateCoExpression;
+	//private final boolean calculateCoExpression;
 
 //	final String[] nmes =  "5_3:5_no3:no5_3:no5_no3".split(":");
 
@@ -149,8 +149,8 @@ public class IdentityProfile1 {
 		if(maxg>100){
 			prev_position = breaks.get(maxg_ind);
 			position = breaks.get(maxg_ind+1);
-			downstream = annot.nextDownstream(position, 5);
-			upstream = annot.nextUpstream(prev_position, 5);
+			downstream = annot.nextDownstream(position);
+			upstream = annot.nextUpstream(prev_position);
 			if(this.sm!=null){
 				 coRefPositions.break_point_cluster = ((IntegerField)this.sm.getEntry(prev_position, position)).getVal();
 				
@@ -161,7 +161,11 @@ public class IdentityProfile1 {
 			this.breakSt[this.source_index].addToEntry(prev_position, 1);
 			this.breakEnd[this.source_index].addToEntry(position,  1);
 		}
+		String type_nme = coRefPositions.getTypeNme(annot.seqlen);
+		String breakSt1 = coRefPositions.breaks.toString();
 		coRefPositions.breaks.adjustBreaks(annot);
+		coRefPositions.breaks.setSecondKey(type_nme+"."+upstream+"."+downstream);
+		
 	//	coRefPositions.breaks.roundBreaks();
 		int clusterID;
 		if(cluster_reads) clusterID = this.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources); // this also clears current cluster
@@ -169,6 +173,7 @@ public class IdentityProfile1 {
 	//	System.err.println(id);
 		String br_cluster_str = sm==null ? "": coRefPositions.break_point_cluster+"\t";
 		this.readClusters.println(id+"\t"+clusterID+"\t"+source_index+"\t"+br_cluster_str+readLength+"\t"
+		+type_nme+"\t"+breakSt1+"\t"+coRefPositions.breaks.toString()+"\t"
 		+startPos+"\t"+endPos+"\t"+prev_position+"\t"+position+"\t"+coRefPositions.getError(src_index)+"\t"+upstream+"\t"+downstream);
 	}
 	
