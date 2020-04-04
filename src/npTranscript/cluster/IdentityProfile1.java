@@ -272,15 +272,14 @@ public class IdentityProfile1 {
 	
 	
 	public void getConsensus() throws IOException {
-			PrintWriter exonsP =new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outfile4))));
-			SequenceOutputStream seqFasta =  new SequenceOutputStream(new GZIPOutputStream(new FileOutputStream(outfile5)));
+			//PrintWriter exonsP =new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outfile4))));
+			SequenceOutputStream seqFasta =  null; // new SequenceOutputStream(new GZIPOutputStream(new FileOutputStream(outfile5)));
 			PrintWriter transcriptsP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outfile8))));
-			PrintWriter transcriptsP1 =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outfile8_1))));
-			this.all_clusters.getConsensus(exonsP, transcriptsP, transcriptsP1, seqFasta,outfile2, outfile2_1);
-			exonsP.close();
-			seqFasta.close();
+			this.all_clusters.getConsensus( transcriptsP,  seqFasta,outfile2);
+			//exonsP.close();
+			if(seqFasta!=null) seqFasta.close();
 			transcriptsP.close();
-			transcriptsP1.close();
+			//transcriptsP1.close();
 	}
 /*	public void printTree() throws IOException{
 		PrintWriter treeP =  new PrintWriter(
@@ -303,9 +302,9 @@ public class IdentityProfile1 {
 	public void finalise()  throws IOException{
 		this.readClusters.close();
 		IdentityProfile1 pr1 = this;
-		PrintWriter pw = new PrintWriter(new FileWriter(outfile));
+		//PrintWriter pw = new PrintWriter(new FileWriter(outfile));
 	//	pr1.print(pw, genome);
-		pw.close();
+		//pw.close();
 	//	pr1.printCoRef(outfile1);
 		pr1.printBreakPoints(outfile9);
 	//	pr1.printClusters(outfile2);

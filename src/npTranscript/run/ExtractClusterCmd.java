@@ -19,7 +19,46 @@ import java.util.Map;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-public class ExtractClusters {
+import japsa.util.CommandLine;
+import japsa.util.deploy.Deployable;
+
+@Deployable(scriptName = "npTranscript.run", scriptDesc = "Clustering of results from ViralTranscriptAnalysisCmd2")
+public class ExtractClusterCmd extends CommandLine {
+	
+	
+	public ExtractClusterCmd() {
+		super();
+		Deployable annotation = getClass().getAnnotation(Deployable.class);
+		setUsage(annotation.scriptName() + " [options]");
+		setDesc(annotation.scriptDesc());
+
+		addString("inDir", null, "Name of inputDir", true);
+		addStdHelp();
+	}
+	
+	
+	
+	
+	public static void main(String[] args) throws IOException, InterruptedException {
+		CommandLine cmdLine = new ExtractClusterCmd();
+		args = cmdLine.stdParseLine(args);
+
+		String inDir = cmdLine.getStringVal("inDir");
+		File in = new File(inDir);
+		File transcriptF = new File(in, "0transcripts.txt.gz");
+		File outdir = new File(in, "clusters");
+		outdir.mkdir();
+		File readsF = new File(in, "0readToCluster.txt.gz");
+	
+		
+		try{
+			ExtractClusterCmd ec = new ExtractClusterCmd();
+			ec.run(transcriptF, readsF, outdir);
+		}catch(Exception exc){
+			exc.printStackTrace();
+		}
+	}
+	
   static int cntr = 1; 
   static String split = "\t";
 	static class StringComp implements Comparator<String[]>{
@@ -48,9 +87,9 @@ public class ExtractClusters {
 			this.header = header;
 			this.name  = name; 
 		}
-		public Table(String in, String split ) throws IOException{
-			this.name = in;
-			BufferedReader br = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(new File(in)))));
+		public Table(File in, String split ) throws IOException{
+			this.name = in.getName();
+			BufferedReader br = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(in))));
 			 header = Arrays.asList(br.readLine().split(split));
 			 String st = "";
 			 while((st = br.readLine())!=null){
@@ -141,7 +180,7 @@ public class ExtractClusters {
 		}
 		public void print() throws IOException{
 			PrintWriter transcripts_pw  = new PrintWriter(
-					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(new File(outdir, this.name+".gz")))));
+					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(new File(outdir.getParentFile(), this.name+".gz")))));
 			transcripts_pw.println(getStr(this.header.toArray(new String[0]), split));
 			for(int i=0; i<this.data.size(); i++){
 				transcripts_pw.println(getStr(data.get(i), split));
@@ -164,16 +203,14 @@ public class ExtractClusters {
 	}
 	Table reads;
 	Table transcripts;
-	final File outdir;
+	File outdir;
 	
-	public ExtractClusters(String in ) throws IOException{
-		reads = new Table("0readToCluster.txt.gz","\t");
-		transcripts = new Table(in,"\t");
-		this.outdir = new File("processed");
-		outdir.mkdir();
-	}
 	
-	public void run(String out) throws IOException{
+	
+	public void run(File transcriptsF , File readsF,  File outdir) throws IOException{
+		reads = new Table(readsF,"\t");
+		transcripts = new Table(transcriptsF,"\t");
+	    this.outdir = outdir;
 		transcripts.sort("countTotal", true);
 		transcripts.filter("type_nme",  "5_3");
 		transcripts.limit("countTotal", 10, true);
@@ -193,16 +230,9 @@ public class ExtractClusters {
 		
 	}
 	
-	public static void main(String[] args) {
-		try{
-			ExtractClusters ec = new ExtractClusters("0transcripts.txt.gz");
-			ec.run("0transcripts_sorted.txt.gz");
-		}catch(Exception exc){
-			exc.printStackTrace();
-		}
 
 		
 		
 	}
 
-}
+

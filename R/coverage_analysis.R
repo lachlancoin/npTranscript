@@ -1,7 +1,30 @@
 
+transcripts_all = .readTranscripts(infilesT, seqlen, nmes)
+names(transcripts_all)
+
+
+
+transcript_counts = lapply(transcripts_all, function(transcripts)  apply(transcripts[,grep('count[0-9]', names(transcripts)), drop=F], 2,sum))
+total_reads  = apply(data.frame(transcript_counts),1,sum)
+max_h = unlist(lapply(transcripts_all, function(transcripts)  max(transcripts[,grep('count[0-9]', names(transcripts)), drop=F])))
+
+
+
+
+if(dim(transcripts_all[[1]])[1]>0){
+  maxpos = max(transcripts_all[[1]]$end)
+  minpos = min(transcripts_all[[1]]$start)
+}else{
+  maxpos = length(fasta[[1]])
+  minpos = 1
+total_reads = c(1,1)
+}
 ##TRANSCRIPT COVERAGE ANALYSIS
 min_t_count = 20
 max_h = 0
+
+sumT_all = matrix(nrow = length(infiles), ncol = length(type_nme))
+dimnames(sumT_all)[[2]] = type_nme
 
 h5file = "0clusters.h5"
 #h5f = H5Fopen(cluster_file)

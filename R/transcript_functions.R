@@ -1309,3 +1309,66 @@ transcripts_all
 }
 
 
+
+.sumByLevel<-function(reads, nme1=c(  "comb_l"), target="source", mincount = 0.1, limit = 20){
+	
+	target_ind = which(names(reads) %in% target)
+	inds1 = which(names(reads) %in% nme1)
+	fact1 = as.factor(apply(reads[,inds1,drop=F], 1, function(x) paste(as.character(x), collapse=".")))
+	levs1 = levels(fact1)
+	matr = reads[1:length(levs1),]
+	src_lev = levels(reads[,target_ind])
+	counts = matrix(nrow =length(levs1), ncol = length(src_lev))
+	names(counts) = as.character(src_lev)
+	for(i in 1:length(levs1)){
+	 subm =  reads[fact1==levs1[i],,drop=F]
+	 for(j in 1:length(src_lev)){
+		counts[i,j] = length(which(subm[,target_ind]==as.character(src_lev[j])))
+	} 
+	 matr[i,] = subm[1,]
+	}
+
+	counts = data.frame(apply(counts,c(1,2), function(x) x+mincount))
+	names(counts) = as.character(src_lev)
+	matr = cbind(matr, counts)
+	matr[apply(counts,1,sum)>limit,,drop=F]
+}
+
+.plotGeneExpression<-function(reads_, nme1 = c("comb_l"), target = "source", limit = 20, mincount = 0.1, removeNA = T){
+	reads1 = if(!removeNA) reads_ else reads_[!is.na(reads_$upstream) & !is.na(reads_$downstream),]
+	#print(dim(reads1))
+	sumByLevel = .sumByLevel(reads1, nme1=nme1 ,target=target,  mincount = mincount, limit = limit)
+
+	extra = paste("+", mincount, sep="")
+	#print(head(sumByLevel))
+	ggp<-ggplot(sumByLevel, aes_string(x="Cell", y="Virion", fill = "comb_l", colour = "comb_l")) + geom_point(size = 4)  #+ theme_bw()
+	ggp<-ggp+scale_y_continuous(trans='log10')+scale_x_continuous(trans='log10')
+	ggp<-ggp+xlab(paste("Cell depth", extra)) + ylab(paste("Virion depth", extra))
+	ggp<-ggp+theme(text = element_text(size=20))
+ 	#outfile0 = paste(resdir, "/rel_expression1.pdf", sep="");
+	invisible(ggp)
+}  
+
+.appendGenePosition<-function(reads_leader, t1){
+genepos = rep(0, dim(reads_leader)[1])
+genes = t1$gene
+for(i in 1:length(genes)){
+	inds = which(reads_leader$downstream==as.character(genes[i]))
+	if(length(inds)>0){
+		genepos[inds] = t1$Minimum[i]
+	}
+}
+reads_leader = cbind(reads_leader, genepos)
+reads_leader
+}
+
+
+plotErrorViolin<-function(reads, inds1 = NULL, x = "reorder(downstream,genepos)", y = "errorRatio", fill = "source"){
+	subm = if(is.null(inds1)) reads else reads[inds1 ,]
+	err_inds = which(names(reads)==y)
+	ggp<-ggplot(subm, aes_string(x=x, y=y,  fill = fill))
+	ggp<-ggp + geom_violin(draw_quantiles = c(0.25, 0.5, 0.75))+ggtitle("Error vs transcript")+xlab("ORF")
+	ggp<-ggp+ylim(c(0, max(reads[,err_inds],na.rm=T)))
+	ggp<-ggp+theme(text = element_text(size=18), axis.text.x = element_text(size = rel(0.5), angle = 90))
+	invisible(ggp)
+}

@@ -122,7 +122,7 @@ public class CigarClusters {
 	final Sequence  refseq;
 	final int seqlen;
 	final int num_sources;
-	public String process(CigarCluster cc,   PrintWriter transcriptsP, SequenceOutputStream seqFasta,IHDF5SimpleWriter  clusterW ,
+	public String process(CigarCluster cc,   PrintWriter transcriptsP, SequenceOutputStream seqFasta1,IHDF5SimpleWriter  clusterW ,
 			Map<String, List<CigarHash>> geneToHash, String altID){
 		cc.addZeros(seqlen); 
 		
@@ -144,8 +144,8 @@ public class CigarClusters {
 		return TranscriptUtils.round(cc.start, 100)+"."+downstream+"."+upstream+"."+TranscriptUtils.round(seqlen-cc.end, 100);
 	}
 	
-	public void getConsensus(  PrintWriter exonP ,
-			PrintWriter transcriptsP, PrintWriter transcriptsP1, SequenceOutputStream seqFasta, File  outfile2, 	File outfile2_1		
+	public void getConsensus(  
+			PrintWriter transcriptsP,  SequenceOutputStream seqFasta1, File  outfile2
 			) throws IOException{
 		List<String> str = new ArrayList<String>();
 		str.add("pos"); //str.add("ẗype"); 
@@ -155,19 +155,19 @@ public class CigarClusters {
 		for(int j=0; j<num_sources; j++){
 			str.add("errors"+j);
 		}
-			exonP.println("ID\tstart\tend\t"+TranscriptUtils.getString("count", num_sources,true));
+		//	exonP.println("ID\tstart\tend\t"+TranscriptUtils.getString("count", num_sources,true));
 			String transcriptP_header = "ID\tstart\tend\ttype_nme\tbreaks\thash\tstartBreak\tendBreak\tleftGene\trightGene\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true)
 			+"\t"+TranscriptUtils.getString("depth", num_sources, true)+"\t"+TranscriptUtils.getString("errors", num_sources, true)
 			+"\t"+TranscriptUtils.getString("error_ratio", num_sources, true);
 			transcriptsP.println(transcriptP_header);
-			transcriptsP1.println(transcriptP_header);
+		//	transcriptsP1.println(transcriptP_header);
 			IHDF5SimpleWriter clusterW = 
 					 HDF5Factory.open(outfile2);
 			clusterW.writeStringArray("header", str.toArray(new String[0]));
         Map<String, List<CigarHash>> geneToHash = new HashMap<String, List<CigarHash>>();
 		for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();) {
 			CigarCluster cc = it.next();
-			String key = this.process(cc, transcriptsP, seqFasta, clusterW, geneToHash, null);
+			String key = this.process(cc, transcriptsP, seqFasta1, clusterW, geneToHash, null);
 			if(geneToHash!=null){
 				List<CigarHash> l;
 				if(!geneToHash.containsKey(key)) geneToHash.put(key, l = new ArrayList<CigarHash>());
@@ -176,7 +176,7 @@ public class CigarClusters {
 			}
 		}
 		clusterW.close();
-		{
+		/*{
 			IHDF5SimpleWriter clusterW1 = 
 					 HDF5Factory.open(outfile2_1);
 			clusterW1.writeStringArray("header", str.toArray(new String[0]));
@@ -197,7 +197,7 @@ public class CigarClusters {
 			}
 			clusterW1.close();
 			
-		}
+		}*/
 		
 	}
 

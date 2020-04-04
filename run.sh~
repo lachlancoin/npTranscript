@@ -16,6 +16,6 @@ str="java -Xmx${JSA_MEM} -ea -Djava.awt.headless=true -Dfile.encoding=UTF-8 -cla
 echo "running .."
 echo $str
 $str
-echo "finished"
+echo "finished
 
 

@@ -67,7 +67,7 @@ import npTranscript.cluster.TranscriptUtils;
  *
  */
 
-@Deployable(scriptName = "jsa.hts.viralanalysis", scriptDesc = "Error analysis of sequencing data")
+@Deployable(scriptName = "npTranscript.run", scriptDesc = "Analysis of coronavirus sequence data")
 public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 //	private static final Logger LOG = LoggerFactory.getLogger(HTSErrorAnalysisCmd.class);
 
