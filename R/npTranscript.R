@@ -1,4 +1,16 @@
 #should run this in  subdirectory with results from java program
+INSTALL = FALSE
+if(INSTALL){
+  if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+	BiocManager::install("rhdf5")
+	BiocManager::install("ggplot2")
+	BiocManager::install("gridExtra")
+	BiocManager::install("RColorBrewer")
+	BiocManager::install("gplots")
+	BiocManager::install("seqinr")
+
+}
 library(ggplot2)
 library(gridExtra)
 library(RColorBrewer)
@@ -6,6 +18,10 @@ library(gplots)
 library(seqinr)
 library(rhdf5)
 args = commandArgs(trailingOnly=TRUE)
+
+print(args)
+
+stop("stop")
 
 type_nme = c( "Cell","Virion") #,"Cell2")
 
