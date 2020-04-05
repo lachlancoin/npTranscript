@@ -1093,6 +1093,7 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
 readH5<-function(h5file, header, transcripts_, span =0.0){
  dinds  = grep("depth", header)
  pos_ind = which(header=="pos")
+ IDS = transcripts_$ID
  clusters_ = matrix(NA, nrow =0, ncol = length(header)+1)
   for(i in 1:length(IDS)){
 	ID = IDS[i]
