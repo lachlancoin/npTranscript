@@ -20,10 +20,11 @@ library(rhdf5)
 args = commandArgs(trailingOnly=TRUE)
 
 print(args)
+print(length(args))
+if(length(args)==0) stop("need to specify the type nmes, e.g. Cell:Virion")
 
-stop("stop")
-
-type_nme = c( "Cell","Virion") #,"Cell2")
+ 
+#	c( "Cell","Virion") #,"Cell2")
 
 #SHOULD BE RUN IN data/ subdirectory
 sourcePath<-function(path, files){
@@ -38,6 +39,13 @@ sourcePath<-function(path, files){
   }
 }
 
+type_nme = strsplit(args[1], ":")[[1]]
+infilesBr = grep("breakpoints.txt.gz.[0-9]", dir(), v=T)
+if(length(infilesBr)!=length(type_nme)){
+	print(type_nme)
+	print(infilesBr)
+       	stop("type nme length does not match number of breakpoint files")
+}
 src = c("~/github/npTranscript/R" )
       
 #PRELIMINARIES      
@@ -91,7 +99,6 @@ if(length(infilesT)==1 && length(infiles)==1){
 	print("no transcripts file")
 }
 
-infilesBr = grep("breakpoints.txt.gz.[0-9]", dir(), v=T)
 if(length(infilesT)==1 && length(infiles)==1){
 	RUN_ALL = TRUE
 	todo = 1:length(type_nme)
