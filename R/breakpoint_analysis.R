@@ -42,11 +42,11 @@ if(RUN_ALL){
 	
 
 	print("special")
-	 plotAllHM(special, "special" , resdir,  breakPs, t, fimo, total_reads, type_nme, log=T)	
+	 plotAllHM(special, "special" , resdir,  breakPs, t, fimo, total_reads, type_nme = type_nme, log=T)	
 	print("endcs_1")
-	plotAllHM(endcs_1[-1], "endcs_1" , resdir,  breakPs, t, fimo, total_reads, type_nme,  log=T)	
+	 plotAllHM(endcs_1[-1], "endcs_1" , resdir,  breakPs, t, fimo, total_reads, type_nme = type_nme,  log=T)	
 print("endcs_2")
-	plotAllHM(endcs_2[-(1)], "endcs_2" , resdir,  breakPs, t, fimo, total_reads, type_nme, plotHM = F,  log=T)	
+	plotAllHM(endcs_2[-(1)], "endcs_2" , resdir,  breakPs, t, fimo, total_reads, type_nme = type_nme, plotHM = F,  log=T)	
 	
 	
 

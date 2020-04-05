@@ -17,14 +17,14 @@ library(RColorBrewer)
 library(gplots)
 library(seqinr)
 library(rhdf5)
-args = commandArgs(trailingOnly=TRUE)
+#args = commandArgs(trailingOnly=TRUE)
 
-print(args)
-print(length(args))
-if(length(args)==0) stop("need to specify the type nmes, e.g. Cell:Virion")
+#print(args)
+#print(length(args))
+#if(length(args)==0) stop("need to specify the type nmes, e.g. Cell:Virion")
 
  
-#	c( "Cell","Virion") #,"Cell2")
+#type_nme=	c( "Cell","Virion") #,"Cell2")
 
 #SHOULD BE RUN IN data/ subdirectory
 sourcePath<-function(path, files){
@@ -39,8 +39,9 @@ sourcePath<-function(path, files){
   }
 }
 
-type_nme = strsplit(args[1], ":")[[1]]
-infilesBr = grep("breakpoints.txt.gz.[0-9]", dir(), v=T)
+#type_nme = strsplit(args[1], ":")[[1]]
+infilesBr = grep("breakpoints.", dir(), v=T)
+type_nme = unlist(lapply(infilesBr, function(x) strsplit(x,"\\.")[[1]][2]))
 if(length(infilesBr)!=length(type_nme)){
 	print(type_nme)
 	print(infilesBr)
@@ -73,8 +74,7 @@ leader_ind = gregexpr(pattern = leader, fastaseq)[[1]][1]
 leader_ind = c(leader_ind, leader_ind + nchar(leader)-1)
 
 
-#infilesT1 = grep("transcripts1.txt", dir(), v=T)
-#infilesE = grep("exons.txt", dir(), v=T)
+
 
 
 ###READ LEVEL ANALYSIS
@@ -84,20 +84,39 @@ if(length(infilesReads)==1){
 }else{
 	print("no reads file")
 }
-plotHist=T
-sourcePath(src, "read_java_outputs.R")
+#plotHist=T
+#sourcePath(src, "read_java_outputs.R")
+
+
+
+transcripts_all = .readTranscripts(infilesT, seqlen, nmes)
+names(transcripts_all)
+transcript_counts = lapply(transcripts_all, function(transcripts)  apply(transcripts[,grep('count[0-9]', names(transcripts)), drop=F], 2,sum))
+total_reads  = apply(data.frame(transcript_counts),1,sum)
+names(total_reads) = type_nme
+max_h = unlist(lapply(transcripts_all, function(transcripts)  max(transcripts[,grep('count[0-9]', names(transcripts)), drop=F])))
+if(dim(transcripts_all[[1]])[1]>0){
+  maxpos = max(transcripts_all[[1]]$end)
+  minpos = min(transcripts_all[[1]]$start)
+}else{
+  maxpos = length(fasta[[1]])
+  minpos = 1
+	total_reads = c(1,1)
+}
 
 
 ##COVERAGE ANALYSIS
 infilesT = grep("transcripts.txt.gz$", dir(), v=T)
 infiles = grep("clusters.h5", dir(), v=T)
-if(length(infilesT)==1 && length(infiles)==1){
+if(length(infilesBr)==1 && length(infiles)==1){
 	HEATMAP = TRUE
 	COVERAGE = TRUE
 	sourcePath(src, "coverage_analysis.R")
 }else{
-	print("no transcripts file")
+	print("no break point files")
 }
+
+##BREAKPOINT ANALUSOS
 
 if(length(infilesT)==1 && length(infiles)==1){
 	RUN_ALL = TRUE

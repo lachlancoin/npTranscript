@@ -400,8 +400,14 @@ plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = F, title = ""
 #}
 distbin<-function(x) dist(x, method="binary")
 
+.loess<-function(clusters, span){
+  cars.lo <- stats::loess(depth ~ pos, clusters, span = span)
+        y = try(stats::predict(cars.lo, clusters, se = FALSE))
+ y
+}
 
 loess_smooth<-function(clusters,  inds,span = 0.05){
+  if(span==0) return (clusters)
   nmes = names(clusters)
 #print(nmes)
 #print(dim(clusters))
@@ -409,10 +415,17 @@ loess_smooth<-function(clusters,  inds,span = 0.05){
       names(clusters)[j] = "depth"
      
       if(max(clusters$depth)>0){
-        cars.lo <- stats::loess(depth ~ pos, clusters, span = span)
-        y = stats::predict(cars.lo, clusters, se = FALSE)
-        y[clusters$depth==0] =0
-        clusters[,j]=  y
+        y = try(.loess(clusters, span))
+	if(inherits(y,"try-error")) {
+		print("error loess")
+		#print(which(is.na(clusters$pos)))
+		#plot(clusters$pos,clusters$depth)
+		#print()
+        }else{
+		#print("is ok ")
+        	y[clusters$depth==0] =0
+       	 	clusters[,j]=  y
+	}
       } 
       names(clusters)[j] = nmes[j]
     }
@@ -423,7 +436,7 @@ loess_smooth<-function(clusters,  inds,span = 0.05){
 
 
 
-makeCovPlots<-function(clusters_,  header, total_reads, t, type_nme,  leg_size=6, logy=F, rawdepth = T, xlim = list(NULL),  span=0.0,  show=F, 
+makeCovPlots<-function(clusters_,  header, total_reads, t, type_nme,  leg_size=6, logy=F, rawdepth = T, xlim = list(NULL),   show=F, 
 count_indf = grep("count[0-9]", names(transcripts_))){
  dinds  = grep("depth", header)
   ggps = list()
@@ -942,7 +955,7 @@ plotBreakPIntrons<-function(breakP1, t, fimo, region =  c(1,5000,100,25000,30000
   breakP_ = subsetBr(breakP1, region)
   col = getHMCol()
  
-  
+ 
   breakP = expandBr(breakP_, region)  #bin = c(startc[3], endc[3]))
   maxv = max(breakP$heatm)
  
@@ -962,6 +975,8 @@ plotBreakPIntrons<-function(breakP1, t, fimo, region =  c(1,5000,100,25000,30000
     
     rowSideCols = getSideCols(breakP$rows$pos, t)
     colSideCols = getSideCols(breakP$cols$pos, t)
+
+	
     inds = 1:length(rowSideCols);
     
      
@@ -971,8 +986,9 @@ plotBreakPIntrons<-function(breakP1, t, fimo, region =  c(1,5000,100,25000,30000
       rowsep = .findBreaks2(breakP$rows$pos, fimo[plus_strand,start_ind,drop=F])
 
       colsep = .findBreaks2(breakP$cols$pos,  fimo[plus_strand,start_ind,drop=F])
-
-      if(length(which(!is.na(heatm)))>2){
+	nonNA = apply(heatm, 1, function(x) length(which(!is.na(x))))
+	
+      if(length(which(nonNA>1))>2){
         heatmap.2(heatm, scale="none" ,col = col,  na.color="LIGHTGREY", rowsep=rowsep,colsep = colsep, dendrogram = "none", trace ="none", Rowv = NULL, Colv = NULL, RowSideColors = rowSideCols, ColSideColors = colSideCols, main = title2)
       }
         
@@ -997,8 +1013,9 @@ plotBreakPIntrons<-function(breakP1, t, fimo, region =  c(1,5000,100,25000,30000
  # if(dim(df)[1]==0) return (list())
   startc = region[1:3]
   endc = region[4:6]
+  #print(df)
 
-  if(length(which(df$s_e == "start" ))==0 ){
+  if(max(df$depth[df$s_e=="start"])<=0 ){
     ggp1<-blankGraph(startc[1:2],"pos", depth_str, title = title2);
   }else{
     ggp1<-ggplot(df,aes_string(x="pos",y=depth_str,fill =  "s_e" , colour = "s_e" ))+geom_point() + theme_bw()+ggtitle(title2)
@@ -1009,7 +1026,7 @@ plotBreakPIntrons<-function(breakP1, t, fimo, region =  c(1,5000,100,25000,30000
     if(logT) ggp1<-ggp1+scale_y_continuous(trans='log10') 
     ggp1<-ggp1 + scale_x_continuous(limits = startc[1:2])+theme(legend.position = "none")
   }
-  if(length(which(df$s_e == "end" ))==0 ){
+  if(max(df$depth[df$s_e=="end"])<=0  ){
    # print(endc)
     ggp2<-blankGraph(endc[1:2],"pos", depth_str, title = title2);
   }else{
@@ -1045,24 +1062,27 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
   plotsl = list()
 
   for(i1 in 1:length(special)){	
-    plots = list()
+    #plots = list()
     for(i in todo){
       mult =  1e6/total_reads[i]
       if(depth)  mult=1
+	print(paste("here ", i1, i))
       plots_i = try(plotBreakPIntrons(breakPs[[i]], t,fimo,region =  special[[i1]],  mult =  mult, logT=logT, title= names(special)[i1], subtitle = type_nme[i], plotHM = plotHM))
+	#plots_i
       if(inherits(plots_i,"try-error")) {
 	print("error with plotBreakPIntrons")
-      }
-      names(plots_i) = paste(type_nme[i],names(plots_i), sep="_")
-      if(length(plots_i)>0){
-		 plotsl = c(plots, plots_i)
-      }
+      }else{
+     	      names(plots_i) = paste(names(special)[i1], type_nme[i],names(plots_i), sep="_")
+	      if(length(plots_i)>0){
+			 plotsl = c(plotsl, plots_i)
+	      }
+}
     }
   }
    # types = unlist(lapply(plots, typeof));
    # print(types)
     #plots = plots[types=="list"]
-    if(length(plots)>0)	plotsl = c(plotsl, plots[.reorder(names(plots))])
+   # if(length(plotsl)>0)	plotsl = c(plotsl, plots[.reorder(names(plots))])
     
   
   if(pdf && plotHM) dev.off()
@@ -1084,7 +1104,7 @@ readH5<-function(h5file, header, transcripts_, span =0.0){
 	
 	mat = data.frame(mat)
 	names(mat) = header
-	if(span>0) mat1 = loess_smooth(mat, dinds, span)	
+	mat1 = loess_smooth(mat, dinds, span)
 	cname = paste(transcripts_$leftGene[i], transcripts_$rightGene[i], sep=".")
 	clusterID = rep(cname, dim(mat1)[1])
 	mat1 = cbind(mat1,clusterID )
@@ -1101,7 +1121,7 @@ plotHeatmap<-function(h5file, header,  transcripts1, jk, logHeatmap = F,xlim = l
   title = paste(title, featureName)
 #countdf = grep(featureName, names(transcripts1))
  IDS = transcripts1$ID
-cnames = apply(cbind(as.character(transcripts_$leftGene), as.character(transcripts_$rightGene)), 1, paste, collapse=".")
+cnames = apply(cbind(as.character(transcripts1$leftGene), as.character(transcripts1$rightGene)), 1, paste, collapse=".")
   for(jj in 1:length(xlim)){
     print(paste('jj',xlim[[jj]]))
     xmin = xlim[[jj]][1]
@@ -1116,19 +1136,23 @@ cnames = apply(cbind(as.character(transcripts_$leftGene), as.character(transcrip
  dinds = grep(featureName, header)
 
   for(i in 1:length(IDS)){
-    
-    subm = data.frame(t(h5read(h5file,as.character(IDS[i]))))
-    names(subm) = header
-    subm = subm[subm$pos>=xmin & subm$pos<=xmax,,drop=F]
-    if(length(dinds)==0){
-	ratio =subm[,grep("error", header)[jk]] / subm[,grep("depth", header)[jk]]
-	ratio[is.na(ratio) | ratio>1000] = defaultVal
- 	heatm[i,subm$pos-xmin+1] = ratio
-    } else{
-	 
-      heatm[i,subm$pos-xmin+1] = subm[,dinds[jk]]
+    matr = try(h5read(h5file,as.character(IDS[i])))
+    if(!inherits(matr,"try-error")) {
+	    subm = data.frame(t(matr))
+	    names(subm) = header
+	    subm = subm[subm$pos>=xmin & subm$pos<=xmax,,drop=F]
+	    if(length(dinds)==0){
+		ratio =subm[,grep("error", header)[jk]] / subm[,grep("depth", header)[jk]]
+		ratio[is.na(ratio) | ratio>1000] = defaultVal
+	 	heatm[i,subm$pos-xmin+1] = ratio
+	    } else{
+		 
+	      heatm[i,subm$pos-xmin+1] = subm[,dinds[jk]]
+	    }
+    }else{
+	print("could not find ")
+	prnt(transcripts1[i,])
     }
-   
   }
   
   ccounts = transcripts1$countTotal
@@ -1162,7 +1186,7 @@ cnames = apply(cbind(as.character(transcripts_$leftGene), as.character(transcrip
   colnames(clustersLog)  = x
   rowSideCols = getSideCols(x, t)
   if(nrows>1 && length(which(!is.na(clustersLog)))>2){
-    heatmap(clustersLog[nrows:1,,drop=F],scale="none", Colv = NA,margins = c(5,10), Rowv =  Rowv,distfun = distbin, main = title, ColSideColors = rowSideCols) #RowSideColors = colSidecols[nrows:1])
+    heatmap(clustersLog[nrows:1,,drop=F],scale="none", Colv = NA,margins = c(5,10), Rowv =  NA,distfun = distbin, main = title, ColSideColors = rowSideCols) #RowSideColors = colSidecols[nrows:1])
   }
   #	
   }
