@@ -458,23 +458,6 @@ getGeneBP<-function(t, genes, left, right, left_buffer = 10){
   endcs
 }
 
-getIndsForGene<-function(clusters, transcripts, exons, t, gene_id, type_nme = c("cell","virion"), rawdepth = T, span = 0.0, top=10){
-  
-  levs = getlev(exons$ID)
-  min_max = getGeneBP(t,gene_id)[1,]
-  min_start = min_max[1]
-  max_start = min_max[2]
-  exon_inds = which(exons$start >min_start & exons$start < max_start )
-  two_exon_ids = as.numeric(levs[which(as.numeric(levs[,2])<=2),][,1])
-  
-  subtrans = transcripts[which(transcripts$ID %in% two_exon_ids & transcripts$ID %in% unique(exons[exon_inds,1])),]
-  top = min(top, dim(subtrans)[2])
-  plotHeatmap(clusters, subtrans[1:top,,drop=F],1, xlim = c(28000,30000))
-  ml = makeCovPlots(clusters,subtrans[1:top,,drop=F], t, type_nme, logy=F, rawdepth =rawdepth, span = span) 
-  invisible(ml)
-}
-
-
 
 readBreakPoints<-function(f, type, addOne = F){
   aa = read.table(f, sep=",", skip=2)
