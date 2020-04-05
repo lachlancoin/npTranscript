@@ -81,7 +81,7 @@ sourcePath(src, "read_java_outputs.R")
 
 
 ##COVERAGE ANALYSIS
-infilesT = grep("transcripts.txt", dir(), v=T)
+infilesT = grep("transcripts.txt.gz$", dir(), v=T)
 infiles = grep("clusters.h5", dir(), v=T)
 if(length(infilesT)==1 && length(infiles)==1){
 	HEATMAP = TRUE
