@@ -78,7 +78,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		setDesc(annotation.scriptDesc());
 
 		addString("bamFile", null, "Name of bam file", true);
-		addString("breaks", null, "Position File, for looking for specific breaks");
+		//addString("breaks", null, "Position File, for looking for specific breaks");
 		addString("reference", null, "Name of reference genome", true);
 		addString("annotation", null, "ORF annotation file", true);
 		addString("readList", null, "List of reads", false);
@@ -111,7 +111,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		String bamFile = cmdLine.getStringVal("bamFile");
 		String annotFile = cmdLine.getStringVal("annotation");
 		String readList = cmdLine.getStringVal("readList");
-		String positionsFile = cmdLine.getStringVal("breaks");
+	//	String positionsFile = cmdLine.getStringVal("breaks");
 		String resdir = cmdLine.getStringVal("resdir");
 		boolean cluster_by_annotation  = cmdLine.getBooleanVal("cluster_by_annotation");
 		//if(coexp && bin <10) {
@@ -121,7 +121,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		int startThresh = cmdLine.getIntVal("startThresh");
 		int endThresh = cmdLine.getIntVal("endThresh");
 		int maxReads = cmdLine.getIntVal("maxReads");
-		errorAnalysis(bamFile, reference, annotFile,readList,  positionsFile, resdir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads, cluster_by_annotation );
+		errorAnalysis(bamFile, reference, annotFile,readList, resdir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads, cluster_by_annotation );
 
 		// paramEst(bamFile, reference, qual);
 	}
@@ -129,10 +129,12 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 	/**
 	 * Error analysis of a bam file. Assume it has been sorted
 	 */
-	static void errorAnalysis(String bamFiles, String refFile, String annot_file, String readList, String positionsFile,  String resdir, String pattern, int qual, int round, 
+	static void errorAnalysis(String bamFiles, String refFile, String annot_file, String readList,   String resdir, String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads, boolean cluster_by_annotation ) throws IOException {
 		boolean cluster_reads = true;
 		CigarHash.cluster_by_annotation = cluster_by_annotation;
+		TranscriptUtils.startThresh = startThresh;
+		TranscriptUtils.endThresh = endThresh;
 		boolean calcTree = false;
 		String[] bamFiles_ = bamFiles.split(":");
 		Set<String> reads = null;
@@ -150,7 +152,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		TranscriptUtils.break_thresh = break_thresh;
 		int len = bamFiles_.length;
 		// len = 1;
-		
+		String[] in_nmes  = new String[len];
 		ArrayList<Sequence> genomes = SequenceReader.readAll(refFile, Alphabet.DNA());
 
 		// get the first chrom
@@ -159,11 +161,11 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		else if(!resDir.isDirectory()) throw new RuntimeException(resDir+"should be a directory");
 		ArrayList<IdentityProfile1> profiles = new ArrayList<IdentityProfile1>();
 	//	List<List<String>> genes_all = new ArrayList<List<String>>();
-		PrintWriter genes_all_pw = new PrintWriter(new FileWriter(new File(resdir+"/genes.txt")));
+	//	PrintWriter genes_all_pw = new PrintWriter(new FileWriter(new File(resdir+"/genes.txt")));
 		for (int jj = 0; jj < genomes.size(); jj++) {
 			Sequence ref = genomes.get(jj);
 			Annotation annot = new Annotation(new File(annot_file), ref.length());
-			List<Integer[]> pos = new ArrayList<Integer[]>();
+			/*List<Integer[]> pos = new ArrayList<Integer[]>();
 			if(positionsFile!=null){
 			BufferedReader br = new BufferedReader(new FileReader(new File(positionsFile)));
 			List<String> header =Arrays.asList( br.readLine().split(",")); //assuming chrom_index, start, end, gene_name
@@ -185,12 +187,12 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 				}
 			}
 			br.close();
-			}
+			}*/
 			//genes_all.add(genes);
-			profiles.add(new IdentityProfile1(ref, resDir, pos, len,jj, startThresh, endThresh, annot));
+			profiles.add(new IdentityProfile1(ref, resDir,  in_nmes,jj, startThresh, endThresh, annot));
 
 		}
-		genes_all_pw.close();
+	//	genes_all_pw.close();
 		for (int ii = 0; ii < len; ii++) {
 			int source_index = ii;
 			int currentIndex = 0;
@@ -198,6 +200,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 			
 			String bamFile = bamFiles_[ii];
 			File bam = new File( bamFile);
+			in_nmes[ii] = bam.getName().split("\\.")[0];
 			for (int jj = 0; jj < genomes.size(); jj++) {
 				profiles.get(jj).updateSourceIndex(ii);
 			}

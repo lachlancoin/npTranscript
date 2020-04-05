@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.zip.GZIPOutputStream;
 
 import org.apache.commons.math3.linear.OpenMapRealMatrix;
-import org.apache.commons.math3.linear.SparseFieldMatrix;
+
 import org.apache.commons.math3.linear.SparseRealMatrix;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
@@ -28,28 +28,29 @@ import japsa.seq.SequenceOutputStream;
 public class IdentityProfile1 {
 	final File outfile, outfile1, outfile2, outfile2_1, outfile3, outfile4, outfile5, outfile6, outfile7, outfile8, outfile8_1, outfile9;
 	//OpenMapRealMatrix
-	SparseFieldMatrix sm;
+	//SparseFieldMatrix sm;
+	final String[] type_nmes; 
 	
 	
 	
+	public IdentityProfile1(Sequence refSeq, File resDir, 
+			//List<Integer[]> positions,
+			String[] in_nmes, int genome_index,  int startThresh, int endThresh, Annotation annot) throws IOException {
 	
-	public IdentityProfile1(Sequence refSeq, File resDir, List<Integer[]> positions, int num_sources, int genome_index,  int startThresh, int endThresh, Annotation annot) throws IOException {
-		//File readClusterFile = new File(outdir, "readclusters.txt.gz");
-		if(positions.size()>0){
+		/*if(positions.size()>0){
 			int rowlen = refSeq.length();
 			sm = new SparseFieldMatrix(new IField(), rowlen, rowlen);
 		for(int i=0; i<positions.size(); i++){
 			Integer[] pos = positions.get(i);
 			sm.setEntry(pos[0], pos[1],  new IntegerField(pos[2]));
 		}
-		}
-		
-		//this.bin = (double) bin;
-		this.num_sources = num_sources;
+		}*/
+	this.type_nmes = in_nmes;
+		this.num_sources = in_nmes.length;
 		this.coRefPositions = new CigarCluster(-1,num_sources);
 //	 TranscriptUtils.round2 = 100.0/round;
 		this.genome = refSeq;
-		this.startThresh = startThresh; this.endThresh = endThresh;
+		//this.startThresh = startThresh; this.endThresh = endThresh;
 		this.source_index = 0;		
 		//this.calculateCoExpression = calculateCoExpression;
 		 outfile = new File(resDir,genome_index+ ".txt");
@@ -65,12 +66,12 @@ public class IdentityProfile1 {
 		 outfile8 = new File(resDir,genome_index+ "transcripts.txt.gz");
 		 outfile8_1 = new File(resDir,genome_index+ "transcripts1.txt.gz");
 
-		 outfile9 = new File(resDir,genome_index+ "breakpoints.txt.gz");
+		 outfile9 = new File(resDir,genome_index+ "breakpoints");
 
 		 readClusters = new PrintWriter(
 					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outfile3))));
 			//this.readClusters.println("readID,clusterID,index,source_index");//+clusterID+","+index+","+source_index);
-		 String br_cluster_str = sm==null ? "": "break_cluster\t";
+		 String br_cluster_str = "";//sm==null ? "": "break_cluster\t";
 		readClusters.println("readID\tclusterId\tsource\t"+br_cluster_str+"length\ttype_nme\tbreaks\tbreaks_mod\tstartPos\tendPos\tbreakStart\tbreakEnd\terrorRatio\tupstream\tdownstream");
 		
 		/*
@@ -115,7 +116,7 @@ public class IdentityProfile1 {
 
 	
 
-	final int startThresh, endThresh;
+	//final int startThresh, endThresh;
 	
 	//final  double bin ;
 	//private final boolean calculateCoExpression;
@@ -151,10 +152,10 @@ public class IdentityProfile1 {
 			position = breaks.get(maxg_ind+1);
 			downstream = annot.nextDownstream(position);
 			upstream = annot.nextUpstream(prev_position);
-			if(this.sm!=null){
+			/*if(this.sm!=null){
 				 coRefPositions.break_point_cluster = ((IntegerField)this.sm.getEntry(prev_position, position)).getVal();
 				
-			}
+			}*/
 			coRefPositions.breakSt = prev_position;
 			coRefPositions.breakEnd = position;
 			this.breakpoints[this.source_index].addToEntry(prev_position, position, 1);
@@ -171,7 +172,7 @@ public class IdentityProfile1 {
 		if(cluster_reads) clusterID = this.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources); // this also clears current cluster
 		else clusterID = -2;
 	//	System.err.println(id);
-		String br_cluster_str = sm==null ? "": coRefPositions.break_point_cluster+"\t";
+		String br_cluster_str = "";//sm==null ? "": coRefPositions.break_point_cluster+"\t";
 		this.readClusters.println(id+"\t"+clusterID+"\t"+source_index+"\t"+br_cluster_str+readLength+"\t"
 		+type_nme+"\t"+breakSt1+"\t"+coRefPositions.breaks.toString()+"\t"
 		+startPos+"\t"+endPos+"\t"+prev_position+"\t"+position+"\t"+coRefPositions.getError(src_index)+"\t"+upstream+"\t"+downstream);
@@ -232,7 +233,7 @@ public class IdentityProfile1 {
 		// TODO Auto-generated method stub
 		for(int i=0; i<this.breakpoints.length; i++){
 		File outfile1_ = new File(outfile1.getParentFile(),
-				outfile1.getName() + "." + i + ".gz");
+				outfile1.getName() + "." + this.type_nmes[i] + "txt.gz");
 		printMatrix(this.breakpoints[i],this.breakSt[i], this.breakEnd[i],  outfile1_);
 		}
 	}

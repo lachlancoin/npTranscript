@@ -31,12 +31,7 @@ public class CigarHash extends ArrayList<Integer>{
 			else return super.equals(o);
 		}
 	
-		/*public int hashCode(){
-			//int hash = this.stream() .reduce(0, Integer::sum);
-			int hash = calcHash();
-			return hash;
-		}*/
-		//int hash=0;
+	
 		
 		@Override
 		 public void clear() {
@@ -73,7 +68,7 @@ public boolean equals(Object o){
 			//	return;
 			//}
 			int st = get(0);
-			if(get(0)<100) set(0,0);
+			if(get(0)<TranscriptUtils.startThresh) set(0,0);
 			int end = get(size()-1);
 			for(int i=1; i<size()-1; i+=2){
 				breaks_in[0] = get(i);
@@ -86,7 +81,7 @@ public boolean equals(Object o){
 					set(i+1,breaks_out[1]);
 				}
 			}
-			if(annot.seqlen-get(size()-1)<100) set(size()-1,annot.seqlen);
+			if(annot.seqlen-get(size()-1)<TranscriptUtils.endThresh) set(size()-1,annot.seqlen);
 			this.roundBreaks();
 			
 		}

@@ -11,7 +11,8 @@ import japsa.seq.Sequence;
 public class TranscriptUtils {
 	
 	public static int break_thresh = 10;
-	
+	public static int endThresh = 100;
+	public static int startThresh = 100;
 	static int round(int pos, int round) {
 		int res = (int) Math.floor((double) (pos) / (double) round);
 		return res;
