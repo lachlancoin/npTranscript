@@ -161,7 +161,9 @@ public class CigarCluster  {
 		}
 		
 		String getError(int src_index){
-			String st = this.maps[src_index].valsum==0 ?  "NaN" :  String.format("%5.3g", (double)this.errors[src_index].valsum/(double)this.maps[src_index].valsum);
+			double err = (double)this.errors[src_index].valsum/(double)this.maps[src_index].valsum;
+			if(err<-1e-5 || err> 1.0001) throw new RuntimeException(" error is outside range of 0 1"+err);
+			String st = this.maps[src_index].valsum==0 ?  "NaN" :  String.format("%5.3g", err);
 			return st;
 		}
 		
