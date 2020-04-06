@@ -233,7 +233,7 @@ public class IdentityProfile1 {
 		// TODO Auto-generated method stub
 		for(int i=0; i<this.breakpoints.length; i++){
 		File outfile1_ = new File(outfile1.getParentFile(),
-				outfile1.getName() + "." + this.type_nmes[i] + "txt.gz");
+				outfile1.getName() + "." + this.type_nmes[i] + "."+i +".txt.gz");
 		printMatrix(this.breakpoints[i],this.breakSt[i], this.breakEnd[i],  outfile1_);
 		}
 	}
