@@ -1067,7 +1067,7 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
     for(i in todo){
       mult =  1e6/total_reads[i]
       if(depth)  mult=1
-	print(paste("here ", i1, i))
+#	print(paste("here ", i1, i))
       plots_i = try(plotBreakPIntrons(breakPs[[i]], t,fimo,region =  special[[i1]],  mult =  mult, logT=logT, title= names(special)[i1], subtitle = type_nme[i], plotHM = plotHM))
 	#plots_i
       if(inherits(plots_i,"try-error")) {
