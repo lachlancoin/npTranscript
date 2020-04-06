@@ -55,7 +55,7 @@ if(length(infilesBr)!=length(type_nme)){
 src = c("~/github/npTranscript/R" )
 data_src =   c(".","..","~/github/npTranscript/data/SARS-Cov2" )
 #PRELIMINARIES      
-sourcePath(.findFile(src, "transcript_functions.R"))
+source(.findFile(src, "transcript_functions.R"))
 resdir = "results"
 dir.create(resdir);
 t = readCoords(.findFile(data_src, "Coordinates.csv"))
@@ -86,7 +86,7 @@ leader_ind = c(leader_ind, leader_ind + nchar(leader)-1)
 ###READ LEVEL ANALYSIS
 infilesReads = grep("0readToCluster", dir(), v=T)
 if(length(infilesReads)==1){
-	sourcePath(src, "read_analysis.R")
+	source(.findFile(src, "read_analysis.R"))
 }else{
 	print("no reads file")
 }
@@ -117,7 +117,7 @@ infiles = grep("clusters.h5", dir(), v=T)
 
 	HEATMAP = TRUE
 	COVERAGE = TRUE
-	sourcePath(src, "coverage_analysis.R")
+	source(.findFile(src, "coverage_analysis.R"))
 }else{
 	print("no break point files")
 }
@@ -127,7 +127,7 @@ if(length(infilesBr)>=1 && length(infiles)>=1){
 
 	RUN_ALL = TRUE
 	todo = 1:length(type_nme)
-	sourcePath(src, "breakpoint_analysis.R")
+	source(.findFile(src, "breakpoint_analysis.R"))
 }else{
  	print("no break point files")
 }
