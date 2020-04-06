@@ -46,15 +46,24 @@ library(rhdf5)
 
 #type_nme = strsplit(args[1], ":")[[1]]
 infilesBr = grep("breakpoints.", dir(), v=T)
+infilesReads = grep("0readToCluster", dir(), v=T)
+infilesT = grep("transcripts.txt.gz$", dir(), v=T)
+infiles = grep("clusters.h5", dir(), v=T)
+print(infilesBr)
+print(infilesReads)
+print(infilesT)
+print(infiles)
+
 type_nme = unlist(lapply(infilesBr, function(x) strsplit(x,"\\.")[[1]][2]))
 if(length(infilesBr)!=length(type_nme)){
 	print(type_nme)
 	print(infilesBr)
        	stop("type nme length does not match number of breakpoint files")
 }
+print(type_nme)
 src = c("~/github/npTranscript/R" )
 data_src =   c(".","..","~/github/npTranscript/data/SARS-Cov2" )
-#PRELIMINARIES      
+print("#PRELIMINARIES ....")      
 sourcePath(.findFile(src, "transcript_functions.R"))
 resdir = "results"
 dir.create(resdir);
@@ -83,8 +92,8 @@ leader_ind = c(leader_ind, leader_ind + nchar(leader)-1)
 
 
 
-###READ LEVEL ANALYSIS
-infilesReads = grep("0readToCluster", dir(), v=T)
+print("###READ LEVEL ANALYSIS")
+
 if(length(infilesReads)==1){
 	sourcePath(src, "read_analysis.R")
 }else{
@@ -94,7 +103,7 @@ if(length(infilesReads)==1){
 #sourcePath(src, "read_java_outputs.R")
 
 
-infilesT = grep("transcripts.txt.gz$", dir(), v=T)
+
 transcripts_all = .readTranscripts(infilesT, seqlen, nmes)
 names(transcripts_all)
 transcript_counts = lapply(transcripts_all, function(transcripts)  apply(transcripts[,grep('count[0-9]', names(transcripts)), drop=F], 2,sum))
@@ -111,9 +120,9 @@ if(dim(transcripts_all[[1]])[1]>0){
 }
 
 
-##COVERAGE ANALYSIS
+print('##COVERAGE ANALYSIS')
 if(length(infilesT)==1 && length(infiles)==1){
-infiles = grep("clusters.h5", dir(), v=T)
+
 
 	HEATMAP = TRUE
 	COVERAGE = TRUE
@@ -122,7 +131,7 @@ infiles = grep("clusters.h5", dir(), v=T)
 	print("no break point files")
 }
 
-##BREAKPOINT ANALUSOS
+print('##BREAKPOINT ANALYSIS')
 if(length(infilesBr)>=1 && length(infiles)>=1){
 
 	RUN_ALL = TRUE
