@@ -4,3 +4,5 @@ rm npTranscript.jar
 cd bin
 jar -cf npTranscript.jar npTranscript
 mv npTranscript.jar ..
+cd ..
+git add npTranscript.jar

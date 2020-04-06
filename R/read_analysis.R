@@ -23,9 +23,9 @@ if(length(type_nme)>1){
 }
 outfile0 = paste(resdir, "/transcript_error.pdf", sep="");
 
-ggp = plotErrorViolin(reads, inds1 = reads$upstream=="LEADER")
-#ggp = plotErrorViolin(reads, NULL, y= "length")
- ggp1 = plotErrorViolin(reads, inds1 = reads$start < 100,x = "reorder(comb_l, length)",  y = "length")
+ggp = plotErrorViolin(reads, inds1 = reads$upstream=="LEADER" & !is.na(reads$downstream))
+
+ #ggp1 = plotErrorViolin(reads, inds1 = reads$start < 100,x = "reorder(comb_l, length)",  y = "length")
 try(ggsave(outfile0, plot=ggp, width = 25, height = 15, units = "cm"))
 
 
