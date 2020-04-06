@@ -36,4 +36,6 @@ opts="--bin 10 --breakThresh 1000 --cluster_by_annotation true --maxReads 10000"
 bash ${npTranscript}/run.sh --bamFile=${bamfiles1}   --reference=${reference} --annotation ${coord_file} --resdir ${resdir} ${opts} ${opts1}
 cp corona2_analysis.stderr ${resdir}
 cp corona2_analysis.stdout ${resdir}
+cd ${resdir}
+Rscript ~/github/npTranscript/R/npTranscript.R
 #bash ${npTranscript}/run_extract_cluster.sh --inDir ${resdir} 
