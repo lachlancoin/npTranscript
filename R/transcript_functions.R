@@ -1348,8 +1348,9 @@ transcripts_all
 	sumByLevel = .sumByLevel(reads1, nme1=nme1 ,target=target,  mincount = mincount, limit = limit)
 
 	extra = paste("+", mincount, sep="")
+	lev = levels(reads_$source);
 	#print(head(sumByLevel))
-	ggp<-ggplot(sumByLevel, aes_string(x="Cell", y="Virion", fill = "comb_l", colour = "comb_l")) + geom_point(size = 4)  #+ theme_bw()
+	ggp<-ggplot(sumByLevel, aes_string(x=lev[1], y=lev[length(lev)], fill = "comb_l", colour = "comb_l")) + geom_point(size = 4)  #+ theme_bw()
 	ggp<-ggp+scale_y_continuous(trans='log10')+scale_x_continuous(trans='log10')
 	ggp<-ggp+xlab(paste("Cell depth", extra)) + ylab(paste("Virion depth", extra))
 	ggp<-ggp+theme(text = element_text(size=20))
@@ -1376,7 +1377,7 @@ plotErrorViolin<-function(reads, inds1 = NULL, x = "reorder(downstream,genepos)"
 	err_inds = which(names(reads)==y)
 	ggp<-ggplot(subm, aes_string(x=x, y=y,  fill = fill))
 	ggp<-ggp + geom_violin(draw_quantiles = c(0.25, 0.5, 0.75))+ggtitle("Error vs transcript")+xlab("ORF")
-	ggp<-ggp+ylim(c(0, max(reads[,err_inds],na.rm=T)))
+	#ggp<-ggp+ylim(c(0, max(reads[,err_inds],na.rm=T)))
 	ggp<-ggp+theme(text = element_text(size=18), axis.text.x = element_text(size = rel(0.5), angle = 90))
 	invisible(ggp)
 }
