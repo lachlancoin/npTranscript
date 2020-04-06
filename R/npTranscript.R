@@ -64,7 +64,7 @@ print(type_nme)
 src = c("~/github/npTranscript/R" )
 data_src =   c(".","..","~/github/npTranscript/data/SARS-Cov2" )
 print("#PRELIMINARIES ....")      
-sourcePath(.findFile(src, "transcript_functions.R"))
+source(.findFile(src, "transcript_functions.R"))
 resdir = "results"
 dir.create(resdir);
 t = readCoords(.findFile(data_src, "Coordinates.csv"))
