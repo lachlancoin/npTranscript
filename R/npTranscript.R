@@ -27,17 +27,22 @@ library(rhdf5)
 #type_nme=	c( "Cell","Virion") #,"Cell2")
 
 #SHOULD BE RUN IN data/ subdirectory
-sourcePath<-function(path, files){
+.findFile<-function(path, file, exact = T){
   for(i in 1:length(path)){
-    if(file.exists(path[i])) {
-      for(j in 1:length(files)){
-        source(paste(path[i],files[j],sep="/"))
-      }
-      return(path[i])
-      break
+   if(exact){
+    res = paste(path[i],file,sep="/") 
+    if(file.exists(res)) { 
+      return(res)
     }
+   }else{
+	files = grep(file, dir(path[i]) , v=T)
+	if(length(files)==1){
+		return(paste(path[i], files,sep="/"))
+	}
+   } 
   }
 }
+
 
 #type_nme = strsplit(args[1], ":")[[1]]
 infilesBr = grep("breakpoints.", dir(), v=T)
@@ -48,17 +53,18 @@ if(length(infilesBr)!=length(type_nme)){
        	stop("type nme length does not match number of breakpoint files")
 }
 src = c("~/github/npTranscript/R" )
-      
+data_src =   c(".","..","~/github/npTranscript/data/SARS-Cov2" )
 #PRELIMINARIES      
-sourcePath(src, "transcript_functions.R")
+sourcePath(.findFile(src, "transcript_functions.R"))
 resdir = "results"
 dir.create(resdir);
-t = readCoords("../Coordinates.csv")
+t = readCoords(.findFile(data_src, "Coordinates.csv"))
 subt_inds = t$gene!="none" & t$gene!="leader"
 t1 = t[subt_inds,]
 dimnames(t1)[[1]] = t[subt_inds,7]
-fimo = read.table("../FIMO.csv", sep=",", head=T)
-fastafile = paste("../" ,grep(".fasta" , dir("../"),v=T),sep="")
+fimo = read.table(.findFile(data_src,"FIMO.csv"), sep=",", head=T)
+fastafile = .findFile(data_src,".fasta.gz$", exact=F)
+
 if(length(fastafile)!=1) stop("should just have one fasta file in parent directory")
 fasta = read.fasta(fastafile)
 seqlen = length(fasta[[1]])
@@ -88,7 +94,7 @@ if(length(infilesReads)==1){
 #sourcePath(src, "read_java_outputs.R")
 
 
-
+infilesT = grep("transcripts.txt.gz$", dir(), v=T)
 transcripts_all = .readTranscripts(infilesT, seqlen, nmes)
 names(transcripts_all)
 transcript_counts = lapply(transcripts_all, function(transcripts)  apply(transcripts[,grep('count[0-9]', names(transcripts)), drop=F], 2,sum))
@@ -106,9 +112,9 @@ if(dim(transcripts_all[[1]])[1]>0){
 
 
 ##COVERAGE ANALYSIS
-infilesT = grep("transcripts.txt.gz$", dir(), v=T)
+if(length(infilesT)==1 && length(infiles)==1){
 infiles = grep("clusters.h5", dir(), v=T)
-if(length(infilesBr)==1 && length(infiles)==1){
+
 	HEATMAP = TRUE
 	COVERAGE = TRUE
 	sourcePath(src, "coverage_analysis.R")
@@ -117,8 +123,8 @@ if(length(infilesBr)==1 && length(infiles)==1){
 }
 
 ##BREAKPOINT ANALUSOS
+if(length(infilesBr)>=1 && length(infiles)>=1){
 
-if(length(infilesT)==1 && length(infiles)==1){
 	RUN_ALL = TRUE
 	todo = 1:length(type_nme)
 	sourcePath(src, "breakpoint_analysis.R")
