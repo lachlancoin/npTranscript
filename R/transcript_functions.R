@@ -997,6 +997,7 @@ plotBreakPIntrons<-function(breakP1, t, fimo, region =  c(1,5000,100,25000,30000
   df = rbind( breakP$rows, breakP$cols)
   #if(dim(df)[1]==0) return (NULL)
   depth_str = "depth"
+  depth_ind_ = which(names(df)=="depth")
 #if(logT && FALSE){
  # depth_ind = which(names(df)=="depth")
   
@@ -1006,7 +1007,7 @@ plotBreakPIntrons<-function(breakP1, t, fimo, region =  c(1,5000,100,25000,30000
   if(abs(mult-1)>1e-5){
     depth_str = "tpm"
     df$depth = df$depth *mult
-    names(df)[names(df)=="depth"] = depth_str;
+    names(df)[depth_ind_] = depth_str;
   }
   #df$s_e = as.factor(df$s_e)
 #  print(dim(df))
@@ -1015,7 +1016,7 @@ plotBreakPIntrons<-function(breakP1, t, fimo, region =  c(1,5000,100,25000,30000
   endc = region[4:6]
   #print(df)
 
-  if(max(df$depth[df$s_e=="start"])<=0 ){
+  if(max(df[df$s_e=="start", depth_ind_])<=0 ){
     ggp1<-blankGraph(startc[1:2],"pos", depth_str, title = title2);
   }else{
     ggp1<-ggplot(df,aes_string(x="pos",y=depth_str,fill =  "s_e" , colour = "s_e" ))+geom_point() + theme_bw()+ggtitle(title2)
@@ -1026,7 +1027,7 @@ plotBreakPIntrons<-function(breakP1, t, fimo, region =  c(1,5000,100,25000,30000
     if(logT) ggp1<-ggp1+scale_y_continuous(trans='log10') 
     ggp1<-ggp1 + scale_x_continuous(limits = startc[1:2])+theme(legend.position = "none")
   }
-  if(max(df$depth[df$s_e=="end"])<=0  ){
+  if(max(df[df$s_e=="end",depth_ind_])<=0  ){
    # print(endc)
     ggp2<-blankGraph(endc[1:2],"pos", depth_str, title = title2);
   }else{
