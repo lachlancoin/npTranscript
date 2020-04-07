@@ -159,6 +159,7 @@ public class CigarClusters {
 			String transcriptP_header = "ID\tstart\tend\ttype_nme\tbreaks\thash\tstartBreak\tendBreak\tleftGene\trightGene\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true)
 			+"\t"+TranscriptUtils.getString("depth", num_sources, true)+"\t"+TranscriptUtils.getString("errors", num_sources, true)
 			+"\t"+TranscriptUtils.getString("error_ratio", num_sources, true);
+			
 			transcriptsP.println(transcriptP_header);
 		//	transcriptsP1.println(transcriptP_header);
 			IHDF5SimpleWriter clusterW = 

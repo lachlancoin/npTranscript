@@ -277,6 +277,9 @@ public class IdentityProfile1 {
 			SequenceOutputStream seqFasta =  null; // new SequenceOutputStream(new GZIPOutputStream(new FileOutputStream(outfile5)));
 			PrintWriter transcriptsP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outfile8))));
 			this.all_clusters.getConsensus( transcriptsP,  seqFasta,outfile2);
+			StringBuffer nme_info = new StringBuffer();
+			for(int i=0; i<type_nmes.length; i++) nme_info.append(type_nmes[i]+"\t");
+			transcriptsP.println("#"+nme_info.toString());
 			//exonsP.close();
 			if(seqFasta!=null) seqFasta.close();
 			transcriptsP.close();

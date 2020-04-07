@@ -1302,11 +1302,18 @@ invisible(ml)
 }
 
 .readTranscripts<-function(infilesT, seqlen, nmes){
+
+inf = scan(infilesT, nlines=1, what=character())
 transcripts = read.table( infilesT,sep="\t", head=T)
-o = order(transcripts$countTotal, decreasing=T)
+countAll = apply(transcripts[,grep("count", names(transcripts))],1,sum)
+comb_l = apply(cbind(as.character(transcripts$leftGene), as.character(transcripts$rightGene)),1,function(x) paste(x, collapse="."))
+transcripts = cbind(transcripts, comb_l, countAll)
+
+o = order(countAll, decreasing=T)
 transcripts = transcripts[o,]
 err_ratio_inds = grep("error_ratio", names(transcripts))
 transcripts[,err_ratio_inds] =apply(transcripts[,err_ratio_inds,drop=F], c(1,2), function(x) if(is.na(x)) -0.01 else x)
+if(grep("#", inf)==1) attr(transcripts,"info") = sub("#", "",inf)
 
 transcripts_all = list()
 transcripts_all[[1]] = (transcripts[which(transcripts$start<100 & transcripts$end > seqlen -100),, drop=F])
@@ -1314,6 +1321,7 @@ transcripts_all[[2]] = (transcripts[which(transcripts$start<100 & transcripts$en
 transcripts_all[[3]] =( transcripts[which(transcripts$start>=100 & transcripts$end > seqlen -100),, drop=F])
 transcripts_all[[4]] = (transcripts[which(transcripts$start>=100 & transcripts$end <= seqlen -100),, drop=F])
 names(transcripts_all) = nmes
+
 transcripts_all
 }
 
@@ -1358,6 +1366,37 @@ transcripts_all
  	#outfile0 = paste(resdir, "/rel_expression1.pdf", sep="");
 	invisible(ggp)
 }  
+.plotGeneExpr<-function(transcripts_all, todo =1:length(transcripts_all), extra = 0.1, mint = 2, count_df = grep('count[0-9]', names(transcripts_all[[1]]))){
+ggps = list()
+
+for(k in todo){
+ 	if(dim(transcripts_all[[k]])[1]>10) mint = max(mint, transcripts_all[[k]]$countAll[10])
+	cco = transcripts_all[[k]]$countAll>mint
+	
+	tf_k = transcripts_all[[k]][cco,,drop=F]
+	
+	tf_k[,count_df] = tf_k[,count_df] + extra
+	lev = names(tf_k)[count_df]
+	ncol = 0
+	i =1 
+	{
+	  st = i+1
+	   for(j in st:length(lev)){
+		
+		print(paste(k,i,j))
+		ncol = ncol+1
+		ggp<-ggplot(tf_k, aes_string(x=lev[i], y=lev[j], fill = "comb_l", colour = "comb_l")) +geom_point() #+ geom_point(size = 4)  #+ theme_bw()
+		ggp<-ggp+scale_y_continuous(trans='log10')+scale_x_continuous(trans='log10')
+		ggp<-ggp+xlab(paste(type_nme[i], extra,sep="+")) + ylab(paste(type_nme[j], extra, sep="+"))+ggtitle(names(transcripts_all)[k])
+	#	ggp<-ggp+theme(text = element_text(size=20))
+		ggps[[length(ggps)+1]] <- ggp
+	  }
+	}
+}
+print(length(ggps))
+  ml<-marrangeGrob(ggps,nrow = length(transcripts_all), ncol = ncol, as.table=F) 
+invisible(ml)
+}
 
 .appendGenePosition<-function(reads_leader, t1){
 genepos = rep(0, dim(reads_leader)[1])

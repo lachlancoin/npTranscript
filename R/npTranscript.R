@@ -53,7 +53,8 @@ print(infilesBr)
 print(infilesReads)
 print(infilesT)
 print(infiles)
-
+type_nme = NULL
+if(length(infilesBr)>0){
 type_nme = unlist(lapply(infilesBr, function(x) strsplit(x,"\\.")[[1]][2]))
 if(length(infilesBr)!=length(type_nme)){
 	print(type_nme)
@@ -61,6 +62,7 @@ if(length(infilesBr)!=length(type_nme)){
        	stop("type nme length does not match number of breakpoint files")
 }
 print(type_nme)
+}
 src = c("~/github/npTranscript/R" )
 data_src =   c(".","..","~/github/npTranscript/data/SARS-Cov2" )
 print("#PRELIMINARIES ....")      
@@ -106,7 +108,12 @@ if(length(infilesReads)==1){
 
 transcripts_all = .readTranscripts(infilesT, seqlen, nmes)
 names(transcripts_all)
-transcript_counts = lapply(transcripts_all, function(transcripts)  apply(transcripts[,grep('count[0-9]', names(transcripts)), drop=F], 2,sum))
+if(is.null(type_nme)){
+type_nme = attr(transcripts_all[[1]], "info")
+}
+count_df = grep('count[0-9]', names(transcripts_all[[1]]))
+
+transcript_counts = lapply(transcripts_all, function(transcripts)  apply(transcripts[,count_df, drop=F], 2,sum))
 total_reads  = apply(data.frame(transcript_counts),1,sum)
 names(total_reads) = type_nme
 max_h = unlist(lapply(transcripts_all, function(transcripts)  max(transcripts[,grep('count[0-9]', names(transcripts)), drop=F])))
@@ -118,6 +125,7 @@ if(dim(transcripts_all[[1]])[1]>0){
   minpos = 1
 	total_reads = c(1,1)
 }
+ml1 =.plotGeneExpr(transcripts_all)
 
 
 print('##COVERAGE ANALYSIS')
