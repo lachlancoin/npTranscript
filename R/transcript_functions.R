@@ -1313,7 +1313,7 @@ o = order(countAll, decreasing=T)
 transcripts = transcripts[o,]
 err_ratio_inds = grep("error_ratio", names(transcripts))
 transcripts[,err_ratio_inds] =apply(transcripts[,err_ratio_inds,drop=F], c(1,2), function(x) if(is.na(x)) -0.01 else x)
-if(grep("#", inf)==1) attr(transcripts,"info") = sub("#", "",inf)
+if(length(grep("#", inf))>0) attr(transcripts,"info") = sub("#", "",inf)
 
 transcripts_all = list()
 transcripts_all[[1]] = (transcripts[which(transcripts$start<100 & transcripts$end > seqlen -100),, drop=F])

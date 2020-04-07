@@ -94,18 +94,6 @@ leader_ind = c(leader_ind, leader_ind + nchar(leader)-1)
 
 
 
-print("###READ LEVEL ANALYSIS")
-
-if(length(infilesReads)==1){
-	source(.findFile(src, "read_analysis.R"))
-}else{
-	print("no reads file")
-}
-#plotHist=T
-#sourcePath(src, "read_java_outputs.R")
-
-
-
 transcripts_all = .readTranscripts(infilesT, seqlen, nmes)
 names(transcripts_all)
 if(is.null(type_nme)){
@@ -126,6 +114,20 @@ if(dim(transcripts_all[[1]])[1]>0){
 	total_reads = c(1,1)
 }
 ml1 =.plotGeneExpr(transcripts_all)
+
+
+
+
+print("###READ LEVEL ANALYSIS")
+
+if(length(infilesReads)==1){
+	source(.findFile(src, "read_analysis.R"))
+}else{
+	print("no reads file")
+}
+#plotHist=T
+#sourcePath(src, "read_java_outputs.R")
+
 
 
 print('##COVERAGE ANALYSIS')
