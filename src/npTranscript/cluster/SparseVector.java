@@ -67,6 +67,7 @@ class SparseVector{
 
 	public void clear() {
 		m.clear();
+		this.valsum=0;
 		
 	}
 	
