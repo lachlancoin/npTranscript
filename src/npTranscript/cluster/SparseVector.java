@@ -17,7 +17,7 @@ class SparseVector{
 	static Integer zero = 0;
 	
 	private SortedMap<Integer, Integer> m = new TreeMap<Integer, Integer>();
-	int valsum=0;
+	private int valsum=0;
 	//double valsumByKey=0;
 	
 	public void addZero(int pos){
@@ -85,6 +85,10 @@ class SparseVector{
 		
 			//return this.valsum;
 		}
+
+	public double valsum() {
+	return valsum;
+	}
 	
 	/*
 	public static double similarity(Map<Integer, Integer> map, Map<Integer, Integer> m1) {

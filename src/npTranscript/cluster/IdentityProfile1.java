@@ -127,7 +127,7 @@ public class IdentityProfile1 {
 	
 	static double break_round = 10.0;
 	static String NAstring = "NA";
-	public void processRefPositions(int startPos, int endPos, String id, boolean cluster_reads, int  readLength, int refLength, int src_index ) {
+	public void processRefPositions(int startPos, int endPos, String id, boolean cluster_reads, int  readLength, int refLength, int src_index ) throws NumberFormatException{
 		List<Integer> breaks  = coRefPositions.breaks;
 		Annotation annot = this.all_clusters.annot;
 		coRefPositions.end = endPos;
@@ -273,13 +273,15 @@ public class IdentityProfile1 {
 	
 	
 	public void getConsensus() throws IOException {
+		StringBuffer nme_info = new StringBuffer();
+		for(int i=0; i<type_nmes.length; i++) nme_info.append(type_nmes[i]+"\t");
+		
 			//PrintWriter exonsP =new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outfile4))));
 			SequenceOutputStream seqFasta =  null; // new SequenceOutputStream(new GZIPOutputStream(new FileOutputStream(outfile5)));
 			PrintWriter transcriptsP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outfile8))));
-			this.all_clusters.getConsensus( transcriptsP,  seqFasta,outfile2);
-			StringBuffer nme_info = new StringBuffer();
-			for(int i=0; i<type_nmes.length; i++) nme_info.append(type_nmes[i]+"\t");
 			transcriptsP.println("#"+nme_info.toString());
+			this.all_clusters.getConsensus( transcriptsP,  seqFasta,outfile2);
+			
 			//exonsP.close();
 			if(seqFasta!=null) seqFasta.close();
 			transcriptsP.close();

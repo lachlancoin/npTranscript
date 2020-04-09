@@ -262,9 +262,12 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 					currentIndex = refIndex;
 					chr = genomes.get(currentIndex);
 				}
-				
+				try{
 				TranscriptUtils.identity1(chr, readSeq, sam, profiles.get(currentIndex), source_index, cluster_reads);
-
+				}catch(NumberFormatException exc){
+					System.err.println(readSeq.getName());
+					exc.printStackTrace();
+				}
 
 			}
 			samReader.close();

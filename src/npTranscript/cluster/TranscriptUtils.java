@@ -74,9 +74,8 @@ public class TranscriptUtils {
 	 * @param sam
 	 * @return
 	 */
-	public static void identity1(Sequence refSeq, Sequence readSeq, SAMRecord sam, IdentityProfile1 profile, int source_index, boolean cluster_reads) {
-
-
+	public static void identity1(Sequence refSeq, Sequence readSeq, SAMRecord sam, IdentityProfile1 profile, 
+			int source_index, boolean cluster_reads) throws NumberFormatException{
 		int readPos = 0;// start from 0
 		int refPos = sam.getAlignmentStart() - 1;// convert to 0-based index
 		String id = sam.getReadName();

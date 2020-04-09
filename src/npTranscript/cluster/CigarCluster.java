@@ -1,12 +1,8 @@
 package npTranscript.cluster;
 
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
-
-import ch.systemsx.cisd.hdf5.IHDF5SimpleWriter;
 
 /**
  * @author Lachlan Coin
@@ -61,7 +57,7 @@ public class CigarCluster  {
 			}
 		}
 		
-		public CigarCluster(int id,  int num_sources, CigarCluster c1, int source_index) {
+		public CigarCluster(int id,  int num_sources, CigarCluster c1, int source_index) throws NumberFormatException{
 			this(id, num_sources);
 			this.breakSt = c1.breakSt;
 			this.breakEnd = c1.breakEnd;
@@ -74,6 +70,8 @@ public class CigarCluster  {
 			for(int i=0; i<maps.length; i++){
 				maps[i].merge( c1.maps[i]);
 				errors[i].merge(c1.errors[i]);
+				if(errors[i].valsum()<0) throw new NumberFormatException("shoud not be negative");
+				if(errors[i].valsum()>maps[i].valsum()) throw new NumberFormatException("shoud not be greater");
 			}
 		}
 
@@ -155,15 +153,15 @@ public class CigarCluster  {
 			StringBuffer sb = new StringBuffer();
 			for(int src_index=0; src_index<maps.length; src_index++){
 				if(src_index>0)sb.append("\t");
-				sb.append(match ? this.maps[src_index].valsum : this.errors[src_index].valsum);
+				sb.append(match ? this.maps[src_index].valsum() : this.errors[src_index].valsum());
 			}
 			return sb.toString();
 		}
 		
 		String getError(int src_index){
-			double err = (double)this.errors[src_index].valsum/(double)this.maps[src_index].valsum;
-			if(err<-1e-5 || err> 1.0001) throw new RuntimeException(" error is outside range of 0 1"+err);
-			String st = this.maps[src_index].valsum==0 ?  "NaN" :  String.format("%5.3g", err);
+			double err = (double)this.errors[src_index].valsum()/(double)this.maps[src_index].valsum();
+			if(err<-1e-5 || err> 1.0001) throw new NumberFormatException(" error is outside range of 0 1"+errors[src_index].valsum()+" "+maps[src_index].valsum());
+			String st = this.maps[src_index].valsum()==0 ?  "NaN" :  String.format("%5.3g", err);
 			return st;
 		}
 		
@@ -171,7 +169,7 @@ public class CigarCluster  {
 			StringBuffer sb = new StringBuffer();
 			for(int src_index=0; src_index<maps.length; src_index++){
 				if(src_index>0)sb.append("\t");
-				sb.append(this.maps[src_index].valsum==0 ?  "NaN" :  String.format("%5.3g", (double)this.errors[src_index].valsum/(double)this.maps[src_index].valsum));
+				sb.append(this.maps[src_index].valsum()==0 ?  "NaN" :  String.format("%5.3g", (double)this.errors[src_index].valsum()/(double)this.maps[src_index].valsum()));
 			}
 			return sb.toString();
 		}

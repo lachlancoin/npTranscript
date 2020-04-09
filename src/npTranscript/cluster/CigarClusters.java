@@ -65,7 +65,7 @@ public class CigarClusters {
 
 
 	
-	public int matchCluster(CigarCluster c1,  int source_index, int num_sources) {
+	public int matchCluster(CigarCluster c1,  int source_index, int num_sources) throws NumberFormatException{
 	
 		int clusterID=-1;
 	
