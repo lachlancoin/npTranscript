@@ -41,21 +41,54 @@ files = dir()
 a = read.table(files[1], head=T)
 b = read.table(files[2], head=T)
 geneID = as.character(a$Geneid)
-x = a[,7]
-y = b[,7]
-DE1 = DEgenes(geneID,x,y,log=F);
-DE2 = DEgenes(geneID,y,x,log=F);
 
-genenames1 = as.character(DE1[which(DE1[,1]<1e-10),]$genenames)
-genenames2 = as.character(DE2[which(DE1[,2]<1e-10),]$genenames)
+df = data.frame(cbind(a[,7],b[,7]))
+names(df) = c("control", "infected")
+dimnames(df)[[1]] = geneID
+DE1 = DEgenes(df,log=F);
+DE2 = DEgenes(df,log=F,inds = c(2,1));
+
+
+.qqplot(DE1,nme="FDR")
+.qqplot(DE2, nme="FDR")
+
 
 mart <- useEnsembl(biomart = "ensembl", 
                    dataset = "csabaeus_gene_ensembl", 
-                   mirror = "asia")
+                   mirror = "uswest") #asia useast
 
-desc1 = getDescr(genenames1, mart)
-desc2 = getDescr(genenames2, mart)
+DE1 = getDescr(DE1, mart,thresh = 1e-5)
+DE2 = getDescr(DE2, mart,thresh = 1e-5)
+
+#FOLLOWING COMMAND OFTEN FAILS!  NEED TO RETRY FEW TIMES with different mirrors
+goObjs = getGoIDs(  unique( as.character(DE1$geneID)),mart)
+chromObjs = getChromIDs(  unique( as.character(DE1$geneID)),mart)
+
+#goids2 = getGoIDs(DE2,mart,1e-10)
+
+sigGo1 = list()
+sigGo2 = list()
+for(i in 1:length(goObjs)){
+ sigGo1[[i]] = findSigGo_(goObjs[[i]],DE1, fdr_thresh = 1e-5, go_thresh = 1e-4);
+ sigGo2[[i]] = findSigGo_(goObjs[[i]],DE2, fdr_thresh = 1e-5, go_thresh = 1e-4);
+ 
+}
+sigChr1 = findSigGo_(chromObjs, DE1, fdr_thresh = 1e-5, go_thresh = 1e-4);
+sigChr2 = findSigGo_(chromObjs, DE2, fdr_thresh = 1e-5, go_thresh = 1e-4);
+
+names(sigGo1) = names(goObjs)
+names(sigGo2) = names(goObjs)
 
 #attr= listAttributes(mart);
+
+
+findGenes(goObjs[[1]],DE2,"GO:0001968", fdr_thresh = 1e-10)
+findGenes(goObjs[[1]],DE2,"GO:0005372", fdr_thresh = 1e-10)
+findGenes(goObjs[[1]],DE2,"GO:0006412", fdr_thresh = 1e-10)
+findGenes(goObjs[[1]],DE2,"GO:0002020", fdr_thresh = 1e-5)
+
+findGenes(goObjs[[1]],DE1,"GO:0006412", fdr_thresh = 1e-5)
+
+#findGenes(chromObjs,DE1,"X", fdr_thresh = 1e-5)
 
 

@@ -1,8 +1,12 @@
 #which x is significiantly more or less than expected given y
-DEgenes<-function(genenames, x,y,log=T){
-  size = ceiling(sum(y))
+#if(lower.tail=T returns p(x<=y) else p(x>=y)
+DEgenes<-function(df,log=F,binom=F, lower.tail = T, inds = c(1,2)){
+  x = df[,inds[1]]
+  y = df[,inds[2]]
   
-  #prob = y/size
+  size = ceiling(sum(y))
+  geneID = dimnames(df)[[1]]
+ 
   shape1 = y 
   shape2 = size -y 
   proby = y/size;
@@ -10,18 +14,40 @@ DEgenes<-function(genenames, x,y,log=T){
   sizex = ceiling(sum(x))
   shape1x = x 
   shape2x = sizex -x 
-  
-  
   probx = x/sizex
   
-  pbb =matrix(NA, ncol = 2, nrow = length(x))
-  
-  pbb[!zeros,1] = pbetabinom.ab(x[!zeros],size = sizex,shape1 = shape1[!zeros],shape2 =shape2[!zeros],log=log)
+  pbb =matrix(NA, ncol = 3, nrow = length(x))
+  if(binom){
+    if(lower.tail==FALSE){
+      pbb_lower =1- pbinom(x[!zeros],size = sizex,prob = proby[!zeros],log.p=F, lower.tail=lower.tail)
+      pbb_lower[pbb_lower<=0] = 0
+        point =  dbinom(x[!zeros],size = sizex,prob = proby[!zeros],log.p=F)
+      pbb[!zeros,1] =   pbb_lower + point; 
+      if(log) pbb[!zeros,1] = log(pbb[!zeros,1] )
+    }else{
+      pbb[!zeros,1] = pbinom(x[!zeros],size = sizex,prob = proby[!zeros],log.p=log, lower.tail=lower.tail)
+      
+    }
+  }else{
+    if(lower.tail==FALSE){
+        pbb_lower =1- pbetabinom.ab(x[!zeros],size = sizex,shape1 = shape1[!zeros],shape2 =shape2[!zeros],log=F)
+        pbb_lower[pbb_lower<=0] = 0
+        point = dbetabinom.ab(x[!zeros],size = sizex,shape1 = shape1[!zeros],shape2 =shape2[!zeros],log=F)
+        pbb[!zeros,1] = pbb_lower + point;
+        if(log) pbb[!zeros,1] = log(pbb[!zeros,1] )
+      }else{
+        pbb[!zeros,1] = pbetabinom.ab(x[!zeros],size = sizex,shape1 = shape1[!zeros],shape2 =shape2[!zeros],log=log)
+      }
+  }
+  if(log){
+    pbb[!zeros,1] =  pbb[!zeros,1]/log(10)
+  }
   pbb[!zeros,2] = probx[!zeros]/proby[!zeros];
+  pbb[,3] = p.adjust(pbb[,1], method="BH")
   result = pbb;
-  dimnames(result) = list(genenames, c("p_lt", "ratio"))
+  dimnames(result) = list(geneID, c("p_lt", "ratio", "FDR"))
   orders =apply(result[,1,drop=F], 2, order)
-  dimnames(orders)[[1]] = genenames
+  dimnames(orders)[[1]] = geneID
   probX = probx*1e6
   probY = proby*1e6
   probX1 = (x+0.5)/sum(x+.5)
@@ -29,26 +55,69 @@ DEgenes<-function(genenames, x,y,log=T){
   ratio1 = probX1/probY1
   #ratio1_rev = probX1/probY1
 #  order()
-  output =  data.frame(result,probX, probY, ratio1,x,y, genenames)
+  output =  data.frame(result,probX, probY, ratio1,x,y, geneID)
+  names(output)[7:8] = names(df)
+  names(output)[4:5] = paste("prob", names(df), sep="")
   output[order(output$p_lt),]
 #  output[orders[,1],,drop=F]
 }
 
-getDescr<-function(geneneames,mart){
+getDescr<-function(DE,mart, thresh = 1e-10){
+  inds = which(DE$FDR<thresh)
+  print(length(inds))
+  genenames = as.character(DE[inds,,drop=F]$geneID)
   attr =  c('ensembl_gene_id','description')# 'go_id') #, "name_1006", "namespace_1003") #, "definition_1006")
   filt = c('ensembl_gene_id')
   #	goids = getBM(attributes =attr,   filters = filt,   values = list(ensg) ,    mart = mart) 
-  
   desc =  biomaRt::getBM(attributes=attr, filters = filt, mart = mart, values = list(genenames)) 
-  desc[match(genenames, desc[,1]),]
+  #FDR = DE$FDR
+  desc1 = rep("", dim(DE)[1])
+  desc1[inds] = desc[match(genenames, desc[,1]),2]
+  data.frame(cbind(DE,desc1))
+}
 
+
+getlev<-function(x, todo = NULL){
+  lev = levels(as.factor(as.character(x)))
+  cnts = rep(0, length(lev))
+  for(i in 1:length(lev)){
+    cnts[i] = length(which(x==lev[i]))
+  }
+  res = data.frame(lev,cnts)[order(cnts, decreasing = T),, drop=F]
+  if(is.null(todo)) return(res)
+  
+  matr = data.frame(lev=todo, cnts=rep(0,length(todo)))
+  # print(dim(matr))
+  # print(dim(res))
+  if(dim(res)[1]>1){
+    matr[match(res[,1], matr[,1]),2] = res[res[,1] %in% matr[,1],2]
+    dimnames(matr)[[2]] = dimnames(res)[[2]]
+  }else{
+    #print(todo)
+    matr[match(res[,1], matr[,1]),2] =res
+  }
+  
+  matr
+}
+
+
+getChromIDs<-function(ensg, mart){
+  goids = getBM(attributes = c('ensembl_gene_id', 'chromosome_name'),   filters = c('ensembl_gene_id'),   values = list(ensg) ,    mart = mart) 
+  goids = goids[goids[,2]!="",]
+  lev_all = getlev(goids$chromosome)
+  #dimnames(lev_all)[[1]] = goids[match(lev_all[,1], goids$chromosome),3]
+  
+  chromObj = list(goids=goids, lev_all = lev_all)
+  chromObj
 }
 
 getGoIDs<-function(genenames, mart){
-  
+ # inds = which(DE$FDR<thresh)
+
  # ensg = unlist(lapply(strsplit( as.character(exons$ENSG),'\\.'), .getEl,1))
+  ensg = genenames
   #genenames = exons_$GENENAME.1
-  attr =  c('ensembl_gene_id', 'go_id') #, "name_1006", "namespace_1003") #, "definition_1006")
+  attr =  c('ensembl_gene_id', 'go_id', "name_1006", "namespace_1003") #, "definition_1006")
   filt = c('ensembl_gene_id')
   #	goids = getBM(attributes =attr,   filters = filt,   values = list(ensg) ,    mart = mart) 
   
@@ -58,7 +127,8 @@ getGoIDs<-function(genenames, mart){
   gn = genenames[match(goids2[,1], ensg)]
   goids = cbind(goids2, gn)
   lev_all = getlev(goids$go_id)
-  dimnames(lev_all)[[1]] = goids[match(lev_all[,1], goids$go_id),3]
+  lev_all = cbind(lev_all,goids[match(lev_all[,1], goids$go_id),3])
+  names(lev_all)[3] = "description"
   goObjs = list()
   goObjs[[1]] = list(goids=goids, lev_all = lev_all )
   ns = as.factor(goids$namespace)
@@ -67,7 +137,8 @@ getGoIDs<-function(genenames, mart){
   for(i in 1:length(lev)){
     goids1 = goids[goids$namespace==lev[i],]
     lev_all1 = getlev(goids1$go_id)
-    dimnames(lev_all1)[[1]] = goids1[match(lev_all1[,1], goids1$go_id),3]
+     lev_all1 = cbind(lev_all1,goids1[match(lev_all1[,1], goids1$go_id),3])
+     names(lev_all1)[3] = "description"
     goObjs[[i+1]] = list(goids = goids1, lev_all = lev_all1)
   }
   lev[lev==""]  = "blank"
@@ -75,3 +146,88 @@ getGoIDs<-function(genenames, mart){
   goObjs = goObjs[names(goObjs)!="blank"]
   goObjs
 }
+
+findGenes<-function(goObj,DE,goid, fdr_thresh = 1e-10){
+  
+  inds =  which(goObj$goids$go_id==goid) 
+  genes = goObj$goids[inds,,drop=F]
+  inds1 = which(DE$geneID %in% genes$ensembl_gene_id)
+  inds2 = which(DE[inds1,]$FDR<fdr_thresh)
+ # ge = DE$geneID[inds1[inds2]]
+#  print(genes[which(genes$ensembl_gene_id %in% ge),])
+  DE[inds1[inds2],]
+}
+
+findSigGo_<-function(goObj, DE, fdr_thresh = 1e-10, go_thresh = 1e-5){
+  goids = goObj$goids 
+  ensg =DE$geneID
+  goidx = rep(FALSE,length(goids$ensembl_gene_id ))
+  
+  
+  pvs = DE$FDR
+  sig =  which(pvs<fdr_thresh)
+  goidx1 = goids$ensembl_gene_id %in% ensg[sig]
+  a = data.frame(goidx1)
+  lev_all = goObj$lev_all
+  
+  suma = apply(a,1,sum)
+  subs = which(suma>0)
+  go1 = goids[subs,]
+  lev1 = getlev(go1[,2])  #go_ids or chromosome_name
+  go_todo = lev1[,1]
+  go_ = goids[goidx1,]
+  
+  lev_ = getlev(go_[,2], todo=go_todo)
+  inds_m = match(as.character(lev_[,1]), as.character(lev_all[,1]))
+  lev_ = cbind(lev_,lev_all[inds_m,1:2,drop=F])
+  
+  lev_1 = t(apply(lev_,1,.phyper2,  k = length(sig), mn = length(ensg)))
+  #	
+  if(dim(goids)[[2]]>2){
+    descr = goids[match(lev_[,1], goids[,2]),3]
+#      apply( cbind(lev_[,1],,1,paste,collapse=":")
+  goids = as.character(lev_[,1])
+   lev_1 = cbind(goids, lev_1, descr)
+  #
+  # lev_1[,pv_ind]=sprintf("%5.3g", lev_1[,pv_ind])
+   #lev_1$pv = sprintf("%5.3g", as.numeric(as.character(lev_1$pv)))
+  }else{
+    
+    #dimnames(lev_1)[[1]] = lev_[,1]
+  }
+  pv_ind = which(dimnames(lev_1)[[2]]=="pv")
+  pvs = as.numeric(lev_1[,pv_ind])
+  len = length(which(pvs<go_thresh))
+  #lev_1[,pv_ind] = sprintf("%5.3g",pvs)
+  
+ # lev_1[order(pvs),,drop=F]
+  outp = data.frame(lev_1)
+  #outp
+  outp[order(pvs)[1:len],]
+ 
+}
+
+.qqplot<-function(DE1, nme="p_lt"){
+  i = which(dimnames(DE1)[[2]]==nme)[1]
+  expected = -log10(seq(1:dim(DE1)[1])/dim(DE1)[1])
+  observed = -log10(DE1[,i])
+  plot(expected,observed, main = nme)
+}
+
+
+.phyper2<-function(vec1,k,mn){
+  vec = as.numeric(vec1[c(2,length(vec1))])
+  #print(vec)
+  m = vec[2]
+  n = mn-vec[2]
+  #print(c(vec[1], m,n,k))
+  pv =  phyper(vec[1], m = m, n = n, k = k, lower.tail=F) + dhyper(vec[1], m = m, n = n, k=k )
+  vals = qhyper(0.99, m = m, n = n, k = k)
+  enrich = (vec[1]/k)/(vec[2]/mn)
+  enrich1 = vec[1]/vals
+  
+  res = c(vec, pv, enrich, enrich1)
+  names(res) = c("c1", "c2", "pv", "enrich", "enrich99") 
+  res
+}
+
