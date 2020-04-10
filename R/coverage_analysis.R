@@ -20,7 +20,7 @@ for(ik in 1:length(transcripts_all)){
   if(length(which(inds_ik))<1) next;
   transcripts_ = transcripts_all[[ik]][inds_ik,,drop=F]
   
-   clusters_ = readH5(h5file, header, transcripts_, span = 0.0)
+   clusters_ = readH5(h5file, header, transcripts_, span = 0.01)
 nme1 = as.character(transcripts_$type[1])
 
   #.getRatios(clusters, dinds, einds)
