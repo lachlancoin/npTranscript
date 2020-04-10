@@ -57,6 +57,7 @@ public class ExtractClusterCmd extends CommandLine {
 		
 		StringComp(int col, boolean decr){
 			this.col = col;
+			if(col<0) throw new RuntimeException("!!");
 			mult = decr ? -1 : 1;
 		}
 		@Override

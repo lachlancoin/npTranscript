@@ -38,8 +38,12 @@ public class Table{
 	public Table(File in, String split ) throws IOException{
 		this.name = in.getName();
 		BufferedReader br = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(in))));
-		 header = Arrays.asList(br.readLine().split(split));
-		 String st = "";
+		String st = "";
+		 while((st = br.readLine()).startsWith("#")){
+			 
+		 }
+		 header = Arrays.asList(st.split(split));
+		
 		 while((st = br.readLine())!=null){
 			 data.add(st.split(split));
 		 }
@@ -51,6 +55,7 @@ public class Table{
 	void sort(String nme, boolean decr){
 		this.name = name+".sort="+nme;
 		int col = header.indexOf(nme);
+		if(col<0) throw new RuntimeException("not found "+nme+ " in "+header.toString());
 		StringComp sc = new StringComp(col, decr);
 		Collections.sort(data, sc);
 	}
@@ -136,7 +141,7 @@ public class Table{
 		String name1 = this.name.endsWith(".gz") ? this.name :  this.name+".gz";
 	
 		PrintWriter transcripts_pw  = new PrintWriter(
-				new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(new File(outdir.getParentFile(), name1)))));
+				new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(new File(outdir, name1)))));
 		if(info!=null) transcripts_pw.print("#");transcripts_pw.println(info);
 		transcripts_pw.println(getStr(this.header.toArray(new String[0]), ExtractClusterCmd.split));
 		for(int i=0; i<this.data.size(); i++){

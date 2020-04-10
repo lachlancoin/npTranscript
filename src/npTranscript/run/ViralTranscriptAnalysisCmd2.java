@@ -143,7 +143,9 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 			BufferedReader br = new BufferedReader(new FileReader(new File(readList)));
 			String st;
 			while((st = br.readLine())!=null){
-				reads.add(st);
+				String st_ = st.split("\\s+")[0];
+				System.err.println(st_);
+				reads.add(st_);
 			}
 			br.close();
 		}
