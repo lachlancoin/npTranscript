@@ -113,8 +113,9 @@ if(dim(transcripts_all[[1]])[1]>0){
   minpos = 1
 	total_reads = c(1,1)
 }
+if(length(type_nme)>1){
 ml1 =.plotGeneExpr(transcripts_all)
-
+}
 
 
 

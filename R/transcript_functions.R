@@ -853,6 +853,7 @@ plotHMClust1<-function(hmClust_b,total_reads,type_name, size=3, logT = T, nudge_
  if(plotDepth) label = "depth +"
 # merged$depth2 = merged$depth2+0.1
  ggps = list()
+
  for(k in 2:length(depth_inds)){
    depth1 = names(merged)[depth_inds[k]]
    for(k1 in 1:(k-1)){

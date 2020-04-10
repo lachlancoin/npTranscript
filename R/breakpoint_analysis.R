@@ -62,13 +62,13 @@ print("endcs_2")
 	br_all = breaks_all[	order(breaks_all$genes,breaks_all$start, breaks_all$end),print_inds]
 	chrom = (rep(0, dim(br_all)[1]))
  write.table(cbind(chrom,br_all),break_file, quote=FALSE, row.names=F,col.names=T,sep=",")
-	
-	ml = plotHMClust1(hmClust_c, total_reads,type_nme, nudge_y = 0.0, nudge_x =0.25, logT = T, plotDepth = F)
-	ml2 = plotHMClust1(hmClust_c, total_reads,type_nme, nudge_y = 0.0, nudge_x =0.25, logT = T, plotDepth = T)
-	n = length(type_nme)
-	try(ggsave(outfile3a, plot=ml, width = 15, height = 15*(n+1)*(n/4), units = "cm"))
-	try(ggsave(outfile3b ,plot=ml2, width = 15, height = 15*(n+1)*(n/4), units = "cm"))
-	
+	if(length(type_nme)>1){
+		ml = plotHMClust1(hmClust_c, total_reads,type_nme, nudge_y = 0.0, nudge_x =0.25, logT = T, plotDepth = F)
+		ml2 = plotHMClust1(hmClust_c, total_reads,type_nme, nudge_y = 0.0, nudge_x =0.25, logT = T, plotDepth = T)
+		n = length(type_nme)
+		try(ggsave(outfile3a, plot=ml, width = 15, height = 15*(n+1)*(n/4), units = "cm"))
+		try(ggsave(outfile3b ,plot=ml2, width = 15, height = 15*(n+1)*(n/4), units = "cm"))
+	}
 	
 #	hmClust = getHMClust(breakPs, endcs_2)
 }else{
