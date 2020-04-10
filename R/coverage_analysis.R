@@ -4,7 +4,7 @@ min_t_count = 20
 
 
 sumT_all = matrix(nrow = length(infiles), ncol = length(type_nme))
-dimnames(sumT_all)[[2]] = type_nme
+dimnames(sumT_all) = list(infiles, type_nme)
 
 h5file = "0clusters.h5"
 #h5f = H5Fopen(cluster_file)
