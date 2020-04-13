@@ -55,9 +55,9 @@ DEgenes<-function(df,log=F,binom=F, lower.tail = T, inds = c(1,2)){
   ratio1 = probX1/probY1
   #ratio1_rev = probX1/probY1
 #  order()
-  output =  data.frame(result,probX, probY, ratio1,x,y, geneID)
-  names(output)[7:8] = names(df)
-  names(output)[4:5] = paste("prob", names(df), sep="")
+  output =  data.frame(result,probX, probY, ratio1,x,y, geneID,df)
+  names(output)[7:8] = names(df)[inds]
+  names(output)[4:5] = paste( names(df)[inds]," TPM", sep="")
   output[order(output$p_lt),]
 #  output[orders[,1],,drop=F]
 }
@@ -147,6 +147,15 @@ getGoIDs<-function(genenames, mart){
   goObjs
 }
 
+findGenesByChrom<-function(DE,chrom="MT", fdr_thresh = 1e-10){
+  inds = which(as.character(DE$chrom)== chrom & DE$FDR<fdr_thresh)
+  print(inds)
+  if(length(inds)==0) return (NULL)
+  DE[inds,,drop=F]
+  
+}
+
+
 findGenes<-function(goObj,DE,goid, fdr_thresh = 1e-10){
   
   inds =  which(goObj$goids$go_id==goid) 
@@ -205,6 +214,26 @@ findSigGo_<-function(goObj, DE, fdr_thresh = 1e-10, go_thresh = 1e-5){
   #outp
   outp[order(pvs)[1:len],]
  
+}
+
+
+findSigChrom<-function( DE, fdr_thresh = 1e-10, go_thresh = 1e-5){
+  ensg =DE$geneID
+  pvs = DE$FDR
+  sig =  which(pvs<fdr_thresh)
+  lev_all =getlev(DE$chrom)
+  lev_ = getlev(DE$chrom[sig])
+  go_todo = lev1[,1]
+  inds_m = match(as.character(lev_[,1]), as.character(lev_all[,1]))
+  lev_ = cbind(lev_,lev_all[inds_m,1:2,drop=F])
+  chrs = as.character(lev_[,1])
+  lev_1 = cbind(chrs,t(apply(lev_,1,.phyper2,  k = length(sig), mn = length(ensg))))
+  pv_ind = which(dimnames(lev_1)[[2]]=="pv")
+  pvs = as.numeric(lev_1[,pv_ind])
+  len = length(which(pvs<go_thresh))
+  outp = data.frame(lev_1)
+  outp[order(pvs)[1:len],]
+  
 }
 
 .qqplot<-function(DE1, nme="p_lt"){

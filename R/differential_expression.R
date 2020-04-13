@@ -41,14 +41,15 @@ files = dir()
 a = read.table(files[1], head=T)
 b = read.table(files[2], head=T)
 geneID = as.character(a$Geneid)
+chrs = unlist(lapply(a$Chr,function(x) strsplit(as.character(x),";")[[1]][1]))
 
-df = data.frame(cbind(a[,7],b[,7]))
-names(df) = c("control", "infected")
+df = data.frame(control = a[,7],infected = b[,7],chrs = chrs)
+names(df) = c("control", "infected", "chrom")
 dimnames(df)[[1]] = geneID
-DE1 = DEgenes(df,log=F);
+DE1 = DEgenes(df,log=F,);
 DE2 = DEgenes(df,log=F,inds = c(2,1));
 
-
+#CHECK DISTRIBUTION
 .qqplot(DE1,nme="FDR")
 .qqplot(DE2, nme="FDR")
 
@@ -62,7 +63,7 @@ DE2 = getDescr(DE2, mart,thresh = 1e-5)
 
 #FOLLOWING COMMAND OFTEN FAILS!  NEED TO RETRY FEW TIMES with different mirrors
 goObjs = getGoIDs(  unique( as.character(DE1$geneID)),mart)
-chromObjs = getChromIDs(  unique( as.character(DE1$geneID)),mart)
+#chromObjs = getChromIDs(  unique( as.character(DE1$geneID)),mart)
 
 #goids2 = getGoIDs(DE2,mart,1e-10)
 
@@ -73,14 +74,19 @@ for(i in 1:length(goObjs)){
  sigGo2[[i]] = findSigGo_(goObjs[[i]],DE2, fdr_thresh = 1e-5, go_thresh = 1e-4);
  
 }
-sigChr1 = findSigGo_(chromObjs, DE1, fdr_thresh = 1e-5, go_thresh = 1e-4);
-sigChr2 = findSigGo_(chromObjs, DE2, fdr_thresh = 1e-5, go_thresh = 1e-4);
 
 names(sigGo1) = names(goObjs)
 names(sigGo2) = names(goObjs)
 
+sigChr1 = findSigChrom(DE1,fdr_thresh = 1e-5, go_thresh = 1e-4)
+sigChr2 = findSigChrom(DE2,fdr_thresh = 1e-5, go_thresh = 1e-4)
+
+ 
+
+
 #attr= listAttributes(mart);
 
+findGenesByChrom(DE2,"M", fdr_thresh = 1e-10)
 
 findGenes(goObjs[[1]],DE2,"GO:0001968", fdr_thresh = 1e-10)
 findGenes(goObjs[[1]],DE2,"GO:0005372", fdr_thresh = 1e-10)
