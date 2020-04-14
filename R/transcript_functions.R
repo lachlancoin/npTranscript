@@ -1303,7 +1303,6 @@ invisible(ml)
 }
 
 .readTranscripts<-function(infilesT, seqlen, nmes){
-
 inf = scan(infilesT, nlines=1, what=character())
 transcripts = read.table( infilesT,sep="\t", head=T)
 countAll = apply(transcripts[,grep("count", names(transcripts))],1,sum)
@@ -1367,35 +1366,38 @@ transcripts_all
  	#outfile0 = paste(resdir, "/rel_expression1.pdf", sep="");
 	invisible(ggp)
 }  
-.plotGeneExpr<-function(transcripts_all, todo =1:length(transcripts_all), extra = 0.1, mint = 2, count_df = grep('count[0-9]', names(transcripts_all[[1]]))){
+.plotGeneExpr<-function(tocomp,transcripts_all, todo =1:length(transcripts_all),  extra = 0.1, mint = 2, maxt = 10, count_df = grep('count[0-9]', names(transcripts_all[[1]])),
+ type_nme = attr(transcripts_all[[1]], "info")){
 ggps = list()
-
+maxv = 0
 for(k in todo){
- 	if(dim(transcripts_all[[k]])[1]>10) mint = max(mint, transcripts_all[[k]]$countAll[10])
+  maxk = max(transcripts_all[[k]][,count_df], na.rm=T)
+  if(maxk>maxv) maxv = maxk
+}
+for(k in todo){
+ 	if(dim(transcripts_all[[k]])[1]>maxt) mint = max(mint, transcripts_all[[k]]$countAll[maxt])
 	cco = transcripts_all[[k]]$countAll>mint
-	
 	tf_k = transcripts_all[[k]][cco,,drop=F]
-	
 	tf_k[,count_df] = tf_k[,count_df] + extra
-	lev = names(tf_k)[count_df]
+	lev = names(tf_k)[count_df][tocomp]
+	type_nme1 = type_nme[tocomp]
 	ncol = 0
 	i =1 
 	{
 	  st = i+1
 	   for(j in st:length(lev)){
-		
 		print(paste(k,i,j))
 		ncol = ncol+1
 		ggp<-ggplot(tf_k, aes_string(x=lev[i], y=lev[j], fill = "comb_l", colour = "comb_l")) +geom_point() #+ geom_point(size = 4)  #+ theme_bw()
-		ggp<-ggp+scale_y_continuous(trans='log10')+scale_x_continuous(trans='log10')
-		ggp<-ggp+xlab(paste(type_nme[i], extra,sep="+")) + ylab(paste(type_nme[j], extra, sep="+"))+ggtitle(names(transcripts_all)[k])
-	#	ggp<-ggp+theme(text = element_text(size=20))
+		ggp<-ggp+scale_y_continuous(trans='log10', limits = c(extra,maxv))+scale_x_continuous(trans='log10', limits = c(extra,maxv))
+		ggp<-ggp+xlab(paste(type_nme1[i], extra,sep="+")) + ylab(paste(type_nme1[j], extra, sep="+"))+ggtitle(names(transcripts_all)[k])
+		ggp<-ggp+ geom_point(size = 4)
 		ggps[[length(ggps)+1]] <- ggp
 	  }
 	}
 }
 print(length(ggps))
-  ml<-marrangeGrob(ggps,nrow = length(transcripts_all), ncol = ncol, as.table=F) 
+  ml<-marrangeGrob(ggps,nrow = 1, ncol = length(todo), as.table=F) 
 invisible(ml)
 }
 
