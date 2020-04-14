@@ -1,8 +1,14 @@
 package npTranscript.run;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -10,10 +16,12 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import japsa.util.CommandLine;
 import japsa.util.deploy.Deployable;
-import npTranscript.cluster.CigarHash;
 
 @Deployable(scriptName = "npTranscript.run", scriptDesc = "Merging results from ViralTranscriptAnalysisCmd2")
 public class MergeCmd extends CommandLine {
@@ -26,7 +34,10 @@ public class MergeCmd extends CommandLine {
 		setDesc(annotation.scriptDesc());
 
 		addString("inDir","./", "Name of inputDir", false);
+		addString("ignore",null, "pattern to ignore", false);
 		addStdHelp();
+		this.outdir= new File("merged");
+		outdir.mkdir();
 	}
 	
 	//ID	start	end	type_nme	breaks	hash	startBreak	endBreak	leftGene	rightGene	totLen	countTotal	count0count1	depth0	depth1	errors0	errors1	error_ratio0	error_ratio1
@@ -38,25 +49,29 @@ public class MergeCmd extends CommandLine {
 		CommandLine cmdLine = new MergeCmd();
 		args = cmdLine.stdParseLine(args);
 		String tf_name = "0transcripts.txt.gz";
-
+		String pattern = cmdLine.getStringVal("ignore");
 		File inDir_ = new File(cmdLine.getStringVal("inDir"));
 		File[] inDir = inDir_.listFiles(new FileFilter(){
 
 			@Override
 			public boolean accept(File pathname) {
-				return pathname.isDirectory() && (new File(pathname, tf_name).exists());
+				
+				return pathname.isDirectory() 
+						&& (new File(pathname, tf_name).exists() 
+						&& !pathname.getName().contains("merged")
+						&& ( pattern==null || !pathname.getName().contains(pattern)));
 			}
 			
 		});
-		File[] transcriptF = new File[inDir.length];
+		/*File[] transcriptF = new File[inDir.length];
 		for(int i=0; i<inDir.length; i++){
 			transcriptF[i] = new File(inDir[i], tf_name);
-		}
+		}*/
 	
 		
 		try{
 			MergeCmd ec = new MergeCmd();
-			ec.run(transcriptF, tf_name);
+			ec.run(inDir, tf_name);
 		}catch(Exception exc){
 			exc.printStackTrace();
 		}
@@ -84,7 +99,7 @@ public class MergeCmd extends CommandLine {
 	}
 	Table reads;
 	Table[] transcripts;
-	File outdir = new File("merged");
+	final File outdir ;
 	
 	Map<String, String[][]> map = new HashMap<String, String[][]>();
 	
@@ -121,6 +136,7 @@ public class MergeCmd extends CommandLine {
 		
 		public MergeInds(List<String> header, String[] merge, String[] toignore, int num_sources, String default_val){
 			merge_inds = new Integer[merge.length];
+			
 			merge_offset = new int[merge.length];
 			this.default_val = default_val;
 			for(int i=0; i<header.size(); i++){
@@ -156,20 +172,71 @@ public class MergeCmd extends CommandLine {
 			
 		}
 	}
+	static void mkSymLink(File src, File target){
+		if(target.exists()){
+			System.err.println("exists");
+		return;
+		}
+		try{
+		
+		String cmd = "ln -s "+src.getAbsolutePath()+" "+target.getAbsolutePath();
+		Process process = Runtime.getRuntime().exec(cmd);
+		process.waitFor();
+		}catch(Exception exc){
+			exc.printStackTrace();
+		}
+	}
+	static void print(File in, PrintWriter out, String nme, String val, boolean first, String pattern) throws IOException{
+		BufferedReader br = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(in))));
+		String head = br.readLine();
+		if(first){
+			out.println(head);
+		}
+		List<String> header = Arrays.asList(head.split("\t"));
+		int ind = header.indexOf(nme);
+		if(ind<0) {
+			throw new RuntimeException("!!");
+		}
+		String str = "";
+		
+		boolean same = val.equals("0");
+		while((str = br.readLine())!=null){
+			if(str.indexOf(pattern)>=0){
+				if(same) out.println(str);
+				else{
+					String[] st_ = str.split("\t");
+					st_[ind] = val;
+					out.print(st_[0]);
+					for(int j=1; j<st_.length ; j++){
+						out.print("\t");out.print(st_[j]);
+					}
+					out.println();
+				}
+			}
+		}
+		br.close();
+	}
 	
-	
-	public void run(File[] transcriptsF , String tf_name) throws IOException{
+	public void run(File[] inDir , String tf_name) throws IOException{
 		String[] ids = new String[] {"type_nme", "leftGene", "rightGene"};
 		List<String> header = null;
-		int num_sources = transcriptsF.length;
+		int num_sources = inDir.length;
 		StringBuffer info = new StringBuffer(); 
-		for(int i=0; i<transcriptsF.length; i++){
-			info.append(transcriptsF[i].getParentFile().getName());
+		
+		PrintWriter reads_pw  = new PrintWriter(
+				new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(new File(outdir, "0readToCluster.txt.gz")))));
+		for(int i=0; i<inDir.length; i++){	
+			//File  targetFile = new File(outdir, "0readToCluster."+i+".txt.gz");
+			File readsFile = new File(inDir[i], "0readToCluster.txt.gz");
+			print(readsFile, reads_pw,"source", (i+""), i==0, "\t5_3\t");
+		//mkSymLink(readsFile, targetFile);
+			info.append(inDir[i].getName());
 			 info.append("\t");
-			Table transcripts = new Table(transcriptsF[i],"\t");
+			Table transcripts = new Table(new File(inDir[i], tf_name),"\t");
 			header = transcripts.header;
 			transcripts.addToMap(map, ids, i, num_sources);
 		}
+		reads_pw.close();
 		String[] merge = new String[] {"count0",  "depth0", "errors0", "error_ratio0"};
 		String[] toignore = new String[] {"countTotal"};
 		MergeInds mi = new MergeInds(header,  merge,  toignore, num_sources, "0");
