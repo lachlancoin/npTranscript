@@ -14,7 +14,7 @@ The script run_example.sh  provides an example of how you can run the java part 
 
 The input required is 
  - 1 or more bam files (multiple bam files can be processed at the same time). We also include a script 'make_bams.sh' to recreate the minimap2 parameters and arguments used in our own analysis.
- - a reference genome (we provide a reference coronavirus genome in  data/SARS-Cov2/wuhan_coronavirus_australia.fasta.gz)
+ - a reference genome (we provide a reference coronavirus genome in  data/SARS-Cov2/wuhan_coronavirus_australia.fasta.gz, and a reference leader sequence in data/SARS-Cov2/leader.fa)
  - a coordinate file (we provde one in data/SARS-Cov2/Coordinates.csv)
 
 
