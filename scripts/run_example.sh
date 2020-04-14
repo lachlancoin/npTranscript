@@ -15,7 +15,7 @@ resdir="results_${dat}"
 #export RESULTS_DIR=$resdir
 
 opts="--bin 10 --breakThresh 1000 --cluster_by_annotation true"
-bash ${npTranscript}/run.sh --bamFile=${bamfiles1}   --reference=${reference}   --annotation ${coord_file}   --resdir ${resdir} ${opts}
+bash ${npTranscript}/scripts/run.sh --bamFile=${bamfiles1}   --reference=${reference}   --annotation ${coord_file}   --resdir ${resdir} ${opts}
 
 ##FOLLOWING USES OUTPUT FROM PREVIOUS COMMAND TO EXTRACT CLUSTERS
-bash ${npTranscript}/run_extract_cluster.sh --inDir ${resdir} 
+bash ${npTranscript}/scripts/run_extract_cluster.sh --inDir ${resdir} 
