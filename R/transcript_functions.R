@@ -600,13 +600,26 @@ subsetBr<-function(breakP, region){
   for(kk in 1:length(frames)){
     frame1 = (frames[kk]+frame)
     rna = c(left_rna,rep("N",frames[kk]), fasta[[1]][start:seqlen])
-    prot_a = translate(rna)
-    end_p = grep("\\*",prot_a)[1]-1
-    end = start + end_p*3-1 + 3 #   ##note plus 3 includes the stop
-    full_prot = ""
-    if(!is.na(end)){
-    if(end-start>3)full_prot = translate(rna[1:(end-start+1)])
-    }
+    full_prot = "NA"
+    prot_a = try(translate(rna))
+     if(inherits(prot_a,"try-error")) {
+	print("translation error")
+	print(rna)
+     }else{
+   	 end_p = grep("\\*",prot_a)[1]-1
+         end = start + end_p*3-1 + 3 #   ##note plus 3 includes the stop
+   	 full_prot = ""
+    	if(!is.na(end)){
+    	   if(end-start>3){
+		rna1 = rna[1:(end-start+1)]
+		full_prot = try(translate(rna1))
+		 if(inherits(full_prot,"try-error")) {
+			print("translation error1")
+			print(rna1);
+		}
+	   }
+        }
+     }
     #prot_a = translate(fasta[[1]][start:seqlen],frame = frame1%%3)
    
     t1_ind1 =  which(t1$Maximum>=end & t1$Minimum<=end)
