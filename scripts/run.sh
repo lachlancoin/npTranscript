@@ -1,7 +1,8 @@
 ##general script for running analysis
 ##ASSUMES THE PROJECT IS STORED IN $HOME/github/npTranscript
-
-JSA_MEM=8000m
+if [ ! $JSA_MEM ] ; then
+	JSA_MEM=8000m
+fi
 
 
 npTranscript=$HOME/github/npTranscript
