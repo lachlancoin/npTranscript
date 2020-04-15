@@ -13,6 +13,9 @@ reads$downstream = as.factor(reads$downstream)
 reads_leader = reads[ reads$start <= 100,]
 reads_no_leader = reads[ reads$start > 100,]
 
+outfile0 = paste(resdir, "/transcript_error.pdf", sep="");
+ggp = plotErrorViolin(reads, inds1 = reads$upstream=="leader" & !is.na(reads$downstream))
+try(ggsave(outfile0, plot=ggp, width = 35, height = 15, units = "cm"))
 
  outfile0 = paste(resdir, "/transcript_expression.pdf", sep="");
 if(length(type_nme)>1){
@@ -21,12 +24,9 @@ if(length(type_nme)>1){
  ggps[[2]]<-.plotGeneExpression(reads_no_leader, "comb_l", "source", limit = 10, mincount = 0.1)
  try(ggsave(outfile0, plot=marrangeGrob(ggps,nrow = 1, ncol = 2), width = 50, height = 15, units = "cm"))
 }
-outfile0 = paste(resdir, "/transcript_error.pdf", sep="");
-
-ggp = plotErrorViolin(reads, inds1 = reads$upstream=="leader" & !is.na(reads$downstream))
 
  #ggp1 = plotErrorViolin(reads, inds1 = reads$start < 100,x = "reorder(comb_l, length)",  y = "length")
-try(ggsave(outfile0, plot=ggp, width = 25, height = 15, units = "cm"))
+
 
 
 

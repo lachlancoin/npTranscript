@@ -138,7 +138,7 @@ if(length(type_nme)==1){
 ml1 = lapply(tocompare, .plotGeneExpr, transcripts_all, todo = 1:4)
 names(ml1) = unlist(lapply(tocompare, function(x)  paste(type_nme[x], collapse=".")))
 for(i in 1:length(ml1)){
-	outfile1 = paste(resdir, "/gene_expr.", i,".pdf", sep="");
+	outfile1 = paste(resdir, "/gene_expr.", names(ml1)[i],".pdf", sep="");
 	try(ggsave(outfile1, plot=ml1[[i]], width = 30, height = 30, units = "cm"))
 }
 print("###READ LEVEL ANALYSIS")

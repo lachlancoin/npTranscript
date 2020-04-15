@@ -29,14 +29,14 @@ nme1 = as.character(transcripts_$type[1])
  
   ml = makeCovPlots(clusters_, header, total_reads, t, type_nme, logy=T, rawdepth =T) 
   ml1 = makeCovPlots(clusters_, header,  total_reads,  t, type_nme, logy=T, rawdepth =T,  xlim = list(c(0,1000), c(20000,seqlen)))
-   outfile1 = paste(resdir, "/cov",".", ik, nme,nme1,  "1.pdf", sep="");
-  outfile2 = paste(resdir,"/cov", ".", ik, nme, nme1, "2.pdf", sep="");
+  outfile1 = paste(resdir, "/coverage",".", ik,".",  nme,".",  nme1,  ".1.pdf", sep="");
+  outfile2 = paste(resdir,"/coverage", ".", ik, ".", nme,".",  nme1, ".2.pdf", sep="");
 
   try(ggsave(outfile1, plot=ml, width = 30, height = 30, units = "cm"))
   try(ggsave(outfile2, plot=ml1, width = 30, height = 30, units = "cm"))
 
 if(HEATMAP){
-  outfile2 = paste("results/hm_", nme,nme1, ".pdf", sep="");
+  outfile2 = paste("results/coverage_heatmap_", nme,nme1, ".pdf", sep="");
   
   pdf(outfile2)
   

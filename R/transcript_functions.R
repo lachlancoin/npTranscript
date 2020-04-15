@@ -578,6 +578,7 @@ subsetBr<-function(breakP, region){
                  frames = 0:2, tolerance = 5, seqlen=length(fasta[[1]]) ){
  # print(paste(start,frame))
  # frame = protL$phase
+  if(start>seqlen) stop("start cant be more than seqlen")
   t1_ind =  which(t1$Minimum>=start- tolerance)[1]
   #if this is NA then there no downstream gene
   left_rna = protL$rna
@@ -599,12 +600,18 @@ subsetBr<-function(breakP, region){
   rnas = list()
   for(kk in 1:length(frames)){
     frame1 = (frames[kk]+frame)
+
     rna = c(left_rna,rep("N",frames[kk]), fasta[[1]][start:seqlen])
     full_prot = "NA"
     prot_a = try(translate(rna))
      if(inherits(prot_a,"try-error")) {
 	print("translation error")
-	print(rna)
+	print("left")
+	print(left_rna)
+	print("right")
+	
+	print(fasta[[1]][start:seqlen])
+
      }else{
    	 end_p = grep("\\*",prot_a)[1]-1
          end = start + end_p*3-1 + 3 #   ##note plus 3 includes the stop
@@ -1081,8 +1088,8 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
   print(special)
  
   type_nme = type_nme[1:length(breakPs)]
-  outfile1 = paste(resdir,"/", resname, "_hm.pdf",sep="")
-  outfile2 = paste(resdir,"/", resname, "_st_end.pdf",sep="")
+  outfile1 = paste(resdir,"/", resname, "_breaks_heatmap.pdf",sep="")
+  outfile2 = paste(resdir,"/", resname, "_start_end_breaks.pdf",sep="")
   if(plotHM && pdf) pdf(outfile1)
   plotsl = list()
 
@@ -1420,7 +1427,8 @@ for(k in todo){
 	}
 }
 print(length(ggps))
-  ml<-marrangeGrob(ggps,nrow = 1, ncol = length(todo), as.table=F) 
+nrow = floor(length(todo)/2)
+  ml<-marrangeGrob(ggps,nrow = nrow, ncol = 2, as.table=F) 
 invisible(ml)
 }
 
