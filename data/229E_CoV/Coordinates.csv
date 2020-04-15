@@ -1,0 +1,10 @@
+Name,Type,Minimum,Maximum,Length,Direction,gene
+5'UTR,5'UTR,1,100,100,forward,leader
+ORF1ab,gene,293,20568,20275,forward,ORF1ab
+S,gene,20570,24091,3521,forward,S
+4a,gene,24091,24492,401,forward,ORF4a
+4b,gene,24482,24748,266,forward,ORF4b
+E,gene,24750,24983,233,forward,E
+M,gene,24995,25672,677,forward,M
+N,gene,25686,26855,1169,forward,N
+3'UTR,3'UTR,26856,27317,219,forward,3UTR
