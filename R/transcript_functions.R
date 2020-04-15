@@ -1446,10 +1446,28 @@ reads_leader
 }
 
 
-plotErrorViolin<-function(reads, inds1 = NULL, x = "reorder(downstream,genepos)", y = "errorRatio", fill = "source"){
+plotErrorViolin<-function(reads,reads_no_leader ,  inds1 = NULL,  inds2 = NULL, x = "downstream",  ord = "genepos", y = "errorRatio", fill = "source"){
 	subm = if(is.null(inds1)) reads else reads[inds1 ,]
+	if(!is.null(reads_no_leader)){
+		reads1 =if(is.null(inds2)) reads_no_leader else reads_no_leader[inds2 ,] 
+		levs = levels(as.factor(reads1$type_nme))
+		x_ind = which(names(reads1)==x)
+		ord_ind = which(names(reads1)==ord)
+		fill_ind = which(names(reads1)==fill)
+		reads1[,x_ind] = as.character(reads1[,x_ind])
+		for(i in 1:length(levs)){
+			indsi = which(reads1$type_nme==levs[i])
+			if(length(indsi)>0){
+				reads1[indsi,x_ind] = levs[i]
+				reads1[indsi,ord_ind] = i
+		        }
+		}
+		subm = rbind(subm, reads1)
+	}
 	err_inds = which(names(reads)==y)
-	ggp<-ggplot(subm, aes_string(x=x, y=y,  fill = fill))
+	
+	x1 = paste("reorder(", x, ",", ord,")", sep="") #downstream,genepos)"
+	ggp<-ggplot(subm, aes_string(x=x1, y=y,  fill = fill))
 	ggp<-ggp + geom_violin(draw_quantiles = c(0.25, 0.5, 0.75))+ggtitle("Error vs transcript")+xlab("ORF")
 	#ggp<-ggp+ylim(c(0, max(reads[,err_inds],na.rm=T)))
 	ggp<-ggp+theme(text = element_text(size=18), axis.text.x = element_text(size = rel(0.5), angle = 90))

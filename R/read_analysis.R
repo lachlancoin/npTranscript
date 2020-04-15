@@ -14,7 +14,7 @@ reads_leader = reads[ reads$start <= 100,]
 reads_no_leader = reads[ reads$start > 100,]
 
 outfile0 = paste(resdir, "/transcript_error.pdf", sep="");
-ggp = plotErrorViolin(reads, inds1 = reads$upstream=="leader" & !is.na(reads$downstream))
+ggp = plotErrorViolin(reads, reads_no_leader,  inds1 = reads$upstream=="leader" & !is.na(reads$downstream))
 try(ggsave(outfile0, plot=ggp, width = 35, height = 15, units = "cm"))
 
  outfile0 = paste(resdir, "/transcript_expression.pdf", sep="");
