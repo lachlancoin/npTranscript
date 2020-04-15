@@ -385,8 +385,10 @@ plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = F, title = ""
   if(!is.null(t$sideCols)){
     ggp<-ggp+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols)
     ggp<-ggp+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols)
+    if(!is.null(fimo)){
     ggp<-ggp+geom_vline(xintercept = fimo$start[fimo$strand=="+"], linetype="dotted", color="black")
-    ggp<-ggp+geom_vline(xintercept = fimo$start[fimo$strand=="-"], linetype="dotted", color="grey")
+    #ggp<-ggp+geom_vline(xintercept = fimo$start[fimo$strand=="-"], linetype="dotted", color="grey")
+    }
   }
   #abline(v = t$Maximum, col=3)
   if(!is.null(xlim)) ggp<-ggp+xlim(xlim)
@@ -931,7 +933,9 @@ getHMCol<-function(len = 250){
   rev(c(rev(colorRampPalette(brewer.pal(9,"Reds"),bias = 0.5)(len)), colorRampPalette(brewer.pal(9,"Blues"), bias = 0.5)(len)))
 }
 .findBreaks2<-function(pos,mins){
+
   res_a = c()
+  if(is.null(mins)) return(res_a)
   for(k in 1:dim(mins)[2]){
     min = mins[,k]
     step = pos[2] - pos[1]
@@ -976,9 +980,11 @@ plotBreakPIntrons<-function(breakP1, t, fimo, region =  c(1,5000,100,25000,30000
     rowSideCols = getSideCols(breakP$rows$pos, t)
     colSideCols = getSideCols(breakP$cols$pos, t)
 
-	
+    colsep = NULL
+    rowsep = NULL
     inds = 1:length(rowSideCols);
     
+     if(!is.null(fimo)){
      
       start_ind = grep("start",names(fimo))
       stop_ind = grep("stop",names(fimo))
@@ -986,6 +992,7 @@ plotBreakPIntrons<-function(breakP1, t, fimo, region =  c(1,5000,100,25000,30000
       rowsep = .findBreaks2(breakP$rows$pos, fimo[plus_strand,start_ind,drop=F])
 
       colsep = .findBreaks2(breakP$cols$pos,  fimo[plus_strand,start_ind,drop=F])
+     }
 	nonNA = apply(heatm, 1, function(x) length(which(!is.na(x))))
 	
       if(length(which(nonNA>1))>2){
@@ -1022,8 +1029,10 @@ plotBreakPIntrons<-function(breakP1, t, fimo, region =  c(1,5000,100,25000,30000
     ggp1<-ggplot(df,aes_string(x="pos",y=depth_str,fill =  "s_e" , colour = "s_e" ))+geom_point() + theme_bw()+ggtitle(title2)
     ggp1<-ggp1+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols)
     ggp1<-ggp1+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols)
-    ggp1<-ggp1+geom_vline(xintercept = fimo$start[fimo$strand=="+"], linetype="dotted", color="black")
-    ggp1<-ggp1+geom_vline(xintercept = fimo$stop[fimo$strand=="+"], linetype="dotted", color="grey")
+    if(!is.null(fimo)){
+    	ggp1<-ggp1+geom_vline(xintercept = fimo$start[fimo$strand=="+"], linetype="dotted", color="black")
+    	ggp1<-ggp1+geom_vline(xintercept = fimo$stop[fimo$strand=="+"], linetype="dotted", color="grey")
+    }
     if(logT) ggp1<-ggp1+scale_y_continuous(trans='log10') 
     ggp1<-ggp1 + scale_x_continuous(limits = startc[1:2])+theme(legend.position = "none")
   }
@@ -1034,8 +1043,10 @@ plotBreakPIntrons<-function(breakP1, t, fimo, region =  c(1,5000,100,25000,30000
     ggp2<-ggplot(df,aes_string(x="pos",y=depth_str,fill =  "s_e" , colour = "s_e" ))+geom_point() + theme_bw()+ggtitle(title2)
     ggp2<-ggp2+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols)
     ggp2<-ggp2+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols)
+ if(!is.null(fimo)){
     ggp2<-ggp2+geom_vline(xintercept = fimo$start[fimo$strand=="+"], linetype="dotted", color="black")
     ggp2<-ggp2+geom_vline(xintercept = fimo$stop[fimo$strand=="+"], linetype="dotted", color="grey")
+}
     if(logT) ggp2<-ggp2+scale_y_continuous(trans='log10') 
     ggp2<-ggp2 + scale_x_continuous(limits = endc[1:2])+theme(legend.position="none")
   }

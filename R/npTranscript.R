@@ -17,7 +17,13 @@ library(RColorBrewer)
 library(gplots)
 library(seqinr)
 library(rhdf5)
-#args = commandArgs(trailingOnly=TRUE)
+args = commandArgs(trailingOnly=TRUE)
+if(length(args)>0){
+data_src = args[1]  ## location of fasta file and Coordinates file
+}else{
+data_src = c("~/github/npTranscript/data/SARS-Cov2","~/github/npTranscript/data/229E_CoV" )
+}
+
 
 #print(args)
 #print(length(args))
@@ -64,7 +70,7 @@ if(length(infilesBr)!=length(type_nme)){
 print(type_nme)
 }
 src = c("~/github/npTranscript/R" )
-data_src =   c(".","..","~/github/npTranscript/data/SARS-Cov2" )
+#data_src =  # c(".","..","~/github/npTranscript/data/SARS-Cov2" )
 print("#PRELIMINARIES ....")      
 source(.findFile(src, "transcript_functions.R"))
 resdir = "results"
@@ -72,8 +78,14 @@ dir.create(resdir);
 t = readCoords(.findFile(data_src, "Coordinates.csv"))
 subt_inds = t$gene!="none" & t$gene!="leader"
 t1 = t[subt_inds,]
-dimnames(t1)[[1]] = t[subt_inds,7]
-fimo = read.table(.findFile(data_src,"FIMO.csv"), sep=",", head=T)
+dimnames(t1)[[1]] = t[subt_inds,which(names(t)=='gene')]
+fimo_file = .findFile(data_src,"FIMO.csv")
+
+if(!is.null(fimo_file)){
+	fimo = read.table(fimo_file, sep=",", head=T)
+}else{
+	fimo = NULL
+}
 fastafile = .findFile(data_src,".fasta.gz$", exact=F)
 
 if(length(fastafile)!=1) stop("should just have one fasta file in parent directory")
@@ -96,7 +108,7 @@ leader_ind = c(leader_ind, leader_ind + nchar(leader)-1)
 
 transcripts_all = .readTranscripts(infilesT, seqlen, nmes)
 names(transcripts_all)
-if(is.null(type_nme)){
+if(!is.null(attr(transcripts_all[[1]], "info"))){
 type_nme = attr(transcripts_all[[1]], "info")
 }
 count_df = grep('count[0-9]', names(transcripts_all[[1]]))
@@ -113,33 +125,38 @@ if(dim(transcripts_all[[1]])[1]>0){
   minpos = 1
 	total_reads = c(1,1)
 }
-if(length(type_nme)>1){
-ml1 =.plotGeneExpr(transcripts_all)
+if(length(type_nme)==1){
+	tocompare = list(c(1,1))
+}else if(length(type_nme)==4){
+	tocompare = list(c(1,3), c(1,2),c(3,4))
+}else{
+	tocompare = list();
+	for(i in 2:length(type_nme)){
+		tompare[[i]] = c(1,i)
+	}
 }
-
-
-
+ml1 = lapply(tocompare, .plotGeneExpr, transcripts_all, todo = 1:4)
+names(ml1) = unlist(lapply(tocompare, function(x)  paste(type_nme[x], collapse=".")))
+for(i in 1:length(ml1)){
+	outfile1 = paste(resdir, "/gene_expr.", i,".pdf", sep="");
+	try(ggsave(outfile1, plot=ml1[[i]], width = 30, height = 30, units = "cm"))
+}
 print("###READ LEVEL ANALYSIS")
 
-if(length(infilesReads)==1){
+if(length(infilesReads)>0){
 	source(.findFile(src, "read_analysis.R"))
 }else{
 	print("no reads file")
 }
 #plotHist=T
 #sourcePath(src, "read_java_outputs.R")
-
-
-
 print('##COVERAGE ANALYSIS')
 if(length(infilesT)==1 && length(infiles)==1){
-
-
 	HEATMAP = TRUE
 	COVERAGE = TRUE
 	source(.findFile(src, "coverage_analysis.R"))
 }else{
-	print("no break point files")
+	print("no transcript files")
 }
 
 print('##BREAKPOINT ANALYSIS')

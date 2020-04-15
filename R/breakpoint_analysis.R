@@ -1,6 +1,3 @@
-
-
-
 ##BREAKPOINT ANALYSIS
 breakPs = list()
 for(i in 1:length(infilesBr))  breakPs[[i]] = readBreakPoints(infilesBr[i], i, addOne = FALSE) 
@@ -22,8 +19,9 @@ endcs_b_1 = cbind(endcs_b, rep(1, dim(endcs_b)[1]))
 endcs_b_1 = data.frame(t(cbind(t(matrix(rep(c(1,10000,1),dim(endcs_b)[1]), ncol=dim(endcs_b)[1])), endcs_b_1)))
 
 #UTR = c(1,10000,1,29675-300, 29893,1)
-endcs_2$ORF10[5] = length(fasta[[1]])
-endcs_1$ORF10[5] = length(fasta[[1]])
+
+endcs_2[5,dim(endcs_2)[2]] = length(fasta[[1]])
+endcs_1[5,dim(endcs_1)[2]] = length(fasta[[1]])
 
 #endcs_2[[length(endcs_2)+1]] = UTR
 #names(endcs_2)[length(endcs_2)] = "5UTR"
