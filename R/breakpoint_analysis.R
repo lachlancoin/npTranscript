@@ -3,7 +3,7 @@ breakPs = list()
 for(i in 1:length(infilesBr))  breakPs[[i]] = readBreakPoints(infilesBr[i], i, addOne = FALSE) 
 names(breakPs) = type_nme[1:length(breakPs)]
 
-genes = grep("UTR", grep("none",t$gene[-2], inv=T, v=T), inv=T, v=T)
+genes = grep("leader",grep("UTR", grep("none",t$gene[-2], inv=T, v=T), inv=T, v=T),v=T, inv=T)
 
 endcs =getGeneBP(t, genes,left = 300, right=10)
 endcs =getGeneBP(t, genes,left = 300, right=10)
@@ -12,7 +12,7 @@ endcs_n = dim(endcs)[1]
 endcs_1 = cbind(endcs, rep(1, endcs_n))
 endcs_1 = data.frame(t(cbind(t(matrix(rep(c(1,100,1),endcs_n), ncol=endcs_n)), endcs_1)))
 endcs_2 = cbind(endcs, rep(1, endcs_n))
-endcs_2 = data.frame(t(cbind(t(matrix(rep(c(1,10000,1),endcs_n), ncol=endcs_n)), endcs_2)))
+endcs_2 = data.frame(t(cbind(t(matrix(rep(c(1,10000,10),endcs_n), ncol=endcs_n)), endcs_2)))
 
 endcs_b = getGeneBP(t, genes,left = 1000, right=10, left_buffer = 10)
 endcs_b_1 = cbind(endcs_b, rep(1, dim(endcs_b)[1]))
@@ -42,9 +42,9 @@ if(RUN_ALL){
 	print("special")
 	 plotAllHM(special, "special" , resdir,  breakPs, t, fimo, total_reads, type_nme = type_nme, log=T)	
 	print("endcs_1")
-	 plotAllHM(endcs_1[-1], "endcs_1" , resdir,  breakPs, t, fimo, total_reads, type_nme = type_nme,  log=T)	
+	 plotAllHM(endcs_1, "endcs_1" , resdir,  breakPs, t, fimo, total_reads, type_nme = type_nme,  log=T)	
 print("endcs_2")
-	plotAllHM(endcs_2[-(1)], "endcs_2" , resdir,  breakPs, t, fimo, total_reads, type_nme = type_nme, plotHM = F,  log=T)	
+	plotAllHM(endcs_2, "endcs_2" , resdir,  breakPs, t, fimo, total_reads, type_nme = type_nme, plotHM = F,  log=T)	
 	
 	
 
