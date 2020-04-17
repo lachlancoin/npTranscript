@@ -37,7 +37,7 @@ resdir="results_${dat}"
 opts="--bin 10 --breakThresh 1000 --cluster_by_annotation true"
 #opts="${opts} --maxReads 10000
 bash ${npTranscript}/scripts/run.sh --bamFile=${bamfiles1}   --reference=${reference} --annotation ${coord_file} --resdir ${resdir} ${opts} ${opts1}
-bash ${npTranscript}/scripts/run_extract_cluster.sh --inDir ${resdir} 
+
 cp corona2_analysis.stderr ${resdir}
 cp corona2_analysis.stdout ${resdir}
 cd ${resdir}
