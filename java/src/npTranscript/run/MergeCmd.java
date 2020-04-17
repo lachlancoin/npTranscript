@@ -11,6 +11,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -51,7 +52,7 @@ public class MergeCmd extends CommandLine {
 		String tf_name = "0transcripts.txt.gz";
 		String pattern = cmdLine.getStringVal("ignore");
 		File inDir_ = new File(cmdLine.getStringVal("inDir"));
-		File[] inDir = inDir_.listFiles(new FileFilter(){
+		List<File> inDir = Arrays.asList(inDir_.listFiles(new FileFilter(){
 
 			@Override
 			public boolean accept(File pathname) {
@@ -62,7 +63,8 @@ public class MergeCmd extends CommandLine {
 						&& ( pattern==null || !pathname.getName().contains(pattern)));
 			}
 			
-		});
+		}));
+		Collections.sort(inDir);
 		/*File[] transcriptF = new File[inDir.length];
 		for(int i=0; i<inDir.length; i++){
 			transcriptF[i] = new File(inDir[i], tf_name);
@@ -71,7 +73,7 @@ public class MergeCmd extends CommandLine {
 		
 		try{
 			MergeCmd ec = new MergeCmd();
-			ec.run(inDir, tf_name);
+			ec.run(inDir.toArray(new File[0]), tf_name);
 		}catch(Exception exc){
 			exc.printStackTrace();
 		}

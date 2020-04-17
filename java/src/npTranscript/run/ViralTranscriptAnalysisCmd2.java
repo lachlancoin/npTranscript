@@ -41,9 +41,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Date;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import htsjdk.samtools.SAMRecord;
@@ -99,9 +98,9 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		addStdHelp();
 	}
 
-	public static void main(String[] args) throws IOException, InterruptedException {
+	public static void main(String[] args1) throws IOException, InterruptedException {
 		CommandLine cmdLine = new ViralTranscriptAnalysisCmd2();
-		args = cmdLine.stdParseLine(args);
+		String[] args = cmdLine.stdParseLine(args1);
 
 		String reference = cmdLine.getStringVal("reference");
 		int qual = cmdLine.getIntVal("qual");
@@ -113,6 +112,25 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		String readList = cmdLine.getStringVal("readList");
 	//	String positionsFile = cmdLine.getStringVal("breaks");
 		String resdir = cmdLine.getStringVal("resdir");
+		
+		File resDir =  new File(resdir);
+		if(!resDir.exists()) resDir.mkdir();
+		File params_file = new File(resDir, "params.txt");
+		PrintWriter pw = new PrintWriter(new FileWriter(params_file));
+		Date d = new Date();
+		
+		 // System.getProperties().list(System.out);
+		String mem = "Xmx="+(int)Math.ceil((double)Runtime.getRuntime().maxMemory()/(1e6))+"m";
+		pw.println("User directory\n"+System.getProperty("user.dir"));
+		pw.println("Date\n"+d.toString());
+		pw.println("OS="+System.getProperty("os.name")+"\nJVM="+System.getProperty("java.version"));
+		pw.println(mem);
+		pw.println("Run commands");
+		for(int i=0; i<args1.length; i+=1){
+			pw.print(args1[i]+" ");
+		}
+		pw.close();
+		
 		boolean cluster_by_annotation  = cmdLine.getBooleanVal("cluster_by_annotation");
 		//if(coexp && bin <10) {
 		//	throw new Error(" this not good idea");
@@ -121,8 +139,27 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		int startThresh = cmdLine.getIntVal("startThresh");
 		int endThresh = cmdLine.getIntVal("endThresh");
 		int maxReads = cmdLine.getIntVal("maxReads");
+		
+		
 		errorAnalysis(bamFile, reference, annotFile,readList, resdir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads, cluster_by_annotation );
 
+		//now extract clusters
+		
+		File in = new File(resdir);
+		File transcriptF = new File(in, "0transcripts.txt.gz");
+		File outdir = new File(in, "clusters");
+		outdir.mkdir();
+		File readsF = new File(in, "0readToCluster.txt.gz");
+	
+		
+		try{
+			ExtractClusterCmd ec = new ExtractClusterCmd();
+			ec.run(transcriptF, readsF, outdir);
+		}catch(Exception exc){
+			exc.printStackTrace();
+		}
+		
+		
 		// paramEst(bamFile, reference, qual);
 	}
 
