@@ -116,7 +116,8 @@ count_df = grep('count[0-9]', names(transcripts_all[[1]]))
 transcript_counts = lapply(transcripts_all, function(transcripts)  apply(transcripts[,count_df, drop=F], 2,sum))
 total_reads  = apply(data.frame(transcript_counts),1,sum)
 names(total_reads) = type_nme
-max_h = unlist(lapply(transcripts_all, function(transcripts)  max(transcripts[,grep('count[0-9]', names(transcripts)), drop=F])))
+#max_h = unlist(lapply(transcripts_all, function(transcripts)  max(transcripts[,grep('count[0-9]', names(transcripts)), drop=F])))
+#commented line above due to error (see github issue #3). max_h is created but not referred to.
 if(dim(transcripts_all[[1]])[1]>0){
   maxpos = max(transcripts_all[[1]]$end)
   minpos = min(transcripts_all[[1]]$start)
