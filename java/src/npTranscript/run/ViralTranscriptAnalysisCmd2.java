@@ -147,14 +147,20 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		
 		File in = new File(resdir);
 		File transcriptF = new File(in, "0transcripts.txt.gz");
-		File outdir = new File(in, "clusters");
-		outdir.mkdir();
 		File readsF = new File(in, "0readToCluster.txt.gz");
-	
-		
 		try{
 			ExtractClusterCmd ec = new ExtractClusterCmd();
-			ec.run(transcriptF, readsF, outdir);
+			ec.readTranscripts(transcriptF);	
+			String[] types = ec.transcripts.getColElements("type_nme");
+			String sort = "countTotal";
+			String[] filters1 ="countTotal;10;true".split(":"); 
+			String[] grpName = "upstream:downstream".split(":");
+			for(int i=0; i<types.length; i++){
+				String[] filters = new String[] {"type_nme",types[i]};
+				File outdir = new File(in, "clusters_"+types[i]);
+				ec.run(readsF, outdir,	sort, filters, 
+					filters1,grpName, false);
+			}
 		}catch(Exception exc){
 			exc.printStackTrace();
 		}

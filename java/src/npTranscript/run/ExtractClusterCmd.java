@@ -24,7 +24,13 @@ public class ExtractClusterCmd extends CommandLine {
 
 		addString("inDir", null, "Name of inputDir", true);
 		addStdHelp();
+		
 	}
+	public void readTranscripts(File transcriptsF) throws IOException{
+		transcripts = new Table(transcriptsF,"\t");
+	}
+	
+	
 	
 	
 	
@@ -36,14 +42,30 @@ public class ExtractClusterCmd extends CommandLine {
 		String inDir = cmdLine.getStringVal("inDir");
 		File in = new File(inDir);
 		File transcriptF = new File(in, "0transcripts.txt.gz");
-		File outdir = new File(in, "clusters");
-		outdir.mkdir();
+		
 		File readsF = new File(in, "0readToCluster.txt.gz");
 	
 		
 		try{
 			ExtractClusterCmd ec = new ExtractClusterCmd();
-			ec.run(transcriptF, readsF, outdir);
+			ec.readTranscripts(transcriptF);	
+			String[] types = ec.transcripts.getColElements("type_nme");
+			String sort = "countTotal";
+		//	String[] filters = "type_nme;5_3".split(":");
+			String[] filters1 ="countTotal;10;true".split(":"); 
+			String[] grpName = "upstream:downstream".split(":");
+			for(int i=0; i<types.length; i++){
+				String[] filters = new String[] {"type_nme",types[i]};
+				File outdir = new File(in, "clusters_"+types[i]);
+				ec.run(readsF, outdir,	sort, filters, 
+					filters1,grpName, false);
+			}
+			
+			
+			
+			
+			//ec.run(transcriptF, readsF, outdir,	"countTotal", "type_nme;5_3".split(":"), 
+				//	"countTotal;10;true".split(":"),"upstream:downstream".split(":"));
 		}catch(Exception exc){
 			exc.printStackTrace();
 		}
@@ -75,27 +97,37 @@ public class ExtractClusterCmd extends CommandLine {
 	File outdir;
 	
 	
-	
-	public void run(File transcriptsF , File readsF,  File outdir) throws IOException{
-		reads = new Table(readsF,"\t");
-		transcripts = new Table(transcriptsF,"\t");
+	//
+	public void run(  File readsF,  File outdir,
+			String sort, String[] filters, String[] limits,String[] groupIds, boolean print
+			) throws IOException{
+		if(!outdir.exists()) outdir.mkdir();
+		reads = filters==null ? new Table(readsF,"\t") : new Table(readsF,"\t", filters);
+		Table transcripts1 = new Table(this.transcripts);
 	    this.outdir = outdir;
-		transcripts.sort("countTotal", true);
-		transcripts.filter("type_nme",  "5_3");
-		transcripts.limit("countTotal", 10, true);
-		String[] ids = transcripts.getCol("ID");
+		if(sort!=null) transcripts1.sort(sort, true);
+		
+		if(limits!=null){
+			for(int i=0; i<limits.length; i++){
+				String[] filt = limits[i].split(";");
+				transcripts1.limit(filt[0], Integer.parseInt(filt[1]), Boolean.parseBoolean(filt[2]));
+			}
+		}
+		String[] ids = transcripts1.getCol("ID");
 		Map<String, String> m= new HashMap<String, String>();
 		for(int i=0; i<ids.length; i++){
 			List<String> all_ids = Arrays.asList(ids[i].split(";"));
-			Table t2 = this.reads.extract("clusterId", "upstream", "downstream", all_ids);
+			Table t2 = this.reads.extract("clusterId",groupIds, all_ids);
+			if(t2.data.size()>0){
 			t2.print(outdir);
 			for(Iterator<String> it = all_ids.iterator(); it.hasNext();){
 				m.put(it.next(), t2.name);
 			}
-			t2.print(outdir);
+			}
+//			t2.print(outdir);
 		}
-		transcripts.replaceAll("ID", m);
-		transcripts.print(outdir);
+		transcripts1.replaceAll("ID", m);
+		if(print) transcripts1.print(outdir);
 		
 	}
 	

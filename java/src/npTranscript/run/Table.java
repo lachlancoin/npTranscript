@@ -11,14 +11,15 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 import npTranscript.run.ExtractClusterCmd.StringComp;
-import npTranscript.run.MergeCmd.MergeInds;
 
 public class Table{
 	
@@ -35,6 +36,14 @@ public class Table{
 		this.header = header;
 		this.name  = name; 
 	}
+	//this reuses the elements in data
+	public Table(Table in ){
+		this.name = new String(in.name);
+		header =in.header;
+		for(int i=0; i<in.data.size(); i++){
+			this.data.add(in.data.get(i));
+		}
+	}
 	public Table(File in, String split ) throws IOException{
 		this.name = in.getName();
 		BufferedReader br = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(in))));
@@ -48,6 +57,26 @@ public class Table{
 			 data.add(st.split(split));
 		 }
 	}
+	public Table(File in, String split , String[] filter) throws IOException{
+		this.name = in.getName();
+		BufferedReader br = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(in))));
+		String st = "";
+		 while((st = br.readLine()).startsWith("#")){
+			 
+		 }
+		 header = Arrays.asList(st.split(split));
+		 int col = header.indexOf(filter[0]);
+			
+			
+		 while((st = br.readLine())!=null){
+			 String[] str = st.split(split);
+			 if(str[col].equals(filter[1]))data.add(str);
+		 }
+	}
+	
+		//transcripts1.filter(filters[0], filters[1]);
+	
+
 	
 	
 	//public void merge(List<String>)
@@ -102,36 +131,56 @@ public class Table{
 		return out;
 	}
 	
-	
-	
-	public Table  extract(String nme, String lab1, String lab2, List<String> vals ){
-		String id = ExtractClusterCmd.cntr+ "";
-		
-		
+	public String[] getColElements(String nme){
 		int col = header.indexOf(nme);
-		int col1 = header.indexOf(lab1);
-		int col2 = header.indexOf(lab2);
+		Set<String>s = new HashSet<String>();
+		for(int i=0; i<data.size(); i++){
+		s.add(data.get(i)[col]);
+		}
+		return s.toArray(new String[0]);
+	}
+	
+	
+	public Table  extract(String mainID, String[] grp_ids, List<String> vals ){
+		//String nme, String lab1, String lab2
+		String id = ExtractClusterCmd.cntr+ "";
+		int main_ind = header.indexOf(mainID);
+		int[] col = new int[grp_ids.length];
+		for(int i=0; i<col.length; i++){
+			col[i] = header.indexOf(grp_ids[i]);
+		}
+		//int col = header.indexOf(nme);
+		//int col1 = header.indexOf(lab1);
+		//int col2 = header.indexOf(lab2);
 		//System.err.println(header);
 		//System.err.println(nme+" "+col);
 		ExtractClusterCmd.cntr++;
 		Table t1 = new Table(this.header, id);
-		String lab1_="" ;
-		String lab2_="";
+		//String lab1_="" ;
+		//String lab2_="";
+		String label = null;
 		for(int i=0; i<this.data.size();  i++){
 			String[] row = data.get(i);
-			String v = (row[col]);
+			String v = (row[main_ind]);
 			//System.err.println(v);
-			if(vals.indexOf(v)>=0){
+			if(vals.indexOf(v)>=0 ){
 				//if(i==0){
-					lab1_ = row[col1];
-					lab2_ = row[col2];
+				if(label==null){
+				StringBuffer sb = new StringBuffer();
+				for(int ij=0; ij<col.length; ij++){
+					sb.append(row[col[ij]]+"_");
+				}
+				label = sb.toString();
+				}
+					//lab1_ = row[col1];
+					//lab2_ = row[col2];
 				//	}
 				t1.data.add(row);
 			}
 			
 		}
-		if(t1.data.size()==0) throw new RuntimeException("could not find anything");
-		t1.name = lab1_+"_"+lab2_+"_"+t1.data.size();
+		//if(t1.data.size()==0) throw new RuntimeException("could not find anything");
+		t1.name = label+t1.data.size();
 		return t1;
 	}
 	public void print(File outdir) throws IOException{
@@ -142,7 +191,9 @@ public class Table{
 	
 		PrintWriter transcripts_pw  = new PrintWriter(
 				new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(new File(outdir, name1)))));
-		if(info!=null) transcripts_pw.print("#");transcripts_pw.println(info);
+		if(info!=null){
+			transcripts_pw.print("#");transcripts_pw.println(info);
+		}
 		transcripts_pw.println(getStr(this.header.toArray(new String[0]), ExtractClusterCmd.split));
 		for(int i=0; i<this.data.size(); i++){
 			transcripts_pw.println(getStr(data.get(i), ExtractClusterCmd.split));
