@@ -76,9 +76,7 @@ public boolean equals(Object o){
 	
 	
 	public void adjustBreaks(Annotation annot) {
-		//if(size()!=4) {
-		//	return;
-		//}
+		if(annot==null) return ;
 		int st = get(0);
 		if(get(0)<TranscriptUtils.startThresh) set(0,0);
 		int end = get(size()-1);
@@ -93,7 +91,7 @@ public boolean equals(Object o){
 				set(i+1,breaks_out[1]);
 			}
 		}
-		if(annot.seqlen-get(size()-1)<TranscriptUtils.endThresh) set(size()-1,annot.seqlen);
+		if(annot.seqlen()-get(size()-1)<TranscriptUtils.endThresh) set(size()-1,annot.seqlen);
 		this.roundBreaks();
 		
 	}

@@ -44,7 +44,7 @@ public class ExtractClusterCmd extends CommandLine {
 		File transcriptF = new File(in, "0transcripts.txt.gz");
 		
 		File readsF = new File(in, "0readToCluster.txt.gz");
-	
+		String chrom = "0";
 		
 		try{
 			ExtractClusterCmd ec = new ExtractClusterCmd();
@@ -56,7 +56,7 @@ public class ExtractClusterCmd extends CommandLine {
 			String[] grpName = "upstream:downstream".split(":");
 			for(int i=0; i<types.length; i++){
 				String[] filters = new String[] {"type_nme",types[i]};
-				File outdir = new File(in, "clusters_"+types[i]);
+				CompressDir outdir = new CompressDir(in, "clusters_"+types[i]+".zip");
 				ec.run(readsF, outdir,	sort, filters, 
 					filters1,grpName, false);
 			}
@@ -94,14 +94,14 @@ public class ExtractClusterCmd extends CommandLine {
 	}
 	Table reads;
 	Table transcripts;
-	File outdir;
+	CompressDir outdir;
 	
 	
 	//
-	public void run(  File readsF,  File outdir,
+	public void run(  File readsF,  CompressDir outdir,
 			String sort, String[] filters, String[] limits,String[] groupIds, boolean print
 			) throws IOException{
-		if(!outdir.exists()) outdir.mkdir();
+		//if(!outdir.exists()) outdir.mkdir();
 		reads = filters==null ? new Table(readsF,"\t") : new Table(readsF,"\t", filters);
 		Table transcripts1 = new Table(this.transcripts);
 	    this.outdir = outdir;
@@ -128,6 +128,39 @@ public class ExtractClusterCmd extends CommandLine {
 		}
 		transcripts1.replaceAll("ID", m);
 		if(print) transcripts1.print(outdir);
+		
+	}
+	public static void cluster(String resdir,  File transcriptF, File readsF, 
+			boolean filterByType) {
+		File in = new File(resdir);
+		//File transcriptF;// = profiles.get(i).transcripts_file;
+		//File readsF = ;
+		try{
+			ExtractClusterCmd ec = new ExtractClusterCmd();
+			ec.readTranscripts(transcriptF);	
+			String[] types = ec.transcripts.getColElements("type_nme");
+			String sort = "countTotal";
+			String[] filters1 ="countTotal;1;true".split(":"); 
+			String[] grpName = "chrom:upstream:downstream".split(":");
+			if(filterByType){
+			for(int ij=0; ij<types.length; ij++){
+				String[] filters = new String[] {"type_nme",types[ij]};
+				File outdir = new File(in, "clusters_"+types[ij]);
+				CompressDir comp = new CompressDir(in, "clusters_"+types[ij]+".zip");
+				ec.run(readsF, comp,	sort, filters, 
+					filters1,grpName, false);
+				comp.close();
+				//CompressDir.compress(outdir);
+			}
+			}else{
+			//	File outdir = new File(in, "clusters");
+				CompressDir comp = new CompressDir(in, "clusters.zip");
+				ec.run(readsF, comp,	sort, null, filters1,grpName, false);
+				comp.close();
+			}
+		}catch(Exception exc){
+			exc.printStackTrace();
+		}
 		
 	}
 	

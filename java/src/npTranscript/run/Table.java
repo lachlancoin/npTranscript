@@ -135,7 +135,7 @@ public class Table{
 		int col = header.indexOf(nme);
 		Set<String>s = new HashSet<String>();
 		for(int i=0; i<data.size(); i++){
-		s.add(data.get(i)[col]);
+			s.add(data.get(i)[col]);
 		}
 		return s.toArray(new String[0]);
 	}
@@ -148,16 +148,10 @@ public class Table{
 		int[] col = new int[grp_ids.length];
 		for(int i=0; i<col.length; i++){
 			col[i] = header.indexOf(grp_ids[i]);
+			if(col[i]<0) throw new RuntimeException("did not find "+grp_ids[i]);
 		}
-		//int col = header.indexOf(nme);
-		//int col1 = header.indexOf(lab1);
-		//int col2 = header.indexOf(lab2);
-		//System.err.println(header);
-		//System.err.println(nme+" "+col);
 		ExtractClusterCmd.cntr++;
 		Table t1 = new Table(this.header, id);
-		//String lab1_="" ;
-		//String lab2_="";
 		String label = null;
 		for(int i=0; i<this.data.size();  i++){
 			String[] row = data.get(i);
@@ -168,7 +162,10 @@ public class Table{
 				if(label==null){
 				StringBuffer sb = new StringBuffer();
 				for(int ij=0; ij<col.length; ij++){
-					sb.append(row[col[ij]]+"_");
+					if(col[ij]<row.length)sb.append(row[col[ij]]+"_");
+					else{
+						System.err.println("warning "+ col[ij]+" is longer than row length "+Arrays.asList(row));
+					}
 				}
 				label = sb.toString();
 				}
@@ -183,14 +180,33 @@ public class Table{
 		t1.name = label+t1.data.size();
 		return t1;
 	}
-	public void print(File outdir) throws IOException{
+	public void print(CompressDir outdir) throws IOException{
 		print(outdir, null);
 	}
+	public void print(CompressDir outdir, String info) throws IOException{
+		String name1 = this.name;
+		OutputStreamWriter transcripts_pw = outdir.getWriter(name1, true);
+		if(info!=null){
+			transcripts_pw.write("#");transcripts_pw.write(info);transcripts_pw.write("\n");
+		}
+		transcripts_pw.write(getStr(this.header.toArray(new String[0]), ExtractClusterCmd.split));
+		transcripts_pw.write("\n");
+		for(int i=0; i<this.data.size(); i++){
+			transcripts_pw.write(getStr(data.get(i), ExtractClusterCmd.split));
+			transcripts_pw.write("\n");
+		}
+		outdir.closeWriter(transcripts_pw);
+		
+	}
 	public void print(File outdir, String info) throws IOException{
-		String name1 = this.name.endsWith(".gz") ? this.name :  this.name+".gz";
-	
+		if(!outdir.exists()) outdir.mkdir();
+		String name1 = 	this.name.endsWith(".gz") ? this.name :  this.name+".gz";
+		
 		PrintWriter transcripts_pw  = new PrintWriter(
-				new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(new File(outdir, name1)))));
+				new OutputStreamWriter(new GZIPOutputStream(
+					new FileOutputStream(new File(outdir, name1)
+								))));
+			
 		if(info!=null){
 			transcripts_pw.print("#");transcripts_pw.println(info);
 		}
