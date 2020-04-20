@@ -35,10 +35,13 @@ public class MergeCmd extends CommandLine {
 		setDesc(annotation.scriptDesc());
 
 		addString("inDir","./", "Name of inputDir", false);
+		addString("tocombine", "", "Directories to merge", false);
+		//"\t5_3\t"
+		addString("filter", null, "type to filter, e.g. \t5_3\t");
 		addString("ignore",null, "pattern to ignore", false);
+		addString("resdir","./merged", "resultsdirectory", false);
 		addStdHelp();
-		this.outdir= new File("merged");
-		outdir.mkdir();
+		
 	}
 	
 	//ID	start	end	type_nme	breaks	hash	startBreak	endBreak	leftGene	rightGene	totLen	countTotal	count0count1	depth0	depth1	errors0	errors1	error_ratio0	error_ratio1
@@ -47,17 +50,27 @@ public class MergeCmd extends CommandLine {
 	
 	
 	public static void main(String[] args) throws IOException, InterruptedException {
-		CommandLine cmdLine = new MergeCmd();
+		MergeCmd cmdLine = new MergeCmd();
 		args = cmdLine.stdParseLine(args);
 		String tf_name = "0transcripts.txt.gz";
 		String pattern = cmdLine.getStringVal("ignore");
+		String filter = cmdLine.getStringVal("filter");
+		String resdir = cmdLine.getStringVal("resdir");
+		//args.cmdLine.setOutDir(resdir);
+		File outdir = new File(resdir);
+		if(!outdir.exists()) outdir.mkdir();
+		
+		final List<String> tocombine = Arrays.asList(cmdLine.getStringVal("tocombine").split(":"));
+		
 		File inDir_ = new File(cmdLine.getStringVal("inDir"));
 		List<File> inDir = Arrays.asList(inDir_.listFiles(new FileFilter(){
 
 			@Override
 			public boolean accept(File pathname) {
-				
-				return pathname.isDirectory() 
+				if(tocombine.size()>1){
+					return pathname.isDirectory() && tocombine.contains(pathname.getName());
+				}
+				else return pathname.isDirectory() 
 						&& (new File(pathname, tf_name).exists() 
 						&& !pathname.getName().contains("merged")
 						&& ( pattern==null || !pathname.getName().contains(pattern)));
@@ -73,7 +86,9 @@ public class MergeCmd extends CommandLine {
 		
 		try{
 			MergeCmd ec = new MergeCmd();
-			ec.run(inDir.toArray(new File[0]), tf_name);
+			ec.outdir = outdir;
+			
+			ec.run(inDir.toArray(new File[0]), tf_name, filter);
 		}catch(Exception exc){
 			exc.printStackTrace();
 		}
@@ -101,7 +116,7 @@ public class MergeCmd extends CommandLine {
 	}
 	Table reads;
 	Table[] transcripts;
-	final File outdir ;
+	 File outdir ;
 	
 	Map<String, String[][]> map = new HashMap<String, String[][]>();
 	
@@ -203,7 +218,7 @@ public class MergeCmd extends CommandLine {
 		
 		boolean same = val.equals("0");
 		while((str = br.readLine())!=null){
-			if(str.indexOf(pattern)>=0){
+			if(pattern == null || str.indexOf(pattern)>=0){
 				if(same) out.println(str);
 				else{
 					String[] st_ = str.split("\t");
@@ -219,8 +234,9 @@ public class MergeCmd extends CommandLine {
 		br.close();
 	}
 	
-	public void run(File[] inDir , String tf_name) throws IOException{
+	public void run(File[] inDir , String tf_name, String filter) throws IOException{
 		String[] ids = new String[] {"type_nme", "leftGene", "rightGene"};
+		System.err.println(Arrays.asList(inDir));
 		List<String> header = null;
 		int num_sources = inDir.length;
 		StringBuffer info = new StringBuffer(); 
@@ -230,7 +246,8 @@ public class MergeCmd extends CommandLine {
 		for(int i=0; i<inDir.length; i++){	
 			//File  targetFile = new File(outdir, "0readToCluster."+i+".txt.gz");
 			File readsFile = new File(inDir[i], "0readToCluster.txt.gz");
-			print(readsFile, reads_pw,"source", (i+""), i==0, "\t5_3\t");
+			System.err.println(readsFile.getAbsolutePath());
+			print(readsFile, reads_pw,"source", (i+""), i==0, filter);
 		//mkSymLink(readsFile, targetFile);
 			info.append(inDir[i].getName());
 			 info.append("\t");
