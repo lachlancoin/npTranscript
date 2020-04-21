@@ -21,7 +21,7 @@ if loc == -1:
 
 #exact matching for short TRS-B. write directly to file
 with open('TRS_short.coords.csv', 'w') as f:
-    f_write = csv.writer(f, delimiter=',', quoting=csv.QUOTE_NONE)
+    f_write = csv.writer(f, delimiter=',', quoting=csv.QUOTE_NONE, lineterminator = '\n')
     f_write.writerow(['Start', 'End', 'Sequence'])
     for t in re.finditer(args.TRS_short, str(genome.seq)):
         f_write.writerow([t.span(0)[0]+1,t.span(0)[1], args.TRS_short])
