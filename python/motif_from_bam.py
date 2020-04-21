@@ -64,7 +64,6 @@ for a in sam.fetch(contig = args.chromosome, start = args.coords[0], stop = args
 				motif_segment+='-'
 	if args.jaspar:
 		if len(motif_segment) == motif_length:
-			print(motif_segment)
 			for i, sym in enumerate(motif_segment):
 				if sym == 'A':
 					counts[0,i] +=1
