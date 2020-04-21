@@ -42,8 +42,10 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import htsjdk.samtools.SAMRecord;
@@ -53,13 +55,16 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import japsa.seq.Alphabet;
+import japsa.seq.JapsaAnnotation;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
 import japsa.util.CommandLine;
 import japsa.util.deploy.Deployable;
 import npTranscript.cluster.Annotation;
 import npTranscript.cluster.CigarHash;
+import npTranscript.cluster.GFFAnnotation;
 import npTranscript.cluster.IdentityProfile1;
+import npTranscript.cluster.IdentityProfile1.Outputs;
 import npTranscript.cluster.TranscriptUtils;
 
 /**
@@ -71,6 +76,7 @@ import npTranscript.cluster.TranscriptUtils;
 public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 //	private static final Logger LOG = LoggerFactory.getLogger(HTSErrorAnalysisCmd.class);
 
+	
 	public ViralTranscriptAnalysisCmd2() {
 		super();
 		Deployable annotation = getClass().getAnnotation(Deployable.class);
@@ -80,8 +86,22 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		addString("bamFile", null, "Name of bam file", true);
 		//addString("breaks", null, "Position File, for looking for specific breaks");
 		addString("reference", null, "Name of reference genome", true);
-		addString("annotation", null, "ORF annotation file", true);
+		addString("annotation", null, "ORF annotation file or GFF file", true);
 		addString("readList", null, "List of reads", false);
+	//	addString("genesToInclude", null, "Names of genes to include in analysis, only used if annotation is GFF file. "
+	//			+ " Example: --genesToInclude Name=ACE2:Name=TMPRSS2", false);
+		String all_types = "gene:ncRNA_gene:pseudogene";			
+			
+			
+				
+				
+			
+				
+				
+
+		addString("type", all_types, "Type of annotation (only included if annotation is GFF file", false);
+
+//		String genesToInclude = "Name=ACE2:Name=TMPRSS2";
 		addString("resdir", "results"+System.currentTimeMillis(), "results directory");
 
 		addInt("maxReads", Integer.MAX_VALUE, "ORF annotation file");
@@ -99,39 +119,85 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		addStdHelp();
 	}
 
-	public static void main(String[] args) throws IOException, InterruptedException {
-		CommandLine cmdLine = new ViralTranscriptAnalysisCmd2();
-		args = cmdLine.stdParseLine(args);
-
+	
+ static void printParams(File resDir, String[] args1) throws IOException{
+		File params_file = new File(resDir, "params.txt");
+		PrintWriter pw = new PrintWriter(new FileWriter(params_file));
+		Date d = new Date();
+		
+		 // System.getProperties().list(System.out);
+		String mem = "Xmx="+(int)Math.ceil((double)Runtime.getRuntime().maxMemory()/(1e6))+"m";
+		pw.println("User directory\n"+System.getProperty("user.dir"));
+		pw.println("Date\n"+d.toString());
+		pw.println("OS="+System.getProperty("os.name")+"\nJVM="+System.getProperty("java.version"));
+		pw.println(mem);
+		pw.println("Run commands");
+		for(int i=0; i<args1.length; i+=1){
+			pw.print(args1[i]+" ");
+		}
+		pw.close();
+		
+	}
+	
+ public static void run(CommandLine cmdLine, String bamFile, String resDir,Map<String, JapsaAnnotation> anno, boolean SARS) throws IOException{
 		String reference = cmdLine.getStringVal("reference");
 		int qual = cmdLine.getIntVal("qual");
 		int bin = cmdLine.getIntVal("bin");
 		int breakThresh = cmdLine.getIntVal("breakThresh");
 		String pattern = cmdLine.getStringVal("pattern");
-		String bamFile = cmdLine.getStringVal("bamFile");
 		String annotFile = cmdLine.getStringVal("annotation");
 		String readList = cmdLine.getStringVal("readList");
-	//	String positionsFile = cmdLine.getStringVal("breaks");
-		String resdir = cmdLine.getStringVal("resdir");
+		//String genesToInclude = cmdLine.getStringVal("genesToInclude");
+		String  annotationType = cmdLine.getStringVal("type");
 		boolean cluster_by_annotation  = cmdLine.getBooleanVal("cluster_by_annotation");
-		//if(coexp && bin <10) {
-		//	throw new Error(" this not good idea");
-		//}
-	//	double overlapThresh = cmdLine.getDoubleVal("overlapThresh");
 		int startThresh = cmdLine.getIntVal("startThresh");
 		int endThresh = cmdLine.getIntVal("endThresh");
 		int maxReads = cmdLine.getIntVal("maxReads");
-		errorAnalysis(bamFile, reference, annotFile,readList, resdir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads, cluster_by_annotation );
-
+		
+		boolean sorted = true;
+		boolean calcBreaks = false;// whether to calculate data for the break point heatmap, true for SARS_COV2
+		boolean filterBy5_3 = false;// should be true for SARS_COV2
+		boolean annotByBreakPosition = false;  // should be true for SARS_COV2
+		if(SARS){
+			calcBreaks  = true; 
+			filterBy5_3 = true;
+			annotByBreakPosition = true;
+		}
+			errorAnalysis(bamFile, reference, annotFile,readList,annotationType, 
+				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads, cluster_by_annotation, sorted , 
+				calcBreaks, filterBy5_3, annotByBreakPosition, anno);
+	}
+	public static void main(String[] args1) throws IOException, InterruptedException {
+		CommandLine cmdLine = new ViralTranscriptAnalysisCmd2();
+		String[] args = cmdLine.stdParseLine(args1);
+		String bamFile = cmdLine.getStringVal("bamFile");
+		String resdir = cmdLine.getStringVal("resdir");
+		String annot_file = cmdLine.getStringVal("annotation");
+		boolean gff = annot_file.contains(".gff");
+		Map<String, JapsaAnnotation> anno  = null;
+		boolean SARS = !gff;
+		if(gff){
+			String  annotationType = cmdLine.getStringVal("type");
+			System.err.println("reading annotation");
+			 anno =  GFFAnnotation.readAnno(annot_file, annotationType);
+			System.err.println("done reading annotation");
+		}
+		run(cmdLine, bamFile, resdir, anno, SARS);
+		
+		
 		// paramEst(bamFile, reference, qual);
 	}
 
+	
 	/**
 	 * Error analysis of a bam file. Assume it has been sorted
 	 */
-	static void errorAnalysis(String bamFiles, String refFile, String annot_file, String readList,   String resdir, String pattern, int qual, int round, 
-			int break_thresh, int startThresh, int endThresh, int max_reads, boolean cluster_by_annotation ) throws IOException {
+	static void errorAnalysis(String bamFiles, String refFile, String annot_file, String readList,    String annotationType, String resdir, String pattern, int qual, int round, 
+			int break_thresh, int startThresh, int endThresh, int max_reads, boolean cluster_by_annotation, boolean sorted,
+			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,Map<String, JapsaAnnotation> anno ) throws IOException {
 		boolean cluster_reads = true;
+		CigarHash.round = round;
+		IdentityProfile1.annotByBreakPosition = annotByBreakPosition;
 		CigarHash.cluster_by_annotation = cluster_by_annotation;
 		TranscriptUtils.startThresh = startThresh;
 		TranscriptUtils.endThresh = endThresh;
@@ -150,7 +216,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 			br.close();
 		}
 		
-		CigarHash.round = round;
+		
 		TranscriptUtils.break_thresh = break_thresh;
 		int len = bamFiles_.length;
 		// len = 1;
@@ -161,51 +227,33 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		File resDir =  new File(resdir);
 		if(!resDir.exists()) resDir.mkdir();
 		else if(!resDir.isDirectory()) throw new RuntimeException(resDir+"should be a directory");
-		ArrayList<IdentityProfile1> profiles = new ArrayList<IdentityProfile1>();
-	//	List<List<String>> genes_all = new ArrayList<List<String>>();
-	//	PrintWriter genes_all_pw = new PrintWriter(new FileWriter(new File(resdir+"/genes.txt")));
-		for (int jj = 0; jj < genomes.size(); jj++) {
-			Sequence ref = genomes.get(jj);
-			Annotation annot = new Annotation(new File(annot_file), ref.length());
-			/*List<Integer[]> pos = new ArrayList<Integer[]>();
-			if(positionsFile!=null){
-			BufferedReader br = new BufferedReader(new FileReader(new File(positionsFile)));
-			List<String> header =Arrays.asList( br.readLine().split(",")); //assuming chrom_index, start, end, gene_name
-			String st = "";
-			int[] inds = new int[] {header.indexOf("genes"), header.indexOf("start"), header.indexOf("end")};
-			List<String> genes = new ArrayList<String>();
-			while((st=br.readLine())!=null){
-				String[] str = st.split(",");
-				
-				String gene = str[inds[0]];
-				int gene_index = genes.indexOf(gene);
-				if(gene_index<0){
-					gene_index = genes.size();
-					genes_all_pw.println(gene+","+jj+","+gene_index);
-					genes.add(gene);
-				}
-				if(Integer.parseInt(str[0])==jj){
-					pos.add(new Integer[] {Integer.parseInt(str[inds[1]])-1, Integer.parseInt(str[inds[2]])-1, gene_index});
-				}
-			}
-			br.close();
-			}*/
-			//genes_all.add(genes);
-			profiles.add(new IdentityProfile1(ref, resDir,  in_nmes,jj, startThresh, endThresh, annot));
-
+		///ArrayList<IdentityProfile1> profiles = new ArrayList<IdentityProfile1>();
+		
+		boolean gff = anno!=null;
+		for (int ii = 0; ii < len; ii++) {
+			String bamFile = bamFiles_[ii];
+			File bam = new File( bamFile);
+			in_nmes[ii] = bam.getName().split("\\.")[0];
 		}
+		Outputs outp = new Outputs(resDir,  in_nmes); 
+		Set<String> doneChr = new HashSet<String>();
+			
+		
 	//	genes_all_pw.close();
+		IdentityProfile1 profile = null;
 		for (int ii = 0; ii < len; ii++) {
 			int source_index = ii;
 			int currentIndex = 0;
 			Sequence chr = genomes.get(currentIndex);
-			
+			//profile=  profiles.get(currentIndex);
 			String bamFile = bamFiles_[ii];
 			File bam = new File( bamFile);
-			in_nmes[ii] = bam.getName().split("\\.")[0];
-			for (int jj = 0; jj < genomes.size(); jj++) {
-				profiles.get(jj).updateSourceIndex(ii);
-			}
+		//	in_nmes[ii] = bam.getName().split("\\.")[0];
+		//	for (int jj = 0; jj < genomes.size(); jj++) {
+			//	if(profiles.get(jj)!=null){
+				//	profiles.get(jj).updateSourceIndex(ii);
+				//}
+			//}
 			
 			SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
 			SamReader samReader = null;// SamReaderFactory.makeDefault().open(new File(bamFile));
@@ -258,35 +306,75 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 
 				// int refPos = sam.getAlignmentStart() - 1;//convert to 0-based index
 				int refIndex = sam.getReferenceIndex();
-
+				
 				// if move to another chrom, get that chrom
 				if (refIndex != currentIndex) {
+					if( profile!=null && currentIndex>=0){
+						profile.printBreakPoints();
+						profile.getConsensus();
+						profile= null;
+						doneChr.add(chr.getName());
+					}
 					currentIndex = refIndex;
 					chr = genomes.get(currentIndex);
+				//	System.err.println("new profile"+chr.getName());
+					//profile = profiles.get(currentIndex);
+					
 				}
+				if(profile==null){
+				
+						if(doneChr.contains(chr.getName())){
+							try{
+								throw new RuntimeException("not sorted contains "+ chr.getName());
+							}catch(Exception exc){
+								exc.printStackTrace();
+							}
+						//	System.err.println("warning done"+chr.getName());
+						}
+						int seqlen = chr.length();
+					//	if(!anno.containsKey(chr))
+						Annotation annot = null;
+						if(gff){
+							JapsaAnnotation annot1 = anno.get(chr.getName());
+							if(annot1==null){
+								try{
+									throw new RuntimeException("no annotation for  "+ chr.getName());
+								}catch(Exception exc){
+									exc.printStackTrace();
+								}
+							}else{
+								annot = new GFFAnnotation(annot1, seqlen);
+							}
+						}else{
+							annot = new Annotation(new File(annot_file), currentIndex+"", seqlen);
+						}
+					//	annot = null;
+						profile = new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh, annot, calcBreaks, chr.getName());
+				}
+				 
+				//if(profile!=null){
 				try{
-				TranscriptUtils.identity1(chr, readSeq, sam, profiles.get(currentIndex), source_index, cluster_reads);
+				TranscriptUtils.identity1(chr, readSeq, sam, profile, source_index, cluster_reads, chr.length());
 				}catch(NumberFormatException exc){
 					System.err.println(readSeq.getName());
 					exc.printStackTrace();
 				}
+				//}
 
 			}
 			samReader.close();
 			
 		}
-		//genes_all_pw.close();
 		
+			if(profile!=null){
+				profile.printBreakPoints();
+				profile.getConsensus();
+				
+			}
+		
+		outp.close();
+		ExtractClusterCmd.cluster(resdir,outp.transcripts_file, outp.reads_file, filterBy5_3);
 	
-		for(int i=0; i<profiles.size(); i++) {
-			profiles.get(i).finalise();
-			profiles.get(i).getConsensus();
-		//	if(calcTree) profiles.get(i).printTree();
-		}
-		
-		// Done
-
-		// System.out.println(log);
 	}
 
 }

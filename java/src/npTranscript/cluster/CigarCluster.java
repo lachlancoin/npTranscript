@@ -17,7 +17,14 @@ public class CigarCluster  {
 		int breakSt = -1;
 		int breakEnd = -1;
 		
-		final int id;
+		private final int id;
+		
+		public int id(){
+			return id;
+		}
+		public String id(String chrom){
+			return chrom+"."+id;
+		}
 
 		 int start=0;
 		 int end=0;

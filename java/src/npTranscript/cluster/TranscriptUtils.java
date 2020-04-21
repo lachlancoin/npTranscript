@@ -1,5 +1,6 @@
 package npTranscript.cluster;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -75,7 +76,7 @@ public class TranscriptUtils {
 	 * @return
 	 */
 	public static void identity1(Sequence refSeq, Sequence readSeq, SAMRecord sam, IdentityProfile1 profile, 
-			int source_index, boolean cluster_reads) throws NumberFormatException{
+			int source_index, boolean cluster_reads, int seqlen) throws NumberFormatException{
 		int readPos = 0;// start from 0
 		int refPos = sam.getAlignmentStart() - 1;// convert to 0-based index
 		String id = sam.getReadName();
@@ -170,9 +171,11 @@ public class TranscriptUtils {
 				throw new IllegalStateException("Case statement didn't deal with cigar op: " + e.getOperator());
 			}// case
 		} // for
-		
-		profile.processRefPositions(sam.getAlignmentStart(), sam.getAlignmentEnd(), id, cluster_reads, readSeq.length(), refSeq.length(), source_index);
-		// \return profile;
+		try{
+		profile.processRefPositions(sam.getAlignmentStart(), sam.getAlignmentEnd(), id, cluster_reads, readSeq.length(), refSeq.length(), source_index, seqlen);
+		}catch(IOException exc){
+			exc.printStackTrace();
+		}
 
 	}
 	

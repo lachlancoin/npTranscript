@@ -16,68 +16,86 @@ import npTranscript.cluster.TranscriptUtils;
 
 public class Annotation{
 		List<String> genes= new ArrayList<String>();
-		List<Integer> start = new ArrayList<Integer>();
-		List<Integer> end = new ArrayList<Integer>();
+		 List<Integer> start = new ArrayList<Integer>();
+		 List<Integer> end = new ArrayList<Integer>();
 	//	List<Integer> breakSt =  new ArrayList<Integer>();
 		//List<Integer> breakEnd =  new ArrayList<Integer>();
-final int seqlen;
-		int[][] orfs; 
+		 final int seqlen;
+		private int[][] orfs; 
 		//Name,Type,Minimum,Maximum,Length,Direction,gene
 	//	5'UTR,5'UTR,1,265,265,forward,none
 
-		static String NAstring = "NA";
+		public static String NAstring = "NA";
+		public static int tolerance = 10;
+		public static int correctionDistLeft = 10000;
+		public static int correctionDistRight = 10000;	
+	
 		public String nextDownstream(int rightBreak){
-			if(rightBreak<0) return NAstring;
+			if(rightBreak<0) return null;
 			for(int i=0; i<start.size(); i++){
 				if(rightBreak -tolerance <= start.get(i) ){//&& rightBreak < end.get(i)){
 					return genes.get(i);
 				}
 			}
-			return NAstring;
+			return null;
 		}
+		
 		public String nextUpstream(int leftBreak){
-			if(leftBreak<0) return NAstring;
+			if(leftBreak<0) return null;
 			for(int i=start.size()-1; i>=0 ;i--){
 				if(leftBreak >= start.get(i)){// && leftBreak-tolerance<end.get(i)){
 					return genes.get(i);
 				}
 			}
-			return NAstring;
+			return null;
 		}
-	static int tolerance = 10;
-	 static int correctionDistLeft = 10000;
-	static int correctionDistRight = 10000;
-
-	public void getBreaks(int[] breaks_in, int[] breaks_out, int refStart, int refEnd){
-		int st = breaks_in[1]; //start after break
-		int en = breaks_in[0];
-		System.arraycopy(breaks_in, 0, breaks_out, 0, 2);
-		for(int i=0; i< this.start.size(); i++){
-			int st_i = start.get(i);
-			if(st - tolerance < st_i) {
+	
+    int updateLeft(int en, int refStart){
+    	int breaks_out_0= en;
+    	for(int i=0; i< this.start.size(); i++){
+    		int st_i = start.get(i);
+	    	if(en+ tolerance > st_i ){
+				if(Math.abs(st_i - en) < correctionDistLeft && st_i >refStart) {
+					breaks_out_0 = st_i;
+					
+				}
+			}
+    	}
+    	return breaks_out_0;
+    }
+    
+    int updateRight( int st, int refEnd){
+    	for(int i=0; i< this.start.size(); i++){
+	    	int st_i = start.get(i);
+	    	if(st - tolerance < st_i) {
 				int dist = Math.abs(st_i - st);
 				if(dist < correctionDistRight && st_i <refEnd) {
-					breaks_out[1] = st_i;
-				}
-				break;
-			}
-			if(en+ tolerance > st_i ){
-				if(Math.abs(st_i - en) < correctionDistLeft && st_i >refStart) {
-					breaks_out[0] = st_i;
+					return st_i;
+				}else{
+					return st;
 				}
 			}
-		}
+    	}
+    	return st;
+    }
 		
+	public void getBreaks(int[] breaks_in, int[] breaks_out, int refStart, int refEnd){
+		System.arraycopy(breaks_in, 0, breaks_out, 0, 2);
+		breaks_out[1] = this.updateRight(breaks_in[1], refEnd);
+		breaks_out[0] = this.updateLeft(breaks_in[0], refStart);
 	}
-	public	Annotation(File f, int seqlen) throws IOException{
+	public Annotation(String chrom, int seqlen){
 		this.seqlen = seqlen;
-			BufferedReader br = new BufferedReader(new FileReader(f)) ;
+		this.chrom = chrom;
+	}
+	public	Annotation(File f,String chrom, int seqlen) throws IOException{
+		this(chrom, seqlen);
+		BufferedReader br = new BufferedReader(new FileReader(f)) ;
 			List<String> header = Arrays.asList(br.readLine().split(","));
 			int gene_ind = header.indexOf("gene");
 			int start_ind = header.indexOf("Minimum");
 			int end_ind = header.indexOf("Maximum");
 			String str = "";
-			//int break_start = -1;
 			for(int i=0; (str=br.readLine())!=null; i++){
 				String[] line = str.split(",");
 				String gene = line[gene_ind];	
@@ -94,51 +112,28 @@ final int seqlen;
 			
 			}
 			br.close();
-			orfs = new int[start.size()][];
-			overlap = new double[start.size()];
-			orf_len = new int[start.size()];
-			
-			for(int i=0; i<orf_len.length; i++) {
-				orf_len[i] = end.get(i) - start.get(i)+1;
-				orfs[i] = new int[] {start.get(i),end.get(i)};
-			}
+			mkOrfs();
 			
 		}
-	/*public String getInfo(int i) {
-			if(i<0 || overlap[i] <0) return "NA";
-			else return this.genes.get(i)+","+this.start_offset[i]+","+this.end_offset[i];
-		}*/
-	public final double[] overlap;
-	public final int[] orf_len;
 	
+	String chrom;
+	 void mkOrfs() {
+		orfs = new int[start.size()][];
+		overlap = new double[start.size()];
+		orf_len = new int[start.size()];
+		
+		for(int i=0; i<orf_len.length; i++) {
+			orf_len[i] = end.get(i) - start.get(i)+1;
+			orfs[i] = new int[] {start.get(i),end.get(i)};
+		}
+		
+	}
+
+
+	public  double[] overlap;
+	public  int[] orf_len;
 	
-	
-	//public final int[] start_offset; //relative start position of ORF
-//	public final int[] end_offset; //relative end position of ORF
-		public String calcORFOverlap(int start, int end, int[] first_last, int transcript_len) {
-			//could consider correcting here to keep in-fram
-			int first = -1;
-			int last = -1;
-			StringBuffer sb = new StringBuffer();
-			for(int i=0 ; i<orfs.length; i++) {
-				int[] st_en = orfs[i];
-			
-				overlap[i] =  (double) TranscriptUtils.overlap(start, end, st_en[0], st_en[1])/ (double)(st_en[1] - st_en[0] +1);
-				if(overlap[i]>0) {
-					if(first<0) first = i;
-					last = i;
-					sb.append(";");
-					sb.append(this.genes.get(i));
-					sb.append(",");
-					sb.append(String.format( "%5.3g",overlap[i]).trim());
-					sb.append(",");
-					sb.append(st_en[0] - start + transcript_len); // how far into read ORF starts;
-					sb.append(",");
-					sb.append(st_en[1] - start+transcript_len); // how far into read ORF ends
-				}
-			}
-			first_last[0] =first;
-			first_last[1] = last;
-			return sb.toString();
+		public int seqlen() {
+			return seqlen;
 		}
 	}

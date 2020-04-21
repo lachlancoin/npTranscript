@@ -60,6 +60,6 @@ echo $resdir
 echo $bamfiles1 > "${resdir}/types.txt" 
 opts="--bin 10 --breakThresh 1000 --cluster_by_annotation true"
 bash ${npTranscript}/scripts/run.sh --bamFile=${bamfiles1}   --reference=${reference} --annotation ${coord_file} --resdir ${resdir} ${opts} ${opts1}
-bash ${npTranscript}/scripts/run_extract_cluster.sh --inDir ${resdir} 
+
 cd ${resdir}
 Rscript ~/github/npTranscript/R/npTranscript.R
