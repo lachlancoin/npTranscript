@@ -71,7 +71,9 @@ DEgenes<-function(df,inds_control, inds_infected, edgeR = F, log=F,binom=F, lowe
     pvals = DE_egdeR(df, inds_control, inds_infected)
   }
  FDR = p.adjust(pvals, method="BH");
-
+ x = apply(df[,inds_control,drop=F],1,sum)
+ y = apply(df[,inds_infected,drop=F],1,sum)
+ 
   probX = (x/sum(x))*1e6
   probY = (y/sum(y))*1e6
   probX1 = (x+0.5)/sum(x+.5)

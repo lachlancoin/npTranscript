@@ -50,7 +50,7 @@ df = .readFeatureCounts(grep("featurecount", dir(), v=T))
 
 control_inds = 1
 infected_inds = 2
-DE1 = DEgenes(df, control_inds, infected_inds,log=F, edgeR = F, reorder=F);
+DE1 = DEgenes(df, control_inds, infected_inds,log=F, edgeR = F, reorder=T);
 DE2 = DEgenes(df,control_inds, infected_inds, log=F,edgeR = F, reorder=T);
 
 #CHECK DISTRIBUTION (OPTIONAL)
