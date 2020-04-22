@@ -55,20 +55,28 @@ chisqCombine<-function(pv){
 #which x is significiantly more or less than expected given y
 #if(lower.tail=T returns p(x<=y) else p(x>=y)
 ##ASSUMES MATCHED DATA BETWEEN CONTROL  AND INFECTED
-DEgenes<-function(df,inds_control, inds_infected, edgeR = F, log=F,binom=F, lower.tail = T,reorder=T){
+DEgenes<-function(df,inds_control, inds_infected, edgeR = F,  type="lt",reorder=T){
+  log=F;
+  binom=F;
+  lower.tail = T
   if(!edgeR){
-    pvalsM = matrix(NA,nrow = dim(df)[1], ncol = length(inds_control))
+    pvalsM1 = matrix(NA,nrow = dim(df)[1], ncol = length(inds_control))
+    pvalsM2 = matrix(NA,nrow = dim(df)[1], ncol = length(inds_control))
     for(i in 1:length(inds_control)){
         x = df[,inds_control[i]]
         y = df[,inds_infected[i]]
-        pvalsM[,i] = betaBinomialP(x,y, binom=binom, lower.tail=lower.tail,log=log)
+        pvalsM1[,i] = betaBinomialP(x,y, binom=binom, lower.tail=lower.tail,log=log)
+        pvalsM2[,i] = betaBinomialP(y,x, binom=binom, lower.tail=lower.tail,log=log)
         
     }
-    
-    pvals = apply(pvalsM, 1, chisqCombine)
-  
+    pvals1 = apply(pvalsM1, 1, chisqCombine)
+    pvals2 = apply(pvalsM2, 1, chisqCombine)
+    pvals = 2*apply( cbind(pvals1,pvals2),1,min)
+    lessThan = pvals2<pvals1
   }else{
-    pvals = DE_egdeR(df, inds_control, inds_infected)
+    qlf = DE_egdeR(df, inds_control, inds_infected)
+    pvals = qlf$table$P
+    lessThan = qlf$coefficients[,2]<0
   }
  FDR = p.adjust(pvals, method="BH");
  x = apply(df[,inds_control,drop=F],1,sum)
@@ -82,7 +90,7 @@ DEgenes<-function(df,inds_control, inds_infected, edgeR = F, log=F,binom=F, lowe
   
   
  
-  output =  data.frame(pvals,FDR,probX, probY, ratio1,x,y, df)
+  output =  data.frame(pvals,FDR,lessThan,probX, probY, ratio1,x,y, df)
  # print(names(output))
 
   names(output)[names(output) %in% c("x","y") ] = names(df)[inds]
@@ -106,7 +114,7 @@ DE_egdeR<-function(df, inds_control, inds_infected){
   #To perform quasi-likelihood F-tests:
   fit <- glmQLFit(y,design)
   qlf <- glmQLFTest(fit,coef=2)
-  qlf$table$P
+ qlf
 }
 
 getDescr<-function(DE,mart, thresh = 1e-10, prefix="ENSCS"){
@@ -201,7 +209,7 @@ getGoIDs<-function(genenames, mart){
 }
 
 findGenesByChrom<-function(DE,chrom="MT", fdr_thresh = 1e-10){
-  inds = which(DE$chrom== chrom & DE$FDR<fdr_thresh)
+  inds = which(DE$chrs== chrom & DE$FDR<fdr_thresh)
   print(inds)
   if(length(inds)==0) return (NULL)
   DE[inds,,drop=F]
@@ -259,25 +267,41 @@ res
 }
 
 
-findGenes<-function(goObj,DE,goid, fdr_thresh = 1e-10){
+findGenes<-function(goid, goObj,DE, fdr_thresh = 1e-10, lessThan = FALSE){
   
   inds =  which(goObj$goids$go_id==goid) 
   genes = goObj$goids[inds,,drop=F]
   inds1 = which(DE$geneID %in% genes$ensembl_gene_id)
-  inds2 = which(DE[inds1,]$FDR<fdr_thresh)
+  if(!is.null(lessThan)){
+    inds2 = which(DE[inds1,]$FDR<fdr_thresh & DE[inds1,]$lessThan==lessThan)
+  }else{
+    inds2 = which(DE[inds1,]$FDR<fdr_thresh)
+    
+  }
  # ge = DE$geneID[inds1[inds2]]
 #  print(genes[which(genes$ensembl_gene_id %in% ge),])
   DE[inds1[inds2],]
 }
 
-findSigGo_<-function(goObj, DE, fdr_thresh = 1e-10, go_thresh = 1e-5, prefix="ENSC"){
+
+getGoGenes<-function(go_categories,goObjs, lessThan = T, fdr_thresh = 1e-5){
+  names(go_categories) = lapply(go_categories,function(x, goObj) as.character(goObj$lev_all[which(goObj$lev_all[,1]==x),3]), goObjs[[1]])
+  go_genes1 = lapply(go_categories, findGenes, goObjs[[1]],DE1, fdr_thresh = fdr_thresh, lessThan=lessThan)
+  names(go_genes1) = names(go_categories)
+  go_genes1 = go_genes1[which(unlist(lapply(go_genes1,function(x) dim(x)[1]))>0)]
+  go_genes1
+}
+
+
+findSigGo_<-function(goObj, DE1, fdr_thresh = 1e-10, go_thresh = 1e-5, prefix="ENSC", lessThan = TRUE){
+  DE = DE1[DE1$lessThan==lessThan,,drop=F]
   goids = goObj$goids 
   ensg =grep(prefix, DE$geneID, v=T)
   goidx = rep(FALSE,length(goids$ensembl_gene_id ))
   
   
   pvs = DE$FDR
-  sig =  which(pvs<fdr_thresh)
+  sig =  which(pvs<fdr_thresh )
   goidx1 = goids$ensembl_gene_id %in% ensg[sig]
   a = data.frame(goidx1)
   lev_all = goObj$lev_all
@@ -320,13 +344,15 @@ findSigGo_<-function(goObj, DE, fdr_thresh = 1e-10, go_thresh = 1e-5, prefix="EN
 }
 
 
-findSigChrom<-function( DE, fdr_thresh = 1e-10, go_thresh = 1e-5){
+findSigChrom<-function( DE1, fdr_thresh = 1e-10, go_thresh = 1e-5, lessThan=T){
+  if(is.null(lessThan)) DE = DE1 else DE =DE1[DE1$lessThan==lessThan,,drop=F]
+  
   ensg =DE$geneID
   pvs = DE$FDR
   sig =  which(pvs<fdr_thresh)
-  lev_all =getlev(DE$chrom)
-  lev_ = getlev(DE$chrom[sig])
-  go_todo = lev1[,1]
+  lev_all =getlev(DE$chrs)
+  lev_ = getlev(DE$chrs[sig])
+  go_todo = lev_[,1]
   inds_m = match(as.character(lev_[,1]), as.character(lev_all[,1]))
   lev_ = cbind(lev_,lev_all[inds_m,1:2,drop=F])
   chrs = as.character(lev_[,1])
