@@ -41,10 +41,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -62,6 +60,7 @@ import japsa.util.CommandLine;
 import japsa.util.deploy.Deployable;
 import npTranscript.cluster.Annotation;
 import npTranscript.cluster.CigarHash;
+import npTranscript.cluster.CigarHash2;
 import npTranscript.cluster.GFFAnnotation;
 import npTranscript.cluster.IdentityProfile1;
 import npTranscript.cluster.IdentityProfile1.Outputs;
@@ -196,7 +195,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 			int break_thresh, int startThresh, int endThresh, int max_reads, boolean cluster_by_annotation, boolean sorted,
 			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,Map<String, JapsaAnnotation> anno ) throws IOException {
 		boolean cluster_reads = true;
-		CigarHash.round = round;
+		CigarHash2.round = round;
 		IdentityProfile1.annotByBreakPosition = annotByBreakPosition;
 		CigarHash.cluster_by_annotation = cluster_by_annotation;
 		TranscriptUtils.startThresh = startThresh;

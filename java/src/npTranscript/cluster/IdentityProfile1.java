@@ -8,6 +8,8 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.zip.GZIPOutputStream;
 
 import org.apache.commons.math3.linear.OpenMapRealMatrix;
@@ -29,13 +31,13 @@ public class IdentityProfile1 {
 	public static class Outputs{
 		public File transcripts_file;
 		public File reads_file; 
-		private final File outfile, outfile1, outfile2, outfile2_1, outfile4, outfile5, outfile6, outfile7;
+		private final File outfile, outfile1, outfile2, outfile2_1, outfile4, outfile5, outfile6, outfile7, outfile10;
 		//outfile9;
 		SequenceOutputStream seqFasta =  null; // new SequenceOutputStream(new GZIPOutputStream(new FileOutputStream(outfile5)));
 		//i
 		
 		final private PrintWriter transcriptsP,readClusters;
-		final IHDF5SimpleWriter clusterW;
+		final IHDF5SimpleWriter clusterW, altT;
 		//PrintWriter readClusters;
 		File resDir;
 		
@@ -46,6 +48,7 @@ public class IdentityProfile1 {
 			transcriptsP.close();
 			readClusters.close();
 			clusterW.close();
+			this.altT.close();
 		}
 		int genome_index=0;
 		public Outputs(File resDir,  String[] type_nmes) throws IOException{
@@ -61,6 +64,7 @@ public class IdentityProfile1 {
 			 outfile5 = new File(resDir,genome_index+ "clusters.fa.gz");
 			 outfile6 = new File(resDir,genome_index+ "tree.txt.gz");
 			 outfile7 = new File(resDir,genome_index+ "dist.txt.gz");
+			 outfile10 = new File(resDir,genome_index+"isoforms.h5");
 			 transcripts_file = new File(resDir,genome_index+ "transcripts.txt.gz");
 			
 			 readClusters = new PrintWriter(
@@ -69,7 +73,7 @@ public class IdentityProfile1 {
 			 readClusters.println("readID\tclusterId\tsource\t"+br_cluster_str+"length\ttype_nme\tbreaks\tbreaks_mod\tchrom\tstartPos\tendPos\tbreakStart\tbreakEnd\terrorRatio\tupstream\tdownstream");
 
 			 transcriptsP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(transcripts_file))));
-				String transcriptP_header = "ID\tchrom\tstart\tend\ttype_nme\tbreaks\thash\tstartBreak\tendBreak\tleftGene\trightGene\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true)
+				String transcriptP_header = "ID\tchrom\tstart\tend\ttype_nme\tbreaks\thash\tstartBreak\tendBreak\tisoforms\tleftGene\trightGene\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true)
 				+"\t"+TranscriptUtils.getString("depth", num_sources, true)+"\t"+TranscriptUtils.getString("errors", num_sources, true)
 				+"\t"+TranscriptUtils.getString("error_ratio", num_sources, true);
 				StringBuffer nme_info = new StringBuffer();
@@ -91,11 +95,14 @@ public class IdentityProfile1 {
 			clusterW = 
 					 HDF5Factory.open(outfile2);
 			clusterW.writeStringArray("header", str.toArray(new String[0]));
+			altT = 
+					 HDF5Factory.open(outfile10);
+		//	clusterW.writeStringArray("header", str.toArray(new String[0]));
 		}
 
 		public PrintWriter getBreakPointPw( String chrom, int i)  throws IOException{
 			
-				File outfile1_ = new File(resDir,chrom+".breakpoints"+type_nmes[i]+"."+i +".txt.gz");
+				File outfile1_ = new File(resDir,chrom+".breakpoints."+type_nmes[i]+"."+i +".txt.gz");
 				PrintWriter pw = new PrintWriter(
 					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outfile1_))));
 			
@@ -118,6 +125,50 @@ public class IdentityProfile1 {
 
 		public void writeIntMatrix(String id, int[][] matr) {
 			this.clusterW.writeIntMatrix(id, matr);
+			
+		}
+
+		public void writeString(String id, Map<CigarHash2, Integer> all_breaks) {
+			int[][]str = new int[all_breaks.size()][];
+			{
+			Iterator<Entry<CigarHash2, Integer>> it = all_breaks.entrySet().iterator();
+			int maxl =-1;
+			boolean all_equal  = true;
+			for(int i=0;  it.hasNext();i++){
+				Entry<CigarHash2, Integer> ch = it.next();
+				CigarHash2 key = ch.getKey();
+				int len = key.size();
+				if(i==0) maxl = len;
+				else if(len>maxl) {
+					maxl = len;
+					all_equal = false;
+				}else if(len<maxl){
+					len = maxl;
+				}
+				str[i] = new int[len+1];
+				str[i][0]  = ch.getValue();
+				for(int j=0; j<key.size(); j++){
+					str[i][j+1] = key.get(j);
+					//if(j>0 && key.get(j)==0) throw new RuntimeException("!!");
+				}
+				
+			}
+			if(!all_equal){
+				for(int i=0; i<str.length; i++){
+					if(str[i].length<maxl+1){
+						int[] str1 = new int[maxl+1];
+						System.arraycopy(str[i], 0, str1, 0, str[i].length);
+						str[i] = str1;
+					}
+				}
+			}
+			}
+			try{
+//			this.altT.writeCompoundArray(id,str);
+		this.altT.writeIntMatrix(id, str);
+			}catch(Exception exc){
+				exc.printStackTrace();
+			}
 			
 		}
 	}
@@ -172,11 +223,11 @@ public class IdentityProfile1 {
 	public void processRefPositions(int startPos, int endPos, String id, boolean cluster_reads, int  readLength, int refLength, int src_index , int seqlen) throws IOException, NumberFormatException{
 		
 		
-		List<Integer> breaks  = coRefPositions.breaks;
+		CigarHash2 breaks  = coRefPositions.breaks;
 		Annotation annot = this.all_clusters.annot;
 		coRefPositions.end = endPos;
 		coRefPositions.start = startPos;
-		breaks.add(coRefPositions.end);
+		breaks.addR(coRefPositions.end);
 		//int distToEnd = refLength - endPos;	
 		int maxg = 0;
 		int maxg_ind = -1;
@@ -199,8 +250,8 @@ public class IdentityProfile1 {
 					downstream = annot.nextDownstream(position);
 					upstream = annot.nextUpstream(prev_position);
 				}
-				if(upstream==null) upstream =  TranscriptUtils.round(prev_position, CigarHash.round)+"";
-				if(downstream==null) downstream =  TranscriptUtils.round(position, CigarHash.round)+"";
+				if(upstream==null) upstream =  this.chrom+"_"+TranscriptUtils.round(prev_position, CigarHash2.round);
+				if(downstream==null) downstream = this.chrom+"_"+ TranscriptUtils.round(position, CigarHash2.round)+"";
 			}
 			/*if(this.sm!=null){
 				 coRefPositions.break_point_cluster = ((IntegerField)this.sm.getEntry(prev_position, position)).getVal();
@@ -219,17 +270,15 @@ public class IdentityProfile1 {
 				downstream = annot.nextDownstream(endPos);
 				upstream = annot.nextUpstream(startPos);
 			}
-			if(upstream==null) upstream =  TranscriptUtils.round(startPos, CigarHash.round)+"";
-			if(downstream==null) downstream =  TranscriptUtils.round(endPos, CigarHash.round)+"";
+			if(upstream==null) upstream =  TranscriptUtils.round(startPos, CigarHash2.round)+"";
+			if(downstream==null) downstream =  TranscriptUtils.round(endPos, CigarHash2.round)+"";
 
 		}
 		
 		String type_nme = coRefPositions.getTypeNme(seqlen);
 		String breakSt1 = coRefPositions.breaks.toString();
-		coRefPositions.breaks.adjustBreaks(annot);
-		coRefPositions.breaks.setSecondKey(type_nme+"."+upstream+"."+downstream);
-		
-	//	coRefPositions.breaks.roundBreaks();
+		//coRefPositions.breaks.adjustBreaks(annot);
+		coRefPositions.breaks_hash.setSecondKey(type_nme+"."+upstream+"."+downstream);
 		String clusterID;
 		if(cluster_reads) clusterID = this.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources,  chrom); // this also clears current cluster
 		else clusterID = chrom+".NA";
@@ -243,7 +292,6 @@ public class IdentityProfile1 {
 	public void addRefPositions(int position, boolean match) {
 		//we add back in one here to convert it to a 1 based index
 		coRefPositions.add(position+1, this.source_index, match);
-		
 	}
 
 	
