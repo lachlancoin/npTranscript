@@ -18,29 +18,7 @@ public class CigarHash2 extends ArrayList<Integer> {
 		return obj;
 	}
 	
-	public static void main(String[]args){
-		String[] str = new String[] {"1,2,4567","1,2,4567","1,300,4567"};
-		String[] str1 = 
-				new String[] {
-						"100;700;273900;298600",
-						"100;700;273900;298600",
-						"100;700;273900;298600",
-		};
-		//"1;7;2739;2986",
-		//"1;7;2739;2986"};
-		Map<CigarHash2, Integer> m = new HashMap<CigarHash2, Integer>();
-		for(int i=0; i<str1.length; i++){
-			CigarHash2 ch = new CigarHash2();
-			String[] st = str1[i].split(";");
-			
-			for(int j=0; j<st.length; j++){
-				ch.add(Integer.parseInt(st[j]));
-			}
-			Integer v = m.get(ch);
-			m.put(ch, v==null ? 1 : v+1);
-		}
-		System.err.println(m);
-	}
+	
 	public static int round = 100;
 	//static int[] breaks_in = new int[2];
 	//static int[] breaks_out = new int[2];

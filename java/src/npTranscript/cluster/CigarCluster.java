@@ -25,8 +25,8 @@ public class CigarCluster  {
 		public int id(){
 			return id;
 		}
-		public String id(String chrom){
-			return chrom+"."+id;
+		public String id(int chrom_index){
+			return chrom_index+"."+id;
 		}
 
 		 int start=0;
@@ -41,9 +41,27 @@ public class CigarCluster  {
 			this.readCountSum++;
 			
 		}
+
+	public static class Count{
+		public Count(int count, int id){
+			this.count = count;
+			this.id = id;
+		}
+		private int count,id;
+		public void increment() {
+			this.count = this.count+1;
+			
+		}
+		public int count(){
+			return count;
+		}
+		public int id(){
+			return id;
+		}
 		
+	}
 		
-   	Map<CigarHash2, Integer> all_breaks = new HashMap<CigarHash2, Integer>() ;
+   	Map<CigarHash2, Count> all_breaks  ;
    	CigarHash2 breaks = new CigarHash2();
    	CigarHash breaks_hash = new CigarHash();
    	
@@ -72,7 +90,9 @@ public class CigarCluster  {
 			this.breakSt = c1.breakSt;
 			this.breakEnd = c1.breakEnd;
 			this.breaks.addAll(c1.breaks);
-			this.all_breaks.put(breaks,1);
+			all_breaks = new HashMap<CigarHash2, Count>();
+			//if(all_breaks.size()>0) throw new RuntimeException("should be zero");
+			this.all_breaks.put(breaks,new Count(1, 0));
 			this.breaks_hash.secondKey = c1.breaks_hash.secondKey;
 			addReadCount(source_index);
 			start = c1.start;
@@ -106,7 +126,7 @@ public class CigarCluster  {
 			this.break_point_cluster = -1;
 			first = true;
 			this.breaks.clear();			
-			this.all_breaks.clear();
+			if(all_breaks!=null)this.all_breaks.clear();
 			this.breaks_hash.clear();
 		}
 	
@@ -321,25 +341,30 @@ public class CigarCluster  {
 			return source.values().stream() .reduce(0, Integer::sum);
 		}*/
 		
-		public void merge(CigarCluster c1) {
+		public int merge(CigarCluster c1) {
 			if(c1.start < start) start = c1.start;
 			if(c1.end > end) end = c1.end;
 			if(breakSt<0 || (c1.breakSt>=0 & c1.breakSt < breakSt)) breakSt = c1.breakSt;
 			if(breakEnd<0 || (c1.breakEnd>=0 &  c1.breakEnd > breakEnd)) breakEnd = c1.breakEnd;
-		
-			if(c1.all_breaks.size()>0){
-				
-				for(Iterator<CigarHash2> it = c1.all_breaks.keySet().iterator() ; it.hasNext();){
+			//int subID;
+			
+			if(c1.all_breaks!=null){
+				/*for(Iterator<CigarHash2> it = c1.all_breaks.keySet().iterator() ; it.hasNext();){
 					CigarHash2 nxt = it.next();
 					Integer count = this.all_breaks.get(nxt);
 					all_breaks.put(nxt, count==null ? 1 : count+1);
-				}
+				}*/
 				throw new RuntimeException("!!");
-			}{
-				CigarHash2 br = (CigarHash2) c1.breaks.clone();
-				Integer count = this.all_breaks.get(br);
-				all_breaks.put(br, count==null ? 1 : count+1);
 			}
+				
+			CigarHash2 br = (CigarHash2) c1.breaks.clone();
+			Count	count = this.all_breaks.get(br);
+				if(count==null) {
+					count = new Count(1, all_breaks.size());
+					all_breaks.put(br, count);
+				}
+				else count.increment();
+			
 			for(int i=0; i<this.readCount.length;i++) {
 				readCount[i]+=c1.readCount[i];
 			}
@@ -352,9 +377,7 @@ public class CigarCluster  {
 				maps[i].merge( c1.maps[i]);
 				errors[i].merge(c1.errors[i]);
 			}
-			//if(sum1!=sum2){
-				//throw new RuntimeException("maps not concordant");
-			//}
+			return count.id();
 		}
 		static String[] nmes = new String[] {"5_3", "5_no3", "no5_3", "no5_no3"};
 		public String getTypeNme(int seqlen) {

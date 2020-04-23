@@ -348,7 +348,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 							annot = new Annotation(new File(annot_file), currentIndex+"", seqlen);
 						}
 					//	annot = null;
-						profile = new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh, annot, calcBreaks, chr.getName());
+						profile = new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh, annot, calcBreaks, chr.getName(), currentIndex);
 				}
 				 
 				//if(profile!=null){

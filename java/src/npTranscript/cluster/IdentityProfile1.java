@@ -19,6 +19,7 @@ import ch.systemsx.cisd.hdf5.HDF5Factory;
 import ch.systemsx.cisd.hdf5.IHDF5SimpleWriter;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
+import npTranscript.cluster.CigarCluster.Count;
 
 /**
  * @author Lachlan Coin
@@ -69,11 +70,11 @@ public class IdentityProfile1 {
 			
 			 readClusters = new PrintWriter(
 						new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(reads_file))));
-			 String br_cluster_str = "";//sm==null ? "": "break_cluster\t";
-			 readClusters.println("readID\tclusterId\tsource\t"+br_cluster_str+"length\ttype_nme\tbreaks\tbreaks_mod\tchrom\tstartPos\tendPos\tbreakStart\tbreakEnd\terrorRatio\tupstream\tdownstream");
+			 //String br_cluster_str = "";//sm==null ? "": "break_cluster\t";
+			 readClusters.println("readID\tclusterId\tsubID\tsource\tlength\ttype_nme\tchrom\tstartPos\tendPos\tbreakStart\tbreakEnd\terrorRatio\tupstream\tdownstream");
 
 			 transcriptsP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(transcripts_file))));
-				String transcriptP_header = "ID\tchrom\tstart\tend\ttype_nme\tbreaks\thash\tstartBreak\tendBreak\tisoforms\tleftGene\trightGene\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true)
+				String transcriptP_header = "ID\tchrom\tstart\tend\ttype_nme\tstartBreak\tendBreak\tisoforms\tleftGene\trightGene\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true)
 				+"\t"+TranscriptUtils.getString("depth", num_sources, true)+"\t"+TranscriptUtils.getString("errors", num_sources, true)
 				+"\t"+TranscriptUtils.getString("error_ratio", num_sources, true);
 				StringBuffer nme_info = new StringBuffer();
@@ -128,14 +129,14 @@ public class IdentityProfile1 {
 			
 		}
 
-		public void writeString(String id, Map<CigarHash2, Integer> all_breaks) {
+		public void writeString(String id, Map<CigarHash2, Count> all_breaks) {
 			int[][]str = new int[all_breaks.size()][];
 			{
-			Iterator<Entry<CigarHash2, Integer>> it = all_breaks.entrySet().iterator();
+			Iterator<Entry<CigarHash2, Count>> it = all_breaks.entrySet().iterator();
 			int maxl =-1;
 			boolean all_equal  = true;
 			for(int i=0;  it.hasNext();i++){
-				Entry<CigarHash2, Integer> ch = it.next();
+				Entry<CigarHash2,Count> ch = it.next();
 				CigarHash2 key = ch.getKey();
 				int len = key.size();
 				if(i==0) maxl = len;
@@ -145,18 +146,18 @@ public class IdentityProfile1 {
 				}else if(len<maxl){
 					len = maxl;
 				}
-				str[i] = new int[len+1];
-				str[i][0]  = ch.getValue();
+				str[i] = new int[len+2];
+				str[i][0]  = ch.getValue().id();
+				str[i][1]  = ch.getValue().count();
 				for(int j=0; j<key.size(); j++){
-					str[i][j+1] = key.get(j);
-					//if(j>0 && key.get(j)==0) throw new RuntimeException("!!");
+					str[i][j+2] = key.get(j);
 				}
 				
 			}
 			if(!all_equal){
 				for(int i=0; i<str.length; i++){
-					if(str[i].length<maxl+1){
-						int[] str1 = new int[maxl+1];
+					if(str[i].length<maxl+2){
+						int[] str1 = new int[maxl+2];
 						System.arraycopy(str[i], 0, str1, 0, str[i].length);
 						str[i] = str1;
 					}
@@ -165,7 +166,7 @@ public class IdentityProfile1 {
 			}
 			try{
 //			this.altT.writeCompoundArray(id,str);
-		this.altT.writeIntMatrix(id, str);
+				this.altT.writeIntMatrix(id, str);
 			}catch(Exception exc){
 				exc.printStackTrace();
 			}
@@ -182,8 +183,9 @@ public class IdentityProfile1 {
 	
 	public IdentityProfile1(Sequence refSeq,
 			Outputs o,
-			String[] in_nmes,  int startThresh, int endThresh, Annotation annot, boolean calcBreakpoints, String chrom) throws IOException {
+			String[] in_nmes,  int startThresh, int endThresh, Annotation annot, boolean calcBreakpoints, String chrom, int chrom_index) throws IOException {
 	this.chrom = chrom;
+	this.chrom_index = chrom_index;
 	this.type_nmes = in_nmes;
 		this.num_sources = in_nmes.length;
 		this.coRefPositions = new CigarCluster(-1,num_sources);
@@ -220,6 +222,8 @@ public class IdentityProfile1 {
 	
 	static double break_round = 10.0;
 	static String NAstring = "NA";
+	
+	String[] clusterID = new String[2];
 	public void processRefPositions(int startPos, int endPos, String id, boolean cluster_reads, int  readLength, int refLength, int src_index , int seqlen) throws IOException, NumberFormatException{
 		
 		
@@ -250,8 +254,8 @@ public class IdentityProfile1 {
 					downstream = annot.nextDownstream(position);
 					upstream = annot.nextUpstream(prev_position);
 				}
-				if(upstream==null) upstream =  this.chrom+"_"+TranscriptUtils.round(prev_position, CigarHash2.round);
-				if(downstream==null) downstream = this.chrom+"_"+ TranscriptUtils.round(position, CigarHash2.round)+"";
+				if(upstream==null) upstream =  this.chrom_index+"."+TranscriptUtils.round(prev_position, CigarHash2.round);
+				if(downstream==null) downstream = this.chrom_index+"."+ TranscriptUtils.round(position, CigarHash2.round);
 			}
 			/*if(this.sm!=null){
 				 coRefPositions.break_point_cluster = ((IntegerField)this.sm.getEntry(prev_position, position)).getVal();
@@ -270,22 +274,25 @@ public class IdentityProfile1 {
 				downstream = annot.nextDownstream(endPos);
 				upstream = annot.nextUpstream(startPos);
 			}
-			if(upstream==null) upstream =  TranscriptUtils.round(startPos, CigarHash2.round)+"";
-			if(downstream==null) downstream =  TranscriptUtils.round(endPos, CigarHash2.round)+"";
+			if(upstream==null) upstream =  this.chrom_index+"."+TranscriptUtils.round(startPos, CigarHash2.round);
+			if(downstream==null) downstream =  this.chrom_index+"."+TranscriptUtils.round(endPos, CigarHash2.round);
 
 		}
 		
 		String type_nme = coRefPositions.getTypeNme(seqlen);
-		String breakSt1 = coRefPositions.breaks.toString();
+		//String breakSt1 = coRefPositions.breaks.toString();
 		//coRefPositions.breaks.adjustBreaks(annot);
 		coRefPositions.breaks_hash.setSecondKey(type_nme+"."+upstream+"."+downstream);
-		String clusterID;
-		if(cluster_reads) clusterID = this.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources,  chrom); // this also clears current cluster
-		else clusterID = chrom+".NA";
+		
+		if(cluster_reads)  this.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources,  this.chrom_index, clusterID); // this also clears current cluster
+		else{
+		clusterID[0] = chrom+".NA";
+		clusterID[1] = "NA";
+		}
 	//	System.err.println(id);
-		String br_cluster_str = "";//sm==null ? "": coRefPositions.break_point_cluster+"\t";
-		this.o.printRead(id+"\t"+clusterID+"\t"+source_index+"\t"+br_cluster_str+readLength+"\t"
-		+type_nme+"\t"+breakSt1+"\t"+coRefPositions.breaks.toString()+"\t"+chrom+"\t"
+	//	String br_cluster_str = "";//sm==null ? "": coRefPositions.break_point_cluster+"\t";
+		this.o.printRead(id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"
+		+type_nme+"\t"+chrom+"\t"
 		+startPos+"\t"+endPos+"\t"+prev_position+"\t"+position+"\t"+coRefPositions.getError(src_index)+"\t"+upstream+"\t"+downstream);
 	}
 	
@@ -314,7 +321,7 @@ public class IdentityProfile1 {
 	public void printBreakPoints()  throws IOException {
 		for(int i=0; i<this.breakpoints.length; i++){
 			if(breakpoints[i]!=null){
-				PrintWriter pw = o.getBreakPointPw(chrom,i);
+				PrintWriter pw = o.getBreakPointPw(chrom_index+"",i);
 				printMatrix(this.breakpoints[i],this.breakSt[i], this.breakEnd[i],  pw);
 				pw.close();
 			}
@@ -353,10 +360,11 @@ public class IdentityProfile1 {
 	}
 
 	public final String chrom;
+	public final int chrom_index;
 	public final Outputs o;
 	
 	public void getConsensus() throws IOException {
-			this.all_clusters.getConsensus( o, chrom);
+			this.all_clusters.getConsensus( o, this.chrom, this.chrom_index);
 	}	
 
 
