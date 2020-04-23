@@ -1,12 +1,8 @@
-#which x is significiantly more or less than expected given y
-#if(lower.tail=T returns p(x<=y) else p(x>=y)
-DEgenes<-function(df,log=F,binom=F, lower.tail = T, inds = c(1,2)){
-  x = df[,inds[1]]
-  y = df[,inds[2]]
-  
+
+betaBinomialP<-function(x,y, binom=F, lower.tail=T,log=F){
   size = ceiling(sum(y))
-  geneID = dimnames(df)[[1]]
- 
+  # geneID = df$geneID
+  
   shape1 = y 
   shape2 = size -y 
   proby = y/size;
@@ -16,63 +12,131 @@ DEgenes<-function(df,log=F,binom=F, lower.tail = T, inds = c(1,2)){
   shape2x = sizex -x 
   probx = x/sizex
   
-  pbb =matrix(NA, ncol = 3, nrow = length(x))
+  pbb =rep(NA, length(x))
   if(binom){
     if(lower.tail==FALSE){
       pbb_lower =1- pbinom(x[!zeros],size = sizex,prob = proby[!zeros],log.p=F, lower.tail=lower.tail)
       pbb_lower[pbb_lower<=0] = 0
-        point =  dbinom(x[!zeros],size = sizex,prob = proby[!zeros],log.p=F)
-      pbb[!zeros,1] =   pbb_lower + point; 
-      if(log) pbb[!zeros,1] = log(pbb[!zeros,1] )
+      point =  dbinom(x[!zeros],size = sizex,prob = proby[!zeros],log.p=F)
+      pbb[!zeros] =   pbb_lower + point; 
+      if(log) pbb[!zeros] = log(pbb[!zeros,1] )
     }else{
-      pbb[!zeros,1] = pbinom(x[!zeros],size = sizex,prob = proby[!zeros],log.p=log, lower.tail=lower.tail)
+      pbb[!zeros] = pbinom(x[!zeros],size = sizex,prob = proby[!zeros],log.p=log, lower.tail=lower.tail)
       
     }
   }else{
     if(lower.tail==FALSE){
-        pbb_lower =1- pbetabinom.ab(x[!zeros],size = sizex,shape1 = shape1[!zeros],shape2 =shape2[!zeros],log=F)
-        pbb_lower[pbb_lower<=0] = 0
-        point = dbetabinom.ab(x[!zeros],size = sizex,shape1 = shape1[!zeros],shape2 =shape2[!zeros],log=F)
-        pbb[!zeros,1] = pbb_lower + point;
-        if(log) pbb[!zeros,1] = log(pbb[!zeros,1] )
-      }else{
-        pbb[!zeros,1] = pbetabinom.ab(x[!zeros],size = sizex,shape1 = shape1[!zeros],shape2 =shape2[!zeros],log=log)
-      }
+      pbb_lower =1- pbetabinom.ab(x[!zeros],size = sizex,shape1 = shape1[!zeros],shape2 =shape2[!zeros],log=F)
+      pbb_lower[pbb_lower<=0] = 0
+      point = dbetabinom.ab(x[!zeros],size = sizex,shape1 = shape1[!zeros],shape2 =shape2[!zeros],log=F)
+      pbb[!zeros] = pbb_lower + point;
+      if(log) pbb[!zeros] = log(pbb[!zeros] )
+    }else{
+      pbb[!zeros] = pbetabinom.ab(x[!zeros],size = sizex,shape1 = shape1[!zeros],shape2 =shape2[!zeros],log=log)
+    }
   }
   if(log){
-    pbb[!zeros,1] =  pbb[!zeros,1]/log(10)
+    pbb[!zeros] =  pbb[!zeros]/log(10)
   }
-  pbb[!zeros,2] = probx[!zeros]/proby[!zeros];
-  pbb[,3] = p.adjust(pbb[,1], method="BH")
-  result = pbb;
-  dimnames(result) = list(geneID, c("p_lt", "ratio", "FDR"))
-  orders =apply(result[,1,drop=F], 2, order)
-  dimnames(orders)[[1]] = geneID
-  probX = probx*1e6
-  probY = proby*1e6
+else{
+  pbb[pbb>1] = 1
+} 
+  pbb
+}
+
+chisqCombine<-function(pv){
+  #if(TRUE) return(pv[1])
+  nonNA = which(!is.na(pv))
+  
+  if(length(nonNA)==0) return(NaN)
+  pchisq(sum(unlist(lapply(pv[nonNA],qchisq,lower.tail=F, df=1 ))),df=length(nonNA), lower.tail=F)
+}
+
+#which x is significiantly more or less than expected given y
+#if(lower.tail=T returns p(x<=y) else p(x>=y)
+##ASSUMES MATCHED DATA BETWEEN CONTROL  AND INFECTED
+DEgenes<-function(df,inds_control, inds_infected, edgeR = F,  type="lt",reorder=T){
+  log=F;
+  binom=F;
+  lower.tail = T
+  if(!edgeR){
+    pvalsM1 = matrix(NA,nrow = dim(df)[1], ncol = length(inds_control))
+    pvalsM2 = matrix(NA,nrow = dim(df)[1], ncol = length(inds_control))
+    for(i in 1:length(inds_control)){
+        x = df[,inds_control[i]]
+        y = df[,inds_infected[i]]
+        pvalsM1[,i] = betaBinomialP(x,y, binom=binom, lower.tail=lower.tail,log=log)
+        pvalsM2[,i] = betaBinomialP(y,x, binom=binom, lower.tail=lower.tail,log=log)
+        
+    }
+    pvals1 = apply(pvalsM1, 1, chisqCombine)
+    pvals2 = apply(pvalsM2, 1, chisqCombine)
+    pvals = 2*apply( cbind(pvals1,pvals2),1,min)
+    lessThan = pvals2<pvals1
+  }else{
+    qlf = DE_egdeR(df, inds_control, inds_infected)
+    pvals = qlf$table$P
+    lessThan = qlf$coefficients[,2]<0
+  }
+ FDR = p.adjust(pvals, method="BH");
+ x = apply(df[,inds_control,drop=F],1,sum)
+ y = apply(df[,inds_infected,drop=F],1,sum)
+ 
+  probX = (x/sum(x))*1e6
+  probY = (y/sum(y))*1e6
   probX1 = (x+0.5)/sum(x+.5)
   probY1 = (y+0.5)/sum(y+.5)
   ratio1 = probX1/probY1
-  #ratio1_rev = probX1/probY1
-#  order()
-  output =  data.frame(result,probX, probY, ratio1,x,y, geneID,df)
-  names(output)[7:8] = names(df)[inds]
-  names(output)[4:5] = paste( names(df)[inds]," TPM", sep="")
-  output[order(output$p_lt),]
+  
+  
+ 
+  output =  data.frame(pvals,FDR,lessThan,probX, probY, ratio1,x,y, df)
+ # print(names(output))
+
+  names(output)[names(output) %in% c("x","y") ] = names(df)[inds]
+  names(output)[names(output) %in% c("probX","probY") ] = paste( names(df)[inds]," TPM", sep="")
+  if(reorder){
+    orders =order(pvals)
+    
+    output = output[orders,]
+  }
+  output
 #  output[orders[,1],,drop=F]
 }
 
-getDescr<-function(DE,mart, thresh = 1e-10){
+DE_egdeR<-function(df, inds_control, inds_infected){
+  groups = c(rep(1,length(inds_control)),rep(2,length(inds_infected)))
+  y <- DGEList(counts=df[,c(inds_control,inds_infected)],group=groups)
+  y <- calcNormFactors(y, fdr_thresh = 0.1)
+  design <- model.matrix(~groups)
+  y <- estimateDisp(y,design)
+  if(is.na(y$common.dispersion)) return (rep(NA, dim(df)[1]))
+  #To perform quasi-likelihood F-tests:
+  fit <- glmQLFit(y,design)
+  qlf <- glmQLFTest(fit,coef=2)
+ qlf
+}
+
+getDescr<-function(DE,mart, thresh = 1e-10, prefix="ENSCS"){
   inds = which(DE$FDR<thresh)
   print(length(inds))
-  genenames = as.character(DE[inds,,drop=F]$geneID)
-  attr =  c('ensembl_gene_id','description')# 'go_id') #, "name_1006", "namespace_1003") #, "definition_1006")
-  filt = c('ensembl_gene_id')
-  #	goids = getBM(attributes =attr,   filters = filt,   values = list(ensg) ,    mart = mart) 
-  desc =  biomaRt::getBM(attributes=attr, filters = filt, mart = mart, values = list(genenames)) 
-  #FDR = DE$FDR
+  subDE = DE[inds,,drop=F]
+  genenames1 = as.character(subDE$geneID)
+  
+  subinds = grep(prefix, genenames1)
   desc1 = rep("", dim(DE)[1])
-  desc1[inds] = desc[match(genenames, desc[,1]),2]
+  
+  if(length(subinds)>0){
+    genenames = genenames1[subinds];
+    attr =  c('ensembl_gene_id','description')# 'go_id') #, "name_1006", "namespace_1003") #, "definition_1006")
+    filt = c('ensembl_gene_id')
+    #	goids = getBM(attributes =attr,   filters = filt,   values = list(ensg) ,    mart = mart) 
+   print(genenames)
+     desc =  biomaRt::getBM(attributes=attr, filters = filt, mart = mart, values = list(genenames)) 
+    #FDR = DE$FDR
+    desc1[inds][subinds] = desc[match(genenames, desc[,1]),2]
+    
+  }
   data.frame(cbind(DE,desc1))
 }
 
@@ -112,9 +176,6 @@ getChromIDs<-function(ensg, mart){
 }
 
 getGoIDs<-function(genenames, mart){
- # inds = which(DE$FDR<thresh)
-
- # ensg = unlist(lapply(strsplit( as.character(exons$ENSG),'\\.'), .getEl,1))
   ensg = genenames
   #genenames = exons_$GENENAME.1
   attr =  c('ensembl_gene_id', 'go_id', "name_1006", "namespace_1003") #, "definition_1006")
@@ -148,33 +209,99 @@ getGoIDs<-function(genenames, mart){
 }
 
 findGenesByChrom<-function(DE,chrom="MT", fdr_thresh = 1e-10){
-  inds = which(as.character(DE$chrom)== chrom & DE$FDR<fdr_thresh)
+  inds = which(DE$chrs== chrom & DE$FDR<fdr_thresh)
   print(inds)
   if(length(inds)==0) return (NULL)
   DE[inds,,drop=F]
   
 }
 
+.readFeatureCounts<-function(files){
+  a = read.table(files[1], head=T)
+  b = read.table(files[2], head=T)
+  geneID = as.character(a$Geneid)
+  chrs = unlist(lapply(a$Chr,function(x) strsplit(as.character(x),";")[[1]][1]))
+  df = data.frame(control = a[,7],infected = b[,7],chrs = chrs, geneID = geneID)
+  df
+}
 
-findGenes<-function(goObj,DE,goid, fdr_thresh = 1e-10){
+.readTranscriptsHost<-function(infilesT, 
+                         target= list(count0="numeric", count1 = "numeric",chrom="character", leftGene="character", rightGene="character")
+              ,prefix="ENSC"                                   
+  ){
+  header = names(read.table( infilesT,sep="\t", head=T, nrows = 3, comment.char='#'))
+  inf = scan(infilesT, nlines=1, what=character())
+  inf = sub('#','',inf)
+  types = unlist(lapply(inf, function(x) rev(strsplit(x,"_")[[1]])[1]))
+  header_inds = match(names(target),header)
+  colClasses = rep(NULL, length(header));
+  colClasses[header_inds] = target
+  
+  transcripts = read.table( infilesT,sep="\t", head=T, comment.char='#', colClasses= colClasses)
+  header_inds1 = match(names(target),names(transcripts))
+  
+  transcripts = transcripts [,header_inds1] 
+  names(transcripts)[1:2] = types
+  names(transcripts)  = sub("leftGene", "geneID" ,names(transcripts))
+  names(transcripts)  = sub("chrom", "chrs" ,names(transcripts))
+  geneID = transcripts$geneID
+  type = rep(NA, length(geneID))
+  type[ grep(prefix, transcripts$geneID)] = "left"
+  missing = grep(prefix, transcripts$geneID,inv=T)
+  if(length(missing)>0){
+    have = grep(prefix,transcripts$rightGene[missing])
+    transcripts$geneID[missing[have]] = transcripts$rightGene[missing[have]]
+    type[missing[have]] = "right"
+  }
+  
+  #o = order(countAll, decreasing=T)
+  #transcripts = transcripts[o,]
+  #err_ratio_inds = grep("error_ratio", names(transcripts))
+  #transcripts[,err_ratio_inds] =apply(transcripts[,err_ratio_inds,drop=F], c(1,2), function(x) if(is.na(x)) -0.01 else x)
+  
+  if(length(grep("#", inf))>0) attr(transcripts,"info") = sub("#", "",inf)
+  #print(inf)
+  type = as.factor(type)
+res = cbind(transcripts, type)
+res
+}
+
+
+findGenes<-function(goid, goObj,DE, fdr_thresh = 1e-10, lessThan = FALSE){
   
   inds =  which(goObj$goids$go_id==goid) 
   genes = goObj$goids[inds,,drop=F]
   inds1 = which(DE$geneID %in% genes$ensembl_gene_id)
-  inds2 = which(DE[inds1,]$FDR<fdr_thresh)
+  if(!is.null(lessThan)){
+    inds2 = which(DE[inds1,]$FDR<fdr_thresh & DE[inds1,]$lessThan==lessThan)
+  }else{
+    inds2 = which(DE[inds1,]$FDR<fdr_thresh)
+    
+  }
  # ge = DE$geneID[inds1[inds2]]
 #  print(genes[which(genes$ensembl_gene_id %in% ge),])
   DE[inds1[inds2],]
 }
 
-findSigGo_<-function(goObj, DE, fdr_thresh = 1e-10, go_thresh = 1e-5){
+
+getGoGenes<-function(go_categories,goObjs, lessThan = T, fdr_thresh = 1e-5){
+  names(go_categories) = lapply(go_categories,function(x, goObj) as.character(goObj$lev_all[which(goObj$lev_all[,1]==x),3]), goObjs[[1]])
+  go_genes1 = lapply(go_categories, findGenes, goObjs[[1]],DE1, fdr_thresh = fdr_thresh, lessThan=lessThan)
+  names(go_genes1) = names(go_categories)
+  go_genes1 = go_genes1[which(unlist(lapply(go_genes1,function(x) dim(x)[1]))>0)]
+  go_genes1
+}
+
+
+findSigGo_<-function(goObj, DE1, fdr_thresh = 1e-10, go_thresh = 1e-5, prefix="ENSC", lessThan = TRUE){
+  DE = DE1[DE1$lessThan==lessThan,,drop=F]
   goids = goObj$goids 
-  ensg =DE$geneID
+  ensg =grep(prefix, DE$geneID, v=T)
   goidx = rep(FALSE,length(goids$ensembl_gene_id ))
   
   
   pvs = DE$FDR
-  sig =  which(pvs<fdr_thresh)
+  sig =  which(pvs<fdr_thresh )
   goidx1 = goids$ensembl_gene_id %in% ensg[sig]
   a = data.frame(goidx1)
   lev_all = goObj$lev_all
@@ -217,13 +344,15 @@ findSigGo_<-function(goObj, DE, fdr_thresh = 1e-10, go_thresh = 1e-5){
 }
 
 
-findSigChrom<-function( DE, fdr_thresh = 1e-10, go_thresh = 1e-5){
+findSigChrom<-function( DE1, fdr_thresh = 1e-10, go_thresh = 1e-5, lessThan=T){
+  if(is.null(lessThan)) DE = DE1 else DE =DE1[DE1$lessThan==lessThan,,drop=F]
+  
   ensg =DE$geneID
   pvs = DE$FDR
   sig =  which(pvs<fdr_thresh)
-  lev_all =getlev(DE$chrom)
-  lev_ = getlev(DE$chrom[sig])
-  go_todo = lev1[,1]
+  lev_all =getlev(DE$chrs)
+  lev_ = getlev(DE$chrs[sig])
+  go_todo = lev_[,1]
   inds_m = match(as.character(lev_[,1]), as.character(lev_all[,1]))
   lev_ = cbind(lev_,lev_all[inds_m,1:2,drop=F])
   chrs = as.character(lev_[,1])
@@ -236,12 +365,21 @@ findSigChrom<-function( DE, fdr_thresh = 1e-10, go_thresh = 1e-5){
   
 }
 
-.qqplot<-function(DE1, nme="p_lt"){
-  i = which(dimnames(DE1)[[2]]==nme)[1]
-  expected = -log10(seq(1:dim(DE1)[1])/dim(DE1)[1])
-  observed = -log10(DE1[,i])
-  plot(expected,observed, main = nme)
+#.qqplot<-function(DE1, nme="p_lt"){
+#  i = which(dimnames(DE1)[[2]]==nme)[1]
+#  expected = -log10(seq(1:dim(DE1)[1])/dim(DE1)[1])
+#  observed = -log10(DE1[,i])
+#  plot(expected,observed, main = nme)
+#}
+
+
+.qqplot<-function(pvals1){
+  pvals = pvals1[!is.na(pvals1)]
+  expected = -log10(seq(1:length(pvals))/length(pvals))
+  observed = -log10(sort(pvals))
+  plot(expected, observed)
 }
+
 
 
 .phyper2<-function(vec1,k,mn){
