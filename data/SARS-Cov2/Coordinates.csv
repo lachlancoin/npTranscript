@@ -1,7 +1,5 @@
 Name,Type,Minimum,Maximum,Length,Direction,gene
-UTR,5'UTR,1,13,13,forward,none
-leader,leader,14,75,62,forward,leader
-UTR,5'UTR,76,265,189,forward,none
+leader,leader,1,75,62,forward,leader
 ORF1ab gene,gene,266,21555,21290,forward,ORF1ab
 S gene,gene,21563,25384,3822,forward,S
 ORF3a gene,gene,25393,26220,828,forward,ORF3a
@@ -12,4 +10,4 @@ ORF7a gene,gene,27394,27759,366,forward,ORF7a
 ORF8 gene,gene,27894,28259,366,forward,ORF8
 N gene,gene,28274,29533,1260,forward,N
 ORF10 gene,gene,29558,29674,117,forward,ORF10
-UTR,3'UTR,29675,29893,219,forward,none
+UTR,3'UTR,29675,29893,219,forward,3UTR
