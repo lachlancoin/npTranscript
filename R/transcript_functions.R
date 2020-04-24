@@ -1125,6 +1125,7 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
   invisible(ml)
 }
 
+
 readH5<-function(h5file, header, transcripts_, span =0.0){
  dinds  = grep("depth", header)
  pos_ind = which(header=="pos")

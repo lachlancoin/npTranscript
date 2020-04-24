@@ -38,10 +38,16 @@ source(.findFile(src, "diff_expr_functs.R"))
 prefix = "ENSC"; #for vervet monkey
 
 files = dir()
-featureCounts = T
+featureCounts = F
 if(!featureCounts){
   infilesT = grep("transcripts", dir(), v=T)
-  df=.readTranscriptsHost(infilesT)
+  target= list(count0="numeric", count1 = "numeric",chrom="character", 
+               leftGene="character", rightGene="character", start = "numeric", 
+               end="numeric", ID="character", isoforms="numeric" ,error_ratio0 = "numeric",error_ratio1="numeric")
+  #header = names(read.table( infilesT,sep="\t", head=T, nrows = 3, comment.char='#'))
+
+  df=.readTranscriptsHost(infilesT,target=target)
+  
 }else{
 files = grep("featurecount", dir(), v=T)
 df = .readFeatureCounts(grep("featurecount", dir(), v=T))
@@ -51,6 +57,10 @@ df = .readFeatureCounts(grep("featurecount", dir(), v=T))
 control_inds = 1
 infected_inds = 2
 DE1 = DEgenes(df, control_inds, infected_inds,edgeR = F, reorder=T);
+DE_err1= DE_err(df,1,2)
+infiles = grep("clusters.h5", dir(), v=T)
+
+
 #DE2 = DEgenes(df,control_inds, infected_inds, log=F,edgeR = F, reorder=T);
 
 #CHECK DISTRIBUTION (OPTIONAL)
@@ -78,7 +88,12 @@ names(sigGo2) = names(goObjs)
 sigChr1 = findSigChrom(DE1,fdr_thresh = 1e-5, go_thresh = 1e-4, lessThan =T)
 sigChr2 = findSigChrom(DE1,fdr_thresh = 1e-5, go_thresh = 1e-4, lessThan =F)
 
- 
+DE1_na = DE1[is.na(DE1$type),]
+.qqplot(DE1_na$FDR)
+sigChr1 = findSigChrom(DE1_na,fdr_thresh = 1e-5, go_thresh = 1e-4, lessThan =T)
+sigChr2 = findSigChrom(DE1_na,fdr_thresh = 1e-5, go_thresh = 1e-4, lessThan =F)
+findGenesByChrom(DE1_na,"26", fdr_thresh = 1e-5)
+findGenesByChrom(DE1_na,"AQIB01159108.1", fdr_thresh = 1e-5)
 
 
 #attr= listAttributes(mart);
