@@ -230,11 +230,15 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		int startThresh = cmdLine.getIntVal("startThresh");
 		int endThresh = cmdLine.getIntVal("endThresh");
 		int maxReads = cmdLine.getIntVal("maxReads");
+	
+		boolean printIsoforms  = true;
+		boolean printClusterDepth = true;
 		
 		boolean sorted = true;
 		boolean calcBreaks = false;// whether to calculate data for the break point heatmap, true for SARS_COV2
 		boolean filterBy5_3 = false;// should be true for SARS_COV2
 		boolean annotByBreakPosition = false;  // should be true for SARS_COV2
+	
 		if(SARS){
 			calcBreaks  = true; 
 			filterBy5_3 = true;
@@ -242,7 +246,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		}
 			errorAnalysis(bamFile, reference, annotFile,readList,annotationType, 
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  sorted , 
-				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, overwrite);
+				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, overwrite, printIsoforms, printClusterDepth);
 	}
 	public static void main(String[] args1) throws IOException, InterruptedException {
 		CommandLine cmdLine = new ViralTranscriptAnalysisCmd2();
@@ -280,7 +284,8 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 	 */
 	static void errorAnalysis(String bamFiles, String refFile, String annot_file, String readList,    String annotationType, String resdir, String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads,  boolean sorted,
-			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,Map<String, JapsaAnnotation> anno, Set<String>chrToInclude, boolean overwrite ) throws IOException {
+			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,Map<String, JapsaAnnotation> anno, Set<String>chrToInclude, boolean overwrite,
+			boolean printIsoforms, boolean printClusterDepth) throws IOException {
 		boolean cluster_reads = true;
 		CigarHash2.round = round;
 		IdentityProfile1.annotByBreakPosition = annotByBreakPosition;
@@ -464,7 +469,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 							}else{
 								annot = new Annotation(new File(annot_file), currentIndex+"", seqlen);
 							}
-							outp = new Outputs(resDir,  in_nmes, overwrite, currentIndex); 
+							outp = new Outputs(resDir,  in_nmes, overwrite, currentIndex, printIsoforms, printClusterDepth); 
 							profile = new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh, annot, calcBreaks, chr.getName(), currentIndex);
 					}
 					try{
@@ -498,18 +503,22 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		});
 		
 		for(int i=0; i<reads_files.length; i++){
+			System.err.println(reads_files[i]);
 			File read_fle = reads_files[i];
 			final String prefix = read_fle.getName().split("\\.")[0]+".";
+			System.err.println(prefix);
 			File[] transcript_files = resDir.listFiles(new FileFilter(){
 
 				@Override
 				public boolean accept(File pathname) {
 					// TODO Auto-generated method stub
-					return pathname.getName().contains(prefix+".transcripts.txt");
+					return pathname.getName().contains(".transcripts.txt") && pathname.getName().startsWith(prefix);
 				}
 				
 			});
-			ExtractClusterCmd.cluster(resDir,transcript_files[0],reads_files[i], filterBy5_3);
+			if(transcript_files.length==1){
+				ExtractClusterCmd.cluster(resDir,transcript_files[0],reads_files[i], filterBy5_3);
+			}
 		}
 	
 	}
