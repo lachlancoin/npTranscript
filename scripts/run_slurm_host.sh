@@ -29,8 +29,8 @@ if [ $a -eq 1 ]; then
   opts1="--readList reads_in.txt" 
 fi
 
-reference="Chlorocebus_sabaeus.ChlSab1.1.dna.toplevel.fa.gz"
-coord_file="Chlorocebus_sabaeus.ChlSab1.1.99.gff3.gz"
+reference="../Chlorocebus_sabaeus.ChlSab1.1.dna.toplevel.fa.gz"
+coord_file="../Chlorocebus_sabaeus.ChlSab1.1.99.gff3.gz"
 
 dat=$(date +%Y%m%d%H%M%S)
 resdir="results_${dat}"
