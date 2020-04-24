@@ -496,7 +496,21 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			}
 			
 		});
-		ExtractClusterCmd.cluster(resDir,outp.transcripts_file,reads_files, filterBy5_3);
+		
+		for(int i=0; i<reads_files.length; i++){
+			File read_fle = reads_files[i];
+			final String prefix = read_fle.getName().split("\\.")[0]+".";
+			File[] transcript_files = resDir.listFiles(new FileFilter(){
+
+				@Override
+				public boolean accept(File pathname) {
+					// TODO Auto-generated method stub
+					return pathname.getName().contains(prefix+".transcripts.txt");
+				}
+				
+			});
+			ExtractClusterCmd.cluster(resDir,transcript_files[0],reads_files[i], filterBy5_3);
+		}
 	
 	}
 
