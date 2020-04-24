@@ -37,7 +37,7 @@ public class IdentityProfile1 {
 		SequenceOutputStream seqFasta =  null; // new SequenceOutputStream(new GZIPOutputStream(new FileOutputStream(outfile5)));
 		//i
 		
-		final private PrintWriter transcriptsP,readClusters;
+		 private PrintWriter transcriptsP,readClusters;
 		final IHDF5SimpleWriter clusterW, altT;
 		//PrintWriter readClusters;
 		File resDir;
@@ -52,23 +52,42 @@ public class IdentityProfile1 {
 			this.altT.close();
 		}
 		int genome_index=0;
-		public Outputs(File resDir,  String[] type_nmes, boolean overwrite) throws IOException{
+	//	int currentIndex=0;
+		
+		/*public void updateChromIndex(int currentIndex2) throws IOException{
+			this.genome_index = currentIndex2;
+			this.newReadCluster(currentIndex2);
+		}*/
+		/*private void newReadCluster(int genome_index) throws IOException{
+			 if(readClusters!=null) readClusters.close();
+			
+		}*/
+		public Outputs(File resDir,  String[] type_nmes, boolean overwrite, int currentIndex) throws IOException{
 			this.type_nmes = type_nmes;
+			this.genome_index= currentIndex;
 			 this.resDir = resDir;
 			 int num_sources = type_nmes.length;
 			 outfile = new File(resDir,genome_index+ ".txt");
 			 outfile1 = new File(resDir, genome_index+ "coref.txt");
-			 outfile2 = new File(resDir, genome_index+"clusters.h5");
+			 outfile2 = new File(resDir, genome_index+".clusters.h5");
 			 outfile2_1 = new File(resDir, genome_index+"clusters1.h5");
-			 reads_file = new File(resDir,genome_index+ "readToCluster.txt.gz");
-			 outfile4 = new File(resDir,genome_index+ "exons.txt.gz");
-			 outfile5 = new File(resDir,genome_index+ "clusters.fa.gz");
-			 outfile6 = new File(resDir,genome_index+ "tree.txt.gz");
-			 outfile7 = new File(resDir,genome_index+ "dist.txt.gz");
-			 outfile10 = new File(resDir,genome_index+"isoforms.h5");
 			
-			 transcripts_file = new File(resDir,genome_index+ "transcripts.txt.gz");
-			 File[] f = new File[] {outfile1, outfile2, reads_file, outfile10, transcripts_file};
+			 outfile4 = new File(resDir,genome_index+ ".exons.txt.gz");
+			 outfile5 = new File(resDir,genome_index+ ".clusters.fa.gz");
+			 outfile6 = new File(resDir,genome_index+ ".tree.txt.gz");
+			 outfile7 = new File(resDir,genome_index+ ".dist.txt.gz");
+			 outfile10 = new File(resDir,genome_index+".isoforms.h5");
+			
+			 reads_file = new File(resDir,genome_index+ ".readToCluster.txt.gz");
+			 readClusters = new PrintWriter(
+					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(reads_file))));
+			 readClusters.println("readID\tclusterId\tsubID\tsource\tlength\ttype_nme\tchrom\tstartPos\tendPos\tbreakStart\tbreakEnd\terrorRatio\tupstream\tdownstream");
+		
+			 transcripts_file = new File(resDir,genome_index+ ".transcripts.txt.gz");
+			//	newReadCluster(genome_index);
+
+			 File[] f = new File[] {outfile1, outfile2,  outfile10, transcripts_file};
+
 			 for(int i=0; i<f.length; i++){
 				 if(overwrite && f[i].exists()){
 					 System.err.println("deleteing "+f[i].getAbsolutePath());
@@ -78,11 +97,6 @@ public class IdentityProfile1 {
 					 throw new RuntimeException("will not overwrite file "+f[i].getAbsolutePath());
 				 }
 			 }
-			 readClusters = new PrintWriter(
-						new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(reads_file))));
-			 //String br_cluster_str = "";//sm==null ? "": "break_cluster\t";
-			 readClusters.println("readID\tclusterId\tsubID\tsource\tlength\ttype_nme\tchrom\tstartPos\tendPos\tbreakStart\tbreakEnd\terrorRatio\tupstream\tdownstream");
-
 			 transcriptsP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(transcripts_file))));
 				String transcriptP_header = "ID\tchrom\tstart\tend\ttype_nme\tstartBreak\tendBreak\tisoforms\tleftGene\trightGene\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true)
 				+"\t"+TranscriptUtils.getString("depth", num_sources, true)+"\t"+TranscriptUtils.getString("errors", num_sources, true)
@@ -111,7 +125,7 @@ public class IdentityProfile1 {
 			clusterW = 
 					 HDF5Factory.open(outfile2);
 			clusterW.writeStringArray("header", str.toArray(new String[0]));
-			
+		
 		//	clusterW.writeStringArray("header", str.toArray(new String[0]));
 		}
 
@@ -188,6 +202,8 @@ public class IdentityProfile1 {
 			}
 			
 		}
+
+		
 	}
 	
 	
@@ -241,8 +257,6 @@ public class IdentityProfile1 {
 	
 	String[] clusterID = new String[2];
 	public void processRefPositions(int startPos, int endPos, String id, boolean cluster_reads, int  readLength, int refLength, int src_index , int seqlen) throws IOException, NumberFormatException{
-		
-		
 		CigarHash2 breaks  = coRefPositions.breaks;
 		Annotation annot = this.all_clusters.annot;
 		coRefPositions.end = endPos;

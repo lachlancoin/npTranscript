@@ -36,6 +36,7 @@ package npTranscript.run;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -320,12 +321,11 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			File bam = new File( bamFile);
 			in_nmes[ii] = bam.getName().split("\\.")[0];
 		}
-		Outputs outp = new Outputs(resDir,  in_nmes, overwrite); 
-		Set<String> doneChr = new HashSet<String>();
 			
 		
 	//	genes_all_pw.close();
 		IdentityProfile1 profile = null;
+		Outputs outp = null;
 		final SAMRecordIterator[] samIters = new SAMRecordIterator[len];
 		SamReader[] samReaders = new SamReader[len];
 		outer1: for (int ii = 0; ii < len; ii++) {
@@ -358,7 +358,8 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			int currentIndex = 0;
 			
 			Sequence chr = genomes.get(currentIndex);
-	
+			Set<String> doneChr = new HashSet<String>();
+			
 			long totReadBase = 0, totRefBase = 0;
 			int numReads = 0;
 
@@ -411,7 +412,9 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 					if( profile!=null && currentIndex>=0){
 						profile.printBreakPoints();
 						profile.getConsensus();
+						outp.close();
 						profile= null;
+						outp = null;
 						doneChr.add(chr.getName());
 						System.err.println("finished "+chr.getName());
 						if(chrToInclude != null ){
@@ -425,6 +428,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 					currentIndex = refIndex;
 					String prev_chrom = chr==null ? "null": chr.getName();
 					chr = genomes.get(currentIndex);
+				//	outp.updateChromIndex(currentIndex);
 					System.err.println("switch chrom "+prev_chrom+"  to "+chr.getName());
 					
 				}
@@ -460,6 +464,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 							}else{
 								annot = new Annotation(new File(annot_file), currentIndex+"", seqlen);
 							}
+							outp = new Outputs(resDir,  in_nmes, overwrite, currentIndex); 
 							profile = new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh, annot, calcBreaks, chr.getName(), currentIndex);
 					}
 					try{
@@ -481,8 +486,17 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 				
 			}
 		
-		outp.close();
-		ExtractClusterCmd.cluster(resdir,outp.transcripts_file, outp.reads_file, filterBy5_3);
+		if(outp!=null) outp.close();
+		File[] reads_files = resDir.listFiles(new FileFilter(){
+
+			@Override
+			public boolean accept(File pathname) {
+				// TODO Auto-generated method stub
+				return pathname.getName().contains("readToCluster.txt");
+			}
+			
+		});
+		ExtractClusterCmd.cluster(resDir,outp.transcripts_file,reads_files, filterBy5_3);
 	
 	}
 
