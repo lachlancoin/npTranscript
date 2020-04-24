@@ -328,10 +328,12 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 						profile= null;
 						doneChr.add(chr.getName());
 						System.err.println("finished "+chr.getName()+" "+in_nmes[source_index]);
-						chrToInclude.remove(chr.getName());
-						if(chrToInclude != null && chrToInclude.size()==0) {
-							System.err.println("finished sample "+in_nmes[source_index]);
-							break outer;
+						if(chrToInclude != null ){
+							chrToInclude.remove(chr.getName());
+							if(chrToInclude.size()==0) {
+								System.err.println("finished sample "+in_nmes[source_index]);
+								break outer;
+							}
 						}
 					}
 					currentIndex = refIndex;
