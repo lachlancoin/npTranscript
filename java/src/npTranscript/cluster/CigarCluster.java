@@ -2,7 +2,10 @@ package npTranscript.cluster;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author Lachlan Coin
@@ -17,14 +20,14 @@ public class CigarCluster  {
 		int breakSt = -1;
 		int breakEnd = -1;
 		
-		private final int id;
+		private final String id;
 		
-		public int id(){
+		public String id(){
 			return id;
 		}
-		public String id(String chrom){
-			return chrom+"."+id;
-		}
+		/*public String id(int chrom_index){
+			return chrom_index+"."+id;
+		}*/
 
 		 int start=0;
 		 int end=0;
@@ -38,21 +41,46 @@ public class CigarCluster  {
 			this.readCountSum++;
 			
 		}
+
+	public static class Count{
+		public Count(int[] count, int id){
+			this.count = count;
+			this.id = id;
+		}
+		public Count(int num_sources, int src_index, int id) {
+			this.count = new int[num_sources];
+			count[src_index]=1;
+			this.id = id;
+			// TODO Auto-generated constructor stub
+		}
+		private int id;
+		private int[] count;
+		public void increment(int source_index) {
+			this.count[source_index] = this.count[source_index]+1;
+			
+		}
+		public int[] count(){
+			return count;
+		}
+		public int id(){
+			return id;
+		}
 		
+	}
 		
-   	CigarHash breaks = new CigarHash() ;
- 
+   	Map<CigarHash2, Count> all_breaks  ;
+   	CigarHash2 breaks = new CigarHash2();
+   	CigarHash breaks_hash = new CigarHash();
    	
    	
 
 	
 		
-		public void setBreaks(CigarHash breaks){
-			this.breaks.secondKey = breaks.secondKey;
+		/*public void setBreaks(CigarHash2 breaks){
 			this.breaks.addAll(breaks);
+		}*/
 
-		}
-		public CigarCluster(int id,  int num_sources){
+		public CigarCluster(String id,  int num_sources){
 			this.id = id;
 			this.readCount = new int[num_sources];
 			this.maps = new SparseVector[num_sources];
@@ -64,11 +92,16 @@ public class CigarCluster  {
 			}
 		}
 		
-		public CigarCluster(int id,  int num_sources, CigarCluster c1, int source_index) throws NumberFormatException{
+		public CigarCluster(String id,  int num_sources, CigarCluster c1, int source_index) throws NumberFormatException{
 			this(id, num_sources);
 			this.breakSt = c1.breakSt;
 			this.breakEnd = c1.breakEnd;
-			setBreaks(c1.breaks);
+			this.breaks.addAll(c1.breaks);
+			all_breaks = new HashMap<CigarHash2, Count>();
+			//if(all_breaks.size()>0) throw new RuntimeException("should be zero");
+			
+			this.all_breaks.put(breaks,new Count(num_sources, source_index,  0));
+			this.breaks_hash.secondKey = c1.breaks_hash.secondKey;
 			addReadCount(source_index);
 			start = c1.start;
 			end = c1.end;
@@ -100,7 +133,9 @@ public class CigarCluster  {
 			this.prev_position = 0;
 			this.break_point_cluster = -1;
 			first = true;
-			this.breaks.clear();
+			this.breaks.clear();			
+			if(all_breaks!=null)this.all_breaks.clear();
+			this.breaks_hash.clear();
 		}
 	
 
@@ -109,11 +144,11 @@ public class CigarCluster  {
 			//System.err.println(prev_position + " "+pos);
 			if(first){
 				first = false; 
-				breaks.add(pos);
+				breaks.addR(pos);
 			} else{	
 				if(pos-prev_position>TranscriptUtils.break_thresh){
-					this.breaks.add(prev_position);
-					this.breaks.add(pos);
+					this.breaks.addR(prev_position);
+					this.breaks.addR(pos);
 				}
 			}
 			prev_position = pos;
@@ -134,14 +169,7 @@ public class CigarCluster  {
 		public String toString() {
 			return this.breaks.toString();
 		}
-/*
-		public Iterator<Integer> keys() {
-			return map100.keyIt();
-		}
-*/
-		/*public Iterator<Integer> tailKeys(int st) {
-			return map100.tailKeys(st);
-		}*/
+
 
 		
 		
@@ -321,11 +349,30 @@ public class CigarCluster  {
 			return source.values().stream() .reduce(0, Integer::sum);
 		}*/
 		
-		public void merge(CigarCluster c1) {
+		public int merge(CigarCluster c1, int num_sources, int src_index) {
 			if(c1.start < start) start = c1.start;
 			if(c1.end > end) end = c1.end;
 			if(breakSt<0 || (c1.breakSt>=0 & c1.breakSt < breakSt)) breakSt = c1.breakSt;
 			if(breakEnd<0 || (c1.breakEnd>=0 &  c1.breakEnd > breakEnd)) breakEnd = c1.breakEnd;
+			//int subID;
+			
+			if(c1.all_breaks!=null){
+				/*for(Iterator<CigarHash2> it = c1.all_breaks.keySet().iterator() ; it.hasNext();){
+					CigarHash2 nxt = it.next();
+					Integer count = this.all_breaks.get(nxt);
+					all_breaks.put(nxt, count==null ? 1 : count+1);
+				}*/
+				throw new RuntimeException("!!");
+			}
+				
+			CigarHash2 br = (CigarHash2) c1.breaks.clone();
+			Count	count = this.all_breaks.get(br);
+				if(count==null) {
+					count = new Count(num_sources, src_index, all_breaks.size());
+					all_breaks.put(br, count);
+				}
+				else count.increment(src_index);
+			
 			for(int i=0; i<this.readCount.length;i++) {
 				readCount[i]+=c1.readCount[i];
 			}
@@ -338,9 +385,7 @@ public class CigarCluster  {
 				maps[i].merge( c1.maps[i]);
 				errors[i].merge(c1.errors[i]);
 			}
-			//if(sum1!=sum2){
-				//throw new RuntimeException("maps not concordant");
-			//}
+			return count.id();
 		}
 		static String[] nmes = new String[] {"5_3", "5_no3", "no5_3", "no5_no3"};
 		public String getTypeNme(int seqlen) {

@@ -130,9 +130,9 @@ public class ExtractClusterCmd extends CommandLine {
 		if(print) transcripts1.print(outdir);
 		
 	}
-	public static void cluster(String resdir,  File transcriptF, File readsF, 
+	public static void cluster(File in,  File transcriptF, File readsF, 
 			boolean filterByType) {
-		File in = new File(resdir);
+	//	File in = new File(resdir);
 		//File transcriptF;// = profiles.get(i).transcripts_file;
 		//File readsF = ;
 		try{
@@ -146,17 +146,25 @@ public class ExtractClusterCmd extends CommandLine {
 			for(int ij=0; ij<types.length; ij++){
 				String[] filters = new String[] {"type_nme",types[ij]};
 				File outdir = new File(in, "clusters_"+types[ij]);
-				CompressDir comp = new CompressDir(in, "clusters_"+types[ij]+".zip");
+				
+				//for(int k=0; k<readsF.length; k++){
+					String prefix = readsF.getName().split("\\.")[0];
+					CompressDir comp = new CompressDir(in, prefix+".clusters_"+types[ij]+".zip");
 				ec.run(readsF, comp,	sort, filters, 
 					filters1,grpName, false);
+				
 				comp.close();
+				//}
 				//CompressDir.compress(outdir);
 			}
 			}else{
 			//	File outdir = new File(in, "clusters");
-				CompressDir comp = new CompressDir(in, "clusters.zip");
-				ec.run(readsF, comp,	sort, null, filters1,grpName, false);
-				comp.close();
+				//for(int k=0; k<readsF.length; k++){
+					String prefix = readsF.getName().split("\\.")[0];
+					CompressDir comp = new CompressDir(in, prefix+".clusters.zip");
+					ec.run(readsF, comp,	sort, null, filters1,grpName, false);
+					comp.close();
+				//}
 			}
 		}catch(Exception exc){
 			exc.printStackTrace();

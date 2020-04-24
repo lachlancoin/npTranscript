@@ -241,6 +241,8 @@ public class MergeCmd extends CommandLine {
 		int num_sources = inDir.length;
 		StringBuffer info = new StringBuffer(); 
 		
+		
+		// this combines the reads file
 		PrintWriter reads_pw  = new PrintWriter(
 				new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(new File(outdir, "0readToCluster.txt.gz")))));
 		for(int i=0; i<inDir.length; i++){	
@@ -248,7 +250,6 @@ public class MergeCmd extends CommandLine {
 			File readsFile = new File(inDir[i], "0readToCluster.txt.gz");
 			System.err.println(readsFile.getAbsolutePath());
 			print(readsFile, reads_pw,"source", (i+""), i==0, filter);
-		//mkSymLink(readsFile, targetFile);
 			info.append(inDir[i].getName());
 			 info.append("\t");
 			Table transcripts = new Table(new File(inDir[i], tf_name),"\t");
@@ -256,6 +257,8 @@ public class MergeCmd extends CommandLine {
 			transcripts.addToMap(map, ids, i, num_sources);
 		}
 		reads_pw.close();
+		
+		
 		String[] merge = new String[] {"count0",  "depth0", "errors0", "error_ratio0"};
 		String[] toignore = new String[] {"countTotal"};
 		MergeInds mi = new MergeInds(header,  merge,  toignore, num_sources, "0");

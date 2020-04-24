@@ -55,10 +55,12 @@ infilesBr = grep("breakpoints.", dir(), v=T)
 infilesReads = grep("0readToCluster", dir(), v=T)
 infilesT = grep("transcripts.txt.gz$", dir(), v=T)
 infiles = grep("clusters.h5", dir(), v=T)
+infilesAltT = grep("isoforms.h5", dir(), v=T)
 print(infilesBr)
 print(infilesReads)
 print(infilesT)
 print(infiles)
+print(infilesAltT)
 type_nme = NULL
 if(length(infilesBr)>0){
 type_nme = unlist(lapply(infilesBr, function(x) strsplit(x,"\\.")[[1]][2]))
@@ -111,6 +113,11 @@ names(transcripts_all)
 if(!is.null(attr(transcripts_all[[1]], "info"))){
 type_nme = attr(transcripts_all[[1]], "info")
 }
+
+if(length(infilesAltT)>0){
+isoforms = readIsoformH5(infilesAltT[[1]],  transcripts_all[[1]])
+}
+
 count_df = grep('count[0-9]', names(transcripts_all[[1]]))
 
 transcript_counts = lapply(transcripts_all, function(transcripts)  apply(transcripts[,count_df, drop=F], 2,sum))

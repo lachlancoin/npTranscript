@@ -1,16 +1,18 @@
 package npTranscript.cluster;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.ArrayList;
+import java.io.InputStreamReader;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.GZIPInputStream;
 
-import ch.systemsx.cisd.hdf5.IHDF5SimpleWriter;
 import japsa.seq.Sequence;
-import japsa.seq.SequenceOutputStream;
 import npTranscript.cluster.IdentityProfile1.Outputs;
 
 /**
@@ -25,6 +27,22 @@ public class CigarClusters {
 	
 //	final double thresh;
 	
+	public CigarClusters(int num_sources){
+	 this.num_sources = num_sources;
+	 this.seqlen =0;
+	 this.refseq =null;
+	 this.annot = null;
+	}
+	
+	private static String getKey(String[] str, int[] inds) {
+		StringBuffer sb = new StringBuffer();
+		for(int i=0; i<inds.length; i++) {
+			sb.append(str[inds[i]]);
+			sb.append(",");
+		}
+		return sb.toString();
+	}
+
 	CigarClusters( Sequence refSeq, Annotation annot, int num_sources){
 	//	this.thresh = thresh;
 		this.refseq = refSeq;
@@ -64,24 +82,22 @@ public class CigarClusters {
 
 
 	
-	public String matchCluster(CigarCluster c1,  int source_index, int num_sources, String chrom) throws NumberFormatException{
-	
-		String clusterID = chrom;
-	
-		
-		if(!l.containsKey(c1.breaks)){
-			CigarCluster newc = new CigarCluster(l.keySet().size(), num_sources, c1, source_index);
-			
-			clusterID = newc.id(chrom);
-			l.put(newc.breaks, newc);
-			//System.err.println("new cluster " +" "+newc.id+" "+index);
-
+	public void matchCluster(CigarCluster c1,  int source_index, int num_sources, int chrom_index,String[] clusterIDs) throws NumberFormatException{
+		String clusterID;
+		int subID=0;
+		if(!l.containsKey(c1.breaks_hash)){
+			CigarCluster newc = new CigarCluster("ID"+chrom_index+"."+l.keySet().size(), num_sources, c1, source_index);
+			clusterID = newc.id();
+			l.put(newc.breaks_hash, newc);
 		}else{
-			CigarCluster clust = l.get(c1.breaks);
-			clust.merge(c1);
-			clusterID = clust.id(chrom);
+			CigarCluster clust = l.get(c1.breaks_hash);
+			subID = clust.merge(c1, num_sources, source_index);
+			clusterID = clust.id();
 		}
-		return clusterID;
+	clusterIDs[0] = clusterID;
+	clusterIDs[1] = subID+"";
+		
+		//return clusterID;
 	}
 
 	/*private void writeSeq(SequenceOutputStream seqFasta,Annotation annot,  PrintWriter exonP, int[][] exons, CigarCluster cc, String refseq, int[] firstlast){
@@ -122,13 +138,17 @@ public class CigarClusters {
 	final int seqlen;
 	final int num_sources;
 	public String process(CigarCluster cc,   Outputs o,
-			Map<String, List<CigarHash>> geneToHash,String chrom){
+			//Map<String, List<CigarHash>> geneToHash,
+			String chrom,
+			int chrom_index){
 		cc.addZeros(seqlen); 
 		
 		 int[][] matr =cc.getClusterDepth(num_sources);
-		String id = cc.id(chrom);
+		String id = cc.id();
 		o.writeIntMatrix(id, matr);
 		
+		
+		o.writeString(id, cc.all_breaks, this.num_sources);
 		String read_count = TranscriptUtils.getString(cc.readCount);
 		int startPos, endPos;
 		if(!IdentityProfile1.annotByBreakPosition ){
@@ -142,12 +162,12 @@ public class CigarClusters {
 		}
 		String downstream = annot==null ? null : annot.nextDownstream(endPos);
 		String upstream = annot==null ? null : annot.nextUpstream(startPos);
-		if(upstream==null) upstream =  TranscriptUtils.round(startPos, CigarHash.round)+"";
-		if(downstream==null) downstream =  TranscriptUtils.round(endPos, CigarHash.round)+"";
+		if(upstream==null) upstream =  chrom_index+"."+TranscriptUtils.round(startPos, CigarHash2.round)+"";
+		if(downstream==null) downstream = chrom_index+"."+ TranscriptUtils.round(endPos, CigarHash2.round)+"";
 		o.printTranscript(
 			id+"\t"+chrom+"\t"+cc.start+"\t"+cc.end+"\t"+cc.getTypeNme(seqlen)+"\t"+
-		cc.breaks.toString()+"\t"+cc.breaks.hashCode()+"\t"+
-		cc.breakSt+"\t"+cc.breakEnd+"\t"+
+		//cc.breaks.toString()+"\t"+cc.breaks.hashCode()+"\t"+
+		cc.breakSt+"\t"+cc.breakEnd+"\t"+cc.all_breaks.size()+"\t"+
 		upstream+"\t"+downstream+"\t"+
 		cc.totLen+"\t"+cc.readCountSum+"\t"+read_count
 				+"\t"+cc.getTotDepthSt(true)+"\t"+cc.getTotDepthSt(false)+"\t"+cc.getErrorRatioSt());
@@ -155,19 +175,21 @@ public class CigarClusters {
 	}
 	
 	public void getConsensus(  
-			Outputs o, String chrom
+			Outputs o, String chrom, int chrom_index
 			) throws IOException{
 		
-        Map<String, List<CigarHash>> geneToHash = new HashMap<String, List<CigarHash>>();
+        //Map<String, List<CigarHash2>> geneToHash = new HashMap<String, List<CigarHash2>>();
 		for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();) {
 			CigarCluster cc = it.next();
-			String key = this.process(cc, o, geneToHash,  chrom);
-			if(geneToHash!=null){
-				List<CigarHash> l;
-				if(!geneToHash.containsKey(key)) geneToHash.put(key, l = new ArrayList<CigarHash>());
+			String key = this.process(cc, o, 
+				//	geneToHash,  
+					chrom, chrom_index);
+			/*if(geneToHash!=null){
+				List<CigarHash2> l;
+				if(!geneToHash.containsKey(key)) geneToHash.put(key, l = new ArrayList<CigarHash2>());
 				else  l = geneToHash.get(key);
 				l.add(cc.breaks);
-			}
+			}*/
 		}
 		
 		

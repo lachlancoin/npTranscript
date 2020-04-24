@@ -33,11 +33,11 @@ public class ViralTranscriptAnalysisCmdMulti extends ViralTranscriptAnalysisCmd2
 		if(gff){
 			String  annotationType = cmdLine.getStringVal("type");
 			System.err.println("reading annotation");
-			 anno =  GFFAnnotation.readAnno(annot_file, annotationType);
+			 anno =  GFFAnnotation.readAnno(annot_file, annotationType, null);
 			System.err.println("done");
 		}
 		for(int i=0; i<bamFile.length; i++){
-			run(cmdLine, bamFile[i], resdir[i], anno,SARS);
+			run(cmdLine, bamFile[i], resdir[i], anno,SARS, null);
 		}
 		
 		
