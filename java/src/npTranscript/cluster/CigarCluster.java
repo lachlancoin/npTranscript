@@ -20,14 +20,14 @@ public class CigarCluster  {
 		int breakSt = -1;
 		int breakEnd = -1;
 		
-		private final int id;
+		private final String id;
 		
-		public int id(){
+		public String id(){
 			return id;
 		}
-		public String id(int chrom_index){
+		/*public String id(int chrom_index){
 			return chrom_index+"."+id;
-		}
+		}*/
 
 		 int start=0;
 		 int end=0;
@@ -43,16 +43,23 @@ public class CigarCluster  {
 		}
 
 	public static class Count{
-		public Count(int count, int id){
+		public Count(int[] count, int id){
 			this.count = count;
 			this.id = id;
 		}
-		private int count,id;
-		public void increment() {
-			this.count = this.count+1;
+		public Count(int num_sources, int src_index, int id) {
+			this.count = new int[num_sources];
+			count[src_index]=1;
+			this.id = id;
+			// TODO Auto-generated constructor stub
+		}
+		private int id;
+		private int[] count;
+		public void increment(int source_index) {
+			this.count[source_index] = this.count[source_index]+1;
 			
 		}
-		public int count(){
+		public int[] count(){
 			return count;
 		}
 		public int id(){
@@ -73,7 +80,7 @@ public class CigarCluster  {
 			this.breaks.addAll(breaks);
 		}*/
 
-		public CigarCluster(int id,  int num_sources){
+		public CigarCluster(String id,  int num_sources){
 			this.id = id;
 			this.readCount = new int[num_sources];
 			this.maps = new SparseVector[num_sources];
@@ -85,14 +92,15 @@ public class CigarCluster  {
 			}
 		}
 		
-		public CigarCluster(int id,  int num_sources, CigarCluster c1, int source_index) throws NumberFormatException{
+		public CigarCluster(String id,  int num_sources, CigarCluster c1, int source_index) throws NumberFormatException{
 			this(id, num_sources);
 			this.breakSt = c1.breakSt;
 			this.breakEnd = c1.breakEnd;
 			this.breaks.addAll(c1.breaks);
 			all_breaks = new HashMap<CigarHash2, Count>();
 			//if(all_breaks.size()>0) throw new RuntimeException("should be zero");
-			this.all_breaks.put(breaks,new Count(1, 0));
+			
+			this.all_breaks.put(breaks,new Count(num_sources, source_index,  0));
 			this.breaks_hash.secondKey = c1.breaks_hash.secondKey;
 			addReadCount(source_index);
 			start = c1.start;
@@ -341,7 +349,7 @@ public class CigarCluster  {
 			return source.values().stream() .reduce(0, Integer::sum);
 		}*/
 		
-		public int merge(CigarCluster c1) {
+		public int merge(CigarCluster c1, int num_sources, int src_index) {
 			if(c1.start < start) start = c1.start;
 			if(c1.end > end) end = c1.end;
 			if(breakSt<0 || (c1.breakSt>=0 & c1.breakSt < breakSt)) breakSt = c1.breakSt;
@@ -360,10 +368,10 @@ public class CigarCluster  {
 			CigarHash2 br = (CigarHash2) c1.breaks.clone();
 			Count	count = this.all_breaks.get(br);
 				if(count==null) {
-					count = new Count(1, all_breaks.size());
+					count = new Count(num_sources, src_index, all_breaks.size());
 					all_breaks.put(br, count);
 				}
-				else count.increment();
+				else count.increment(src_index);
 			
 			for(int i=0; i<this.readCount.length;i++) {
 				readCount[i]+=c1.readCount[i];

@@ -3,10 +3,9 @@ package npTranscript.cluster;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import japsa.seq.JapsaAnnotation;
 import japsa.seq.JapsaFeature;
@@ -19,7 +18,7 @@ public class GFFAnnotation extends Annotation{
 		String gff = "Chlorocebus_sabaeus.ChlSab1.1.99.gff3.gz";
 		String type = "gene";
 	//	List<String> genes = Arrays.asList("Name=ACE2:Name=TMPRSS2".split(":"));
-	Map<String, JapsaAnnotation> anno =  readAnno(gff, type);
+	Map<String, JapsaAnnotation> anno =  readAnno(gff, type, null);
 		int seqlen = 1;
 		for(int i=0; i<anno.size(); i++){
 			GFFAnnotation g_annot = new GFFAnnotation(anno.get(i), seqlen);
@@ -32,7 +31,7 @@ public class GFFAnnotation extends Annotation{
 	 * 
 	 * */
 	
-	public static Map<String, JapsaAnnotation> readAnno(String gff, String type) throws IOException{
+	public static Map<String, JapsaAnnotation> readAnno(String gff, String type,Set<String> chrs) throws IOException{
 		
 		FileInputStream aReader = new FileInputStream(gff);		
 		ArrayList<JapsaAnnotation> annos = JapsaAnnotation.readMGFF(aReader,0,0,type);
