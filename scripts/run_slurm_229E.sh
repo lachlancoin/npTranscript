@@ -34,7 +34,7 @@ coord_file="${npTranscript}/data/229E_CoV/Coordinates.csv"
 
 dat=$(date +%Y%m%d%H%M%S)
 resdir="results_${dat}"
-opts="--bin 10 --breakThresh 1000 --cluster_by_annotation true"
+opts="--bin 10 --breakThresh 1000"
 #opts="${opts} --maxReads 10000
 bash ${npTranscript}/scripts/run.sh --bamFile=${bamfiles1}   --reference=${reference} --annotation ${coord_file} --resdir ${resdir} ${opts} ${opts1}
 

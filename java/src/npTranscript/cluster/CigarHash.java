@@ -8,6 +8,8 @@ import java.util.ArrayList;
 
 public class CigarHash {
 	
+	
+	
 	public static boolean cluster_by_annotation = true;
 	/* (non-Javadoc)
 	 * @see npTranscript.cluster.CigHash#toString()

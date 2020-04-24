@@ -1127,31 +1127,33 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
 
 
 
-readIsoformH5<-function(h5file,  transcripts_, bin = 10){
- #dinds  = grep("depth", header)
- #pos_ind = which(header=="pos")
+readIsoformH5<-function(h5file,  transcripts_){
+.ext<-function(x) x[unique(c(0,which(x>0)))]
+header = h5read(h5file,"header")
  IDS = transcripts_$ID
- #clusters_ = matrix(NA, nrow =0, ncol = length(header)+1)
 trans = list()
   for(i in 1:length(IDS)){
 	ID = IDS[i]
 	mat = t(h5read(h5file,as.character(ID)))
-	cnts = mat[,1]
-	ord = order(cnts, decreasing=T)
-	cnts = cnts[ord]
-	mat = mat[ord,-1]
-	.ext<-function(x) x[unique(c(0,which(x>0)))]*bin
+	cnts = data.frame(mat[,1:length(header)])
+	names(cnts) = header
+	dimnames(cnts) = list(cnts$subID, header)
+	cnts = cnts[,-1]
+	cntT = apply(cnts,1,sum)
+	ord = order(cntT, decreasing=T)
+	cnts = cnts[ord,,drop=F]
+	mat = mat[ord,-(1:length(header))]
+	
 	transi = apply(mat,1,.ext)
-  	res = as.list(cnts)
-	names(res) = transi
-	trans[[i]] = res
+	names(transi) =dimnames(cnts)[[1]] #paste(ID,cnts$subID,sep='.')
+	trans[[i]] = list(breaks = transi, counts = cnts)
   } 
 names(trans) = IDS
 trans
 
 }
 
-readH5<-function(h5file, header, transcripts_, span =0q.0){
+readH5<-function(h5file, header, transcripts_, span =0.0){
  dinds  = grep("depth", header)
  pos_ind = which(header=="pos")
  IDS = transcripts_$ID

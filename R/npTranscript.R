@@ -115,7 +115,7 @@ type_nme = attr(transcripts_all[[1]], "info")
 }
 
 if(length(infilesAltT)>0){
-isoforms = readIsoformH5(infilesAltT[[1]],  transcripts_all[[1]], bin = 10)
+isoforms = readIsoformH5(infilesAltT[[1]],  transcripts_all[[1]])
 }
 
 count_df = grep('count[0-9]', names(transcripts_all[[1]]))

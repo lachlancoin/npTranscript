@@ -52,7 +52,7 @@ public class IdentityProfile1 {
 			this.altT.close();
 		}
 		int genome_index=0;
-		public Outputs(File resDir,  String[] type_nmes) throws IOException{
+		public Outputs(File resDir,  String[] type_nmes, boolean overwrite) throws IOException{
 			this.type_nmes = type_nmes;
 			 this.resDir = resDir;
 			 int num_sources = type_nmes.length;
@@ -66,8 +66,18 @@ public class IdentityProfile1 {
 			 outfile6 = new File(resDir,genome_index+ "tree.txt.gz");
 			 outfile7 = new File(resDir,genome_index+ "dist.txt.gz");
 			 outfile10 = new File(resDir,genome_index+"isoforms.h5");
-			 transcripts_file = new File(resDir,genome_index+ "transcripts.txt.gz");
 			
+			 transcripts_file = new File(resDir,genome_index+ "transcripts.txt.gz");
+			 File[] f = new File[] {outfile1, outfile2, reads_file, outfile10, transcripts_file};
+			 for(int i=0; i<f.length; i++){
+				 if(overwrite && f[i].exists()){
+					 System.err.println("deleteing "+f[i].getAbsolutePath());
+					 f[i].delete();
+				 }
+				 else if(f[i].exists()){
+					 throw new RuntimeException("will not overwrite file "+f[i].getAbsolutePath());
+				 }
+			 }
 			 readClusters = new PrintWriter(
 						new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(reads_file))));
 			 //String br_cluster_str = "";//sm==null ? "": "break_cluster\t";
@@ -85,10 +95,15 @@ public class IdentityProfile1 {
 			
 			
 			List<String> str = new ArrayList<String>();
-			str.add("pos"); //str.add("ẗype"); 
+			str.add("subID"); //str.add("ẗype"); 
 			for(int j=0; j<num_sources; j++){
 				str.add("depth"+j);
 			}
+			
+			altT = 
+					 HDF5Factory.open(outfile10);
+			altT.writeStringArray("header", str.toArray(new String[0]));
+			str.set(0, "pos");
 			for(int j=0; j<num_sources; j++){
 				str.add("errors"+j);
 			}
@@ -96,8 +111,7 @@ public class IdentityProfile1 {
 			clusterW = 
 					 HDF5Factory.open(outfile2);
 			clusterW.writeStringArray("header", str.toArray(new String[0]));
-			altT = 
-					 HDF5Factory.open(outfile10);
+			
 		//	clusterW.writeStringArray("header", str.toArray(new String[0]));
 		}
 
@@ -129,12 +143,13 @@ public class IdentityProfile1 {
 			
 		}
 
-		public void writeString(String id, Map<CigarHash2, Count> all_breaks) {
+		public void writeString(String id, Map<CigarHash2, Count> all_breaks, int num_sources) {
 			int[][]str = new int[all_breaks.size()][];
 			{
 			Iterator<Entry<CigarHash2, Count>> it = all_breaks.entrySet().iterator();
 			int maxl =-1;
 			boolean all_equal  = true;
+			int extra = num_sources+1;
 			for(int i=0;  it.hasNext();i++){
 				Entry<CigarHash2,Count> ch = it.next();
 				CigarHash2 key = ch.getKey();
@@ -146,18 +161,19 @@ public class IdentityProfile1 {
 				}else if(len<maxl){
 					len = maxl;
 				}
-				str[i] = new int[len+2];
+				str[i] = new int[len+extra];
 				str[i][0]  = ch.getValue().id();
-				str[i][1]  = ch.getValue().count();
+				System.arraycopy(ch.getValue().count(), 0, str[i], 1, num_sources);
+			//	str[i][1]  = ch.getValue().count();
 				for(int j=0; j<key.size(); j++){
-					str[i][j+2] = key.get(j);
+					str[i][j+extra] = key.get(j)*CigarHash2.round;
 				}
 				
 			}
 			if(!all_equal){
 				for(int i=0; i<str.length; i++){
-					if(str[i].length<maxl+2){
-						int[] str1 = new int[maxl+2];
+					if(str[i].length<maxl+extra){
+						int[] str1 = new int[maxl+extra];
 						System.arraycopy(str[i], 0, str1, 0, str[i].length);
 						str[i] = str1;
 					}
@@ -188,7 +204,7 @@ public class IdentityProfile1 {
 	this.chrom_index = chrom_index;
 	this.type_nmes = in_nmes;
 		this.num_sources = in_nmes.length;
-		this.coRefPositions = new CigarCluster(-1,num_sources);
+		this.coRefPositions = new CigarCluster("-1",num_sources);
 		this.genome = refSeq;
 		this.source_index = 0;		
 		this.o  = o;
@@ -312,7 +328,7 @@ public class IdentityProfile1 {
 	//private  PrintWriter readClusters;
 	private final Sequence genome;
 	private final int num_sources;
-	public int source_index; //source index
+	public int source_index=-1; //source index
 	public void updateSourceIndex(int i) {
 		this.source_index = i;
 	}
@@ -373,6 +389,7 @@ public class IdentityProfile1 {
 	
 
 	public void newRead(int source_index2) {
+		this.updateSourceIndex(source_index2);
 		this.coRefPositions.clear(source_index2);
 	}
 
