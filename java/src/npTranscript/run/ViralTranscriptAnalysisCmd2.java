@@ -153,8 +153,10 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 				}
 				current_sam_index = min_ind;
 			}
-			this.currentIndex = sr.getReferenceIndex();
+			
+			
 			sr = this.currentVals[current_sam_index];
+			if(sr!=null) this.currentIndex = sr.getReferenceIndex();
 			cnts[current_sam_index]++;
 			returned[current_sam_index] = true; 
 			return sr;
@@ -362,8 +364,17 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 
 			int numNotAligned = 0;
 			int prev_src_index =-1;
+			
 			outer: for (; samIter.hasNext() ; ) {
-				SAMRecord sam = samIter.next();
+				SAMRecord sam= null;
+				try{
+					sam = samIter.next();
+				}catch(Exception exc){
+					exc.printStackTrace();
+					
+					
+				}
+				if(sam==null) break outer;
 				int source_index = (Integer) sam.getAttribute(src_tag);
 				
 				//System.err.println(source_index);
