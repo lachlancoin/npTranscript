@@ -3,9 +3,10 @@ package npTranscript.cluster;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+
+import japsa.seq.Sequence;
 
 /**
  * @author Lachlan Coin
@@ -177,6 +178,8 @@ public class CigarCluster  {
 			return this.map.getDepth(i);//this.map.containsKey(i) ?  map.get(i) :  0;
 		}
 		
+		
+		
 		void getDepthSt(Integer i, int[] row, int start_pos, boolean match) {
 			//StringBuffer sb = new StringBuffer();
 			for(int src_index=0; src_index<maps.length; src_index++){
@@ -191,6 +194,9 @@ public class CigarCluster  {
 				sb.append(match ? this.maps[src_index].valsum() : this.errors[src_index].valsum());
 			}
 			return sb.toString();
+		}
+		public int readCountSum() {
+			return readCountSum;
 		}
 		
 		String getError(int src_index){
@@ -235,10 +241,10 @@ public class CigarCluster  {
 			
 		}
 		
-		public int[][] getClusterDepth(int num_sources) {
+		public int[][] getClusterDepth(int num_sources, Sequence ref) {
 			//numPos =0;
 			totLen =0;
-			int numcols = 1 + num_sources * 2;
+			int numcols = 1 + num_sources * 2 + 1; 
 		//	boolean prev0 = start>1;
 			//boolean printPrev = false;
 			List<Integer> keys = this.map.keys();
@@ -249,8 +255,12 @@ public class CigarCluster  {
 				Integer pos = keys.get(i);
 				int[] row = matr[i];
 				row[0] = pos;
-				getDepthSt(pos, row,1, true);
-				getDepthSt(pos, row,1 + num_sources, false);
+				row[1] = (int) ref.getBase(pos-1); // because sequence is in 0 in index
+				//System.err.println(ref.charAt(pos-1)+" -> " + row[1]);
+				//A =, C = 1, G = 2. T = 3
+				getDepthSt(pos, row,2, true);
+				getDepthSt(pos, row,2 + num_sources, false);
+				
 			}
 			return matr;
 			//TranscriptUtils.printedLines[index]+=keys.size();
@@ -290,7 +300,8 @@ public class CigarCluster  {
 	
 		
 		
-		int[] readCount; int readCountSum;
+		int[] readCount; 
+		private int readCountSum;
 		//int numPos =-1;
 		int totLen = -1;
 		
@@ -393,5 +404,7 @@ public class CigarCluster  {
 			else return end >= seqlen -TranscriptUtils.endThresh ? nmes[2] : nmes[3];
 			//return null;
 		}
+
+		
 		
 	}

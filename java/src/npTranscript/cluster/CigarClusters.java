@@ -142,13 +142,18 @@ public class CigarClusters {
 			String chrom,
 			int chrom_index){
 		cc.addZeros(seqlen); 
-		
-		 int[][] matr =cc.getClusterDepth(num_sources);
 		String id = cc.id();
-		o.writeIntMatrix(id, matr);
+		int totalDepth = cc.readCountSum();
+		if(o.clusterW!=null && totalDepth>IdentityProfile1.writeCoverageDepthThresh){
 		
+		 int[][] matr =cc.getClusterDepth(num_sources, this.refseq);
 		
+		 o.writeIntMatrix(id, matr);
+		}
+		
+		if(o.altT!=null && totalDepth>IdentityProfile1.writeIsoformDepthThresh){
 		o.writeString(id, cc.all_breaks, this.num_sources);
+		}
 		String read_count = TranscriptUtils.getString(cc.readCount);
 		int startPos, endPos;
 		if(!IdentityProfile1.annotByBreakPosition ){
@@ -169,7 +174,7 @@ public class CigarClusters {
 		//cc.breaks.toString()+"\t"+cc.breaks.hashCode()+"\t"+
 		cc.breakSt+"\t"+cc.breakEnd+"\t"+cc.all_breaks.size()+"\t"+
 		upstream+"\t"+downstream+"\t"+
-		cc.totLen+"\t"+cc.readCountSum+"\t"+read_count
+		cc.totLen+"\t"+cc.readCountSum()+"\t"+read_count
 				+"\t"+cc.getTotDepthSt(true)+"\t"+cc.getTotDepthSt(false)+"\t"+cc.getErrorRatioSt());
 		return TranscriptUtils.round(cc.start, 100)+"."+downstream+"."+upstream+"."+TranscriptUtils.round(seqlen-cc.end, 100);
 	}

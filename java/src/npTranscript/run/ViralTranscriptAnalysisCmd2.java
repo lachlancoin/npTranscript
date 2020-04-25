@@ -187,7 +187,8 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		addInt("qual", 0, "Minimum quality required");
 		addInt("bin", 1, "Bin size for numerical hashing");
 		addInt("breakThresh", 10, "Thresh for break points to match clusters");
-
+		addInt("coverageDepthThresh", 100, "Threshhold for writing base level depth information to h5 file");
+		addInt("isoformDepthThresh", 10, "Threshhold for printing out all isoforms");
 		addInt("startThresh", 100, "Threshold for having 5'");
 		addInt("endThresh", 100, "Threshold for having 3'");
 		//addDouble("overlapThresh", 0.95, "Threshold for overlapping clusters");
@@ -231,8 +232,8 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		int endThresh = cmdLine.getIntVal("endThresh");
 		int maxReads = cmdLine.getIntVal("maxReads");
 	
-		boolean printIsoforms  = true;
-		boolean printClusterDepth = true;
+		int isoformDepthThresh  = cmdLine.getIntVal("isoformDepthThresh");
+		int coverageDepthThresh = cmdLine.getIntVal("coverageDepthThresh");
 		
 		boolean sorted = true;
 		boolean calcBreaks = false;// whether to calculate data for the break point heatmap, true for SARS_COV2
@@ -246,7 +247,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		}
 			errorAnalysis(bamFile, reference, annotFile,readList,annotationType, 
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  sorted , 
-				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, overwrite, printIsoforms, printClusterDepth);
+				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, overwrite, isoformDepthThresh, coverageDepthThresh);
 	}
 	public static void main(String[] args1) throws IOException, InterruptedException {
 		CommandLine cmdLine = new ViralTranscriptAnalysisCmd2();
@@ -285,13 +286,16 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 	static void errorAnalysis(String bamFiles, String refFile, String annot_file, String readList,    String annotationType, String resdir, String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads,  boolean sorted,
 			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,Map<String, JapsaAnnotation> anno, Set<String>chrToInclude, boolean overwrite,
-			boolean printIsoforms, boolean printClusterDepth) throws IOException {
+			int writeIsoformDepthThresh, int writeCoverageDepthThresh) throws IOException {
 		boolean cluster_reads = true;
 		CigarHash2.round = round;
 		IdentityProfile1.annotByBreakPosition = annotByBreakPosition;
 		CigarHash.cluster_by_annotation =true;// cluster_by_annotation;
 		TranscriptUtils.startThresh = startThresh;
 		TranscriptUtils.endThresh = endThresh;
+		IdentityProfile1.writeIsoformDepthThresh =writeIsoformDepthThresh;
+		IdentityProfile1.writeCoverageDepthThresh =writeCoverageDepthThresh;
+
 		boolean calcTree = false;
 		String[] bamFiles_ = bamFiles.split(":");
 		Set<String> reads = null;
@@ -469,7 +473,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 							}else{
 								annot = new Annotation(new File(annot_file), currentIndex+"", seqlen);
 							}
-							outp = new Outputs(resDir,  in_nmes, overwrite, currentIndex, printIsoforms, printClusterDepth); 
+							outp = new Outputs(resDir,  in_nmes, overwrite, currentIndex, true, true); 
 							profile = new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh, annot, calcBreaks, chr.getName(), currentIndex);
 					}
 					try{
