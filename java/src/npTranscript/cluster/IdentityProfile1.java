@@ -38,7 +38,8 @@ public class IdentityProfile1 {
 		//i
 		
 		 private PrintWriter transcriptsP,readClusters;
-		final IHDF5SimpleWriter clusterW, altT;
+		 IHDF5SimpleWriter clusterW = null;
+		 IHDF5SimpleWriter altT = null;
 		//PrintWriter readClusters;
 		File resDir;
 		
@@ -62,7 +63,7 @@ public class IdentityProfile1 {
 			 if(readClusters!=null) readClusters.close();
 			
 		}*/
-		public Outputs(File resDir,  String[] type_nmes, boolean overwrite, int currentIndex) throws IOException{
+		public Outputs(File resDir,  String[] type_nmes, boolean overwrite, int currentIndex, boolean isoforms, boolean cluster_depth) throws IOException{
 			this.type_nmes = type_nmes;
 			this.genome_index= currentIndex;
 			 this.resDir = resDir;
@@ -113,19 +114,20 @@ public class IdentityProfile1 {
 			for(int j=0; j<num_sources; j++){
 				str.add("depth"+j);
 			}
-			
+			if(isoforms){
 			altT = 
 					 HDF5Factory.open(outfile10);
 			altT.writeStringArray("header", str.toArray(new String[0]));
+			}
 			str.set(0, "pos");
 			for(int j=0; j<num_sources; j++){
 				str.add("errors"+j);
 			}
-		
+			if(cluster_depth){
 			clusterW = 
 					 HDF5Factory.open(outfile2);
 			clusterW.writeStringArray("header", str.toArray(new String[0]));
-		
+			}
 		//	clusterW.writeStringArray("header", str.toArray(new String[0]));
 		}
 
@@ -212,6 +214,9 @@ public class IdentityProfile1 {
 	final String[] type_nmes; 
 	
 	public static boolean annotByBreakPosition = true;
+	
+	public static int writeCoverageDepthThresh = 100;
+	public static int writeIsoformDepthThresh = 10;
 	
 	public IdentityProfile1(Sequence refSeq,
 			Outputs o,
