@@ -66,10 +66,11 @@ hist(depth[depth$pv1<1e-5,]$base)
 hist(depth[depth$pv2<1e-5,]$base)
 #minp = apply(pv_a[,pv_inds],1,min,na.rm=T)
 #pv_a[which(minp==min(minp)),]
-.vis(depth,i=1)
-.vis(depth,i=2)
-
-
+.vis(depth,i=1,chrom=31)
+.vis(depth,i=2,chrom=31)
+m1=attr(depth,"chr_inds")
+m1[which(depth$pv2<1e-5)]
+chroms[chroms=="31"]
 
 
 #DE2 = DEgenes(df,control_inds, infected_inds, log=F,edgeR = F, reorder=T);

@@ -401,11 +401,9 @@ readTranscriptHostAll<-function(infilesT,
 
 .readH5All<-function(transcripts, depth_thresh = 1000,chroms= attr(transcripts,"chroms")){
   depth = NULL
-  
   ranges = matrix(nrow = length(ord), ncol=2)
   start = 1
   depths = list()
-  
   for(i in 1:length(chroms)){
     print(chroms[i])
     infile = paste(chroms[i],"clusters.h5", sep=".")
@@ -435,6 +433,12 @@ readTranscriptHostAll<-function(infilesT,
   }
   attr(res,"ranges") = ranges
   attr(res,"chroms")=chroms
+  m1 =rep(NA, dim(res)[1])# matrix(nrow = dim(depth)[1], ncol=2)
+  for(i in 1:(dim(ranges)[1])){
+   ri = as.numeric(ranges[i,]) 
+   m1[ri[1]:ri[2]]=ri[3]
+  }
+  attr(res,"chr_inds")=m1
   res
   }
 
@@ -605,7 +609,7 @@ findSigChrom<-function( DE1, fdr_thresh = 1e-10, go_thresh = 1e-5, lessThan=T){
   pv1[pv1<log10(min.p)] = log10(min.p)
   pv1
 }
-.vis<-function(depth, i,min.p = 1e-20,log=F){
+.vis<-function(depth, i,min.p = 1e-20,log=F, chroms=NULL){
   pv_inds = grep("pv", names(depth))
   pvs = depth[,pv_inds,drop=F]
 #  for(i in 1:(dim(pvs)[2])){
@@ -620,10 +624,19 @@ findSigChrom<-function( DE1, fdr_thresh = 1e-10, go_thresh = 1e-5, lessThan=T){
       pos[r2[1]:r2[2]] = pos[r2[1]:r2[2]]+offset
      
     }
-    plot(pos, -pvs[,i], col=0,ylim = c(0,-min(pvs)))
+    if(!is.null(chroms)){
+    chr_inds = attr(depth,'chr_inds')
+    inds_ = which(chr_inds %in% chroms)
+    plot(pos[inds_], pvs[inds_,i], col=0,ylim = c(0,-min(pvs[,i])))
+    
+    }else{
+    plot(pos, -pvs[,i], col=0,ylim = c(0,-min(pvs[,i])))
+    }
     for(j in 1:(dim(ranges)[1])) {
       r2 = as.numeric(ranges[j,])
-      lines(pos[r2[1]:r2[2]], -pvs[r2[1]:r2[2],i], type="p", col=j)
+      if(r2[3] %in% chroms){      
+        lines(pos[r2[1]:r2[2]], -pvs[r2[1]:r2[2],i], type="p", col=j)
+      }
     }
 #    invisible(minp)
 }
