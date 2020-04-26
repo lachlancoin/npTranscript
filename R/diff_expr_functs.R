@@ -1,3 +1,115 @@
+.metapv<-function(pvi){
+  nonNA = which(!is.na(pvi))
+  if(length(nonNA)==0) return(NA)
+  pchisq(sum(unlist(lapply(pvi[nonNA],qchisq,lower.tail=F, df=1 ))),df=length(nonNA), lower.tail=F)
+  
+}
+readH5<-function(h5file, df, thresh =500,log=F){
+  IDS = df$ID
+  header = h5read(h5file,"header")
+  names = h5ls(h5file)$name
+  if(header[2]!="base") header = c(header[1], "base", header[-1])
+  dinds  = grep("depth", header)
+  einds  = grep("error", header)
+  
+  countT = apply(df[,grep("count[0-9]", names(df)),drop=F],1,sum)
+  pos_ind = which(header=="pos")
+  inds = which(countT>thresh & df$ID %in% names)
+  if(length(inds)==0) return(NULL)
+  
+  mat_all = data.frame(matrix(nrow = 0, ncol = length(header)+3))
+  for(i in 1:length(inds)){
+    print(paste(i, length(inds), sep=" of "))
+    ID = as.character(IDS[inds[i]])
+    
+    mat = t(h5read(h5file,as.character(ID)))
+    
+    countT1 = apply(mat[,grep("depth[0-9]", header),drop=F],1,sum)
+    indsi = which(countT1>thresh)
+    if(length(indsi)>0){
+    mat1 = mat[indsi,,drop=F]
+    pv1 = t(apply(mat1,1,betaBinomialP2, grep("depth[0-9]", header),grep("errors[0-9]", header) , control=1, case=2, binom=F,log=log))
+    #dimnames(pv1) = list(mat$pos[indsi],c("pv1","pv2"))
+    IDv = rep(ID, length(indsi))
+  #  chrv=rep(df$chrs[i], length(indsi))
+    mat2 = data.frame(IDv ,mat1,pv1)
+    #print(head(mat2))
+    mat_all = rbind(mat_all,mat2)
+    }
+  } 
+  names(mat_all) = c("IDS",header, "pv1","pv2")
+  mat_all
+}
+
+DE_err<-function(DE, inds_control=1, inds_case=2, sum_thresh = 100){
+  
+  inds2 = grep("error_ratio[0-9]", names(DE))
+  inds1 = grep("count[0-9]", names(DE))
+  if(length(inds2)>0){
+    m = max(DE[,inds2,drop=F],na.rm=T)
+    if(m<=1.01){
+    for(j in 1:length(inds2)){
+      DE[,inds2[j]] =  DE[,inds2[j]] * DE[,inds1[j]] 
+    } 
+    }
+  }
+  
+  countT = apply(DE[,grep("sum_", names(DE)),drop=F],1,sum)
+#  print(head(sort(countT, decreasing=T),20))
+  inds_ = which(countT>sum_thresh)
+ # print(head(inds_),20)
+  if(length(inds_)==0) return (NULL)
+  inds2 = grep("error_ratio[0-9]", names(DE))
+  inds1 = grep("count[0-9]", names(DE))
+  DE_a = DE[,c(inds1,inds2),drop=F]
+  inds1 = 1:length(inds1)
+  inds2 = (1:length(inds2))+length(inds1)
+  pv_res = t(apply(DE_a[inds_,,drop=F],1,betaBinomialP2, inds1,inds2, 1, 2))
+  dimnames(pv_res) =  list(inds_, c("pv1","pv2"))
+  pv_res
+}
+
+
+betaBinomialP2<-function(v, indsDepth, indsError, control, case,binom=F, lower.tail=T,log=F){
+  pv1 = rep(NA, length(control))
+  pv2 = rep(NA, length(control))
+  
+  for(j in 1:length(control)){
+    pv1[j] = betaBinomialP1(v, c(indsDepth[control[j]], indsError[control[j]], indsDepth[case[j]], indsError[case[j]]), binom=binom, lower.tail=lower.tail, log=log)
+    pv2[j] = betaBinomialP1(v, c(indsDepth[case[j]], indsError[case[j]], indsDepth[control[j]], indsError[control[j]]), binom=binom, lower.tail=lower.tail, log=log)
+  }
+  pv1m =chisqCombine(pv1,log=log)
+  pv2m = chisqCombine(pv2,log=log)
+  c(pv1m,pv2)
+#  2*min(pv1m, pv2m, na.rm=T)
+}
+
+
+
+betaBinomialP1<-function(v, ord, binom=F, lower.tail=T,log=F){
+ # v = as.numeric(v1)
+ # print(v)
+  if(length(which(is.na(v)))!=0) return (NA)
+  #matr1 = matr[nonNA,]
+ # print(v[ord])
+  #print(ord)
+  size = v[ord[1]];
+  shape1 = v[ord[2]]
+  y = shape1
+  shape2 = size-shape1
+  sizex = v[ord[3]]
+  shape1x = v[ord[4]]
+  x = shape1x
+  
+  shape2x = sizex -shape1x
+  if(binom){
+    pv_res = pbinom(x,size = sizex,prob = y/size,log.p=log, lower.tail=TRUE)
+  }else{
+    pv_res = pbetabinom.ab(x,size = sizex,shape1 = shape1,shape2 =shape2,log=log)
+  }
+  pv_res
+}
+  
 
 betaBinomialP<-function(x,y, binom=F, lower.tail=T,log=F){
   size = ceiling(sum(y))
@@ -44,20 +156,26 @@ else{
   pbb
 }
 
-chisqCombine<-function(pv){
+chisqCombine<-function(pv,log=log){
   #if(TRUE) return(pv[1])
   nonNA = which(!is.na(pv))
   
-  if(length(nonNA)==0) return(NaN)
-  pchisq(sum(unlist(lapply(pv[nonNA],qchisq,lower.tail=F, df=1 ))),df=length(nonNA), lower.tail=F)
+  if(length(nonNA)==0) return(NaN) else if(length(nonNA)==1) return (pv[nonNA]);
+  if(log){
+    resp = pchisq(sum(unlist(lapply(exp(pv[nonNA]),qchisq,lower.tail=F, df=1 ))),df=length(nonNA), lower.tail=F,log=T)
+    
+  }else{
+  resp = pchisq(sum(unlist(lapply(pv[nonNA],qchisq,lower.tail=F, df=1 ))),df=length(nonNA), lower.tail=F)
+  }
 }
+
+
 
 #which x is significiantly more or less than expected given y
 #if(lower.tail=T returns p(x<=y) else p(x>=y)
 ##ASSUMES MATCHED DATA BETWEEN CONTROL  AND INFECTED
-DEgenes<-function(df,inds_control, inds_infected, edgeR = F,  type="lt",reorder=T){
-  log=F;
-  binom=F;
+DEgenes<-function(df,control_inds,infected_inds, edgeR = F,  type="lt",reorder=T, binom=F, log=F){
+ 
   lower.tail = T
   if(!edgeR){
     pvalsM1 = matrix(NA,nrow = dim(df)[1], ncol = length(inds_control))
@@ -69,8 +187,8 @@ DEgenes<-function(df,inds_control, inds_infected, edgeR = F,  type="lt",reorder=
         pvalsM2[,i] = betaBinomialP(y,x, binom=binom, lower.tail=lower.tail,log=log)
         
     }
-    pvals1 = apply(pvalsM1, 1, chisqCombine)
-    pvals2 = apply(pvalsM2, 1, chisqCombine)
+    pvals1 = apply(pvalsM1, 1, chisqCombine,log=log)
+    pvals2 = apply(pvalsM2, 1, chisqCombine,log=log)
     pvals = 2*apply( cbind(pvals1,pvals2),1,min)
     lessThan = pvals2<pvals1
   }else{
@@ -82,19 +200,19 @@ DEgenes<-function(df,inds_control, inds_infected, edgeR = F,  type="lt",reorder=
  x = apply(df[,inds_control,drop=F],1,sum)
  y = apply(df[,inds_infected,drop=F],1,sum)
  
-  probX = (x/sum(x))*1e6
-  probY = (y/sum(y))*1e6
+  tpm_control = (x/sum(x))*1e6
+  tpm_infected = (y/sum(y))*1e6
   probX1 = (x+0.5)/sum(x+.5)
   probY1 = (y+0.5)/sum(y+.5)
   ratio1 = probX1/probY1
   
   
  
-  output =  data.frame(pvals,FDR,lessThan,probX, probY, ratio1,x,y, df)
+  output =  data.frame(pvals,FDR,lessThan,tpm_control, tpm_infected, ratio1,sum_control=x,sum_infected=y, df)
  # print(names(output))
 
-  names(output)[names(output) %in% c("x","y") ] = names(df)[inds]
-  names(output)[names(output) %in% c("probX","probY") ] = paste( names(df)[inds]," TPM", sep="")
+#  names(output)[names(output) %in% c("x","y") ] = names(df)[inds]
+#  names(output)[names(output) %in% c("probX","probY") ] = paste( names(df)[inds]," TPM", sep="")
   if(reorder){
     orders =order(pvals)
     
@@ -225,9 +343,105 @@ findGenesByChrom<-function(DE,chrom="MT", fdr_thresh = 1e-10){
   df
 }
 
+readTranscriptHostAll<-function(infilesT, 
+                                combined_depth_thresh = 100,
+                                target= list(count0="numeric", count1 = "numeric",chrom="character", 
+                                             leftGene="character", rightGene="character", start = "numeric", 
+                                             end="numeric", ID="character", isoforms="numeric" ,error_ratio0 = "numeric",error_ratio1="numeric") ){
+  chroms = unlist(lapply(infilesT, function(x) strsplit(x,"\\.")[[1]][[1]]))
+  chrom_names = rep("", length(chroms))
+  dfs = list()
+  for(i in 1:length(chroms)){
+    infilesT1 = paste(chroms[i],"transcripts.txt.gz", sep=".")
+    dfi = .readTranscriptsHost(infilesT1,target=target,combined_depth_thresh = combined_depth_thresh)
+    if(dim(dfi)[1]>0){
+      chrom_names[i] = dfi$chrs[1]
+     # print(chrom_n)
+      dfs[[i]] = dfi
+    
+      print(' not null')
+    }else{
+      print("is null")
+      dfs[[i]] = NULL
+    }
+  }
+  lengs = unlist(lapply(dfs,function(x) if(is.null(x)) NA else dim(x)[1]))
+  
+  inds = which(!is.na(lengs))
+  chroms = chroms[inds]
+  chrom_names = chrom_names[inds]
+  dfs = dfs[inds]
+  numeric_names = as.numeric(chrom_names)
+  ord1 = order(numeric_names[!is.na(numeric_names)])
+  ord2 = order(infile_names[is.na(numeric_names)],decreasing=T)
+  ord=c(which(!is.na(numeric_names))[ord1],which(is.na(numeric_names))[ord2])
+  dfs = dfs[ord]
+  chroms = chroms[ord]
+  chrom_names = chrom_names[ord]
+  lengs = lengs[inds][ord]
+  res = data.frame(matrix(nrow  =sum(lengs), ncol = dim(dfs[[1]])[2]))
+  names(res) = names(dfs[[1]])
+  start=1;
+  ranges = matrix(nrow = length(dfs), ncol=2)
+  for(i in 1:length(dfs)){
+    print(i)
+    lengi = dim(dfs[[i]])[1]
+    ranges[i,] = c(start, start+lengi-1);
+    res[ranges[i,1]:ranges[i,2],] = dfs[[i]]
+    start = start+lengi
+  }
+  names(chroms) = chrom_names
+  attr(res,"ranges") = ranges
+  attr(res,"info")=attr(dfs[[1]],"info")
+  attr(res,"chroms")=chroms
+ # attr(res,"chroms")=chrom_
+  
+  res
+}
+
+.readH5All<-function(transcripts, depth_thresh = 1000,chroms= attr(transcripts,"chroms")){
+  depth = NULL
+  
+  ranges = matrix(nrow = length(ord), ncol=2)
+  start = 1
+  depths = list()
+  
+  for(i in 1:length(chroms)){
+    print(chroms[i])
+    infile = paste(chroms[i],"clusters.h5", sep=".")
+    depths[[i]] = readH5(infile, transcripts, thresh =depth_thresh,log=F)
+    
+  }
+  
+  
+  lengs = unlist(lapply(depths,function(x) if(is.null(x)) NA else dim(x)[1]))
+  inds = which(!is.na(lengs))
+  chroms = chroms[inds]
+  depths = depths[inds]
+  lengs = lengs[inds]
+  res = data.frame(matrix(nrow  =sum(lengs), ncol = dim(depths[[1]])[2]))
+  names(res) = names(depths[[1]])
+  start=1;
+  
+  ranges = data.frame(matrix(nrow = length(depths), ncol=4))
+  names(ranges) = c("start","end","chrom","chrom_name");
+  for(i in 1:length(depths)){
+    #print(i)
+    depths[[i]][,1] = as.character(depths[[i]][,1])
+    lengi = dim(depths[[i]])[1]
+    ranges[i,] = c(start, start+lengi-1, chroms[i], names(chroms)[i]);
+    res[ranges[i,1]:ranges[i,2],] = depths[[i]]
+    start = start+lengi
+  }
+  attr(res,"ranges") = ranges
+  attr(res,"chroms")=chroms
+  res
+  }
+
+
 .readTranscriptsHost<-function(infilesT, 
-                         target= list(count0="numeric", count1 = "numeric",chrom="character", leftGene="character", rightGene="character")
-              ,prefix="ENSC"                                   
+                  target= list(count0="numeric", count1 = "numeric",chrom="character", leftGene="character", rightGene="character", start = "numeric", end="numeric", ID="character")
+              ,prefix="ENSC" ,combined_depth_thresh =100                                  
   ){
   header = names(read.table( infilesT,sep="\t", head=T, nrows = 3, comment.char='#'))
   inf = scan(infilesT, nlines=1, what=character())
@@ -238,10 +452,15 @@ findGenesByChrom<-function(DE,chrom="MT", fdr_thresh = 1e-10){
   colClasses[header_inds] = target
   
   transcripts = read.table( infilesT,sep="\t", head=T, comment.char='#', colClasses= colClasses)
-  header_inds1 = match(names(target),names(transcripts))
+ 
   
-  transcripts = transcripts [,header_inds1] 
-  names(transcripts)[1:2] = types
+  header_inds1 = match(names(target),names(transcripts))
+  head_inds1 = grep("count[0-9]", names(transcripts));
+
+  countT = apply(transcripts[,head_inds1,drop=F],1,sum)
+  #print(countT)
+  transcripts = transcripts [countT>combined_depth_thresh,header_inds1] 
+ # names(transcripts)[1:2] = types
   names(transcripts)  = sub("leftGene", "geneID" ,names(transcripts))
   names(transcripts)  = sub("chrom", "chrs" ,names(transcripts))
   geneID = transcripts$geneID
@@ -253,17 +472,18 @@ findGenesByChrom<-function(DE,chrom="MT", fdr_thresh = 1e-10){
     transcripts$geneID[missing[have]] = transcripts$rightGene[missing[have]]
     type[missing[have]] = "right"
   }
-  
+  diff = transcripts$end - transcripts$start
   #o = order(countAll, decreasing=T)
   #transcripts = transcripts[o,]
   #err_ratio_inds = grep("error_ratio", names(transcripts))
   #transcripts[,err_ratio_inds] =apply(transcripts[,err_ratio_inds,drop=F], c(1,2), function(x) if(is.na(x)) -0.01 else x)
-  
+  attr(transcripts,"types")=types
   if(length(grep("#", inf))>0) attr(transcripts,"info") = sub("#", "",inf)
   #print(inf)
   type = as.factor(type)
-res = cbind(transcripts, type)
-res
+  res = cbind(transcripts, type, diff)
+  
+  res
 }
 
 
@@ -373,14 +593,40 @@ findSigChrom<-function( DE1, fdr_thresh = 1e-10, go_thresh = 1e-5, lessThan=T){
 #}
 
 
-.qqplot<-function(pvals1){
+.qqplot<-function(pvals1,log=F,min.p = 1e-20){
   pvals = pvals1[!is.na(pvals1)]
   expected = -log10(seq(1:length(pvals))/length(pvals))
-  observed = -log10(sort(pvals))
-  plot(expected, observed)
+  observed = if(log) sort(pvals)/log(10) else log10(sort(pvals))
+  observed[observed<log10(min.p)]  = log10(min.p)
+  plot(expected, -observed)
 }
-
-
+.log10p<-function(pv, log,min.p) {
+  pv1 =  if(log) pv/log(10) else  log10(pv)
+  pv1[pv1<log10(min.p)] = log10(min.p)
+  pv1
+}
+.vis<-function(depth, i,min.p = 1e-20,log=F){
+  pv_inds = grep("pv", names(depth))
+  pvs = depth[,pv_inds,drop=F]
+#  for(i in 1:(dim(pvs)[2])){
+    pvs[,i] = .log10p(pvs[,i], log=log, min.p = min.p)
+ # }
+    ranges = attr(depth, "ranges")
+    pos=depth$pos
+    
+    for(j in 2:(dim(ranges)[1])){
+      r2 = as.numeric(ranges[j,])
+      offset =  pos[as.numeric(ranges[(j-1),2])]+10e6
+      pos[r2[1]:r2[2]] = pos[r2[1]:r2[2]]+offset
+     
+    }
+    plot(pos, -pvs[,i], col=0,ylim = c(0,-min(pvs)))
+    for(j in 1:(dim(ranges)[1])) {
+      r2 = as.numeric(ranges[j,])
+      lines(pos[r2[1]:r2[2]], -pvs[r2[1]:r2[2],i], type="p", col=j)
+    }
+#    invisible(minp)
+}
 
 .phyper2<-function(vec1,k,mn){
   vec = as.numeric(vec1[c(2,length(vec1))])
@@ -397,4 +643,3 @@ findSigChrom<-function( DE1, fdr_thresh = 1e-10, go_thresh = 1e-5, lessThan=T){
   names(res) = c("c1", "c2", "pv", "enrich", "enrich99") 
   res
 }
-
