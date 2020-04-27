@@ -29,7 +29,9 @@ feature_keys = ['Name','Type','Minimum','Maximum','Length', 'Direction','gene']
 parser = argparse.ArgumentParser()
 parser.add_argument('-g', '--genome', required=True, metavar='STRING', type=str, help='NCBI accession number for virus genome')
 #parser.add_argument('--keep-seq', action= 'store_true', help='Flag to store sequence retrieved in fasta format')
-
+parser.add_argument('-l', nargs=2, metavar=('START','STOP'), type=int, 
+    help = 'Add leader co-ordinates if they are known. Will default to 14:75', 
+    default = [14,75])
 opts = parser.parse_args()
 #run
 URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi'
@@ -37,7 +39,7 @@ URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi'
 gff_params = {'db':'nuccore','id':[opts.genome],'rettype':'gb','idtype':'acc','retmode':'xml'}
 #fa_params = {'db':'nucleotide','id':[opts.genome],'rettype':'fasta','idtype':'acc'}
 
-print('Downloading Data for genome accesion#{}'.format(opts.genome))
+print('Downloading Data for genome accesion #{}'.format(opts.genome))
 gff = requests.get(URL, params = gff_params)
 #fa = requests.get(URL, params= fa_params)
 
@@ -50,6 +52,8 @@ else:
 print('Parsing Data')
 record = ET.ElementTree(ET.fromstring(gff.text))
 root = record.getroot()
+entry_name = root[0].find('GBSeq_definition').text
+
 for r in root.iter('GBSeq_feature-table'):
     for f in r.findall('GBFeature'):
         if f[0].text in target_feats:
@@ -67,9 +71,16 @@ for r in root.iter('GBSeq_feature-table'):
             
             write_dicts.append(dict(zip(feature_keys, feature_values)))
 
+
+#include leader co-ords
+leader_dict = dict(zip(feature_keys, ['leader', 'leader', opts.l[0],opts.l[1],
+            int(opts.l[1])-int(opts.l[0]), 'forward', 'leader']))
+
 with open('Coordinates.csv', 'w',  newline='') as f:
     dwrite = csv.DictWriter(f, fieldnames = feature_keys)
     dwrite.writeheader()
+    dwrite.writerow(leader_dict)
     for feature in write_dicts:
         dwrite.writerow(feature)
     
+print('Coordinate table constructed for:\n\t{}'.format(entry_name))
