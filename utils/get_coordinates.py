@@ -39,7 +39,7 @@ URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi'
 gff_params = {'db':'nuccore','id':[opts.genome],'rettype':'gb','idtype':'acc','retmode':'xml'}
 #fa_params = {'db':'nucleotide','id':[opts.genome],'rettype':'fasta','idtype':'acc'}
 
-print('Downloading Data for genome accesion#{}'.format(opts.genome))
+print('Downloading Data for genome accesion #{}'.format(opts.genome))
 gff = requests.get(URL, params = gff_params)
 #fa = requests.get(URL, params= fa_params)
 
@@ -52,6 +52,8 @@ else:
 print('Parsing Data')
 record = ET.ElementTree(ET.fromstring(gff.text))
 root = record.getroot()
+entry_name = root[0].find('GBSeq_definition').text
+
 for r in root.iter('GBSeq_feature-table'):
     for f in r.findall('GBFeature'):
         if f[0].text in target_feats:
@@ -81,3 +83,4 @@ with open('Coordinates.csv', 'w',  newline='') as f:
     for feature in write_dicts:
         dwrite.writerow(feature)
     
+print('Coordinate table constructed for:\n\t{}'.format(entry_name))
