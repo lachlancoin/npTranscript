@@ -71,13 +71,13 @@ for r in root.iter('GBSeq_feature-table'):
 
 
 #include leader co-ords
-leader_dict = dict(zip(feature_keys, ['leader', ' leader', opts.l[0],opts.l[1], 
-            int(opts.l[1])-int(opts.l[0], 'forward', 'leader')
+leader_dict = dict(zip(feature_keys, ['leader', 'leader', opts.l[0],opts.l[1],
+            int(opts.l[1])-int(opts.l[0]), 'forward', 'leader']))
 
 with open('Coordinates.csv', 'w',  newline='') as f:
     dwrite = csv.DictWriter(f, fieldnames = feature_keys)
     dwrite.writeheader()
-    d.writerow(leader_dict)
+    dwrite.writerow(leader_dict)
     for feature in write_dicts:
         dwrite.writerow(feature)
     
