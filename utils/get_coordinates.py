@@ -29,7 +29,7 @@ feature_keys = ['Name','Type','Minimum','Maximum','Length', 'Direction','gene']
 parser = argparse.ArgumentParser()
 parser.add_argument('-g', '--genome', required=True, metavar='STRING', type=str, help='NCBI accession number for virus genome')
 #parser.add_argument('--keep-seq', action= 'store_true', help='Flag to store sequence retrieved in fasta format')
-
+parser.add_argument('-l', nargs=2, metavar=('START','STOP'), type=int, help = 'Add leader co-ordinates if they are known. Otherwise they will default to 1:75')
 opts = parser.parse_args()
 #run
 URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi'
@@ -66,6 +66,8 @@ for r in root.iter('GBSeq_feature-table'):
             feature_values = [name, typ, start, stop, stop - start , 'forward',gene]
             
             write_dicts.append(dict(zip(feature_keys, feature_values)))
+
+
 
 with open('Coordinates.csv', 'w',  newline='') as f:
     dwrite = csv.DictWriter(f, fieldnames = feature_keys)
