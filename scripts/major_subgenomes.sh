@@ -5,7 +5,7 @@ seqtk subseq $READS <(samtools view leader_mapped.bam | cut -f 1 -| sort | uniq)
 seqtk comp leader_reads.fq | tee read_comp.txt | cut -f 2 > leader_read_lengths.txt
 
 #R script to find main subgenome mRNAs
-./find_subgenomes.R leader_read_lengths.txt > bin_bounds.txt
+../R/find_subgenomes.R leader_read_lengths.txt > bin_bounds.txt
 
 #get reads for each length bin
 #TODO - change temp_file to pipe?
