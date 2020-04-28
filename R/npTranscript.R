@@ -81,10 +81,10 @@ t = readCoords(.findFile(data_src, "Coordinates.csv"))
 subt_inds = t$gene!="none" & t$gene!="leader"
 t1 = t[subt_inds,]
 dimnames(t1)[[1]] = t[subt_inds,which(names(t)=='gene')]
-fimo_file = .findFile(data_src,"FIMO.csv")
+fimo_file = .findFile(data_src,"fimo.tsv")
 
 if(!is.null(fimo_file)){
-	fimo = read.table(fimo_file, sep=",", head=T)
+	fimo = read.table(fimo_file, sep="\t", head=T)
 }else{
 	fimo = NULL
 }
