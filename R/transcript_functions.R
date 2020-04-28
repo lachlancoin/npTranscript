@@ -386,7 +386,8 @@ plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = F, title = ""
     ggp<-ggp+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols)
     ggp<-ggp+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols)
     if(!is.null(fimo)){
-    ggp<-ggp+geom_vline(xintercept = fimo$start[fimo$strand=="+"], linetype="dotted", color="black")
+    ggp<-ggp+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id=='TRS_short')], linetype="dotted", color="black")
+	ggp<-ggp+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id=='TRS_long')], linetype="dotdash", color="black")
     #ggp<-ggp+geom_vline(xintercept = fimo$start[fimo$strand=="-"], linetype="dotted", color="grey")
     }
   }
@@ -1050,8 +1051,13 @@ plotBreakPIntrons<-function(breakP1, t, fimo, region =  c(1,5000,100,25000,30000
     ggp1<-ggp1+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols)
     ggp1<-ggp1+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols)
     if(!is.null(fimo)){
-    	ggp1<-ggp1+geom_vline(xintercept = fimo$start[fimo$strand=="+"], linetype="dotted", color="black")
-    	ggp1<-ggp1+geom_vline(xintercept = fimo$stop[fimo$strand=="+"], linetype="dotted", color="grey")
+    	ggp1<-ggp1+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id == 'TRS_short')], linetype="dotted", color="black")
+    	ggp1<-ggp1+geom_vline(xintercept = fimo$stop[(fimo$strand=="+") & (fimo$motif_id == 'TRS_short')], linetype="dotted", color="grey")
+		
+		ggp1<-ggp1+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id == 'TRS_long')], linetype="dotdash", color="black")
+    	ggp1<-ggp1+geom_vline(xintercept = fimo$stop[(fimo$strand=="+") & (fimo$motif_id == 'TRS_long')], linetype="dotdash", color="grey")
+		
+		
     }
     if(logT) ggp1<-ggp1+scale_y_continuous(trans='log10') 
     ggp1<-ggp1 + scale_x_continuous(limits = startc[1:2])+theme(legend.position = "none")
@@ -1064,8 +1070,12 @@ plotBreakPIntrons<-function(breakP1, t, fimo, region =  c(1,5000,100,25000,30000
     ggp2<-ggp2+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols)
     ggp2<-ggp2+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols)
  if(!is.null(fimo)){
-    ggp2<-ggp2+geom_vline(xintercept = fimo$start[fimo$strand=="+"], linetype="dotted", color="black")
-    ggp2<-ggp2+geom_vline(xintercept = fimo$stop[fimo$strand=="+"], linetype="dotted", color="grey")
+    ggp2<-ggp2+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id == 'TRS_short')], linetype="dotted", color="black")
+    ggp2<-ggp2+geom_vline(xintercept = fimo$stop[(fimo$strand=="+") & (fimo$motif_id == 'TRS_short')], linetype="dotted", color="grey")
+	
+    ggp2<-ggp2+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id == 'TRS_long')], linetype="dotdash", color="black")
+    ggp2<-ggp2+geom_vline(xintercept = fimo$stop[(fimo$strand=="+") & (fimo$motif_id == 'TRS_long')], linetype="dotdash", color="grey")
+
 }
     if(logT) ggp2<-ggp2+scale_y_continuous(trans='log10') 
     ggp2<-ggp2 + scale_x_continuous(limits = endc[1:2])+theme(legend.position="none")
