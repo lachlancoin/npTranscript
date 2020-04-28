@@ -32,7 +32,7 @@ python3 ../python/motif_from_bam.py --jaspar TRS_long.cm --coords "${coord_array
 
 echo 'Searching genome with FIMO'
 $MS/scripts/jaspar2meme -strands 1 -cm . > TRS.meme
-$MS/src/fimo --norc --thresh 1e-3 TRS_short.meme $VIRUS
+$MS/src/fimo --norc --thresh 1e-3 TRS.meme $VIRUS
 
 
 echo "Finished!"
