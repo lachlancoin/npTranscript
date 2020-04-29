@@ -107,17 +107,15 @@ leader_ind = c(leader_ind, leader_ind + nchar(leader)-1)
 
 
 
-
 transcripts_all = .readTranscripts(infilesT, seqlen, nmes)
 names(transcripts_all)
 if(!is.null(attr(transcripts_all[[1]], "info"))){
 type_nme = attr(transcripts_all[[1]], "info")
 }
 
-if(length(infilesAltT)>0){
-isoforms = readIsoformH5(infilesAltT[[1]],  transcripts_all[[1]])
-}
-
+#if(length(infilesAltT)>0){
+#isoforms = readIsoformH5(infilesAltT[[1]],  transcripts_all[[1]])
+#}
 count_df = grep('count[0-9]', names(transcripts_all[[1]]))
 
 transcript_counts = lapply(transcripts_all, function(transcripts)  apply(transcripts[,count_df, drop=F], 2,sum))
@@ -140,15 +138,20 @@ if(length(type_nme)==1){
 }else{
 	tocompare = list();
 	for(i in 2:length(type_nme)){
-		tompare[[i]] = c(1,i)
+		tocompare[[i]] = c(1,i)
 	}
 }
+
+print(tocompare)
+print(transcripts_all)
 ml1 = lapply(tocompare, .plotGeneExpr, transcripts_all, todo = 1:4)
 names(ml1) = unlist(lapply(tocompare, function(x)  paste(type_nme[x], collapse=".")))
+
 for(i in 1:length(ml1)){
 	outfile1 = paste(resdir, "/gene_expr.", names(ml1)[i],".pdf", sep="");
 	try(ggsave(outfile1, plot=ml1[[i]], width = 30, height = 30, units = "cm"))
 }
+
 print("###READ LEVEL ANALYSIS")
 
 if(length(infilesReads)>0){
