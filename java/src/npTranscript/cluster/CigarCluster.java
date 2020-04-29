@@ -97,7 +97,7 @@ public class CigarCluster  {
 			this(id, num_sources);
 			this.breakSt = c1.breakSt;
 			this.breakEnd = c1.breakEnd;
-			this.breaks.addAll(c1.breaks);
+			this.breaks.addAllR(c1.breaks);
 			all_breaks = new HashMap<CigarHash2, Count>();
 			//if(all_breaks.size()>0) throw new RuntimeException("should be zero");
 			
@@ -145,11 +145,11 @@ public class CigarCluster  {
 			//System.err.println(prev_position + " "+pos);
 			if(first){
 				first = false; 
-				breaks.addR(pos);
+				breaks.add(pos);
 			} else{	
 				if(pos-prev_position>TranscriptUtils.break_thresh){
-					this.breaks.addR(prev_position);
-					this.breaks.addR(pos);
+					this.breaks.add(prev_position);
+					this.breaks.add(pos);
 				}
 			}
 			prev_position = pos;
@@ -376,7 +376,7 @@ public class CigarCluster  {
 				throw new RuntimeException("!!");
 			}
 				
-			CigarHash2 br = (CigarHash2) c1.breaks.clone();
+			CigarHash2 br = (CigarHash2) c1.breaks.clone(true);
 			Count	count = this.all_breaks.get(br);
 				if(count==null) {
 					count = new Count(num_sources, src_index, all_breaks.size());

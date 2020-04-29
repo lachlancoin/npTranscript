@@ -9,13 +9,19 @@ import java.util.Map;
  */
 
 public class CigarHash2 extends ArrayList<Integer> {
-	@Override
-	public Object clone(){
+	
+	public CigarHash2 clone(boolean round){
 		CigarHash2 obj =new CigarHash2();
-		for(int i=0; i<this.size(); i++){
-			obj.add(this.get(i));
-		}
+		if(round) obj.addAllR(this);
+		else obj.addAll(this);
 		return obj;
+	}
+	
+	public void addAllR(CigarHash2 obj) {
+		for(int i=0; i<this.size(); i++){
+			addR(obj.get(i));
+		}
+		
 	}
 	
 	
@@ -38,10 +44,14 @@ public class CigarHash2 extends ArrayList<Integer> {
 	
 	
 	
-	public boolean addR(Integer i){ 
+	private boolean addR(Integer i){ 
 		Integer i1 = TranscriptUtils.round(i, round);
 		return (super.add(i1));
 	}
+
+
+
+	
 
 	
 	

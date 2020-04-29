@@ -119,7 +119,14 @@ public class IdentityProfile1 {
 					 HDF5Factory.open(outfile10);
 			altT.writeStringArray("header", str.toArray(new String[0]));
 			}
+			str .clear();
+			str.add("pos"); //str.add("ẗype"); 
+			str.add("base");
+			for(int j=0; j<num_sources; j++){
+				str.add("depth"+j);
+			}
 			str.set(0, "pos");
+			
 			for(int j=0; j<num_sources; j++){
 				str.add("errors"+j);
 			}
@@ -266,7 +273,7 @@ public class IdentityProfile1 {
 		Annotation annot = this.all_clusters.annot;
 		coRefPositions.end = endPos;
 		coRefPositions.start = startPos;
-		breaks.addR(coRefPositions.end);
+		breaks.add(coRefPositions.end);
 		//int distToEnd = refLength - endPos;	
 		int maxg = 0;
 		int maxg_ind = -1;
