@@ -1,12 +1,14 @@
 
 ##TRANSCRIPT COVERAGE ANALYSIS
 min_t_count = 20
+max_h = unlist(lapply(transcripts_all, function(transcripts)  max(transcripts[,grep('count[0-9]', names(transcripts)), drop=F])))
 
 
 sumT_all = matrix(nrow = length(infiles), ncol = length(type_nme))
 dimnames(sumT_all) = list(infiles, type_nme)
 
-h5file = "0clusters.h5"
+h5file = grep("clusters.h5",dir(),v=T)[1]
+
 #h5f = H5Fopen(cluster_file)
 header = h5read(h5file,"header")
 

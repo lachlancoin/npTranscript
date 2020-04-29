@@ -42,9 +42,9 @@ data_src = c("~/github/npTranscript/data/SARS-Cov2","~/github/npTranscript/data/
     }
    }else{
 	files = grep(file, dir(path[i]) , v=T)
-	if(length(files)==1){
+#	if(length(files)==1){
 		return(paste(path[i], files,sep="/"))
-	}
+#	}
    } 
   }
 }
@@ -52,7 +52,7 @@ data_src = c("~/github/npTranscript/data/SARS-Cov2","~/github/npTranscript/data/
 
 #type_nme = strsplit(args[1], ":")[[1]]
 infilesBr = grep("breakpoints.", dir(), v=T)
-infilesReads = grep("0readToCluster", dir(), v=T)
+infilesReads = grep("readToCluster", dir(), v=T)
 infilesT = grep("transcripts.txt.gz$", dir(), v=T)
 infiles = grep("clusters.h5", dir(), v=T)
 infilesAltT = grep("isoforms.h5", dir(), v=T)
@@ -71,7 +71,7 @@ if(length(infilesBr)!=length(type_nme)){
 }
 print(type_nme)
 }
-src = c("~/github/npTranscript/R" )
+src = c("~/github/npTranscript/R", "../../R")
 #data_src =  # c(".","..","~/github/npTranscript/data/SARS-Cov2" )
 print("#PRELIMINARIES ....")      
 source(.findFile(src, "transcript_functions.R"))
@@ -89,6 +89,7 @@ if(!is.null(fimo_file)){
 	fimo = NULL
 }
 fastafile = .findFile(data_src,".fasta.gz$", exact=F)
+fastafile = grep('leader',fastafile,v=T,inv=T)
 
 if(length(fastafile)!=1) stop("should just have one fasta file in parent directory")
 fasta = read.fasta(fastafile)
@@ -138,7 +139,7 @@ if(length(type_nme)==1){
 }else{
 	tocompare = list();
 	for(i in 2:length(type_nme)){
-		tocompare[[i]] = c(1,i)
+		tocompare[[i-1]] = c(1,i)
 	}
 }
 
