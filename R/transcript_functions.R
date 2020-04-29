@@ -1167,8 +1167,13 @@ trans
 readH5<-function(h5file, header, transcripts_, span =0.0){
  dinds  = grep("depth", header)
  pos_ind = which(header=="pos")
- IDS = transcripts_$ID
+ names = h5ls(h5file)$name
+ inds = which(transcripts_$ID %in% names)
+ if(length(inds)==0) return (NULL)
+ IDS = transcripts_$ID[inds]
  clusters_ = matrix(NA, nrow =0, ncol = length(header)+1)
+ 
+
   for(i in 1:length(IDS)){
 	ID = IDS[i]
 	mat = t(h5read(h5file,as.character(ID)))
