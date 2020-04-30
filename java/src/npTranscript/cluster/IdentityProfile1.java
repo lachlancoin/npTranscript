@@ -139,7 +139,7 @@ public class IdentityProfile1 {
 		}
 
 		public PrintWriter getBreakPointPw( String chrom, int i)  throws IOException{
-			
+			System.err.println("writing breakpoint files");
 				File outfile1_ = new File(resDir,chrom+".breakpoints."+type_nmes[i]+"."+i +".txt.gz");
 				PrintWriter pw = new PrintWriter(
 					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outfile1_))));
@@ -244,6 +244,7 @@ public class IdentityProfile1 {
 		this.breakSt = new SparseVector[this.num_sources];
 		this.breakEnd = new SparseVector[this.num_sources];
 		if(calcBreakpoints){
+			System.err.println("calculating break point usage");
 			for(int i=0; i<breakpoints.length; i++){
 				this.breakSt[i] = new SparseVector();
 				this.breakEnd[i] = new SparseVector();

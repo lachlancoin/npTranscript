@@ -194,6 +194,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		//addDouble("overlapThresh", 0.95, "Threshold for overlapping clusters");
 	//	addBoolean("coexpression", false, "whether to calc coexperssion matrices (large memory for small bin size)");
 		addBoolean("overwrite", false, "whether to overwrite existing results files");
+		addBoolean("coronavirus", true, "whether to run in coronavirus mode (necessary to do breakpoint analysis, but takes more memory)");
 		addStdHelp();
 	}
 
@@ -217,7 +218,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		
 	}
 	
- public static void run(CommandLine cmdLine, String bamFile, String resDir,Map<String, JapsaAnnotation> anno, boolean SARS, Set<String> chrs) throws IOException{
+ public static void run(CommandLine cmdLine, String bamFile, String resDir,Map<String, JapsaAnnotation> anno,  Set<String> chrs) throws IOException{
 		String reference = cmdLine.getStringVal("reference");
 		int qual = cmdLine.getIntVal("qual");
 		int bin = cmdLine.getIntVal("bin");
@@ -236,14 +237,20 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		int coverageDepthThresh = cmdLine.getIntVal("coverageDepthThresh");
 		
 		boolean sorted = true;
+		boolean coronavirus = cmdLine.getBooleanVal("coronavirus");
+
 		boolean calcBreaks = false;// whether to calculate data for the break point heatmap, true for SARS_COV2
 		boolean filterBy5_3 = false;// should be true for SARS_COV2
 		boolean annotByBreakPosition = false;  // should be true for SARS_COV2
 	
-		if(SARS){
+		
+		if(coronavirus){
+			System.err.println("running in coronavirus mode");
 			calcBreaks  = true; 
 			filterBy5_3 = true;
 			annotByBreakPosition = true;
+		}else{
+			System.err.println("running in host mode");
 		}
 			errorAnalysis(bamFile, reference, annotFile,readList,annotationType, 
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  sorted , 
@@ -262,7 +269,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		}
 		boolean gff = annot_file.contains(".gff");
 		Map<String, JapsaAnnotation> anno  = null;
-		boolean SARS = !gff;
+		//boolean SARS = !gff;
 		if(gff){
 			String  annotationType = cmdLine.getStringVal("type");
 			System.err.println("reading annotation");
@@ -273,7 +280,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		File resDir = new File(resdir);
 		if(!resDir.exists())resDir.mkdir();
 		printParams(resDir, args1);
-		run(cmdLine, bamFile, resdir, anno, SARS, chrs);
+		run(cmdLine, bamFile, resdir, anno,  chrs);
 		
 		
 		// paramEst(bamFile, reference, qual);
