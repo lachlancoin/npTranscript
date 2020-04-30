@@ -18,7 +18,7 @@ public class CigarHash2 extends ArrayList<Integer> {
 	}
 	
 	public void addAllR(CigarHash2 obj) {
-		for(int i=0; i<this.size(); i++){
+		for(int i=0; i<obj.size(); i++){
 			addR(obj.get(i));
 		}
 		
