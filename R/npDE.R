@@ -38,31 +38,59 @@ library(rhdf5)
 }
 
 src = c( "../../R" , "~/github/npTranscript/R" )
+#source(.findFile(src, "transcript_functions.R"))
+
 source(.findFile(src, "diff_expr_functs.R"))
+
 prefix = "ENSC"; #for vervet monkey
 #set up mart
+dataset="csabaeus_gene_ensembl"
+if(!is.null(dataset)){
 mart <- useEnsembl(biomart = "ensembl", 
-                   dataset = "csabaeus_gene_ensembl", 
+                   dataset =dataset, 
                    mirror = "uswest") #asia useast
-
+}else{
+  mart=NULL
+}
 files = dir()
-featureCounts = F
 chroms = NULL
 control_inds = 1
 infected_inds = 2
+binsize = 1e5
+isVirus=  FALSE;
+start_text = "start"
+mergeByPosAndGene = FALSE
+filter = NULL
+if(isVirus){
+  filter = list("type_nme"="5_3")
+  mergeByPosAndGene = TRUE
+  binsize = 100  #1e5 for euk
+  start_text ="endBreak"
+
+}
+target= list(count0="numeric", count1 = "numeric",chrom="character", 
+             leftGene="character", rightGene="character", start = "numeric", 
+             end="numeric", ID="character", isoforms="numeric" ,type_nme="character")
+
 
 ##READ TRANSCRIPT DATA
-transcripts = readTranscriptHostAll(grep("transcripts.txt", dir(), v=T),  combined_depth_thresh = 100)
-                             
+
+               
+
+transcripts = readTranscriptHostAll(grep("transcripts.txt", dir(), v=T), start_text = start_text,target = target, 
+                                    filter = filter,
+                                    combined_depth_thresh = 100)
+info = attr(transcripts,'info')
 ##find DE genes
 DE1 = DEgenes(transcripts, control_inds, infected_inds,edgeR = F, reorder=F);
-pos1M = apply(cbind(as.character(DE1$chrs), as.character(round(DE1$start/1e5))),1,paste,collapse=".")
+pos1M = apply(cbind(as.character(DE1$chrs), as.character(binsize*round(DE1$start/binsize))),1,paste,collapse=".")
+#if(mergeByPosAndGene){
+#  pos1M = apply(cbind(as.character(DE1$chrs), DE1$geneID, DE1$rightGene,  as.character(binsize*round(DE1$start/binsize))),1,paste,collapse=".")
+#}
 DE2 = cbind(DE1,pos1M)
-sigChrLT = findSigChrom(DE2,fdr_thresh = 1e-5, go_thresh = 1e-2, nme="pvals2",nme2="pos1M")
-print(sigChrLT);
-print(sigChrGT)
-desciGT = .getDescEnrich(DE2,fdr_thresh = 1e-5, go_thresh=1e-2,nme="pvals1",nme2="pos1M")
-desciLT = .getDescEnrich(DE2,fdr_thresh = 1e-5, go_thresh=1e-2,nme="pvals2",nme2="pos1M")
+
+desciGT = .getDescEnrich(DE2,mart,thresh = 1e-5, go_thresh=1e-2,nme="pvals1",nme2="pos1M")
+desciLT = .getDescEnrich(DE2,mart,thresh = 1e-5, go_thresh=1e-2,nme="pvals2",nme2="pos1M")
 
 
 
@@ -76,40 +104,55 @@ pdf("qq.pdf")
 dev.off()
 
 #this calculates pvalues for base-level error rates
-depth=.readH5All(transcripts, chroms = attr(transcripts,"chroms"),depth_thresh = 200)
+depth=.readH5All(transcripts, chroms = attr(transcripts,"chroms"),thresh = 100)
+
+depth1 = .appendGeneNamesToDepth(depth, transcripts, sort=NULL)
+#depth2 = .appendGeneNamesToDepth(depth, transcripts, sort="pv2")
+
+sigChr1 = findSigChrom(depth1, thresh=1e-3, go_thresh=1e-3, nme="pv1", nme2="gene_names")
+sigChr2 = findSigChrom(depth1, thresh=1e-3, go_thresh=1e-3, nme="pv2", nme2="gene_names")
 
 ##this is visualisation
   pdf("error_associations.pdf")
   pv_inds = grep("pv", names(depth))
   .qqplot(depth$pv1,min.p=1e-100)
   .qqplot(depth$pv2,min.p=1e-100)
-   hist(depth[depth$pv1<1e-5,]$base)
-   hist(depth[depth$pv2<1e-5,]$base)
-  .vis(depth,i=1,min.p=1e-100)
-  .vis(depth,i=2,min.p=1e-100)
+   hist(depth[depth$pv1<1e-3,]$base) ## this is up in controls
+   hist(depth[depth$pv2<1e-3,]$base) ## this is up in cases
+  .vis(depth,i=1,min.p=1e-20)
+  .vis(depth,i=2,min.p=1e-20)
   dev.off()
 
+ # di_2 =   depth$pv2<1e-5 | depth$pv1<1e-5
+  
+  
 chr_inds=attr(depth,"chr_inds")
 chroms = attr(depth,"chroms")
 chroms1 = names(chroms)
 mi = match(chr_inds, chroms)
 mi1 = unlist(lapply(mi, function(x) chroms1[x]))
-pos100k = apply(cbind(as.character(mi1), as.character(round(depth$pos/1e5))),1,paste,collapse=".")
+pos100k = apply(cbind(as.character(mi1),as.character(binsize*floor(depth1$pos/binsize))),1,paste,collapse=".")
 
-#pos100k = apply(cbind(chr_inds,round(depth$pos/1e5)),1,paste,collapse=".")
-depth1 = cbind(depth, pos100k)
-#chr_inds[which(depth$pv2<1e-5)]
-#chr_inds[which(depth$pv1<1e-5)]
-
-sigChr1 = findSigChrom(depth1, fdr_thresh=1e-5, go_thresh=1e-3, nme="pv1", nme2="pos100k")
+if(mergeByPosAndGene){
+  pos100k = apply(cbind(as.character(mi1),as.character(depth1$gene_names), as.character(binsize*floor(depth1$pos/binsize))),1,paste,collapse=".")
+  
+}
+depth2 = cbind(depth1, pos100k)
+sigChr1 = findSigChrom(depth2, thresh=1e-5, go_thresh=1e-3, nme="pv1", nme2="pos100k")
 DE_sig1 = DE2[DE2$pos1M %in% sigChr1$chrs,]
-sigChr2 = findSigChrom(depth1, fdr_thresh=1e-5, go_thresh=1e-3, nme="pv2", nme2="pos100k")
+sigChr2 = findSigChrom(depth2, thresh=1e-5, go_thresh=1e-3, nme="pv2", nme2="pos100k")
 DE_sig2 = DE2[DE2$pos1M %in% sigChr2$chrs,]
-DE_sig2 = getDescr(DE_sig2, mart,thresh = 1e-5, prefix=prefix)
 
+#depth2[depth2$pos100k %in% sigChr2$chrs,]
+
+if(!.is.null(mart)){
+  DE_sig1 = getDescr(DE_sig1, mart,thresh = 1e-3, prefix=prefix)
+  
+  DE_sig2 = getDescr(DE_sig2, mart,thresh = 1e-3, prefix=prefix)
+}
 
 #CHECK DISTRIBUTION (OPTIONAL)
-.qqplot(DE1$FDR)
+.qqplot(DE1$FDR1)
 #.qqplot(DE1$FDR2)
 
 
@@ -130,10 +173,9 @@ names(sigGo2) = names(goObjs)
 
 
 
-DE1_na = DE1[is.na(DE1$type),]
-.qqplot(DE1_na$FDR)
-sigChr1 = findSigChrom(DE1_na,fdr_thresh = 1e-5, go_thresh = 1e-4, lessThan =T)
-sigChr2 = findSigChrom(DE1_na,fdr_thresh = 1e-5, go_thresh = 1e-4, lessThan =F)
+.qqplot(DE1$FDR1)
+sigChr1 = findSigChrom(DE1,thresh = 1e-5, go_thresh = 1e-4, nme="FDR1",nme2="chrs")
+sigChr2 = findSigChrom(DE1,thresh = 1e-5, go_thresh = 1e-4, nme="FDR2", nme2="chrs")
 findGenesByChrom(DE1_na,"26", fdr_thresh = 1e-5)
 findGenesByChrom(DE1_na,"AQIB01159108.1", fdr_thresh = 1e-5)
 
