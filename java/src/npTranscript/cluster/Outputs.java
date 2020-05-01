@@ -14,6 +14,7 @@ import java.util.zip.GZIPOutputStream;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
 import ch.systemsx.cisd.hdf5.IHDF5SimpleWriter;
+import japsa.bio.np.ErrorCorrection;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
 import npTranscript.cluster.CigarCluster.Count;
@@ -25,7 +26,7 @@ public class Outputs{
 		private final File outfile, outfile1, outfile2, outfile2_1, outfile4, outfile5, outfile6, outfile7, outfile10;
 		//outfile9;
 	
-		
+		final int seqlen;
 		 private PrintWriter transcriptsP,readClusters;
 		 IHDF5SimpleWriter clusterW = null;
 		 IHDF5SimpleWriter altT = null;
@@ -39,13 +40,36 @@ public class Outputs{
 			this.altT.close();
 			//this.clusters.close();
 			for(int i=0; i<clusters.length; i++){
-				this.clusters[i].runMSA(false);
+				this.so[i].close();
+				this.clusters[i].run();
+				
 			}
 		}
 			
+		public void msa(String ID, int source,  CigarCluster cc) throws IOException, InterruptedException{
+			// TODO Auto-generated method stub
+			File faiFile =new File(this.clusters[source].inDir, ID+".fa");//f[i].getName()+".fasta"); 
+				if(cc.readCount[source]>IdentityProfile1.msaDepthThresh){
+				File faoFile =new File(this.clusters[source].inDir, ID+".fasta");
+	    		ErrorCorrection.runMultipleAlignment(faiFile.getAbsolutePath(),
+	    				faoFile.getAbsolutePath());
+	    		ArrayList<Sequence> seqList;
+	    		if(faoFile.exists()){
+	    			seqList = ErrorCorrection.readMultipleAlignment(faoFile.getAbsolutePath());
+	    			Sequence consensus = ErrorCorrection.getConsensus(seqList);
+					consensus.setDesc("ID="+ID+";key="+cc.breaks_hash.secondKey+";seqlen="+consensus.length()+";count="+seqList.size()+";type_nme="+cc.getTypeNme(seqlen));
+					consensus.setName(ID);
+					consensus.print(so[source]);
+				
+					faoFile.delete();
+	    		}
+			}
+				faiFile.delete();
+		}
 		boolean writeDirectToZip = false;
 		
 		int genome_index=0;
+		final SequenceOutputStream[] so;
 	//	int currentIndex=0;
 		
 		/*public void updateChromIndex(int currentIndex2) throws IOException{
@@ -56,10 +80,11 @@ public class Outputs{
 			 if(readClusters!=null) readClusters.close();
 			
 		}*/
-		public Outputs(File resDir,  String[] type_nmes, boolean overwrite, int currentIndex, boolean isoforms, boolean cluster_depth) throws IOException{
+		public Outputs(File resDir,  String[] type_nmes, boolean overwrite, int currentIndex, boolean isoforms, boolean cluster_depth, int seqlen) throws IOException{
 			this.type_nmes = type_nmes;
 			this.genome_index= currentIndex;
 			 this.resDir = resDir;
+			 this.seqlen = seqlen;
 			 int num_sources = type_nmes.length;
 			 outfile = new File(resDir,genome_index+ ".txt");
 			 outfile1 = new File(resDir, genome_index+ "coref.txt");
@@ -73,10 +98,13 @@ public class Outputs{
 			 outfile10 = new File(resDir,genome_index+".isoforms.h5");
 		//	String prefix = readsF.getName().split("\\.")[0];
 			 clusters = new CompressDir[type_nmes.length];
+			 this.so = new SequenceOutputStream[type_nmes.length];
 			 for(int i=0; i<type_nmes.length; i++){
 				 String nmei = genome_index+"."+type_nmes[i]+".clusters";
 				 clusters[i] = new CompressDir(new File(resDir, nmei));
+				 so[i] = new SequenceOutputStream((new FileOutputStream(new File(resDir,genome_index+"."+type_nmes[i]+".consensus.fasta" ))));
 			 }
+			
 			 reads_file = new File(resDir,genome_index+ ".readToCluster.txt.gz");
 			 readClusters = new PrintWriter(
 					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(reads_file))));
@@ -218,6 +246,8 @@ public class Outputs{
 			}
 			
 		}
+
+		
 
 		
 	}

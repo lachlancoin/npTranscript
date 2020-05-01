@@ -189,6 +189,9 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		addInt("breakThresh", 10, "Thresh for break points to match clusters");
 		addInt("coverageDepthThresh", 100, "Threshhold for writing base level depth information to h5 file");
 		addInt("isoformDepthThresh", 10, "Threshhold for printing out all isoforms");
+		addInt("msaDepthThresh", 10, "Threshhold for running MSA");
+
+		
 		addInt("startThresh", 100, "Threshold for having 5'");
 		addInt("endThresh", 100, "Threshold for having 3'");
 		//addDouble("overlapThresh", 0.95, "Threshold for overlapping clusters");
@@ -235,6 +238,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 	
 		int isoformDepthThresh  = cmdLine.getIntVal("isoformDepthThresh");
 		int coverageDepthThresh = cmdLine.getIntVal("coverageDepthThresh");
+		IdentityProfile1.msaDepthThresh =cmdLine.getIntVal("msaDepthThresh");
 		
 		boolean sorted = true;
 		boolean coronavirus = cmdLine.getBooleanVal("coronavirus");
@@ -480,7 +484,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 							}else{
 								annot = new Annotation(new File(annot_file), currentIndex+"", seqlen);
 							}
-							outp = new Outputs(resDir,  in_nmes, overwrite, currentIndex, true, true); 
+							outp = new Outputs(resDir,  in_nmes, overwrite, currentIndex, true, true, seqlen); 
 							profile = new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh, annot, calcBreaks, chr.getName(), currentIndex);
 					}
 					try{

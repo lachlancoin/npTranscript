@@ -40,7 +40,7 @@ public class CompressDir {
 	    OutputStreamWriter osw;
 	    SequenceOutputStream osw_s;
 	    
-	    File inDir;
+	   public  File inDir;
 	    int len;
 	    
 	    public CompressDir(File f) throws IOException{
@@ -81,56 +81,7 @@ public class CompressDir {
 	    		exc.printStackTrace();
 	    	}
 	    }
-	    public void runMSA(boolean keepMSA) throws IOException{
-	    	try{
-	    	File[] f = inDir.listFiles();
-	    	File f2 = new File(inDir.getAbsolutePath()+".fasta");
-	    	SequenceOutputStream so = new SequenceOutputStream((new FileOutputStream(f2)));
-	    	for(int i=0; i<f.length; i++){
-	    		String finame = f[i].getName().replaceAll(".fasta", "");
-    			String[] str = finame.split(",");
-    			String ID = str[0];
-    			String chr = str[1];
-    			String upstream = str[2];
-    			String downstream = str[3];
-    			String type_nme = str[4];
-	    		if(f[i].getName().endsWith(".fa")){
-	    		try{
-	    			
-	    		File faoFile =new File(f[i].getParentFile(), f[i].getName()+".fasta"); 
-	    		ErrorCorrection.runMultipleAlignment(f[i].getAbsolutePath(),
-	    				faoFile.getAbsolutePath());
-	    		ArrayList<Sequence> seqList;
-	    		if(faoFile.exists()){
-	    			seqList = ErrorCorrection.readMultipleAlignment(faoFile.getAbsolutePath());
-	    			Sequence consensus = ErrorCorrection.getConsensus(seqList);
-					consensus.setDesc("ID="+ID+";chr="+chr+";upstream="+upstream+";downstream="+downstream+";seqlen="+consensus.length()+";count="+seqList.size()+";type_nme="+type_nme);
-					consensus.setName(ID);
-					consensus.print(so);
-		    		if(keepMSA) this.writeHeader(faoFile);
-	    		}
-	    		else{
-	    			seqList = ErrorCorrection.readMultipleAlignment(f[i].getAbsolutePath());
-	    			System.err.println("no consensus for "+ f[i].getAbsolutePath()+" "+seqList.size());
-	    		}
-	    		}catch(IOException exc){
-	    			exc.printStackTrace();
-	    		}
-	    		}else{
-	    			this.writeHeader(f[i], ID);
-	    			this.delete(f[i]);
-	    		}
-	    	
-	    	}
-	    	so.close();
-	    	this.delete(inDir);
-	    	this.close();
-	    	}catch(Exception exc){
-	    		System.err.println("problem with "+inDir);
-	    		exc.printStackTrace();
-	    	}
-	    }
-	    
+	   
 	    public void close() throws IOException{
 	    	this.outS.close();
 	    }
