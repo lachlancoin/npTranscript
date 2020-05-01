@@ -13,7 +13,6 @@ import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
 import japsa.seq.Sequence;
-import npTranscript.cluster.IdentityProfile1.Outputs;
 
 /**
  * @author Lachlan Coin

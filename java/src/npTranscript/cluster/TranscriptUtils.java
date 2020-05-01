@@ -172,7 +172,7 @@ public class TranscriptUtils {
 			}// case
 		} // for
 		try{
-		profile.processRefPositions(sam.getAlignmentStart(), sam.getAlignmentEnd(), id, cluster_reads, readSeq.length(), refSeq.length(), source_index, seqlen);
+		profile.processRefPositions(sam.getAlignmentStart(), sam.getAlignmentEnd(), id, cluster_reads, readSeq.length(), refSeq.length(), source_index, readSeq);
 		}catch(IOException exc){
 			exc.printStackTrace();
 		}

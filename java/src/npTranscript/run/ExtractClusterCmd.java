@@ -145,7 +145,7 @@ public class ExtractClusterCmd extends CommandLine {
 			if(filterByType){
 			for(int ij=0; ij<types.length; ij++){
 				String[] filters = new String[] {"type_nme",types[ij]};
-				File outdir = new File(in, "clusters_"+types[ij]);
+				//File outdir = new File(in, "clusters_"+types[ij]);
 				
 				//for(int k=0; k<readsF.length; k++){
 					String prefix = readsF.getName().split("\\.")[0];

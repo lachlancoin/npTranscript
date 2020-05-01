@@ -7,10 +7,15 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.util.ArrayList;
 import java.util.zip.Adler32;
 import java.util.zip.CheckedOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+
+import japsa.bio.np.ErrorCorrection;
+import japsa.seq.Sequence;
+import japsa.seq.SequenceOutputStream;
 
 
 
@@ -33,11 +38,12 @@ public class CompressDir {
 	    CheckedOutputStream checksum;
 	    ZipOutputStream outS;
 	    OutputStreamWriter osw;
+	    SequenceOutputStream osw_s;
 	    
 	    File inDir;
 	    int len;
 	    
-	    public CompressDir(File f) throws Exception{
+	    public CompressDir(File f) throws IOException{
 	    	this.inDir = f;
 	    	inDir.mkdir();
 	    	len = inDir.getAbsolutePath().length()+1;
@@ -50,7 +56,7 @@ public class CompressDir {
 	         outS.setMethod(ZipOutputStream.DEFLATED);
 	    }
 	    
-	    public CompressDir(File parent, String name) throws Exception{
+	    public CompressDir(File parent, String name) throws IOException{
 	    	 dest = new FileOutputStream(new File(parent, name));
 	         checksum = new   CheckedOutputStream(dest, new Adler32());
 	         outS = new 
@@ -59,7 +65,9 @@ public class CompressDir {
 	         osw = new OutputStreamWriter(outS);
 	         outS.setMethod(ZipOutputStream.DEFLATED);
 	    }
-	    public void run() throws Exception{
+	    
+	    
+	    public void run() throws IOException{
 	    	try{
 	    	File[] f = inDir.listFiles();
 	    	for(int i=0; i<f.length; i++){
@@ -73,7 +81,57 @@ public class CompressDir {
 	    		exc.printStackTrace();
 	    	}
 	    }
-	    public void close() throws Exception{
+	    public void runMSA(boolean keepMSA) throws IOException{
+	    	try{
+	    	File[] f = inDir.listFiles();
+	    	File f2 = new File(inDir.getAbsolutePath()+".fasta");
+	    	SequenceOutputStream so = new SequenceOutputStream((new FileOutputStream(f2)));
+	    	for(int i=0; i<f.length; i++){
+	    		String finame = f[i].getName().replaceAll(".fasta", "");
+    			String[] str = finame.split(",");
+    			String ID = str[0];
+    			String chr = str[1];
+    			String upstream = str[2];
+    			String downstream = str[3];
+    			String type_nme = str[4];
+	    		if(f[i].getName().endsWith(".fa")){
+	    		try{
+	    			
+	    		File faoFile =new File(f[i].getParentFile(), f[i].getName()+".fasta"); 
+	    		ErrorCorrection.runMultipleAlignment(f[i].getAbsolutePath(),
+	    				faoFile.getAbsolutePath());
+	    		ArrayList<Sequence> seqList;
+	    		if(faoFile.exists()){
+	    			seqList = ErrorCorrection.readMultipleAlignment(faoFile.getAbsolutePath());
+	    			Sequence consensus = ErrorCorrection.getConsensus(seqList);
+					consensus.setDesc("ID="+ID+";chr="+chr+";upstream="+upstream+";downstream="+downstream+";seqlen="+consensus.length()+";count="+seqList.size()+";type_nme="+type_nme);
+					consensus.setName(ID);
+					consensus.print(so);
+		    		if(keepMSA) this.writeHeader(faoFile);
+	    		}
+	    		else{
+	    			seqList = ErrorCorrection.readMultipleAlignment(f[i].getAbsolutePath());
+	    			System.err.println("no consensus for "+ f[i].getAbsolutePath()+" "+seqList.size());
+	    		}
+	    		}catch(IOException exc){
+	    			exc.printStackTrace();
+	    		}
+	    		}else{
+	    			this.writeHeader(f[i], ID);
+	    			this.delete(f[i]);
+	    		}
+	    	
+	    	}
+	    	so.close();
+	    	this.delete(inDir);
+	    	this.close();
+	    	}catch(Exception exc){
+	    		System.err.println("problem with "+inDir);
+	    		exc.printStackTrace();
+	    	}
+	    }
+	    
+	    public void close() throws IOException{
 	    	this.outS.close();
 	    }
 	    public void delete(File f) throws Exception{
@@ -86,6 +144,9 @@ public class CompressDir {
 	    	f.delete();
 	    }
 	    public void writeHeader(File f) throws IOException{
+	    	this.writeHeader(f,f.getAbsolutePath().substring(len));
+	    }
+	    public void writeHeader(File f, String newname) throws IOException{
 	    	if(f.isDirectory()){
 	    		File[] f1 = f.listFiles();
 	    		for(int i=0; i<f1.length; i++){
@@ -93,7 +154,7 @@ public class CompressDir {
 	    		}
 	    	}
 	    	else{
-	    		OutputStreamWriter osw1 = this.getWriter(f.getAbsolutePath().substring(len), true);
+	    		OutputStreamWriter osw1 = this.getWriter(newname, true);
 	    		BufferedReader br = new BufferedReader(new FileReader(f));
 	            String str = "";
 	            while((str = br.readLine())!=null){
@@ -101,6 +162,15 @@ public class CompressDir {
 	           }
 	          this.closeWriter(osw1);
 	           br.close();
+	    	}
+	    }
+	    
+	    public void closeWriter(SequenceOutputStream osw_s) throws IOException{
+	    	if(osw_s==this.osw_s){
+	    	   osw_s.flush();
+	           outS.closeEntry();
+	    	}else{
+	    		osw_s.close();
 	    	}
 	    }
 	    
@@ -112,14 +182,32 @@ public class CompressDir {
 	    		osw.close();
 	    	}
 	    }
+	    public SequenceOutputStream getSeqStream(String entry,  boolean append) throws IOException{
+	    	boolean writeDirectToZip = false;
+	    	if(writeDirectToZip){
+	    	//	if(append) throw new
+		    	ZipEntry headings = new ZipEntry(entry);
+			    outS.putNextEntry(headings);
+			    return new SequenceOutputStream(outS);
+		    	}else{
+		    		File f = new File(inDir, entry);
+		    		if(append && ! f.exists()) append=false;
+		    		return new SequenceOutputStream((new FileOutputStream(f, append)));
+		    	}
+	    }
 	    
 	    public OutputStreamWriter getWriter(String entry, boolean writeDirectToZip)throws IOException{
+ return getWriter(entry,writeDirectToZip, false );
+	    }
+	    public OutputStreamWriter getWriter(String entry, boolean writeDirectToZip, boolean append)throws IOException{
 	    	if(writeDirectToZip){
 	    	ZipEntry headings = new ZipEntry(entry);
 		    outS.putNextEntry(headings);
 		    return osw;
 	    	}else{
-	    		return new OutputStreamWriter((new FileOutputStream(new File(inDir, entry))));
+	    		File f = new File(inDir, entry);
+	    		if(append && ! f.exists()) append=false;
+	    		return new OutputStreamWriter((new FileOutputStream(f,append)));
 	    	}
 		        
 	    }

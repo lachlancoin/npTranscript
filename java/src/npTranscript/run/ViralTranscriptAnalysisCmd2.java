@@ -66,7 +66,7 @@ import npTranscript.cluster.CigarHash;
 import npTranscript.cluster.CigarHash2;
 import npTranscript.cluster.GFFAnnotation;
 import npTranscript.cluster.IdentityProfile1;
-import npTranscript.cluster.IdentityProfile1.Outputs;
+import npTranscript.cluster.Outputs;
 import npTranscript.cluster.TranscriptUtils;
 
 /**
@@ -527,9 +527,9 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 				}
 				
 			});
-			if(transcript_files.length==1){
+			/*if(transcript_files.length==1){
 				ExtractClusterCmd.cluster(resDir,transcript_files[0],reads_files[i], filterBy5_3);
-			}
+			}*/
 		}
 	
 	}
