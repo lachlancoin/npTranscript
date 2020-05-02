@@ -142,7 +142,7 @@ public class IdentityProfile1 {
 		+type_nme+"\t"+chrom+"\t"
 		+startPos+"\t"+endPos+"\t"+prev_position+"\t"+position+"\t"+coRefPositions.getError(src_index)+"\t"+upstream+"\t"+downstream;
 		this.o.printRead(str);
-		this.o.writeToCluster(clusterID[0], source_index, readSeq, str);
+		this.o.writeToCluster(clusterID[0]+"."+clusterID[1], source_index, readSeq, str);
 	}
 	
 	public void addRefPositions(int position, boolean match) {
