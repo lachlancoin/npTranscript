@@ -23,7 +23,9 @@ import npTranscript.cluster.CigarCluster.Count;
 import npTranscript.run.CompressDir;
 
 public class Outputs{
-	public static boolean mergeSourceClustersForMSA = true;
+	public static boolean doMSA = true;
+	public static boolean mergeSourceClusters = true;
+
 	public static boolean keepAlignment = true;
 	public static boolean keepinputFasta = true;
 	
@@ -47,12 +49,12 @@ public class Outputs{
 			this.altT.close();
 			//this.clusters.close();
 			for(int i=0; i<clusters.length; i++){
-				this.so[i].close();
-				this.clusters[i].run();
+				if(so[i]!=null) this.so[i].close();
+				if(clusters[i]!=null) this.clusters[i].run();
 				
 			}
 			for(int i=0; i<leftover.length; i++){
-				this.leftover[i].close();
+				if(leftover[i]!=null) this.leftover[i].close();
 			}
 		}
 			
@@ -88,12 +90,21 @@ public class Outputs{
 			 outfile7 = new File(resDir,genome_index+ ".dist.txt.gz");
 			 outfile10 = new File(resDir,genome_index+".isoforms.h5");
 		//	String prefix = readsF.getName().split("\\.")[0];
-			 clusters = mergeSourceClustersForMSA  ? new CompressDir[1] : new CompressDir[type_nmes.length];
-			 this.so = new SequenceOutputStream[type_nmes.length];
-			 for(int i=0; i<clusters.length; i++){
-				 String nmei = mergeSourceClustersForMSA  ?  genome_index+"." :  genome_index+"."+type_nmes[i]+".";
-				 clusters[i] = new CompressDir(new File(resDir, nmei+"clusters"));
-				 so[i] = new SequenceOutputStream(new GZIPOutputStream(new FileOutputStream(new File(resDir,nmei+"consensus.fasta.gz" ))));
+			
+			 if(doMSA && mergeSourceClusters){
+				 clusters = new CompressDir[] {new CompressDir(new File(resDir,  genome_index+"." +"clusters"))};
+				 so =  new SequenceOutputStream[] {new SequenceOutputStream(new GZIPOutputStream(new FileOutputStream(new File(resDir,genome_index+"."+"consensus.fasta.gz" ))))};
+			 }else if(doMSA && mergeSourceClusters){
+				 clusters =  new CompressDir[type_nmes.length];
+				 this.so = new SequenceOutputStream[type_nmes.length];
+				 for(int i=0; i<clusters.length; i++){
+					 String nmei =  genome_index+"."+type_nmes[i]+".";
+					 clusters[i] = new CompressDir(new File(resDir, nmei+"clusters"));
+					 so[i] = new SequenceOutputStream(new GZIPOutputStream(new FileOutputStream(new File(resDir,nmei+"consensus.fasta.gz" ))));
+				 }
+			 }else{
+				clusters = new CompressDir[1];
+				so = new SequenceOutputStream[1];
 			 }
 			 leftover = new SequenceOutputStream[type_nmes.length];
 		//	 String nmei = genome_index+"."
@@ -185,14 +196,16 @@ public class Outputs{
 		
 		public void writeToCluster(String entryname, int i, Sequence seq, String str) throws IOException{
 			CompressDir cluster = this.getCluster(i);
-			SequenceOutputStream out   = cluster.getSeqStream(entryname+".fa", true);
-			seq.writeFasta(out);
-			out.close();
-			cluster.closeWriter(out);
-			
-			OutputStreamWriter osw = cluster.getWriter(entryname, false, true);
-			osw.write(str);osw.write("\n");
-			cluster.closeWriter(osw);
+			if(cluster!=null){
+				SequenceOutputStream out   = cluster.getSeqStream(entryname+".fa", true);
+				seq.writeFasta(out);
+				out.close();
+				cluster.closeWriter(out);
+				
+				OutputStreamWriter osw = cluster.getWriter(entryname, false, true);
+				osw.write(str);osw.write("\n");
+				cluster.closeWriter(osw);
+			}
 		}
 		
 		public void writeIntMatrix(String id, int[][] matr) {
@@ -201,15 +214,17 @@ public class Outputs{
 		}
 		
 		private CompressDir getCluster(int source){
-			return this.mergeSourceClustersForMSA ? this.clusters[0] : this.clusters[source];
+			if(clusters==null) return null;
+			return this.mergeSourceClusters? this.clusters[0] : this.clusters[source];
 		}
 		private int getCount(Count val, int source){
-			return this.mergeSourceClustersForMSA ? Arrays.stream(val.count()).sum()  : val.count()[source];
+			return this.mergeSourceClusters ? Arrays.stream(val.count()).sum()  : val.count()[source];
 		}
 
 		public void msa(String ID, int source,  CigarCluster cc) throws IOException, InterruptedException{
 			// TODO Auto-generated method stub
 			CompressDir cluster = getCluster(source);
+			if(cluster==null) return ;
 			Iterator<Entry<CigarHash2, Count>> it  = cc.all_breaks.entrySet().iterator();
 			for(; it.hasNext();){
 					Entry<CigarHash2,Count> ch = it.next();
@@ -218,7 +233,7 @@ public class Outputs{
 					
 					String ID1 = ID+"."+val.id();
 			File faiFile =new File(cluster.inDir, ID1+".fa");//f[i].getName()+".fasta"); 
-				if(val.count()[source]>IdentityProfile1.msaDepthThresh){
+				if(faiFile.exists() && val.count()[source]>IdentityProfile1.msaDepthThresh){
 				File faoFile =new File(cluster.inDir, ID1+".fasta");
 	    		ErrorCorrection.runMultipleAlignment(faiFile.getAbsolutePath(),
 	    				faoFile.getAbsolutePath());
