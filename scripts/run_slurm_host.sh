@@ -34,7 +34,7 @@ coord_file="../Chlorocebus_sabaeus.ChlSab1.1.99.gff3.gz"
 
 dat=$(date +%Y%m%d%H%M%S)
 resdir="results_${dat}"
-opts="--bin 50 --breakThresh 100 --coronavirus false"
+opts="--bin 50 --breakThresh 100 --coronavirus false --extra_threshold 200 --msaDepthThresh 500"
 #opts="${opts} --maxReads 10000"
 bash ${npTranscript}/scripts/run.sh --bamFile=${bamfiles1}   --reference=${reference} --annotation ${coord_file} --resdir ${resdir} ${opts} ${opts1}
 

@@ -72,7 +72,9 @@ public class IdentityProfile1 {
 	static String NAstring = "NA";
 	
 	String[] clusterID = new String[2];
-	public void processRefPositions(int startPos, int endPos, String id, boolean cluster_reads, int  readLength, int refLength, int src_index , Sequence readSeq) throws IOException, NumberFormatException{
+	public void processRefPositions(int startPos, int endPos, String id, boolean cluster_reads, int  readLength, int refLength, int src_index , Sequence readSeq,
+			int start_read, int end_read
+			) throws IOException, NumberFormatException{
 		CigarHash2 breaks  = coRefPositions.breaks;
 		int seqlen = refLength;
 		Annotation annot = this.all_clusters.annot;
@@ -138,7 +140,7 @@ public class IdentityProfile1 {
 		}
 	//	System.err.println(id);
 	//	String br_cluster_str = "";//sm==null ? "": coRefPositions.break_point_cluster+"\t";
-		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"
+		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"+start_read+"\t"+end_read+"\t"
 		+type_nme+"\t"+chrom+"\t"
 		+startPos+"\t"+endPos+"\t"+prev_position+"\t"+position+"\t"+coRefPositions.getError(src_index)+"\t"+upstream+"\t"+downstream;
 		this.o.printRead(str);

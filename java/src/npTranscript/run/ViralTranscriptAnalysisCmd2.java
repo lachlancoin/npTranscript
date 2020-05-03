@@ -112,15 +112,20 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			}else{
 				if(cnts[i]<max){
 					
-					sr  = samIters[i].next();
-					while(!(
+					//sr  = samIters[i].next();
+				/*	while(!(
 							sr==null || 
 							(readList==null || readList.contains(sr.getReadName())) ||
 							(chrs==null || chrs.contains(sr.getReferenceIndex()))
 							)
-							)
+							)*/
+					inner: while(true)
 					{
 						sr  = samIters[i].next();
+						if(sr==null) break inner;
+						if(readList!=null && readList.contains(sr.getReadName())) break inner;
+						if(readList==null &&  chrs!=null && chrs.contains(sr.getReferenceIndex())) break inner;
+						if(readList==null  && chrs==null) break inner;
 					}
 					if(sr!=null) {
 						sr.setAttribute(src_tag, i);
@@ -189,11 +194,12 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		addInt("breakThresh", 10, "Thresh for break points to match clusters");
 		addInt("coverageDepthThresh", 100, "Threshhold for writing base level depth information to h5 file");
 		addInt("isoformDepthThresh", 10, "Threshhold for printing out all isoforms");
-		addInt("msaDepthThresh", 10, "Threshhold for running MSA per subcluster");
+		addDouble("msaDepthThresh", 10, "Threshhold for running MSA per subcluster");
 		addBoolean("mergeSourceClustersForMSA", true, "Whether to merge multiple sources for calculating multiple sequence alignment");
 		
 		addInt("startThresh", 100, "Threshold for having 5'");
 		addInt("endThresh", 100, "Threshold for having 3'");
+		addInt("extra_threshold", 200, "Threshold saving umatched 3'or 5'parts of reads");
 		//addDouble("overlapThresh", 0.95, "Threshold for overlapping clusters");
 	//	addBoolean("coexpression", false, "whether to calc coexperssion matrices (large memory for small bin size)");
 		addBoolean("overwrite", false, "whether to overwrite existing results files");
@@ -238,11 +244,14 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 	
 		int isoformDepthThresh  = cmdLine.getIntVal("isoformDepthThresh");
 		int coverageDepthThresh = cmdLine.getIntVal("coverageDepthThresh");
-		IdentityProfile1.msaDepthThresh =cmdLine.getIntVal("msaDepthThresh");
+		IdentityProfile1.msaDepthThresh =(int) Math.floor(cmdLine.getDoubleVal("msaDepthThresh"));
+	TranscriptUtils.extra_threshold = cmdLine.getIntVal("extra_threshold");
 		
 		boolean sorted = true;
 		boolean coronavirus = cmdLine.getBooleanVal("coronavirus");
 		Outputs.mergeSourceClustersForMSA = cmdLine.getBooleanVal("mergeSourceClustersForMSA");
+		Outputs.keepAlignment = false;
+		Outputs.keepinputFasta = false;
 		boolean calcBreaks = false;// whether to calculate data for the break point heatmap, true for SARS_COV2
 		boolean filterBy5_3 = false;// should be true for SARS_COV2
 		boolean annotByBreakPosition = false;  // should be true for SARS_COV2

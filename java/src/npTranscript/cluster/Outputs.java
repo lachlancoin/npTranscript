@@ -24,11 +24,14 @@ import npTranscript.run.CompressDir;
 
 public class Outputs{
 	public static boolean mergeSourceClustersForMSA = true;
-
+	public static boolean keepAlignment = true;
+	public static boolean keepinputFasta = true;
+	
 		public File transcripts_file;
 		public File reads_file; 
 		private final File outfile, outfile1, outfile2, outfile2_1, outfile4, outfile5, outfile6, outfile7, outfile10;
 		//outfile9;
+		private final SequenceOutputStream[] leftover;
 	
 		final int seqlen;
 		 private PrintWriter transcriptsP,readClusters;
@@ -47,6 +50,9 @@ public class Outputs{
 				this.so[i].close();
 				this.clusters[i].run();
 				
+			}
+			for(int i=0; i<leftover.length; i++){
+				this.leftover[i].close();
 			}
 		}
 			
@@ -87,13 +93,18 @@ public class Outputs{
 			 for(int i=0; i<clusters.length; i++){
 				 String nmei = mergeSourceClustersForMSA  ?  genome_index+"." :  genome_index+"."+type_nmes[i]+".";
 				 clusters[i] = new CompressDir(new File(resDir, nmei+"clusters"));
-				 so[i] = new SequenceOutputStream((new FileOutputStream(new File(resDir,nmei+"consensus.fasta" ))));
+				 so[i] = new SequenceOutputStream(new GZIPOutputStream(new FileOutputStream(new File(resDir,nmei+"consensus.fasta.gz" ))));
 			 }
-			
+			 leftover = new SequenceOutputStream[type_nmes.length];
+		//	 String nmei = genome_index+"."
+			 for(int i=0; i<leftover.length; i++){
+				 this.leftover[i]=  new SequenceOutputStream(new GZIPOutputStream(new FileOutputStream(new File(resDir,genome_index+"."+type_nmes[i]+".leftover.fasta.gz" ))));
+			 }
+		//	this.right=  new SequenceOutputStream((new FileOutputStream(new File(resDir,genome_index+".right.fasta" ))));
 			 reads_file = new File(resDir,genome_index+ ".readToCluster.txt.gz");
 			 readClusters = new PrintWriter(
 					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(reads_file))));
-			 readClusters.println("readID\tclusterId\tsubID\tsource\tlength\ttype_nme\tchrom\tstartPos\tendPos\tbreakStart\tbreakEnd\terrorRatio\tupstream\tdownstream");
+			 readClusters.println("readID\tclusterId\tsubID\tsource\tlength\tstart_read\tend_read\ttype_nme\tchrom\tstartPos\tendPos\tbreakStart\tbreakEnd\terrorRatio\tupstream\tdownstream");
 		
 			 transcripts_file = new File(resDir,genome_index+ ".transcripts.txt.gz");
 			//	newReadCluster(genome_index);
@@ -218,12 +229,13 @@ public class Outputs{
 					consensus.setDesc("ID="+ID+";subID="+val.id()+";key="+cc.breaks_hash.secondKey+";seqlen="+consensus.length()+";count="+seqList.size()+";type_nme="+cc.getTypeNme(seqlen));
 					consensus.setName(ID1);
 					consensus.print(so[source]);
-					faoFile.delete();
+					if(!keepAlignment) faoFile.delete();
 	    		}
 			}
-				faiFile.delete();
+				if(!keepinputFasta) faiFile.delete();
 			}
 		}
+		
 		public void writeString(String id, Map<CigarHash2, Count> all_breaks, int num_sources) {
 			int[][]str = new int[all_breaks.size()][];
 			{
@@ -267,6 +279,11 @@ public class Outputs{
 			}catch(Exception exc){
 				exc.printStackTrace();
 			}
+			
+		}
+
+		public void writeLeft(Sequence subseq, int source_index)  throws IOException{
+			subseq.writeFasta(leftover[source_index]);
 			
 		}
 
