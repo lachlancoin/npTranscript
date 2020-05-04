@@ -1440,6 +1440,73 @@ transcripts_all
  	#outfile0 = paste(resdir, "/rel_expression1.pdf", sep="");
 	invisible(ggp)
 }  
+.bindall<-function(l){
+	a = l[[1]]
+	for(i in 2:length(l))	{
+		 a = rbind(a, l[[i]])
+	}
+	data.frame(a)
+}
+plotJoins<-function(reads, thresh = c(10,100), binsize = 1, t = NULL, ylog = F, xlim = c(1,30000)){
+	outfile2= paste("recomb", binsize, t,paste(xlim, collapse="."), "pdf", sep=".")
+	breaks = seq(1,seqlen+binsize, binsize)-0.5
+	levs = levels(reads$source)
+	size = unlist(lapply(levs, function(x) length(which(reads$source==x))))
+	a_ = list()
+	h_all = list()
+	for(k in 1:length(levs)){
+		source = levs[k]
+	 	h = list(
+			hist(reads[which(reads$start_read<thresh[1] & reads$source %in% source),]$startPos, br=breaks, plot = F),
+			hist(reads[which(reads$start_read>thresh[2] & reads$source %in% source),]$startPos, br=breaks, plot = F),
+			hist(reads[which((reads$length - reads$end_read)<thresh[1] & reads$source==source),]$endPos, br=breaks, plot = F),
+			hist(reads[which((reads$length - reads$end_read)>thresh[2] & reads$source==source),]$endPos, br=breaks, plot = F)
+		)
+		names(h) = c("start_less", "start_more","end_less", "end_more" )
+		h_all[[k]] = h	
+		f<-function(h1, i, k) {
+			 #norm  = if(normalise) sum(h1$count) else 1
+			norm = size[k]/1e6
+			cbind(h1$breaks[-1], h1$count/norm, rep(i, length(breaks)-1),rep(k, length(breaks)-1))
+		}
+		
+		for(i in 1:length(h)) {
+			print(paste(i,k))
+			a_[[length(a_)+1]] = f(h[[i]], i,k)
+		}
+
+		
+	}
+	names(h_all) = levs
+	maxpos = which(h_all[[1]][[2]]$counts == max(h_all[[1]][[2]]$counts))
+	maxbr= h_all[[1]][[2]]$breaks[maxpos]
+	indices = (which(reads$start_read > thresh & reads$startPos %in% (floor(maxbr):(1+floor(maxbr)))))
+	subm = reads[indices,]
+	a = .bindall(a_)	
+	names(a) = c("breaks", "counts", "type", "source")
+	a$type = factor(a$type, labels= c(paste("start less", thresh[1]), paste("start more", thresh[2]), paste("end less", thresh[1]), paste("end more", thresh[2])))
+	a$source = factor(a$source, labels=levs)
+	levst = levels(a$type)
+	ggps = list()
+	
+	for(k in 1:length(levst)){
+		inds_a = grep(levst[k], a$type)
+		
+		
+		ggp <-ggplot(a[inds_a, ], aes_string(x="breaks", y="counts", fill="source", color = "source"))+geom_point(size=2)+ggtitle(levst[k])
+		if(!is.null(t) && !is.null(t$Minimum)) ggp<-ggp+ geom_vline(xintercept = t$Minimum, linetype="solid")  
+		if(!is.null(t) && !is.null(t$start)) ggp<-ggp+ geom_vline(xintercept = t$start, linetype="solid")  
+		if(!is.null(xlim)) ggp<-ggp + scale_x_continuous(limits = xlim)
+		if(ylog)  ggp<-ggp+scale_y_continuous(trans='log10')
+#abline(v = t$Minimum, col=2)+abline(v = t$Maximum, col=3)
+		ggps[[k]]<-ggp
+
+	}
+
+	  ml<-marrangeGrob(ggps,nrow = 2, ncol = 2, as.table=F) 
+ggsave(outfile2, plot=ml, width = 30, height = 30, units = "cm")
+	invisible(h_all)
+}
 .plotGeneExpr<-function(tocomp,transcripts_all, todo =1:length(transcripts_all),  extra = 0.1, mint = 2, maxt = 10, count_df = grep('count[0-9]', names(transcripts_all[[1]])),
  type_nme = attr(transcripts_all[[1]], "info")){
 ggps = list()
