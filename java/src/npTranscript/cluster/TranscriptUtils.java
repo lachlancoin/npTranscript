@@ -6,12 +6,13 @@ import java.util.Set;
 
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMRecord;
+import japsa.bio.np.barcode.SWGAlignment;
 import japsa.seq.Sequence;
 
 
 public class TranscriptUtils {
 	
-	public static int break_thresh = 10;
+	public static int break_thresh = 1000;
 	public static int endThresh = 100;
 	public static int startThresh = 100;
 	public static int extra_threshold = 500;
@@ -76,7 +77,7 @@ public class TranscriptUtils {
 	 * @param sam
 	 * @return
 	 */
-	public static void identity1(Sequence refSeq, Sequence readSeq, SAMRecord sam, IdentityProfile1 profile, 
+	public static void identity1(Sequence refSeq, Sequence refSeq5prime, Sequence refSeq3prime, Sequence readSeq, SAMRecord sam, IdentityProfile1 profile, 
 			int source_index, boolean cluster_reads, int seqlen) throws NumberFormatException{
 		int readPos = 0;// start from 0
 		//Outputs output = profile.o;
@@ -174,43 +175,61 @@ public class TranscriptUtils {
 			}// case
 		} // for
 		try{
-			
-			//sam.
-			//System.err.println(st+" "+end+" "+len);
-		//	System.err.println(sam.getUnclippedStart()+" "+sam.getUnclippedEnd()+" "+len);
-		int st_r = sam.getReadPositionAtReferencePosition(sam.getAlignmentStart());
-		int end_r = sam.getReadPositionAtReferencePosition(sam.getAlignmentEnd());
-		//System.err.println(st_r + " "+end_r);
-		//readSeq.setDesc("len="+readSeq.length());
-		if(st_r >extra_threshold || (readSeq.length() -  end_r )>extra_threshold ){
+			int maxl = 100;
+			int tol=5;
+			int st_r = sam.getReadPositionAtReferencePosition(sam.getAlignmentStart());
+			int end_r = sam.getReadPositionAtReferencePosition(sam.getAlignmentEnd());
+			String baseQ = sam.getBaseQualityString();
+		boolean splice = profile.processRefPositions(sam.getAlignmentStart(), sam.getAlignmentEnd(), id, cluster_reads, readSeq.length(), refSeq.length(), source_index, readSeq,st_r, end_r);
+		if(!splice && (sam.getAlignmentStart()>100 || sam.getAlignmentEnd()<(refSeq.length()-100))){
 			String desc = ";start="+sam.getAlignmentStart()+";end="+sam.getAlignmentEnd()+";full_length="+readSeq.length();
-
-			Sequence leftseq = readSeq.subSequence(0, st_r);
-			leftseq.setName(readSeq.getName()+".L");
-			leftseq.setDesc("len="+leftseq.length()+desc);
-			if(leftseq.length() > extra_threshold) profile.o.writeLeft(leftseq,source_index);
-
-			Sequence rightseq = readSeq.subSequence(end_r, readSeq.length());
-			rightseq.setName(readSeq.getName()+".R");
-			rightseq.setDesc("len="+rightseq.length()+desc);
-			if(rightseq.length() > extra_threshold) profile.o.writeLeft(rightseq,source_index);
+			if(st_r >extra_threshold  ){
+				Sequence leftseq = readSeq.subSequence(0, st_r);
+				String baseQL = baseQ.substring(0, st_r);
+				leftseq.setName(readSeq.getName()+".L");
+				
+				Sequence leftseq1 = leftseq.subSequence(Math.max(0, leftseq.length()-maxl-tol), leftseq.length()-tol);
+				int mtch_5 = checkAlignmentIsNovel(leftseq1, refSeq5prime, "left 5prime") ;
+				int mtch_3 = checkAlignmentIsNovel(leftseq1, refSeq3prime, "left 3prime");
+				leftseq.setDesc("len="+leftseq.length()+desc+";mtch5="+mtch_5+";mtch_3="+mtch_3);
+				profile.o.writeLeft(leftseq,baseQL, source_index, true, (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)leftseq1.length());
+				
+			}
+			if(readSeq.length() -  end_r >extra_threshold){
+				Sequence rightseq = readSeq.subSequence(end_r, readSeq.length());
+				rightseq.setName(readSeq.getName()+".R");
+				String baseQR = baseQ.substring(end_r, readSeq.length());
+				Sequence rightseq1 = rightseq.subSequence(tol, Math.min(maxl+tol, rightseq.length()));
+				int mtch_5  = checkAlignmentIsNovel(rightseq1, refSeq5prime, "right 5") ;
+				int mtch_3 = checkAlignmentIsNovel(rightseq1, refSeq3prime, "right 3");
+				rightseq.setDesc("len="+rightseq.length()+desc+";mtch5="+mtch_5+";mtch_3="+mtch_3);
+				profile.o.writeLeft(rightseq,baseQR, source_index, false,  (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)rightseq1.length());
+				
+				/*Sequence midseq = readSeq.subSequence(st_r, end_r);
+				midseq.setName(readSeq.getName()+".M");
+				midseq.setDesc("len="+midseq.length()+desc);
+				profile.o.writeLeft(midseq,source_index);
+				*/
+				//profile.o.writeLeft(readSeq);
+				
+				//subseq.setDesc("st="+st_r);
+				//System.err.println(subseq.toString());
+			}
 			
-			/*Sequence midseq = readSeq.subSequence(st_r, end_r);
-			midseq.setName(readSeq.getName()+".M");
-			midseq.setDesc("len="+midseq.length()+desc);
-			profile.o.writeLeft(midseq,source_index);
-			*/
-			//profile.o.writeLeft(readSeq);
-			
-			//subseq.setDesc("st="+st_r);
-			//System.err.println(subseq.toString());
 		}
-		
-		profile.processRefPositions(sam.getAlignmentStart(), sam.getAlignmentEnd(), id, cluster_reads, readSeq.length(), refSeq.length(), source_index, readSeq,st_r, end_r);
 		}catch(IOException exc){
 			exc.printStackTrace();
 		}
 
+	}
+
+	private static int checkAlignmentIsNovel(Sequence leftseq, Sequence refSeq, String type) {
+	
+			SWGAlignment align = SWGAlignment.align(leftseq, refSeq);
+			return align.getIdentity();
+		
+			
+		
 	}
 	
 	

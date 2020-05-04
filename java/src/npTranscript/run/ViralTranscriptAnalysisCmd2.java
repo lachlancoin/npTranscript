@@ -55,6 +55,7 @@ import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.fastq.FastqWriterFactory;
 import japsa.seq.Alphabet;
 import japsa.seq.JapsaAnnotation;
 import japsa.seq.Sequence;
@@ -143,6 +144,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		public SAMRecord next() {
 			//int curr_index = current_sam_index;
 			SAMRecord sr = next(current_sam_index);
+			
 			if(sr==null || sr.getReferenceIndex()>currentIndex ){
 				int[] ref_inds = new int[samIters.length];
 				int min_ind =-1;
@@ -160,7 +162,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 				current_sam_index = min_ind;
 			}
 			
-			
+			if(current_sam_index<0) return null;
 			sr = this.currentVals[current_sam_index];
 			if(sr!=null) this.currentIndex = sr.getReferenceIndex();
 			cnts[current_sam_index]++;
@@ -254,6 +256,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		Outputs.doMSA = !msaOpts.startsWith("no") && !msaOpts.startsWith("false");
 		Outputs.keepAlignment = false;
 		Outputs.keepinputFasta = false;
+		Outputs.MSA_at_cluster = false;
 		boolean calcBreaks = false;// whether to calculate data for the break point heatmap, true for SARS_COV2
 		boolean filterBy5_3 = false;// should be true for SARS_COV2
 		boolean annotByBreakPosition = false;  // should be true for SARS_COV2
@@ -263,6 +266,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			System.err.println("running in coronavirus mode");
 			calcBreaks  = true; 
 			filterBy5_3 = true;
+			Outputs.MSA_at_cluster = true;
 			annotByBreakPosition = true;
 		}else{
 			System.err.println("running in host mode");
@@ -366,6 +370,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			File bam = new File( bamFile);
 		
 			
+			//https://www.programcreek.com/java-api-examples/?api=htsjdk.samtools.fastq.FastqWriter
 			SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
 		//	SamReader samReader = null;// SamReaderFactory.makeDefault().open(new File(bamFile));
 
@@ -389,6 +394,10 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			int currentIndex = 0;
 			
 			Sequence chr = genomes.get(currentIndex);
+			int primelen = 1000;
+			Sequence chr3prime = chr.subSequence(chr.length()-primelen, chr.length());
+			Sequence chr5prime = chr.subSequence(0	, primelen);
+
 			Set<String> doneChr = new HashSet<String>();
 			
 			long totReadBase = 0, totRefBase = 0;
@@ -408,7 +417,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 				}
 				if(sam==null) break outer;
 				int source_index = (Integer) sam.getAttribute(src_tag);
-				
+			//	sam.getBaseQualityString();
 				//System.err.println(source_index);
 				if (pattern != null && (!sam.getReadName().contains(pattern)))
 					continue;
@@ -459,6 +468,8 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 					currentIndex = refIndex;
 					String prev_chrom = chr==null ? "null": chr.getName();
 					chr = genomes.get(currentIndex);
+					 chr3prime = chr.subSequence(chr.length()-primelen, chr.length());
+					chr5prime = chr.subSequence(0	, primelen);
 				//	outp.updateChromIndex(currentIndex);
 					System.err.println("switch chrom "+prev_chrom+"  to "+chr.getName());
 					
@@ -499,7 +510,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 							profile = new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh, annot, calcBreaks, chr.getName(), currentIndex);
 					}
 					try{
-						TranscriptUtils.identity1(chr, readSeq, sam, profile, source_index, cluster_reads, chr.length());
+						TranscriptUtils.identity1(chr, chr5prime, chr3prime, readSeq, sam, profile, source_index, cluster_reads, chr.length());
 					}catch(NumberFormatException exc){
 						System.err.println(readSeq.getName());
 						exc.printStackTrace();
