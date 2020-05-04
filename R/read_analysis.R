@@ -14,15 +14,8 @@ reads$downstream = as.factor(reads$downstream)
 
 reads_leader = reads[ reads$startPos <= 100,]
 
-reads_no_leader = reads[ reads$startPos > 100 &,]
-#h_all = plotJoins(reads, thresh = c(1,50),  t=t, ylog=T, xlim = c(20000,seqlen))
-#subr = reads[reads$breakStart == -1 & reads$breakEnd==-1,]
+reads_no_leader = reads[ reads$startPos > 100 ,]
 
-
-#subr = reads_no_leader[reads_no_leader$start_read>50,]
-#leva = getlev(subr$startPos)
-#leva = getlev(subr$clusterId)
-#leva_r = leva[as.numeric(leva[,2])>100,]
 
 
 
