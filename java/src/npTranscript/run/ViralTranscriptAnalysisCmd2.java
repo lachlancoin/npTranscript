@@ -56,6 +56,7 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.fastq.FastqWriterFactory;
+import japsa.bio.np.ErrorCorrection;
 import japsa.seq.Alphabet;
 import japsa.seq.JapsaAnnotation;
 import japsa.seq.Sequence;
@@ -266,7 +267,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		boolean calcBreaks = false;// whether to calculate data for the break point heatmap, true for SARS_COV2
 		boolean filterBy5_3 = false;// should be true for SARS_COV2
 		boolean annotByBreakPosition = false;  // should be true for SARS_COV2
-	
+		ErrorCorrection.msa = "kalign3";
 		
 		if(coronavirus){
 			System.err.println("running in coronavirus mode");
