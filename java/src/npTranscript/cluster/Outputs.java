@@ -52,8 +52,8 @@ public class Outputs{
 			
 		}
 	}
-	 public static boolean MSA_at_cluster = true;
-	public static boolean doMSA = true;
+	// public static boolean MSA_at_cluster = true;
+	public static List<String> doMSA = null;//"5_3";
 	public static boolean mergeSourceClusters = true;
 	public static boolean gzipFasta = false;
 	public static boolean keepAlignment = true;
@@ -66,15 +66,15 @@ public class Outputs{
 		private final FOutp[] leftover_l, leftover_r, fusion_l, fusion_r;
 	
 		final int seqlen;
-		 private PrintWriter transcriptsP,readClusters;
+		 PrintWriter transcriptsP,readClusters;
 		 IHDF5SimpleWriter clusterW = null;
 		 IHDF5SimpleWriter altT = null;
 		File resDir;
 		CompressDir[] clusters;
 		String[] type_nmes;
 		public void close() throws IOException{
-			transcriptsP.close();
-			readClusters.close();
+			//transcriptsP.close();
+			//readClusters.close();
 			clusterW.close();
 			this.altT.close();
 			//this.clusters.close();
@@ -124,10 +124,10 @@ public class Outputs{
 			 outfile10 = new File(resDir,genome_index+".isoforms.h5");
 		//	String prefix = readsF.getName().split("\\.")[0];
 			
-			 if(doMSA && mergeSourceClusters){
+			 if(doMSA!=null && mergeSourceClusters){
 				 clusters = new CompressDir[] {new CompressDir(new File(resDir,  genome_index+"." +"clusters"))};
-				 so =  new FOutp[] {new FOutp("."+"consensus")};
-			 }else if(doMSA && mergeSourceClusters){
+				 so =  new FOutp[] {new FOutp("consensus")};
+			 }else if(doMSA!=null && !mergeSourceClusters){
 				 clusters =  new CompressDir[type_nmes.length];
 				 this.so = new FOutp[type_nmes.length];
 				 for(int i=0; i<clusters.length; i++){
@@ -136,6 +136,7 @@ public class Outputs{
 					 so[i] = new FOutp(nmei+"consensus" );
 				 }
 			 }else{
+				 //no msa
 				clusters = new CompressDir[1];
 				so = new FOutp[1];
 			 }
@@ -238,7 +239,7 @@ public class Outputs{
 		public void writeToCluster(String ID, String subID,  int i, Sequence seq, String str, String name) throws IOException{
 			CompressDir cluster = this.getCluster(i);
 			seq.setName(name);
-			String entryname = MSA_at_cluster ? ID : ID+"."+subID;
+			String entryname =  ID+"."+subID;
 			if(cluster!=null){
 				SequenceOutputStream out   = cluster.getSeqStream(entryname+".fa", true);
 				seq.writeFasta(out);
@@ -258,14 +259,15 @@ public class Outputs{
 		
 		private CompressDir getCluster(int source){
 			if(clusters==null) return null;
-			return this.mergeSourceClusters? this.clusters[0] : this.clusters[source];
+			return mergeSourceClusters? this.clusters[0] : this.clusters[source];
 		}
 		private int getCount(Count val, int source){
-			return this.mergeSourceClusters ? Arrays.stream(val.count()).sum()  : val.count()[source];
+			return mergeSourceClusters ? Arrays.stream(val.count()).sum()  : val.count()[source];
 		}
 
-		public void msa(String ID, int source,  CigarCluster cc) throws IOException, InterruptedException{
+		public void msa(String ID, int source1,  CigarCluster cc) throws IOException, InterruptedException{
 			// TODO Auto-generated method stub
+			int source = mergeSourceClusters ? 0 : source1;
 			CompressDir cluster = getCluster(source);
 			if(cluster==null) return ;
 			Iterator<Entry<CigarHash2, Count>> it  = cc.all_breaks.entrySet().iterator();
@@ -274,7 +276,7 @@ public class Outputs{
 					CigarHash2 key = ch.getKey();
 					Count val = ch.getValue();
 					
-					String ID1 = MSA_at_cluster ? ID : ID+"."+val.id();
+					String ID1 = ID+"."+val.id();
 			File faiFile =new File(cluster.inDir, ID1+".fa");//f[i].getName()+""); 
 				if(faiFile.exists() && val.count()[source]>IdentityProfile1.msaDepthThresh){
 				File faoFile =new File(cluster.inDir, ID1+".fasta");

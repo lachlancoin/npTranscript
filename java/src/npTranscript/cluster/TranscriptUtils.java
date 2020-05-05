@@ -1,12 +1,11 @@
 package npTranscript.cluster;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
 
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMRecord;
 import japsa.bio.np.barcode.SWGAlignment;
+import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 
 
@@ -67,6 +66,7 @@ public class TranscriptUtils {
 //	static double round2 = 100;
 	
 	static String[] nmes = "5_3:5_no3:no5_3:no5_no3".split(":");
+	public static boolean checkAlign = true;
 	
 	
 	
@@ -180,10 +180,13 @@ public class TranscriptUtils {
 			int st_r = sam.getReadPositionAtReferencePosition(sam.getAlignmentStart());
 			int end_r = sam.getReadPositionAtReferencePosition(sam.getAlignmentEnd());
 			String baseQ = sam.getBaseQualityString();
-		boolean splice = profile.processRefPositions(sam.getAlignmentStart(), sam.getAlignmentEnd(), id, cluster_reads, readSeq.length(), refSeq.length(), source_index, readSeq,st_r, end_r);
+			char strand = sam.getReadNegativeStrandFlag() ? '-': '+';
+		// Alphabet.DNA.complement(readSeq);
+			boolean splice = profile.processRefPositions(sam.getAlignmentStart(), sam.getAlignmentEnd(), id, cluster_reads, readSeq.length(), refSeq.length(), source_index, readSeq,st_r, end_r);
 		if(!splice && (sam.getAlignmentStart()>100 || sam.getAlignmentEnd()<(refSeq.length()-100))){
-			String desc = ";start="+sam.getAlignmentStart()+";end="+sam.getAlignmentEnd()+";full_length="+readSeq.length();
+			String desc = ";start="+sam.getAlignmentStart()+";end="+sam.getAlignmentEnd()+";full_length="+readSeq.length()+";strand="+strand;
 			if(st_r >extra_threshold  ){
+				
 				Sequence leftseq = readSeq.subSequence(0, st_r);
 				String baseQL = baseQ.substring(0, st_r);
 				leftseq.setName(readSeq.getName()+".L");
@@ -200,8 +203,8 @@ public class TranscriptUtils {
 				rightseq.setName(readSeq.getName()+".R");
 				String baseQR = baseQ.substring(end_r, readSeq.length());
 				Sequence rightseq1 = rightseq.subSequence(tol, Math.min(maxl+tol, rightseq.length()));
-				int mtch_5  = checkAlignmentIsNovel(rightseq1, refSeq5prime, "right 5") ;
-				int mtch_3 = checkAlignmentIsNovel(rightseq1, refSeq3prime, "right 3");
+				int mtch_5  = TranscriptUtils.checkAlign ?  checkAlignmentIsNovel(rightseq1, refSeq5prime, "right 5") : 0;
+				int mtch_3 = TranscriptUtils.checkAlign ? checkAlignmentIsNovel(rightseq1, refSeq3prime, "right 3"): 0;
 				rightseq.setDesc("len="+rightseq.length()+desc+";mtch5="+mtch_5+";mtch_3="+mtch_3);
 				profile.o.writeLeft(rightseq,baseQR, source_index, false,  (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)rightseq1.length());
 				

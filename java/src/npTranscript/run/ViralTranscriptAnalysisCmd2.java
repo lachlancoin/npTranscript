@@ -205,6 +205,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		//addDouble("overlapThresh", 0.95, "Threshold for overlapping clusters");
 	//	addBoolean("coexpression", false, "whether to calc coexperssion matrices (large memory for small bin size)");
 		addBoolean("overwrite", false, "whether to overwrite existing results files");
+		addBoolean("keepAlignment", false, "whether to keep alignment for MSA");
 		addBoolean("coronavirus", true, "whether to run in coronavirus mode (necessary to do breakpoint analysis, but takes more memory)");
 		addStdHelp();
 	}
@@ -251,12 +252,17 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		
 		boolean sorted = true;
 		boolean coronavirus = cmdLine.getBooleanVal("coronavirus");
-		String msaOpts = cmdLine.getStringVal("doMSA");
-		Outputs.mergeSourceClusters = !msaOpts.startsWith("sep");
-		Outputs.doMSA = !msaOpts.startsWith("no") && !msaOpts.startsWith("false");
-		Outputs.keepAlignment = false;
-		Outputs.keepinputFasta = false;
-		Outputs.MSA_at_cluster = false;
+		String[] msaOpts = cmdLine.getStringVal("doMSA").split(":"); //e.g 5_3:sep or all:sep
+		
+		Outputs.doMSA =Arrays.asList((msaOpts[0].equals("all") ?"5_3:no5_3:5_no3:no5_no3": msaOpts[0]).split(":")) ;
+		if(msaOpts[0].equals("false")){
+			Outputs.doMSA = null;
+		}else{
+			Outputs.mergeSourceClusters = msaOpts.length==1 || !msaOpts[1].startsWith("sep");
+		}
+		Outputs.keepAlignment = cmdLine.getBooleanVal("keepAlignment");
+		Outputs.keepinputFasta = Outputs.keepAlignment ;
+		//Outputs.MSA_at_cluster = false;
 		boolean calcBreaks = false;// whether to calculate data for the break point heatmap, true for SARS_COV2
 		boolean filterBy5_3 = false;// should be true for SARS_COV2
 		boolean annotByBreakPosition = false;  // should be true for SARS_COV2
@@ -266,10 +272,14 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			System.err.println("running in coronavirus mode");
 			calcBreaks  = true; 
 			filterBy5_3 = true;
-			Outputs.MSA_at_cluster = true;
+		//	Outputs.MSA_at_cluster = true;
+			TranscriptUtils.checkAlign = true;
 			annotByBreakPosition = true;
+			CigarHash2.subclusterBasedOnStEnd = true;
 		}else{
+			TranscriptUtils.checkAlign = false;
 			System.err.println("running in host mode");
+			CigarHash2.subclusterBasedOnStEnd = false;
 		}
 			errorAnalysis(bamFile, reference, annotFile,readList,annotationType, 
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  sorted , 

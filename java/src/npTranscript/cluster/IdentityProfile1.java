@@ -70,6 +70,8 @@ public class IdentityProfile1 {
 	
 	static double break_round = 10.0;
 	static String NAstring = "NA";
+
+	public static boolean subclusterBasedOnStEnd = false;
 	
 	String[] clusterID = new String[2];
 	public boolean processRefPositions(int startPos, int endPos, String id, boolean cluster_reads, int  readLength, int refLength, int src_index , Sequence readSeq,
@@ -146,8 +148,10 @@ public class IdentityProfile1 {
 		+type_nme+"\t"+chrom+"\t"
 		+startPos+"\t"+endPos+"\t"+prev_position+"\t"+position+"\t"+coRefPositions.getError(src_index)+"\t"+upstream+"\t"+downstream;
 		this.o.printRead(str);
-		if(Outputs.doMSA) {
-			this.o.writeToCluster(clusterID[0],clusterID[1], source_index, readSeq.subSequence(Math.max(0, start_read-5), Math.min(readSeq.length(),end_read+5)), str, readSeq.getName());
+		if(Outputs.doMSA!=null && Outputs.doMSA.contains(type_nme)) {
+			Sequence readSeq1 = readSeq.subSequence(start_read, end_read);
+			readSeq1.setDesc("st="+start_read+";end="+end_read+";len="+(end_read-start_read));
+			this.o.writeToCluster(clusterID[0],clusterID[1], source_index, readSeq1, str, readSeq.getName());
 		}
 		return hasSplice;
 	}

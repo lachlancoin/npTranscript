@@ -136,21 +136,19 @@ public class CigarClusters {
 	final Sequence  refseq;
 	final int seqlen;
 	final int num_sources;
-	public String process(CigarCluster cc,   Outputs o,
-			//Map<String, List<CigarHash>> geneToHash,
-			String chrom,
-			int chrom_index){
+	public void process(CigarCluster cc,   Outputs o,String chrom,int chrom_index){
 		cc.addZeros(seqlen); 
 		String id = cc.id();
 		int totalDepth = cc.readCountSum();
-		for(int k=0; k<this.num_sources; k++){
-			try{
-					o.msa(id,k,cc);	
-			}catch(Exception exc){
-				exc.printStackTrace();
+		if(Outputs.doMSA.contains(cc.getTypeNme(seqlen))){
+			for(int k=0; k<this.num_sources; k++){
+				try{
+						o.msa(id,k,cc);	
+				}catch(Exception exc){
+					exc.printStackTrace();
+				}
 			}
 		}
-		
 		if(o.clusterW!=null && totalDepth>IdentityProfile1.writeCoverageDepthThresh){
 		
 		 int[][] matr =cc.getClusterDepth(num_sources, this.refseq);
@@ -161,6 +159,9 @@ public class CigarClusters {
 		if(o.altT!=null && totalDepth>IdentityProfile1.writeIsoformDepthThresh){
 		o.writeString(id, cc.all_breaks, this.num_sources);
 		}
+		
+	}
+	public String process1(CigarCluster cc,   Outputs o,String chrom,int chrom_index){
 		String read_count = TranscriptUtils.getString(cc.readCount);
 		int startPos, endPos;
 		if(!IdentityProfile1.annotByBreakPosition ){
@@ -177,7 +178,7 @@ public class CigarClusters {
 		if(upstream==null) upstream =  chrom_index+"."+TranscriptUtils.round(startPos, CigarHash2.round)+"";
 		if(downstream==null) downstream = chrom_index+"."+ TranscriptUtils.round(endPos, CigarHash2.round)+"";
 		o.printTranscript(
-			id+"\t"+chrom+"\t"+cc.start+"\t"+cc.end+"\t"+cc.getTypeNme(seqlen)+"\t"+
+			cc.id()+"\t"+chrom+"\t"+cc.start+"\t"+cc.end+"\t"+cc.getTypeNme(seqlen)+"\t"+
 		//cc.breaks.toString()+"\t"+cc.breaks.hashCode()+"\t"+
 		cc.breakSt+"\t"+cc.breakEnd+"\t"+cc.all_breaks.size()+"\t"+
 		upstream+"\t"+downstream+"\t"+
@@ -189,19 +190,17 @@ public class CigarClusters {
 	public void getConsensus(  
 			Outputs o, String chrom, int chrom_index
 			) throws IOException{
-		
-        //Map<String, List<CigarHash2>> geneToHash = new HashMap<String, List<CigarHash2>>();
+		o.readClusters.close();
 		for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();) {
 			CigarCluster cc = it.next();
-			String key = this.process(cc, o, 
-				//	geneToHash,  
-					chrom, chrom_index);
-			/*if(geneToHash!=null){
-				List<CigarHash2> l;
-				if(!geneToHash.containsKey(key)) geneToHash.put(key, l = new ArrayList<CigarHash2>());
-				else  l = geneToHash.get(key);
-				l.add(cc.breaks);
-			}*/
+			this.process1(cc, o, chrom, chrom_index);
+		}
+		System.err.println("closing transcripts pw");
+	   o.transcriptsP.close();
+      
+		for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();) {
+			CigarCluster cc = it.next();
+			this.process(cc, o, chrom, chrom_index);
 		}
 		
 		
