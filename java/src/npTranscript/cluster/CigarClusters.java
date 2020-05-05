@@ -141,12 +141,18 @@ public class CigarClusters {
 		String id = cc.id();
 		int totalDepth = cc.readCountSum();
 		if(Outputs.doMSA.contains(cc.getTypeNme(seqlen))){
+			try{
+			if(o.mergeSourceClusters){
+				o.msa(id,0,cc);	
+			}else{
 			for(int k=0; k<this.num_sources; k++){
-				try{
-						o.msa(id,k,cc);	
-				}catch(Exception exc){
-					exc.printStackTrace();
-				}
+				o.msa(id,k,cc);
+				
+			}
+			}
+				
+			}catch(Exception exc){
+				exc.printStackTrace();
 			}
 		}
 		if(o.clusterW!=null && totalDepth>IdentityProfile1.writeCoverageDepthThresh){

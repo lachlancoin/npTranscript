@@ -265,9 +265,10 @@ public class Outputs{
 			return mergeSourceClusters ? Arrays.stream(val.count()).sum()  : val.count()[source];
 		}
 
-		public void msa(String ID, int source1,  CigarCluster cc) throws IOException, InterruptedException{
+		public void msa(String ID, int source,  CigarCluster cc) throws IOException, InterruptedException{
 			// TODO Auto-generated method stub
-			int source = mergeSourceClusters ? 0 : source1;
+			
+			//int source = mergeSourceClusters ? 0 : source1;
 			CompressDir cluster = getCluster(source);
 			if(cluster==null) return ;
 			Iterator<Entry<CigarHash2, Count>> it  = cc.all_breaks.entrySet().iterator();
