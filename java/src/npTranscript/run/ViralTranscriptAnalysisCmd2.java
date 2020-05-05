@@ -198,8 +198,8 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		addInt("coverageDepthThresh", 100, "Threshhold for writing base level depth information to h5 file");
 		addInt("isoformDepthThresh", 10, "Threshhold for printing out all isoforms");
 		addDouble("msaDepthThresh", 10, "Threshhold for running MSA per subcluster");
-		addString("doMSA", "false" , "Options: combined, separate or false");
-		
+		addString("doMSA", "false" , "Options: 5_3 or all ");
+		addString("aligner", "kalign" , "Options: kalign3, poa, spoa");
 		addInt("startThresh", 100, "Threshold for having 5'");
 		addInt("endThresh", 100, "Threshold for having 3'");
 		addInt("extra_threshold", 200, "Threshold saving umatched 3'or 5'parts of reads");
@@ -267,7 +267,9 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		boolean calcBreaks = false;// whether to calculate data for the break point heatmap, true for SARS_COV2
 		boolean filterBy5_3 = false;// should be true for SARS_COV2
 		boolean annotByBreakPosition = false;  // should be true for SARS_COV2
-		ErrorCorrection.msa = "kalign3";
+		String msa = cmdLine.getStringVal("aligner");
+		if(msa==null) throw new RuntimeException("!!");
+		ErrorCorrection.msa = msa;
 		
 		if(coronavirus){
 			System.err.println("running in coronavirus mode");
