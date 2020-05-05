@@ -9,9 +9,15 @@ reads$source =  factor(reads$source, levels = 0:(length(type_nme)-1), labels=typ
 reads$type = as.factor(reads$type)
 reads$upstream = as.factor(reads$upstream)
 reads$downstream = as.factor(reads$downstream)
-#write.table(reads, "0readToCluster.mod.txt",sep="\t", row.names=F, col.names=T, quote=F)
-reads_leader = reads[ reads$start <= 100,]
-reads_no_leader = reads[ reads$start > 100,]
+
+
+
+reads_leader = reads[ reads$startPos <= 100,]
+
+reads_no_leader = reads[ reads$startPos > 100 ,]
+
+
+
 
 outfile0 = paste(resdir, "/transcript_error.pdf", sep="");
 ggp = plotErrorViolin(reads, reads_no_leader,  inds1 = reads$upstream=="leader" & !is.na(reads$downstream))

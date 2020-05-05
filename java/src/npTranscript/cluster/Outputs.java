@@ -3,6 +3,7 @@ package npTranscript.cluster;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -11,11 +12,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
 import java.util.zip.GZIPOutputStream;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
 import ch.systemsx.cisd.hdf5.IHDF5SimpleWriter;
+import htsjdk.samtools.fastq.FastqRecord;
+import htsjdk.samtools.fastq.FastqWriter;
+import htsjdk.samtools.fastq.FastqWriterFactory;
 import japsa.bio.np.ErrorCorrection;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
@@ -23,12 +26,44 @@ import npTranscript.cluster.CigarCluster.Count;
 import npTranscript.run.CompressDir;
 
 public class Outputs{
-	public static boolean mergeSourceClustersForMSA = true;
-
+	static final FastqWriterFactory factory = new FastqWriterFactory();
+	
+	 class FOutp{
+		//String nme;
+		//boolean gz;
+		SequenceOutputStream os;
+		FastqWriter fastq ;
+		FOutp(String nme	) throws IOException{
+			this(nme, false);
+		}
+		FOutp(String nme, boolean fq) throws IOException{
+			boolean gz = gzipFasta;
+		
+			if(fq) fastq = factory.newWriter(new File(resDir,genome_index+"."+nme+".fastq"));
+			else{
+				OutputStream os1 = new FileOutputStream(new File(resDir,genome_index+"."+nme+".fasta"+(gz ? ".gz": "")));
+				if(gz) os1 = new GZIPOutputStream(os1);
+				os =new SequenceOutputStream(os1);
+			}
+		}
+		public void close() throws IOException {
+			if(os!=null) this.os.close();
+			else fastq.close();
+			
+		}
+	}
+	 public static boolean MSA_at_cluster = true;
+	public static boolean doMSA = true;
+	public static boolean mergeSourceClusters = true;
+	public static boolean gzipFasta = false;
+	public static boolean keepAlignment = true;
+	public static boolean keepinputFasta = true;
+	
 		public File transcripts_file;
 		public File reads_file; 
 		private final File outfile, outfile1, outfile2, outfile2_1, outfile4, outfile5, outfile6, outfile7, outfile10;
 		//outfile9;
+		private final FOutp[] leftover_l, leftover_r, fusion_l, fusion_r;
 	
 		final int seqlen;
 		 private PrintWriter transcriptsP,readClusters;
@@ -44,9 +79,15 @@ public class Outputs{
 			this.altT.close();
 			//this.clusters.close();
 			for(int i=0; i<clusters.length; i++){
-				this.so[i].close();
-				this.clusters[i].run();
+				if(so[i]!=null) this.so[i].close();
+				if(clusters[i]!=null) this.clusters[i].run();
 				
+			}
+			for(int i=0; i<leftover_l.length; i++){
+				if(leftover_l[i]!=null) this.leftover_l[i].close();
+				if(leftover_r[i]!=null) this.leftover_r[i].close();
+				if(fusion_l[i]!=null) this.fusion_l[i].close();
+				if(fusion_r[i]!=null) this.fusion_r[i].close();
 			}
 		}
 			
@@ -54,7 +95,7 @@ public class Outputs{
 		boolean writeDirectToZip = false;
 		
 		int genome_index=0;
-		final SequenceOutputStream[] so;
+		final FOutp[] so;
 	//	int currentIndex=0;
 		
 		/*public void updateChromIndex(int currentIndex2) throws IOException{
@@ -82,18 +123,40 @@ public class Outputs{
 			 outfile7 = new File(resDir,genome_index+ ".dist.txt.gz");
 			 outfile10 = new File(resDir,genome_index+".isoforms.h5");
 		//	String prefix = readsF.getName().split("\\.")[0];
-			 clusters = mergeSourceClustersForMSA  ? new CompressDir[1] : new CompressDir[type_nmes.length];
-			 this.so = new SequenceOutputStream[type_nmes.length];
-			 for(int i=0; i<clusters.length; i++){
-				 String nmei = mergeSourceClustersForMSA  ?  genome_index+"." :  genome_index+"."+type_nmes[i]+".";
-				 clusters[i] = new CompressDir(new File(resDir, nmei+"clusters"));
-				 so[i] = new SequenceOutputStream((new FileOutputStream(new File(resDir,nmei+"consensus.fasta" ))));
-			 }
 			
+			 if(doMSA && mergeSourceClusters){
+				 clusters = new CompressDir[] {new CompressDir(new File(resDir,  genome_index+"." +"clusters"))};
+				 so =  new FOutp[] {new FOutp("."+"consensus")};
+			 }else if(doMSA && mergeSourceClusters){
+				 clusters =  new CompressDir[type_nmes.length];
+				 this.so = new FOutp[type_nmes.length];
+				 for(int i=0; i<clusters.length; i++){
+					 String nmei =  genome_index+"."+type_nmes[i]+".";
+					 clusters[i] = new CompressDir(new File(resDir, nmei+"clusters"));
+					 so[i] = new FOutp(nmei+"consensus" );
+				 }
+			 }else{
+				clusters = new CompressDir[1];
+				so = new FOutp[1];
+			 }
+			 leftover_l = new FOutp[type_nmes.length];
+			 leftover_r = new FOutp[type_nmes.length];
+			 fusion_l = new FOutp[type_nmes.length];
+			 fusion_r = new FOutp[type_nmes.length];
+		//	 String nmei = genome_index+"."
+			 for(int i=0; i<leftover_l.length; i++){
+				 this.leftover_l[i]=  new FOutp(type_nmes[i]+".leftover_l", true);
+				 this.leftover_r[i]=  new FOutp(type_nmes[i]+".leftover_r" , true);
+				 this.fusion_l[i]=  new FOutp(type_nmes[i]+".fusion_l" , true);
+				 this.fusion_r[i]=  new FOutp(type_nmes[i]+".fusion_r" , true);
+
+			 
+			 }
+		//	this.right=  new SequenceOutputStream((new FileOutputStream(new File(resDir,genome_index+".right" ))));
 			 reads_file = new File(resDir,genome_index+ ".readToCluster.txt.gz");
 			 readClusters = new PrintWriter(
 					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(reads_file))));
-			 readClusters.println("readID\tclusterId\tsubID\tsource\tlength\ttype_nme\tchrom\tstartPos\tendPos\tbreakStart\tbreakEnd\terrorRatio\tupstream\tdownstream");
+			 readClusters.println("readID\tclusterId\tsubID\tsource\tlength\tstart_read\tend_read\ttype_nme\tchrom\tstartPos\tendPos\tbreakStart\tbreakEnd\terrorRatio\tupstream\tdownstream");
 		
 			 transcripts_file = new File(resDir,genome_index+ ".transcripts.txt.gz");
 			//	newReadCluster(genome_index);
@@ -172,16 +235,20 @@ public class Outputs{
 
 		
 		
-		public void writeToCluster(String entryname, int i, Sequence seq, String str) throws IOException{
+		public void writeToCluster(String ID, String subID,  int i, Sequence seq, String str, String name) throws IOException{
 			CompressDir cluster = this.getCluster(i);
-			SequenceOutputStream out   = cluster.getSeqStream(entryname+".fa", true);
-			seq.writeFasta(out);
-			out.close();
-			cluster.closeWriter(out);
-			
-			OutputStreamWriter osw = cluster.getWriter(entryname, false, true);
-			osw.write(str);osw.write("\n");
-			cluster.closeWriter(osw);
+			seq.setName(name);
+			String entryname = MSA_at_cluster ? ID : ID+"."+subID;
+			if(cluster!=null){
+				SequenceOutputStream out   = cluster.getSeqStream(entryname+".fa", true);
+				seq.writeFasta(out);
+				out.close();
+				cluster.closeWriter(out);
+				
+				OutputStreamWriter osw = cluster.getWriter(entryname, false, true);
+				osw.write(str);osw.write("\n");
+				cluster.closeWriter(osw);
+			}
 		}
 		
 		public void writeIntMatrix(String id, int[][] matr) {
@@ -190,24 +257,26 @@ public class Outputs{
 		}
 		
 		private CompressDir getCluster(int source){
-			return this.mergeSourceClustersForMSA ? this.clusters[0] : this.clusters[source];
+			if(clusters==null) return null;
+			return this.mergeSourceClusters? this.clusters[0] : this.clusters[source];
 		}
 		private int getCount(Count val, int source){
-			return this.mergeSourceClustersForMSA ? Arrays.stream(val.count()).sum()  : val.count()[source];
+			return this.mergeSourceClusters ? Arrays.stream(val.count()).sum()  : val.count()[source];
 		}
 
 		public void msa(String ID, int source,  CigarCluster cc) throws IOException, InterruptedException{
 			// TODO Auto-generated method stub
 			CompressDir cluster = getCluster(source);
+			if(cluster==null) return ;
 			Iterator<Entry<CigarHash2, Count>> it  = cc.all_breaks.entrySet().iterator();
 			for(; it.hasNext();){
 					Entry<CigarHash2,Count> ch = it.next();
 					CigarHash2 key = ch.getKey();
 					Count val = ch.getValue();
 					
-					String ID1 = ID+"."+val.id();
-			File faiFile =new File(cluster.inDir, ID1+".fa");//f[i].getName()+".fasta"); 
-				if(val.count()[source]>IdentityProfile1.msaDepthThresh){
+					String ID1 = MSA_at_cluster ? ID : ID+"."+val.id();
+			File faiFile =new File(cluster.inDir, ID1+".fa");//f[i].getName()+""); 
+				if(faiFile.exists() && val.count()[source]>IdentityProfile1.msaDepthThresh){
 				File faoFile =new File(cluster.inDir, ID1+".fasta");
 	    		ErrorCorrection.runMultipleAlignment(faiFile.getAbsolutePath(),
 	    				faoFile.getAbsolutePath());
@@ -217,13 +286,14 @@ public class Outputs{
 	    			Sequence consensus = ErrorCorrection.getConsensus(seqList);
 					consensus.setDesc("ID="+ID+";subID="+val.id()+";key="+cc.breaks_hash.secondKey+";seqlen="+consensus.length()+";count="+seqList.size()+";type_nme="+cc.getTypeNme(seqlen));
 					consensus.setName(ID1);
-					consensus.print(so[source]);
-					faoFile.delete();
+					consensus.print(so[source].os);
+					if(!keepAlignment) faoFile.delete();
 	    		}
 			}
-				faiFile.delete();
+				if(!keepinputFasta) faiFile.delete();
 			}
 		}
+		
 		public void writeString(String id, Map<CigarHash2, Count> all_breaks, int num_sources) {
 			int[][]str = new int[all_breaks.size()][];
 			{
@@ -268,6 +338,16 @@ public class Outputs{
 				exc.printStackTrace();
 			}
 			
+		}
+
+		public void writeLeft(Sequence subseq,String baseQ,  int source_index, boolean left, boolean fusion)  throws IOException{
+			FOutp[] leftover = fusion ? (left ? this.fusion_l : this.fusion_r) : (left ? this.leftover_l : this.leftover_r);
+			FastqWriter writer = leftover[source_index].fastq;
+			
+			 writer.write(new FastqRecord(subseq.getName()+ " "+subseq.getDesc(), new String(subseq.charSequence()), "", baseQ));
+
+		//	subseq.writeFasta(leftover[source_index].os);
+		//	leftover[source_index].os.flush();
 		}
 
 		

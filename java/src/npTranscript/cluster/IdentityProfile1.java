@@ -72,7 +72,10 @@ public class IdentityProfile1 {
 	static String NAstring = "NA";
 	
 	String[] clusterID = new String[2];
-	public void processRefPositions(int startPos, int endPos, String id, boolean cluster_reads, int  readLength, int refLength, int src_index , Sequence readSeq) throws IOException, NumberFormatException{
+	public boolean processRefPositions(int startPos, int endPos, String id, boolean cluster_reads, int  readLength, int refLength, int src_index , Sequence readSeq,
+			int start_read, int end_read
+			) throws IOException, NumberFormatException{
+		boolean hasSplice = false;
 		CigarHash2 breaks  = coRefPositions.breaks;
 		int seqlen = refLength;
 		Annotation annot = this.all_clusters.annot;
@@ -93,7 +96,8 @@ public class IdentityProfile1 {
 		int position = -1;
 		String upstream = null;
 		String downstream = null;
-		if(maxg>100){
+		if(maxg>TranscriptUtils.break_thresh){
+			hasSplice = true;
 			prev_position = breaks.get(maxg_ind);
 			position = breaks.get(maxg_ind+1);
 			if(annotByBreakPosition ){
@@ -138,11 +142,14 @@ public class IdentityProfile1 {
 		}
 	//	System.err.println(id);
 	//	String br_cluster_str = "";//sm==null ? "": coRefPositions.break_point_cluster+"\t";
-		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"
+		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"+start_read+"\t"+end_read+"\t"
 		+type_nme+"\t"+chrom+"\t"
 		+startPos+"\t"+endPos+"\t"+prev_position+"\t"+position+"\t"+coRefPositions.getError(src_index)+"\t"+upstream+"\t"+downstream;
 		this.o.printRead(str);
-		this.o.writeToCluster(clusterID[0]+"."+clusterID[1], source_index, readSeq, str);
+		if(Outputs.doMSA) {
+			this.o.writeToCluster(clusterID[0],clusterID[1], source_index, readSeq.subSequence(Math.max(0, start_read-5), Math.min(readSeq.length(),end_read+5)), str, readSeq.getName());
+		}
+		return hasSplice;
 	}
 	
 	public void addRefPositions(int position, boolean match) {
