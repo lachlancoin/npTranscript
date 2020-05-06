@@ -77,7 +77,7 @@ public class TranscriptUtils {
 	 * @param sam
 	 * @return
 	 */
-	public static void identity1(Sequence refSeq, Sequence refSeq5prime, Sequence refSeq3prime, Sequence readSeq, SAMRecord sam, IdentityProfile1 profile, 
+	public static void identity1(Sequence refSeq,  Sequence readSeq, SAMRecord sam, IdentityProfile1 profile, 
 			int source_index, boolean cluster_reads, int seqlen) throws NumberFormatException{
 		int readPos = 0;// start from 0
 		//Outputs output = profile.o;
@@ -186,16 +186,14 @@ public class TranscriptUtils {
 		if(!splice && (sam.getAlignmentStart()>100 || sam.getAlignmentEnd()<(refSeq.length()-100))){
 			String desc = ";start="+sam.getAlignmentStart()+";end="+sam.getAlignmentEnd()+";full_length="+readSeq.length()+";strand="+strand;
 			if(st_r >extra_threshold  ){
-				
 				Sequence leftseq = readSeq.subSequence(0, st_r);
 				String baseQL = baseQ.substring(0, st_r);
 				leftseq.setName(readSeq.getName()+".L");
-				
 				Sequence leftseq1 = leftseq.subSequence(Math.max(0, leftseq.length()-maxl-tol), leftseq.length()-tol);
-				int mtch_5 = checkAlignmentIsNovel(leftseq1, refSeq5prime, "left 5prime") ;
-				int mtch_3 = checkAlignmentIsNovel(leftseq1, refSeq3prime, "left 3prime");
-				leftseq.setDesc("len="+leftseq.length()+desc+";mtch5="+mtch_5+";mtch_3="+mtch_3);
-				profile.o.writeLeft(leftseq,baseQL, source_index, true, (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)leftseq1.length());
+			//	int mtch_5 = checkAlignmentIsNovel(leftseq1, refSeq5prime, "left 5prime") ;
+			//	int mtch_3 = checkAlignmentIsNovel(leftseq1, refSeq3prime, "left 3prime");
+				leftseq.setDesc("len="+leftseq.length()+desc);//+";mtch5="+mtch_5+";mtch_3="+mtch_3);
+				profile.o.writeLeft(leftseq,baseQL, source_index);// (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)leftseq1.length());
 				
 			}
 			if(readSeq.length() -  end_r >extra_threshold){
@@ -203,10 +201,10 @@ public class TranscriptUtils {
 				rightseq.setName(readSeq.getName()+".R");
 				String baseQR = baseQ.substring(end_r, readSeq.length());
 				Sequence rightseq1 = rightseq.subSequence(tol, Math.min(maxl+tol, rightseq.length()));
-				int mtch_5  = TranscriptUtils.checkAlign ?  checkAlignmentIsNovel(rightseq1, refSeq5prime, "right 5") : 0;
-				int mtch_3 = TranscriptUtils.checkAlign ? checkAlignmentIsNovel(rightseq1, refSeq3prime, "right 3"): 0;
-				rightseq.setDesc("len="+rightseq.length()+desc+";mtch5="+mtch_5+";mtch_3="+mtch_3);
-				profile.o.writeLeft(rightseq,baseQR, source_index, false,  (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)rightseq1.length());
+				//int mtch_5  = TranscriptUtils.checkAlign ?  checkAlignmentIsNovel(rightseq1, refSeq5prime, "right 5") : 0;
+				//int mtch_3 = TranscriptUtils.checkAlign ? checkAlignmentIsNovel(rightseq1, refSeq3prime, "right 3"): 0;
+				rightseq.setDesc("len="+rightseq.length()+desc);//+";mtch5="+mtch_5+";mtch_3="+mtch_3);
+				profile.o.writeLeft(rightseq,baseQR, source_index);///,  (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)rightseq1.length());
 				
 				/*Sequence midseq = readSeq.subSequence(st_r, end_r);
 				midseq.setName(readSeq.getName()+".M");

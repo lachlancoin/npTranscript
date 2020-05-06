@@ -39,6 +39,7 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -292,6 +293,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		CommandLine cmdLine = new ViralTranscriptAnalysisCmd2();
 		String[] args = cmdLine.stdParseLine(args1);
 		String bamFile = cmdLine.getStringVal("bamFile");
+		
 		String resdir = cmdLine.getStringVal("resdir");
 		String annot_file = cmdLine.getStringVal("annotation");
 		String chroms= cmdLine.getStringVal("chroms");
@@ -337,6 +339,16 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 
 		boolean calcTree = false;
 		String[] bamFiles_ = bamFiles.split(":");
+		if(bamFiles.equals("all") || bamFiles.equals(".")){
+			bamFiles_ = (new File("./")).list(new FilenameFilter(){
+
+				@Override
+				public boolean accept(File dir, String name) {
+					return name.endsWith(".bam");
+				}
+				
+			});
+		}
 		Set<String> reads = null;
 		if(readList!=null){
 			reads = new HashSet<String>();
@@ -408,8 +420,8 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			
 			Sequence chr = genomes.get(currentIndex);
 			int primelen = 1000;
-			Sequence chr3prime = chr.subSequence(chr.length()-primelen, chr.length());
-			Sequence chr5prime = chr.subSequence(0	, primelen);
+		//	Sequence chr3prime = chr.subSequence(chr.length()-primelen, chr.length());
+		//	Sequence chr5prime = chr.subSequence(0	, primelen);
 
 			Set<String> doneChr = new HashSet<String>();
 			
@@ -428,17 +440,16 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 					
 					
 				}
+				
 				if(sam==null) break outer;
+				//if(sam.isSecondaryAlignment()) throw new RuntimeException("secondary");
 				int source_index = (Integer) sam.getAttribute(src_tag);
-			//	sam.getBaseQualityString();
-				//System.err.println(source_index);
 				if (pattern != null && (!sam.getReadName().contains(pattern)))
 					continue;
-
-				// make the read seq
 				Sequence readSeq = new Sequence(Alphabet.DNA(), sam.getReadString(), sam.getReadName());
 				if (readSeq.length() <= 1) {
 					// LOG.warn(sam.getReadName() +" ignored");
+					
 					// TODO: This might be secondary alignment, need to do something about it
 					continue;
 				}
@@ -481,8 +492,8 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 					currentIndex = refIndex;
 					String prev_chrom = chr==null ? "null": chr.getName();
 					chr = genomes.get(currentIndex);
-					 chr3prime = chr.subSequence(chr.length()-primelen, chr.length());
-					chr5prime = chr.subSequence(0	, primelen);
+				//	 chr3prime = chr.subSequence(chr.length()-primelen, chr.length());
+				//	chr5prime = chr.subSequence(0	, primelen);
 				//	outp.updateChromIndex(currentIndex);
 					System.err.println("switch chrom "+prev_chrom+"  to "+chr.getName());
 					
@@ -523,7 +534,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 							profile = new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh, annot, calcBreaks, chr.getName(), currentIndex);
 					}
 					try{
-						TranscriptUtils.identity1(chr, chr5prime, chr3prime, readSeq, sam, profile, source_index, cluster_reads, chr.length());
+						TranscriptUtils.identity1(chr, readSeq, sam, profile, source_index, cluster_reads, chr.length());
 					}catch(NumberFormatException exc){
 						System.err.println(readSeq.getName());
 						exc.printStackTrace();
@@ -574,19 +585,3 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 	}
 
 }
-
-/*
- * RST* ----------------------------------------------------------
- * jsa.hts.errorAnalysis*: Error analysis of sequencing data
- * ----------------------------------------------------------
- * 
- * jsa.hts.errorAnalysis* assesses the error profile of sequencing data by
- * getting the numbers of errors (mismatches, indels etc) from a bam file.
- * Obviously, it does not distinguish sequencing errors from mutations, and
- * hence consider mutations as errors. It is best to use with the bam file from
- * aligning sequencing reads to a reliable assembly of the sample.
- * 
- * <usage>
- * 
- * RST
- */

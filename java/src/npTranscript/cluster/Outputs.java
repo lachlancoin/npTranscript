@@ -63,7 +63,7 @@ public class Outputs{
 		public File reads_file; 
 		private final File outfile, outfile1, outfile2, outfile2_1, outfile4, outfile5, outfile6, outfile7, outfile10;
 		//outfile9;
-		private final FOutp[] leftover_l, leftover_r, fusion_l, fusion_r;
+		private final FOutp[] leftover_l;//, leftover_r, fusion_l, fusion_r;
 	
 		final int seqlen;
 		 PrintWriter transcriptsP,readClusters;
@@ -85,9 +85,9 @@ public class Outputs{
 			}
 			for(int i=0; i<leftover_l.length; i++){
 				if(leftover_l[i]!=null) this.leftover_l[i].close();
-				if(leftover_r[i]!=null) this.leftover_r[i].close();
+			/*	if(leftover_r[i]!=null) this.leftover_r[i].close();
 				if(fusion_l[i]!=null) this.fusion_l[i].close();
-				if(fusion_r[i]!=null) this.fusion_r[i].close();
+				if(fusion_r[i]!=null) this.fusion_r[i].close();*/
 			}
 		}
 			
@@ -141,17 +141,15 @@ public class Outputs{
 				so = new FOutp[1];
 			 }
 			 leftover_l = new FOutp[type_nmes.length];
-			 leftover_r = new FOutp[type_nmes.length];
+		/*	 leftover_r = new FOutp[type_nmes.length];
 			 fusion_l = new FOutp[type_nmes.length];
-			 fusion_r = new FOutp[type_nmes.length];
+			 fusion_r = new FOutp[type_nmes.length];*/
 		//	 String nmei = genome_index+"."
 			 for(int i=0; i<leftover_l.length; i++){
-				 this.leftover_l[i]=  new FOutp(type_nmes[i]+".leftover_l", true);
-				 this.leftover_r[i]=  new FOutp(type_nmes[i]+".leftover_r" , true);
+				 this.leftover_l[i]=  new FOutp(type_nmes[i]+".leftover", true);
+				/* this.leftover_r[i]=  new FOutp(type_nmes[i]+".leftover_r" , true);
 				 this.fusion_l[i]=  new FOutp(type_nmes[i]+".fusion_l" , true);
-				 this.fusion_r[i]=  new FOutp(type_nmes[i]+".fusion_r" , true);
-
-			 
+				 this.fusion_r[i]=  new FOutp(type_nmes[i]+".fusion_r" , true);*/
 			 }
 		//	this.right=  new SequenceOutputStream((new FileOutputStream(new File(resDir,genome_index+".right" ))));
 			 reads_file = new File(resDir,genome_index+ ".readToCluster.txt.gz");
@@ -343,8 +341,9 @@ public class Outputs{
 			
 		}
 
-		public void writeLeft(Sequence subseq,String baseQ,  int source_index, boolean left, boolean fusion)  throws IOException{
-			FOutp[] leftover = fusion ? (left ? this.fusion_l : this.fusion_r) : (left ? this.leftover_l : this.leftover_r);
+		public void writeLeft(Sequence subseq,String baseQ,  int source_index)  throws IOException{
+			FOutp[] leftover = this.leftover_l;
+				//	fusion ? (left ? this.fusion_l : this.fusion_r) : (left ? this.leftover_l : this.leftover_r);
 			FastqWriter writer = leftover[source_index].fastq;
 			
 			 writer.write(new FastqRecord(subseq.getName()+ " "+subseq.getDesc(), new String(subseq.charSequence()), "", baseQ));

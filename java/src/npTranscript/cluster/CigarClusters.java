@@ -140,7 +140,7 @@ public class CigarClusters {
 		cc.addZeros(seqlen); 
 		String id = cc.id();
 		int totalDepth = cc.readCountSum();
-		if(Outputs.doMSA.contains(cc.getTypeNme(seqlen))){
+		if(Outputs.doMSA!=null && Outputs.doMSA.contains(cc.getTypeNme(seqlen))){
 			try{
 			if(o.mergeSourceClusters){
 				o.msa(id,0,cc);	
