@@ -167,11 +167,11 @@ public class ViralChimericReadsAnalysisCmd extends CommandLine {
 							continue;
 						}
 						records.clear();
-						if(!record.getNotPrimaryAlignmentFlag()&&!isPolyATailorRepeat(record)) 
+						if(!record.isSecondaryAlignment()&&!isPolyATailorRepeat(record)) 
 							records.add(record);
 						while((record = iterator.hasNext()?iterator.next():null)!=null &&
 								record.getReadName().equals(read_id)) {
-							if(!record.getNotPrimaryAlignmentFlag()&&!isPolyATailorRepeat(record))
+							if(!record.isSecondaryAlignment()&&!isPolyATailorRepeat(record))
 								records.add(record);
 						}
 						
