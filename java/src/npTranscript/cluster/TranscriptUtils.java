@@ -183,28 +183,38 @@ public class TranscriptUtils {
 			char strand = sam.getReadNegativeStrandFlag() ? '-': '+';
 		// Alphabet.DNA.complement(readSeq);
 			boolean splice = profile.processRefPositions(sam.getAlignmentStart(), sam.getAlignmentEnd(), id, cluster_reads, readSeq.length(), refSeq.length(), source_index, readSeq,st_r, end_r);
-		if(!splice && (sam.getAlignmentStart()>100 || sam.getAlignmentEnd()<(refSeq.length()-100))){
+			if(!splice){
+				profile.o.writeUnspliced(readSeq, baseQ, sam.getReadNegativeStrandFlag(), source_index);
+			}
+			System.err.println(refSeq.length());
+			if(!splice && (sam.getAlignmentStart()>100 || sam.getAlignmentEnd()<(refSeq.length()-100))){
 			String desc = ";start="+sam.getAlignmentStart()+";end="+sam.getAlignmentEnd()+";full_length="+readSeq.length()+";strand="+strand;
+			
 			if(st_r >extra_threshold  ){
+				Sequence spanning = refSeq.subSequence(sam.getAlignmentStart()-10,sam.getAlignmentStart()+10);
+				if(sam.getReadNegativeStrandFlag()) spanning = Alphabet.DNA().complement(spanning);
+			
 				Sequence leftseq = readSeq.subSequence(0, st_r);
 				String baseQL = baseQ.substring(0, st_r);
 				leftseq.setName(readSeq.getName()+".L");
 				Sequence leftseq1 = leftseq.subSequence(Math.max(0, leftseq.length()-maxl-tol), leftseq.length()-tol);
 			//	int mtch_5 = checkAlignmentIsNovel(leftseq1, refSeq5prime, "left 5prime") ;
 			//	int mtch_3 = checkAlignmentIsNovel(leftseq1, refSeq3prime, "left 3prime");
-				leftseq.setDesc("len="+leftseq.length()+desc);//+";mtch5="+mtch_5+";mtch_3="+mtch_3);
-				profile.o.writeLeft(leftseq,baseQL, source_index);// (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)leftseq1.length());
+				leftseq.setDesc("len="+leftseq.length()+desc+" "+spanning.toString());//+";mtch5="+mtch_5+";mtch_3="+mtch_3);
+				profile.o.writeLeft(leftseq,baseQL,sam.getReadNegativeStrandFlag(), source_index);// (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)leftseq1.length());
 				
 			}
 			if(readSeq.length() -  end_r >extra_threshold){
 				Sequence rightseq = readSeq.subSequence(end_r, readSeq.length());
+				Sequence spanning = refSeq.subSequence(sam.getAlignmentEnd()-10,sam.getAlignmentEnd()+10);
+				if(sam.getReadNegativeStrandFlag()) spanning = Alphabet.DNA().complement(spanning);
 				rightseq.setName(readSeq.getName()+".R");
 				String baseQR = baseQ.substring(end_r, readSeq.length());
 				Sequence rightseq1 = rightseq.subSequence(tol, Math.min(maxl+tol, rightseq.length()));
 				//int mtch_5  = TranscriptUtils.checkAlign ?  checkAlignmentIsNovel(rightseq1, refSeq5prime, "right 5") : 0;
 				//int mtch_3 = TranscriptUtils.checkAlign ? checkAlignmentIsNovel(rightseq1, refSeq3prime, "right 3"): 0;
-				rightseq.setDesc("len="+rightseq.length()+desc);//+";mtch5="+mtch_5+";mtch_3="+mtch_3);
-				profile.o.writeLeft(rightseq,baseQR, source_index);///,  (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)rightseq1.length());
+				rightseq.setDesc("len="+rightseq.length()+desc+" "+spanning.toString());//+";mtch5="+mtch_5+";mtch_3="+mtch_3);
+				profile.o.writeLeft(rightseq,baseQR, sam.getReadNegativeStrandFlag(), source_index);///,  (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)rightseq1.length());
 				
 				/*Sequence midseq = readSeq.subSequence(st_r, end_r);
 				midseq.setName(readSeq.getName()+".M");

@@ -37,10 +37,12 @@ package npTranscript.run;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,6 +51,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.zip.GZIPOutputStream;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
@@ -56,7 +59,6 @@ import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
-import htsjdk.samtools.fastq.FastqWriterFactory;
 import japsa.bio.np.ErrorCorrection;
 import japsa.seq.Alphabet;
 import japsa.seq.JapsaAnnotation;
@@ -187,7 +189,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		addString("reference", null, "Name of reference genome", true);
 		addString("annotation", null, "ORF annotation file or GFF file", true);
 		addString("readList", null, "List of reads", false);
-		String all_types = "gene:ncRNA_gene:pseudogene";			
+		String all_types = "gene:ncRNA_gene:pseudogene:miRNA";			
 			addString("type", all_types, "Type of annotation (only included if annotation is GFF file", false);
 		addString("chroms", "all", "Restrict to these chroms, colon delimited", false);
 		addString("resdir", "results"+System.currentTimeMillis(), "results directory");
@@ -200,7 +202,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		addInt("isoformDepthThresh", 10, "Threshhold for printing out all isoforms");
 		addDouble("msaDepthThresh", 10, "Threshhold for running MSA per subcluster");
 		addString("doMSA", "false" , "Options: 5_3 or all ");
-		addString("aligner", "kalign" , "Options: kalign3, poa, spoa");
+		addString("aligner", "kalign" , "Options: kalign3, poa, spoa, abpoa");
 		addInt("startThresh", 100, "Threshold for having 5'");
 		addInt("endThresh", 100, "Threshold for having 3'");
 		addInt("extra_threshold", 200, "Threshold saving umatched 3'or 5'parts of reads");
@@ -280,7 +282,9 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			TranscriptUtils.checkAlign = true;
 			annotByBreakPosition = true;
 			CigarHash2.subclusterBasedOnStEnd = true;
+			Outputs.writeUnSplicedFastq = true;
 		}else{
+			Outputs.writeUnSplicedFastq = false;
 			TranscriptUtils.checkAlign = false;
 			System.err.println("running in host mode");
 			CigarHash2.subclusterBasedOnStEnd = false;
@@ -336,7 +340,8 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		TranscriptUtils.endThresh = endThresh;
 		IdentityProfile1.writeIsoformDepthThresh =writeIsoformDepthThresh;
 		IdentityProfile1.writeCoverageDepthThresh =writeCoverageDepthThresh;
-
+		File annotSummary = new File(resdir, "annotation.csv.gz");
+		if(annotSummary.exists()) annotSummary.delete();
 		boolean calcTree = false;
 		String[] bamFiles_ = bamFiles.split(":");
 		if(bamFiles.equals("all") || bamFiles.equals(".")){
@@ -525,7 +530,10 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 										exc.printStackTrace();
 									}
 								}else{
-									annot = new GFFAnnotation(annot1, seqlen);
+									
+									PrintWriter pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(annotSummary, true))));
+									annot = new GFFAnnotation(annot1, seqlen, pw);
+									pw.close();
 								}
 							}else{
 								annot = new Annotation(new File(annot_file), currentIndex+"", seqlen);

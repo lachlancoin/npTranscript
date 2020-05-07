@@ -532,25 +532,27 @@ readIsoformH5<-function(h5file,  transcripts_){
   }
 
 
-.readTranscriptsHost<-function(infilesT, 
+.readTranscriptsHost<-function(infilesT1, 
                                filter = NULL,
-                  target= list(count0="numeric", count1 = "numeric",chrom="character", leftGene="character", rightGene="character", start = "numeric", end="numeric", ID="character")
+                  target= list(chrom="character", leftGene="character", rightGene="character", start = "numeric", end="numeric", ID="character")
               ,prefix="ENSC" ,combined_depth_thresh =100  , start_text = "start"                                
   ){
+
   names(target)[names(target)=="start"] = start_text
   
-  header = names(read.table( infilesT,sep="\t", head=T, nrows = 3, comment.char='#'))
+  header = names(read.table( infilesT1,sep="\t", head=T, nrows = 3, comment.char='#'))
+   extra = grep("count[0-9]", header)
   #print(header)
-  inf = scan(infilesT, nlines=1, what=character())
-  if(length(grep("#", inf))>0) attr(transcripts,"info") = sub("#", "",inf)
+  inf = scan(infilesT1, nlines=1, what=character())
+  #if(length(grep("#", inf))>0) attr(transcripts,"info") = sub("#", "",inf)
   
   inf = sub('#','',inf)
   types = unlist(lapply(inf, function(x) rev(strsplit(x,"_")[[1]])[1]))
   header_inds = match(names(target),header)
   colClasses = rep(NULL, length(header));
   colClasses[header_inds] = target
-  
-  transcripts = read.table( infilesT,sep="\t", head=T, comment.char='#', colClasses= colClasses)
+  colClass = cbind(rep("numeric", length(extra)), colClasses)
+  transcripts = read.table( infilesT1,sep="\t", head=T, comment.char='#', colClasses= colClasses)
   if(!is.null(filter)){
     for(k in 1:length(filter)){
       nme_ind = grep(names(filter)[k], names(transcripts))
@@ -566,9 +568,12 @@ readIsoformH5<-function(h5file,  transcripts_){
   
   header_inds1 = match(names(target),names(transcripts))
   head_inds1 = grep("count[0-9]", names(transcripts));
-  countT = apply(transcripts[,head_inds1,drop=F],1,sum)
+  countT = apply(transcripts[,head_inds1,drop=F],1,function(x) sum(as.numeric(x)))
  # print(countT)
-  transcripts = transcripts [countT>combined_depth_thresh,header_inds1] 
+indsk = countT>combined_depth_thresh
+  transcripts = transcripts [indsk,c(header_inds1, head_inds1)] 
+countT = countT[indsk]
+  transcripts = cbind(transcripts, countT)
  # names(transcripts)[1:2] = types
   names(transcripts)  = sub("leftGene", "geneID" ,names(transcripts))
   names(transcripts)  = sub("chrom", "chrs" ,names(transcripts))
@@ -689,8 +694,6 @@ findSigGo_<-function(goObj, DE1_1, fdr_thresh = 1e-10, go_thresh = 1e-5, prefix=
 
 
 findSigChrom<-function( DE, thresh = 1e-10, go_thresh = 1e-5,nme="FDR1", nme2="chrs"){
-  #if(is.null(lessThan)) DE = DE1 else DE =DE1[DE1$lessThan==lessThan,,drop=F]
-#  ensg =DE$geneID
   mn = dim(DE)[1]
   pvs = DE[,grep(nme, names(DE))[1]]
   chr_ind = grep(nme2,names(DE))

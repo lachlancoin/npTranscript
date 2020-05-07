@@ -17,6 +17,7 @@ library(biomaRt)
 library(edgeR)
 library(stats)
 library(rhdf5)
+read.gff(file, na.strings = c(".", "?"), GFF3 = TRUE)
 #library(seqinr)
 
 
@@ -68,19 +69,33 @@ if(isVirus){
   start_text ="endBreak"
 
 }
-target= list(count0="numeric", count1 = "numeric",chrom="character", 
+
+#seqfile= "../Chlorocebus_sabaeus.ChlSab1.1.dna.toplevel.fa.gz"
+#fasta = read.fasta(seqfile)
+#seqlen = length(fasta[[1]])
+
+
+target= list( chrom="character", 
              leftGene="character", rightGene="character", start = "numeric", 
              end="numeric", ID="character", isoforms="numeric" ,type_nme="character")
 
 
 ##READ TRANSCRIPT DATA
 
-               
+ gfft = read.table("annotation.csv.gz", sep="\t", header=T, fill=T, quote='\"')
 
-transcripts = readTranscriptHostAll(grep("transcripts.txt", dir(), v=T), start_text = start_text,target = target, 
-                                    filter = filter,
-                                    combined_depth_thresh = 100)
+          
+
+#"gene:ncRNA_gene:pseudogene"
+infilesT = grep("transcripts.txt", dir(), v=T)
+transcripts = readTranscriptHostAll(infilesT, start_text = start_text,target = target,   filter = filter, combined_depth_thresh = 1)
+                                  
+                                   
 info = attr(transcripts,'info')
+
+transcripts = cbind(gfft[match(transcripts$geneID, gfft$ID),],transcripts)
+ord = order(transcripts$countT, decreasing=T)
+head(transcripts[ord,])
 ##find DE genes
 DE1 = DEgenes(transcripts, control_inds, infected_inds,edgeR = F, reorder=F);
 pos1M = apply(cbind(as.character(DE1$chrs), as.character(binsize*round(DE1$start/binsize))),1,paste,collapse=".")

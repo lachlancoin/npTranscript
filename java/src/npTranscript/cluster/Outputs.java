@@ -19,7 +19,9 @@ import ch.systemsx.cisd.hdf5.IHDF5SimpleWriter;
 import htsjdk.samtools.fastq.FastqRecord;
 import htsjdk.samtools.fastq.FastqWriter;
 import htsjdk.samtools.fastq.FastqWriterFactory;
+import htsjdk.samtools.util.SequenceUtil;
 import japsa.bio.np.ErrorCorrection;
+import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
 import npTranscript.cluster.CigarCluster.Count;
@@ -33,15 +35,20 @@ public class Outputs{
 		//boolean gz;
 		SequenceOutputStream os;
 		FastqWriter fastq ;
+		File f; 
 		FOutp(String nme	) throws IOException{
 			this(nme, false);
 		}
 		FOutp(String nme, boolean fq) throws IOException{
 			boolean gz = gzipFasta;
-		
-			if(fq) fastq = factory.newWriter(new File(resDir,genome_index+"."+nme+".fastq"));
+		//f = 
+			if(fq) {
+				f = new File(resDir,genome_index+"."+nme+".fastq");
+				fastq = factory.newWriter(f);
+			}
 			else{
-				OutputStream os1 = new FileOutputStream(new File(resDir,genome_index+"."+nme+".fasta"+(gz ? ".gz": "")));
+				f = new File(resDir,genome_index+"."+nme+".fasta"+(gz ? ".gz": ""));
+				OutputStream os1 = new FileOutputStream(f);
 				if(gz) os1 = new GZIPOutputStream(os1);
 				os =new SequenceOutputStream(os1);
 			}
@@ -49,6 +56,7 @@ public class Outputs{
 		public void close() throws IOException {
 			if(os!=null) this.os.close();
 			else fastq.close();
+			if(f.length()==0) f.deleteOnExit();
 			
 		}
 	}
@@ -58,12 +66,13 @@ public class Outputs{
 	public static boolean gzipFasta = false;
 	public static boolean keepAlignment = true;
 	public static boolean keepinputFasta = true;
+	public static boolean writeUnSplicedFastq = true;
 	
 		public File transcripts_file;
 		public File reads_file; 
 		private final File outfile, outfile1, outfile2, outfile2_1, outfile4, outfile5, outfile6, outfile7, outfile10;
 		//outfile9;
-		private final FOutp[] leftover_l;//, leftover_r, fusion_l, fusion_r;
+		private final FOutp[] leftover_l, unspliced;//, leftover_r, fusion_l, fusion_r;
 	
 		final int seqlen;
 		 PrintWriter transcriptsP,readClusters;
@@ -85,6 +94,7 @@ public class Outputs{
 			}
 			for(int i=0; i<leftover_l.length; i++){
 				if(leftover_l[i]!=null) this.leftover_l[i].close();
+				if(unspliced[i]!=null) this.unspliced[i].close();
 			/*	if(leftover_r[i]!=null) this.leftover_r[i].close();
 				if(fusion_l[i]!=null) this.fusion_l[i].close();
 				if(fusion_r[i]!=null) this.fusion_r[i].close();*/
@@ -141,12 +151,14 @@ public class Outputs{
 				so = new FOutp[1];
 			 }
 			 leftover_l = new FOutp[type_nmes.length];
+			 unspliced = new FOutp[type_nmes.length];
 		/*	 leftover_r = new FOutp[type_nmes.length];
 			 fusion_l = new FOutp[type_nmes.length];
 			 fusion_r = new FOutp[type_nmes.length];*/
 		//	 String nmei = genome_index+"."
 			 for(int i=0; i<leftover_l.length; i++){
 				 this.leftover_l[i]=  new FOutp(type_nmes[i]+".leftover", true);
+				 if(writeUnSplicedFastq) this.unspliced[i]=  new FOutp(type_nmes[i]+".unspliced", true);
 				/* this.leftover_r[i]=  new FOutp(type_nmes[i]+".leftover_r" , true);
 				 this.fusion_l[i]=  new FOutp(type_nmes[i]+".fusion_l" , true);
 				 this.fusion_r[i]=  new FOutp(type_nmes[i]+".fusion_r" , true);*/
@@ -341,15 +353,30 @@ public class Outputs{
 			
 		}
 
-		public void writeLeft(Sequence subseq,String baseQ,  int source_index)  throws IOException{
+		public void writeLeft(Sequence subseq,String baseQ,  boolean negStrand, int source_index)  throws IOException{
 			FOutp[] leftover = this.leftover_l;
 				//	fusion ? (left ? this.fusion_l : this.fusion_r) : (left ? this.leftover_l : this.leftover_r);
 			FastqWriter writer = leftover[source_index].fastq;
-			
+			if(negStrand){
+				subseq = Alphabet.DNA().complement(subseq);
+				baseQ = new StringBuilder(baseQ).reverse().toString();
+			}
 			 writer.write(new FastqRecord(subseq.getName()+ " "+subseq.getDesc(), new String(subseq.charSequence()), "", baseQ));
 
 		//	subseq.writeFasta(leftover[source_index].os);
 		//	leftover[source_index].os.flush();
+		}
+
+		public void writeUnspliced(Sequence readseq, String baseQ, boolean negStrand, int source_index) {
+			FastqWriter writer = unspliced[source_index].fastq;
+			if(writer==null) return;
+			if(negStrand){
+				readseq = Alphabet.DNA().complement(readseq);
+				baseQ = new StringBuilder(baseQ).reverse().toString();
+			}
+			 writer.write(new FastqRecord(readseq.getName()+ " "+readseq.getDesc(), new String(readseq.charSequence()), "", baseQ));
+
+			
 		}
 
 		

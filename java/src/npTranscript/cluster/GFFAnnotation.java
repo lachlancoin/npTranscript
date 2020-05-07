@@ -2,6 +2,7 @@ package npTranscript.cluster;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -13,20 +14,7 @@ import japsa.seq.JapsaFeature;
 public class GFFAnnotation extends Annotation{
 
 	
-	public static void main(String[] args){
-		try{
-		String gff = "Chlorocebus_sabaeus.ChlSab1.1.99.gff3.gz";
-		String type = "gene";
-	//	List<String> genes = Arrays.asList("Name=ACE2:Name=TMPRSS2".split(":"));
-	Map<String, JapsaAnnotation> anno =  readAnno(gff, type, null);
-		int seqlen = 1;
-		for(int i=0; i<anno.size(); i++){
-			GFFAnnotation g_annot = new GFFAnnotation(anno.get(i), seqlen);
-		}
-		}catch(Exception exc){
-			exc.printStackTrace();
-		}
-	}
+	
 	/* type is gene
 	 * 
 	 * */
@@ -83,22 +71,39 @@ public class GFFAnnotation extends Annotation{
 	    	return st;
 	    }
 	
-	public	GFFAnnotation(JapsaAnnotation annot, int seqlen) throws IOException{
+
+	
+	public	GFFAnnotation(JapsaAnnotation annot, int seqlen, PrintWriter pw) throws IOException{
 		super(annot.getAnnotationID(), seqlen);
 		String name = "Name";
+		String description="description";
 		String id = "ID";
+		String genenme = "";
+		String descr="";
+		String biotype = "biotype";
+		String biot;
+		pw.println("ID\tName\tdescription\tbiotype");
+		System.err.println("num features" +annot.numFeatures());
 		for(int i=0; i<annot.numFeatures(); i++){
 			JapsaFeature f = annot.getFeature(i);
 			this.start.add(f.getStart());
 			this.end.add(f.getEnd());
+			//System.err.println(f.getDesc());
 			String[] desc = f.getDesc().split(";");
-			String genenme = null;
+			 genenme = "";
+			 descr = "";
+			 biot="";
 			String ID = null;
 			for(int j=0; j<desc.length; j++){
 				String[] descj = desc[j].split("=");
 				if(descj[0].equals(name)){
 					genenme = descj[1];
-				}
+				}else if(descj[0].equals(description)){
+					descr = descj[1];
+				
+			}else if(descj[0].equals(biotype)){
+				biot = descj[1];
+			}
 				if(descj[0].equals(id)){
 					ID = descj[1].replace("gene:", ""); //.replace("CDS:", "").
 				}
@@ -106,14 +111,13 @@ public class GFFAnnotation extends Annotation{
 			if(ID==null){
 				ID = f.getDesc().substring(0,Math.min(f.getDesc().length(),5));
 			}
-			//if(genenme==null){
-			//	genenme = ID==null ? f.getDesc().substring(0,Math.min(f.getDesc().length(),5)): ID;
-			//}
+			String str = ID+"\t"+genenme+"\t"+descr+"\t"+biot;
+			pw.println(str);
+			//System.err.println(str);
 			this.genes.add(ID);
 			
 		}
+		
 		super.mkOrfs();
-
-
 	}
 }
