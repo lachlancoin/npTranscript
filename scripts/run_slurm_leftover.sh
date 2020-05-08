@@ -40,4 +40,4 @@ bash ${npTranscript}/scripts/run.sh --bamFile=${bamfiles1}   --reference=${refer
 
 
 cd ${resdir}
-#Rscript ~/github/npTranscript/R/npTranscript.R  ~/github/npTranscript/data/SARS-Cov2
+Rscript ~/github/npTranscript/R/npLeftover.R
