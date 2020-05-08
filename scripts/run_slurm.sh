@@ -29,13 +29,13 @@ fi
 
 reference="${npTranscript}/data/SARS-Cov2/wuhan_coronavirus_australia.fasta.gz"
 coord_file="${npTranscript}/data/SARS-Cov2/Coordinates.csv"
-
+alias abpoa='/sw/abpoa/v1.0.1/abpoa'
 dat=$(date +%Y%m%d%H%M%S)
 resdir="results_${dat}"
-opts="--bin=100 --breakThresh=1000 --coverageDepthThresh=0 --extra_threshold=200 --msaDepthThresh=50 --doMSA=5_3  --keepAlignment=true --aligner=kalign3"
+opts="--bin=100 --breakThresh=1000 --coverageDepthThresh=0 --extra_threshold=200 --msaDepthThresh=50 --doMSA=5_3:5_no3"
 #opts="${opts} --maxReads 10000"
 bash ${npTranscript}/scripts/run.sh --bamFile=${bamfiles1}   --reference=${reference} --annotation ${coord_file} --resdir ${resdir} ${opts} ${opts1}
 
-
 cd ${resdir}
+bash ${npTranscript}/scripts/consensus.sh 0
 Rscript ~/github/npTranscript/R/npTranscript.R  ~/github/npTranscript/data/SARS-Cov2
