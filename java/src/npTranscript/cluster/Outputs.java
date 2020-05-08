@@ -277,6 +277,8 @@ public class Outputs{
 
 		public void msa(String ID, int source,  CigarCluster cc) throws IOException, InterruptedException{
 			// TODO Auto-generated method stub
+			if(true) return;
+			//NOTE no longer calculating msa
 			
 			//int source = mergeSourceClusters ? 0 : source1;
 			CompressDir cluster = getCluster(source);
