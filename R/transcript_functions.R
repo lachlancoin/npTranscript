@@ -1469,7 +1469,7 @@ transcripts
 }
 
 plotHist<-function(vec, breaks, t = NULL, ylog=T, xlim = NULL, title= ""){
-h = hist(vec, breaks);
+h = hist(vec, breaks,plot=F);
 f<-function(h1, i, k) {
 			 #norm  = if(normalise) sum(h1$count) else 1
 			#norm = size[k]/1e6
@@ -1482,7 +1482,7 @@ if(!is.null(t) && !is.null(t$Minimum)) ggp<-ggp+ geom_vline(xintercept = t$Minim
 		if(!is.null(t) && !is.null(t$start)) ggp<-ggp+ geom_vline(xintercept = t$start, linetype="solid")  
 		if(!is.null(xlim)) ggp<-ggp + scale_x_continuous(limits = xlim)
 		if(ylog)  ggp<-ggp+scale_y_continuous(trans='log10')
-ggp
+res = list(hist=h,plot=ggp)
 }
 
 plotJoins<-function(reads, thresh = c(10,100), binsize = 1, t = NULL, ylog = F, xlim = c(1,30000)){
