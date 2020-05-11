@@ -291,28 +291,6 @@ getDescr<-function(DE,mart, thresh = 1e-10, prefix="ENSCS"){
   desci
 }
 
-getlev<-function(x, todo = NULL){
-  lev = levels(as.factor(as.character(x)))
-  cnts = rep(0, length(lev))
-  for(i in 1:length(lev)){
-    cnts[i] = length(which(x==lev[i]))
-  }
-  res = data.frame(lev,cnts)[order(cnts, decreasing = T),, drop=F]
-  if(is.null(todo)) return(res)
-  
-  matr = data.frame(lev=todo, cnts=rep(0,length(todo)))
-  # print(dim(matr))
-  # print(dim(res))
-  if(dim(res)[1]>1){
-    matr[match(res[,1], matr[,1]),2] = res[res[,1] %in% matr[,1],2]
-    dimnames(matr)[[2]] = dimnames(res)[[2]]
-  }else{
-    #print(todo)
-    matr[match(res[,1], matr[,1]),2] =res
-  }
-  
-  matr
-}
 
 
 getChromIDs<-function(ensg, mart){
@@ -591,12 +569,14 @@ countT = countT[indsk]
   #transcripts = transcripts[o,]
   #err_ratio_inds = grep("error_ratio", names(transcripts))
   #transcripts[,err_ratio_inds] =apply(transcripts[,err_ratio_inds,drop=F], c(1,2), function(x) if(is.na(x)) -0.01 else x)
-  attr(transcripts,"types")=types
+  
+#print(inf)
   if(length(grep("#", inf))>0) attr(transcripts,"info") = sub("#", "",inf)
-  #print(inf)
+ # print(inf)
   type = as.factor(type)
   res = cbind(transcripts, type, diff)
-  
+  attr(res,"types")=types
+  attr(res,"info")=inf
   res
 }
 
@@ -639,6 +619,35 @@ getGoGenes<-function(go_categories,goObjs, lessThan = T, fdr_thresh = 1e-5){
   go_genes1
 }
 
+.compareLevs<-function(lev_, lev_all, k =   sum(as.numeric(as.character(lev_[,2]))), 
+mn = sum(as.numeric(as.character(lev_all[,2])))){
+print(paste(k,mn))
+	 inds_m = match(as.character(lev_[,1]), as.character(lev_all[,1]))
+  	lev_ = cbind(lev_,lev_all[inds_m,1:2,drop=F])
+  	lev_1 = t(apply(lev_,1,.phyper2,  k = k, mn = mn))
+	res = data.frame(cbind(lev_, lev_1))
+	res$pv = as.numeric(as.character(res$pv))
+	res$enrich = as.numeric(as.character(res$enrich))
+		res$enrich99 = as.numeric(as.character(res$enrich99))
+	res[order(res$pv),]
+}
+
+
+
+.getKComp<-function(fa, fh, inds = 1:(dim(fh)[1]), k =8){
+	l1 = floor(k/2)
+	l2 = k -l1
+	kComp = list("stLeft"= getKmer(fasta[[1]], unique(fh$startPos[inds]), v =(-k:0)),
+	   "stRight"= getKmer(fasta[[1]], unique(fh$startPos[inds]), v =(0:k)),
+		"endLeft"= getKmer(fasta[[1]], unique(fh$endPos[inds]), v =(-k:0)),
+		"endRight" = getKmer(fasta[[1]], unique(fh$endPos[inds]), v =(0:k)),
+		"st" = getKmer(fasta[[1]], unique(fh$startPos[inds]), v =-l1:l2),
+		"end" = getKmer(fasta[[1]], unique(fh$endPos[inds]), v =-l1:l2)
+	)
+res = lapply(kComp, getlev)
+names(res) = names(kComp)
+res
+}
 
 findSigGo_<-function(goObj, DE1_1, fdr_thresh = 1e-10, go_thresh = 1e-5, prefix="ENSC", nme="FDR1"){
   #DE = DE1[DE1$lessThan==lessThan,,drop=F]

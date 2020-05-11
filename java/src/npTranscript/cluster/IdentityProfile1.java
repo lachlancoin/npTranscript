@@ -8,6 +8,7 @@ import java.util.List;
 import org.apache.commons.math3.linear.OpenMapRealMatrix;
 import org.apache.commons.math3.linear.SparseRealMatrix;
 
+import japsa.bio.np.barcode.SWGAlignment;
 import japsa.seq.Sequence;
 
 /**
@@ -73,9 +74,9 @@ public class IdentityProfile1 {
 
 	public static boolean subclusterBasedOnStEnd = false;
 	
-	String[] clusterID = new String[2];
+	public String[] clusterID = new String[2];
 	public boolean processRefPositions(int startPos, int endPos, String id, boolean cluster_reads, int  readLength, int refLength, int src_index , Sequence readSeq,
-			int start_read, int end_read
+			int start_read, int end_read, char strand, SWGAlignment align
 			) throws IOException, NumberFormatException{
 		boolean hasSplice = false;
 		CigarHash2 breaks  = coRefPositions.breaks;
@@ -98,6 +99,27 @@ public class IdentityProfile1 {
 		int position = -1;
 		String upstream = null;
 		String downstream = null;
+		if( align!=null ){
+			if(align.getIdentity()>0.8 * start_read){
+				//hasSplice= true;
+				int newStartPos = align.getStart2();
+				int newBreakPos = align.getStart2() + align.getSequence2().length -  align.getGaps2();
+				int gap = startPos - newBreakPos;
+				if(gap<0) throw new RuntimeException("should not happen");
+				if(gap>maxg) {
+				//	System.err.println("identified 5'leader in read "+id);
+					maxg = gap;
+					maxg_ind =1;
+				}
+				startPos = newStartPos;
+				coRefPositions.start = newStartPos;
+				coRefPositions.breaks.add(0, newBreakPos);
+				coRefPositions.breaks.add(0, newStartPos);
+				
+			}
+			//this is to fix any missed upstream alignments
+			
+		}
 		if(maxg>TranscriptUtils.break_thresh){
 			hasSplice = true;
 			prev_position = breaks.get(maxg_ind);
@@ -135,7 +157,10 @@ public class IdentityProfile1 {
 		String type_nme = coRefPositions.getTypeNme(seqlen);
 		//String breakSt1 = coRefPositions.breaks.toString();
 		//coRefPositions.breaks.adjustBreaks(annot);
-		coRefPositions.breaks_hash.setSecondKey(type_nme+"."+upstream+"."+downstream);
+		// need to group by start position if we annotating by break pos,e.g. so 5'mapping reads map together
+		String roundStartP = annotByBreakPosition ? TranscriptUtils.round(startPos, CigarHash2.round)+"" : 
+					"";
+		coRefPositions.breaks_hash.setSecondKey(roundStartP+"."+upstream+"."+downstream);
 		
 		if(cluster_reads)  this.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources,  this.chrom_index, clusterID); // this also clears current cluster
 		else{
@@ -146,7 +171,7 @@ public class IdentityProfile1 {
 	//	String br_cluster_str = "";//sm==null ? "": coRefPositions.break_point_cluster+"\t";
 		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"+start_read+"\t"+end_read+"\t"
 		+type_nme+"\t"+chrom+"\t"
-		+startPos+"\t"+endPos+"\t"+prev_position+"\t"+position+"\t"+coRefPositions.getError(src_index)+"\t"+upstream+"\t"+downstream;
+		+startPos+"\t"+endPos+"\t"+prev_position+"\t"+position+"\t"+coRefPositions.getError(src_index)+"\t"+upstream+"\t"+downstream+"\t"+strand;
 		this.o.printRead(str);
 		if(Outputs.doMSA!=null && Outputs.doMSA.contains(type_nme)) {
 			Sequence readSeq1 = readSeq.subSequence(start_read, end_read);

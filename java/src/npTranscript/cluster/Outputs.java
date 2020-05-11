@@ -167,7 +167,8 @@ public class Outputs{
 			 reads_file = new File(resDir,genome_index+ ".readToCluster.txt.gz");
 			 readClusters = new PrintWriter(
 					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(reads_file))));
-			 readClusters.println("readID\tclusterId\tsubID\tsource\tlength\tstart_read\tend_read\ttype_nme\tchrom\tstartPos\tendPos\tbreakStart\tbreakEnd\terrorRatio\tupstream\tdownstream");
+			 readClusters.println("readID\tclusterId\tsubID\tsource\tlength\tstart_read\tend_read\t"
+			 		+ "type_nme\tchrom\tstartPos\tendPos\tbreakStart\tbreakEnd\terrorRatio\tupstream\tdownstream\tstrand");
 		
 			 transcripts_file = new File(resDir,genome_index+ ".transcripts.txt.gz");
 			//	newReadCluster(genome_index);
@@ -370,6 +371,7 @@ public class Outputs{
 		}
 
 		public void writeUnspliced(Sequence readseq, String baseQ, boolean negStrand, int source_index) {
+			if(unspliced==null || unspliced[source_index]==null) return ;
 			FastqWriter writer = unspliced[source_index].fastq;
 			if(writer==null) return;
 			if(negStrand){
