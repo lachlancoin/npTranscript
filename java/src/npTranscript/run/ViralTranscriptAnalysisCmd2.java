@@ -280,10 +280,14 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			filterBy5_3 = true;
 		//	Outputs.MSA_at_cluster = true;
 			TranscriptUtils.checkAlign = true;
+			TranscriptUtils.coronavirus = true;
+			TranscriptUtils.extra_threshold1 =50;
 			annotByBreakPosition = true;
 			CigarHash2.subclusterBasedOnStEnd = true;
 			Outputs.writeUnSplicedFastq = true;
 		}else{
+			TranscriptUtils.coronavirus = false;
+			TranscriptUtils.extra_threshold1 = 1000000;
 			Outputs.writeUnSplicedFastq = false;
 			TranscriptUtils.checkAlign = false;
 			System.err.println("running in host mode");

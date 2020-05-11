@@ -73,7 +73,8 @@ print(type_nme)
 }
 src = c("~/github/npTranscript/R", "../../R")
 #data_src =  # c(".","..","~/github/npTranscript/data/SARS-Cov2" )
-print("#PRELIMINARIES ....")      
+print("#PRELIMINARIES ....")  
+source(.findFile(src, "diff_expr_functs.R"))    
 source(.findFile(src, "transcript_functions.R"))
 resdir = "results"
 dir.create(resdir);
@@ -108,7 +109,10 @@ leader_ind = c(leader_ind, leader_ind + nchar(leader)-1)
 
 
 
-transcripts_all = .readTranscripts(infilesT, seqlen, nmes)
+
+transcripts = .readTranscripts(infilesT)
+transcripts_all = .splitTranscripts(transcripts, seqlen, nmes, splice=T)
+
 names(transcripts_all)
 if(!is.null(attr(transcripts_all[[1]], "info"))){
 type_nme = attr(transcripts_all[[1]], "info")
@@ -145,7 +149,7 @@ if(length(type_nme)==1){
 
 print(tocompare)
 print(transcripts_all)
-ml1 = lapply(tocompare, .plotGeneExpr, transcripts_all, todo = 1:4)
+ml1 = lapply(tocompare, .plotGeneExpr, transcripts_all, todo = 1:length(transcripts_all))
 names(ml1) = unlist(lapply(tocompare, function(x)  paste(type_nme[x], collapse=".")))
 
 for(i in 1:length(ml1)){

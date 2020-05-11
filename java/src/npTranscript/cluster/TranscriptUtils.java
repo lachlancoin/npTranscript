@@ -15,6 +15,8 @@ public class TranscriptUtils {
 	public static int endThresh = 100;
 	public static int startThresh = 100;
 	public static int extra_threshold = 500;
+	public static int extra_threshold1 = 50;
+	public static boolean coronavirus = true;
 	static int round(int pos, int round) {
 		int res = (int) Math.floor((double) (pos) / (double) round);
 		return res;
@@ -67,6 +69,7 @@ public class TranscriptUtils {
 	
 	static String[] nmes = "5_3:5_no3:no5_3:no5_no3".split(":");
 	public static boolean checkAlign = true;
+	public  static boolean checkNegStrand = false;
 	
 	
 	
@@ -181,15 +184,25 @@ public class TranscriptUtils {
 			int end_r = sam.getReadPositionAtReferencePosition(sam.getAlignmentEnd());
 			String baseQ = sam.getBaseQualityString();
 			char strand = sam.getReadNegativeStrandFlag() ? '-': '+';
-		// Alphabet.DNA.complement(readSeq);
-			boolean splice = profile.processRefPositions(sam.getAlignmentStart(), sam.getAlignmentEnd(), id, cluster_reads, readSeq.length(), refSeq.length(), source_index, readSeq,st_r, end_r);
+			SWGAlignment align_5prime = null;
+			
+			if(TranscriptUtils.coronavirus && st_r > extra_threshold1 && sam.getAlignmentStart()> 100 ){
+				//good candidate for a missed 5' alignment
+				 align_5prime = SWGAlignment.align(readSeq.subSequence(0, st_r), refSeq.subSequence(0, st_r+20));
+			}
+			//String flanking = start_flank1+"\t"+start_flank2+"\t"+end_flank1+"\t"+end_flank2;
+			boolean splice = profile.processRefPositions(sam.getAlignmentStart(), sam.getAlignmentEnd(), id, 
+					cluster_reads, readSeq.length(), refSeq.length(), source_index, readSeq,st_r, end_r, strand, align_5prime);
+			//String ID = profile.clusterID
 			if(!splice){
+				
 				String start_flank1 = refSeq.subSequence(Math.max(0, sam.getAlignmentStart()-10),sam.getAlignmentStart()).toString();
 				String start_flank2 = refSeq.subSequence(sam.getAlignmentStart(),Math.min(sam.getAlignmentStart()+10, refSeq.length())).toString();
 				String end_flank1 = refSeq.subSequence(Math.max(0, sam.getAlignmentEnd()-10),sam.getAlignmentEnd()).toString();
 				String end_flank2 = refSeq.subSequence(sam.getAlignmentEnd(),Math.min(sam.getAlignmentEnd()+10,refSeq.length())).toString();
+				
 				int len = sam.getAlignmentEnd() - sam.getAlignmentStart();
-				readSeq.setDesc(st_r+","+end_r+","+readSeq.length()+" "+sam.getAlignmentStart()+","+sam.getAlignmentEnd()+","+len+" "+start_flank1+" "+start_flank2+" "+end_flank1+" "+end_flank2);
+				readSeq.setDesc(profile.clusterID[0]+" "+profile.clusterID[1]+" "+st_r+" "+end_r+" "+readSeq.length()+" "+sam.getAlignmentStart()+" "+sam.getAlignmentEnd()+" "+len+" "+start_flank1+" "+start_flank2+" "+end_flank1+" "+end_flank2);
 				profile.o.writeUnspliced(readSeq, baseQ, sam.getReadNegativeStrandFlag(), source_index);
 			}
 		//	System.err.println(refSeq.length());
@@ -197,50 +210,69 @@ public class TranscriptUtils {
 			String desc = ";start="+sam.getAlignmentStart()+";end="+sam.getAlignmentEnd()+";full_length="+readSeq.length()+";strand="+strand;
 			
 			if(st_r >extra_threshold  ){
-				Sequence spanning1 = refSeq.subSequence(sam.getAlignmentStart()-10,sam.getAlignmentStart());
-				Sequence spanning2 = refSeq.subSequence(sam.getAlignmentStart(),sam.getAlignmentStart()+10);
+				Sequence spanning1 = refSeq.subSequence(Math.max(0, sam.getAlignmentStart()-10),sam.getAlignmentStart());
+				Sequence spanning2 = refSeq.subSequence(sam.getAlignmentStart(),Math.min(refSeq.length(), sam.getAlignmentStart()+10));
+				Sequence leftseq = readSeq.subSequence(0, st_r);
+				String baseQL = baseQ.equals("*") ?  baseQ : baseQ.substring(0, st_r);
 
 				if(sam.getReadNegativeStrandFlag()) {
 					spanning1 = Alphabet.DNA().complement(spanning1);
 					spanning2 = Alphabet.DNA().complement(spanning2);
+					leftseq = Alphabet.DNA().complement(leftseq);
+					baseQL = (new StringBuilder(baseQ)).reverse().toString();
 				}
 			
-				Sequence leftseq = readSeq.subSequence(0, st_r);
-				String baseQL = baseQ.equals("*") ?  baseQ : baseQ.substring(0, st_r);
 				leftseq.setName(readSeq.getName()+".L");
-				Sequence leftseq1 = leftseq.subSequence(Math.max(0, leftseq.length()-maxl-tol), leftseq.length()-tol);
-			//	int mtch_5 = checkAlignmentIsNovel(leftseq1, refSeq5prime, "left 5prime") ;
-			//	int mtch_3 = checkAlignmentIsNovel(leftseq1, refSeq3prime, "left 3prime");
-				leftseq.setDesc("len="+leftseq.length()+desc+" "+spanning1.toString()+" "+spanning2.toString());//+";mtch5="+mtch_5+";mtch_3="+mtch_3);
+				 align_5prime = SWGAlignment.align(leftseq, refSeq);
+				 String extra="NA";
+				
+				
+				 if(align_5prime.getIdentity()>leftseq.length()*0.8){
+					
+					 extra = getString(align_5prime, false);
+				 }else if(checkNegStrand){
+					 align_5prime = SWGAlignment.align(Alphabet.DNA().complement(leftseq), refSeq);
+					 if(align_5prime.getIdentity()>leftseq.length()*0.8){
+						 extra=getString(align_5prime, true);
+					 }
+					 	
+				 }
+				leftseq.setDesc("len="+leftseq.length()+desc+" "+extra+" "+spanning1.toString()+" "+spanning2.toString());//+";mtch5="+mtch_5+";mtch_3="+mtch_3);
 				profile.o.writeLeft(leftseq,baseQL,sam.getReadNegativeStrandFlag(), source_index);// (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)leftseq1.length());
 				
 			}
 			if(readSeq.length() -  end_r >extra_threshold){
 				Sequence rightseq = readSeq.subSequence(end_r, readSeq.length());
-				Sequence spanning1 = refSeq.subSequence(sam.getAlignmentEnd()-10,sam.getAlignmentEnd());
-				Sequence spanning2 = refSeq.subSequence(sam.getAlignmentEnd(),sam.getAlignmentEnd()+10);
-
+				Sequence spanning1 = refSeq.subSequence(Math.max(0, sam.getAlignmentEnd()-10),sam.getAlignmentEnd());
+				Sequence spanning2 = refSeq.subSequence(sam.getAlignmentEnd(),Math.min(refSeq.length(), sam.getAlignmentEnd()+10));
+				
+				 rightseq.setName(readSeq.getName()+".R");
+					String baseQR = baseQ.equals("*") ?  baseQ : baseQ.substring(end_r, readSeq.length());
+				 
 				if(sam.getReadNegativeStrandFlag()) {
 					spanning1 = Alphabet.DNA().complement(spanning1);
 					spanning2 = Alphabet.DNA().complement(spanning2);
+					rightseq = Alphabet.DNA().complement(rightseq);
+					baseQR = (new StringBuilder(baseQ)).reverse().toString();
+				
 				}
-				rightseq.setName(readSeq.getName()+".R");
-				String baseQR = baseQ.equals("*") ?  baseQ : baseQ.substring(end_r, readSeq.length());
-				Sequence rightseq1 = rightseq.subSequence(tol, Math.min(maxl+tol, rightseq.length()));
+				 align_5prime = SWGAlignment.align(rightseq, refSeq);
+				 String extra="NA";
+				 if(align_5prime.getIdentity()>rightseq.length()*0.8){
+					
+					 extra = getString(align_5prime, false);
+				 }else if(checkNegStrand){
+					 align_5prime = SWGAlignment.align(Alphabet.DNA().complement(rightseq), refSeq);
+					 if(align_5prime.getIdentity()>rightseq.length()*0.8){
+						 extra=getString(align_5prime, true);
+					 }
+					 	
+				 }
+				
 				//int mtch_5  = TranscriptUtils.checkAlign ?  checkAlignmentIsNovel(rightseq1, refSeq5prime, "right 5") : 0;
 				//int mtch_3 = TranscriptUtils.checkAlign ? checkAlignmentIsNovel(rightseq1, refSeq3prime, "right 3"): 0;
-				rightseq.setDesc("len="+rightseq.length()+desc+" "+spanning1.toString()+" "+spanning2.toString());//+";mtch5="+mtch_5+";mtch_3="+mtch_3);
+				rightseq.setDesc("len="+rightseq.length()+desc+" "+extra+" "+spanning1.toString()+" "+spanning2.toString());//+";mtch5="+mtch_5+";mtch_3="+mtch_3);
 				profile.o.writeLeft(rightseq,baseQR, sam.getReadNegativeStrandFlag(), source_index);///,  (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)rightseq1.length());
-				
-				/*Sequence midseq = readSeq.subSequence(st_r, end_r);
-				midseq.setName(readSeq.getName()+".M");
-				midseq.setDesc("len="+midseq.length()+desc);
-				profile.o.writeLeft(midseq,source_index);
-				*/
-				//profile.o.writeLeft(readSeq);
-				
-				//subseq.setDesc("st="+st_r);
-				//System.err.println(subseq.toString());
 			}
 			
 		}
@@ -248,6 +280,18 @@ public class TranscriptUtils {
 			exc.printStackTrace();
 		}
 
+	}
+
+	private static String getString(SWGAlignment align_5prime, boolean neg) {
+		 int st1 = align_5prime.getStart1();
+		 int st2 = align_5prime.getStart2();
+		 int len1 = align_5prime.getSequence1().length - align_5prime.getGaps1();
+		 int len2 = align_5prime.getSequence2().length -align_5prime.getGaps2();
+		 int end1 = st1 + len1;
+		 int end2 = st2 + len2;
+	//	 System.err.println(align)
+		 char strand = neg ? '-' : '+';
+		 return strand+","+align_5prime.getScore()+","+align_5prime.getIdentity()+" "+st1+","+end1+" "+st2+","+end2;
 	}
 
 	private static int checkAlignmentIsNovel(Sequence leftseq, Sequence refSeq, String type) {

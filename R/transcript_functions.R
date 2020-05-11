@@ -298,22 +298,19 @@ plotFAll<-function(lt1, range = c(20000,30000), exclude = "allreads"){
 }
 
 
-getlev<-function(x, todo = NULL){
+getlev<-function(x1, todo = NULL){ 
+  x = if(is.vector(x1)) x1 else apply(x1, 1,paste, collapse=".")
   lev = levels(as.factor(as.character(x)))
   cnts = rep(0, length(lev))
   for(i in 1:length(lev)){
     cnts[i] = length(which(x==lev[i]))
   }
-  res = cbind(lev,cnts)[order(cnts, decreasing = T),, drop=F]
-  frac = as.numeric(res[,2])/sum(as.numeric(res[,2]))
-  
-  res = cbind(res, frac)
-  res[,3] = apply(res[,3, drop=F], c(1,2), function(s) sprintf("%5.3g",as.numeric(s)))
+  res = data.frame(lev,cnts)[order(cnts, decreasing = T),, drop=F]
   if(is.null(todo)) return(res)
   
-  matr = cbind(todo, rep(0,length(todo)))
-  print(dim(matr))
-  print(dim(res))
+  matr = data.frame(lev=todo, cnts=rep(0,length(todo)))
+  # print(dim(matr))
+  # print(dim(res))
   if(dim(res)[1]>1){
     matr[match(res[,1], matr[,1]),2] = res[res[,1] %in% matr[,1],2]
     dimnames(matr)[[2]] = dimnames(res)[[2]]
@@ -321,6 +318,7 @@ getlev<-function(x, todo = NULL){
     #print(todo)
     matr[match(res[,1], matr[,1]),2] =res
   }
+  
   matr
 }
 
@@ -1365,6 +1363,18 @@ invisible(ml)
 }
 
 
+
+.readFastqHeader<-function(f,
+	nme =c("readID", "clusterID", "subID", "readSt", "readEnd", "readLen", "refStart", "refEnd", "refLen", "stLeft", "stRight", "endLeft", "endRight" ),
+colclasses = c("character", "character", "character", rep("numeric", 6), rep("character", 4)))
+{
+	p = pipe(paste("sed -n '1~4p'", f))
+	t = (read.table(p, sep=" ", header=F, colClasses = colclasses, fill=T))
+	t = t[t[,2]!="",]
+	names(t) = nme
+t
+}
+
 .filterT<-function(transcripts, seqlen,  start_end = NULL, lt = c(T,T), leftGene= NULL, rightGene = NULL){
 	inds = rep(T, dim(transcripts)[1])
 	if(!is.null(start_end)){
@@ -1376,7 +1386,7 @@ invisible(ml)
 	transcripts[inds,,drop=F]
 }
 
-.readTranscripts<-function(infilesT, seqlen, nmes){
+.readTranscripts<-function(infilesT ){
 inf = scan(infilesT, nlines=1, what=character())
 transcripts = read.table( infilesT,sep="\t", head=T)
 countAll = apply(transcripts[,grep("count", names(transcripts))],1,sum)
@@ -1388,15 +1398,25 @@ transcripts = transcripts[o,]
 err_ratio_inds = grep("error_ratio", names(transcripts))
 transcripts[,err_ratio_inds] =apply(transcripts[,err_ratio_inds,drop=F], c(1,2), function(x) if(is.na(x)) -0.01 else x)
 if(length(grep("#", inf))>0) attr(transcripts,"info") = sub("#", "",inf)
+transcripts
+}
 
-transcripts_all = list()
-transcripts_all[[1]] = (transcripts[which(transcripts$start<100 & transcripts$end > seqlen -100),, drop=F])
-transcripts_all[[2]] = (transcripts[which(transcripts$start<100 & transcripts$end <= seqlen -100),, drop=F])
-transcripts_all[[3]] =( transcripts[which(transcripts$start>=100 & transcripts$end > seqlen -100),, drop=F])
-transcripts_all[[4]] = (transcripts[which(transcripts$start>=100 & transcripts$end <= seqlen -100),, drop=F])
-names(transcripts_all) = nmes
-
-transcripts_all
+.splitTranscripts<-function(transcripts, seqlen, nmes,splice = F){
+	transcripts_all = list()
+	if(splice){
+		spliced = transcripts$comb_l=="0.-1.0.-1"
+		transcripts_all[[1]] = 	transcripts[!spliced,,drop=F]
+			transcripts_all[[2]] = 	transcripts[spliced,,drop=F]
+		names(transcripts_all) = c("spliced","unspliced")
+	
+	}else{
+		transcripts_all[[1]] = (transcripts[which(transcripts$start<100 & transcripts$end > seqlen -100),, drop=F])
+		transcripts_all[[2]] = (transcripts[which(transcripts$start<100 & transcripts$end <= seqlen -100),, drop=F])
+		transcripts_all[[3]] =( transcripts[which(transcripts$start>=100 & transcripts$end > seqlen -100),, drop=F])
+		transcripts_all[[4]] = (transcripts[which(transcripts$start>=100 & transcripts$end <= seqlen -100),, drop=F])
+		names(transcripts_all) = nmes
+	}
+	transcripts_all
 }
 
 
@@ -1447,8 +1467,27 @@ transcripts_all
 	}
 	data.frame(a)
 }
+
+plotHist<-function(vec, breaks, t = NULL, ylog=T, xlim = NULL, title= ""){
+h = hist(vec, breaks);
+f<-function(h1, i, k) {
+			 #norm  = if(normalise) sum(h1$count) else 1
+			#norm = size[k]/1e6
+			cbind(h1$breaks[-1], h1$count, rep(i, length(breaks)-1),rep(k, length(breaks)-1))
+		}
+a = data.frame(f(h,1,1))
+	names(a) = c("breaks", "counts", "type", "source")
+ggp <-ggplot(a, aes_string(x="breaks", y="counts", fill="source", color = "source"))+geom_point(size=2)+ggtitle(title)
+if(!is.null(t) && !is.null(t$Minimum)) ggp<-ggp+ geom_vline(xintercept = t$Minimum, linetype="solid")  
+		if(!is.null(t) && !is.null(t$start)) ggp<-ggp+ geom_vline(xintercept = t$start, linetype="solid")  
+		if(!is.null(xlim)) ggp<-ggp + scale_x_continuous(limits = xlim)
+		if(ylog)  ggp<-ggp+scale_y_continuous(trans='log10')
+ggp
+}
+
 plotJoins<-function(reads, thresh = c(10,100), binsize = 1, t = NULL, ylog = F, xlim = c(1,30000)){
 	outfile2= paste("recomb", binsize, t,paste(xlim, collapse="."), "pdf", sep=".")
+	print(outfile2)
 	breaks = seq(1,seqlen+binsize, binsize)-0.5
 	levs = levels(reads$source)
 	size = unlist(lapply(levs, function(x) length(which(reads$source==x))))
@@ -1504,9 +1543,75 @@ plotJoins<-function(reads, thresh = c(10,100), binsize = 1, t = NULL, ylog = F, 
 	}
 
 	  ml<-marrangeGrob(ggps,nrow = 2, ncol = 2, as.table=F) 
-ggsave(outfile2, plot=ml, width = 30, height = 30, units = "cm")
-	invisible(h_all)
+#ggsave(outfile2, plot=ml, width = 30, height = 30, units = "cm")
+	invisible(ml)
 }
+
+plotJoins1<-function(subr, binsize = 1, t = NULL, ylog = F, xlim = c(1,30000), clusterId = NULL, right = FALSE){
+if(!is.null(clusterId)) subr = subr[subr$clusterId==clusterId,,drop=F]
+	#outfile2= paste("j", binsize, t,paste(xlim, collapse="."), "pdf", sep=".")
+	breaks = seq(1,seqlen+binsize, binsize)-0.5
+	#print(head(breaks))
+	levs = levels(subr$source)
+	#size = unlist(lapply(levs, function(x) length(which(subr$source==x))))
+	a_ = list()
+	h_all = list()
+	for(k in 1:length(levs)){
+		source = levs[k]
+		indsk = if(right) subr$length- subr$end_read>thresh[2]  else subr$start_read>thresh[2] 
+		
+	 	h = list(
+			hist(subr[indsk & subr$source %in% source,]$startPos, br=breaks, plot = F)
+		)
+		names(h) = c("start_less") #, "start_more","end_less", "end_more" )
+		h_all[[k]] = h	
+		f<-function(h1, i, k) {
+			 #norm  = if(normalise) sum(h1$count) else 1
+			norm = size[k]/1e6
+			norm = 1
+			cbind(h1$breaks[-1], h1$count/norm, rep(i, length(breaks)-1),rep(k, length(breaks)-1))
+		}
+		
+		for(i in 1:length(h)) {
+			print(paste(i,k))
+			a_[[length(a_)+1]] = f(h[[i]], i,k)
+		}
+
+		
+	}
+	names(h_all) = levs
+	#maxpos = which(h_all[[1]][[1]]$counts == max(h_all[[1]][[2]]$counts))
+	#maxbr= h_all[[1]][[2]]$breaks[maxpos]
+	#indices = (which(reads$start_read > thresh & reads$startPos %in% (floor(maxbr):(1+floor(maxbr)))))
+	#subm = reads[indices,]
+	a = .bindall(a_)	
+	names(a) = c("breaks", "counts", "type", "source")
+	a$type = factor(a$type) #, labels= c(paste("start less", thresh[1]), paste("start more", thresh[2]), paste("end less", thresh[1]), paste("end more", thresh[2])))
+	a$source = factor(a$source, labels=levs)
+	levst = levels(a$type)
+	ggps = list()
+	
+	for(k in 1:length(levst)){
+		inds_a = grep(levst[k], a$type)
+		
+		
+		ggp <-ggplot(a[inds_a, ], aes_string(x="breaks", y="counts", fill="source", color = "source"))+geom_point(size=2)+ggtitle(levst[k])
+		if(!is.null(t) && !is.null(t$Minimum)) ggp<-ggp+ geom_vline(xintercept = t$Minimum, linetype="solid")  
+		if(!is.null(t) && !is.null(t$start)) ggp<-ggp+ geom_vline(xintercept = t$start, linetype="solid")  
+		if(!is.null(xlim)) ggp<-ggp + scale_x_continuous(limits = xlim)
+		if(ylog)  ggp<-ggp+scale_y_continuous(trans='log10')
+#abline(v = t$Minimum, col=2)+abline(v = t$Maximum, col=3)
+		ggps[[k]]<-ggp
+
+	}
+
+	#  ml<-marrangeGrob(ggps,nrow = 2, ncol = 2, as.table=F) 
+#ggsave(outfile2, plot=ggps[[1]], width = 30, height = 30, units = "cm")
+	#invisible(h_all)
+	ggps[[1]]
+	#h_all
+}
+
 .plotGeneExpr<-function(tocomp,transcripts_all, todo =1:length(transcripts_all),  extra = 0.1, mint = 2, maxt = 10, count_df = grep('count[0-9]', names(transcripts_all[[1]])),
  type_nme = attr(transcripts_all[[1]], "info")){
 ggps = list()
