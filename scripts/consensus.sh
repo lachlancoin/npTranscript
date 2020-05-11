@@ -15,6 +15,8 @@
 #SBATCH --error=abpoa_%A_%a.err
 
 abpoa='/sw/abpoa/v1.0.1/abpoa'
+npTranscript=${HOME}/github/npTranscript
+reference="${npTranscript}/data/SARS-Cov2/wuhan_coronavirus_australia.fasta.gz"
 
 chrom=$SLURM_ARRAY_TASK_ID
 if [ ! $SLURM_ARRAY_TASK_ID ] ; then
@@ -43,3 +45,10 @@ done < $todolist
 rm $todolist
 rm -f $tododir/*.fa
 rmdir $tododir
+
+
+##NOW MAP TO REF
+export JSA_MEM=8000m
+bash ${npTranscript}/scripts/run_map_consensus.sh   --reference=${reference} --fasta=${outfile} --offset 10000
+
+
