@@ -7,8 +7,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import npTranscript.cluster.TranscriptUtils;
 /**
  * @author Lachlan Coin
  *

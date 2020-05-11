@@ -59,7 +59,6 @@ import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
-import japsa.bio.np.ErrorCorrection;
 import japsa.seq.Alphabet;
 import japsa.seq.JapsaAnnotation;
 import japsa.seq.Sequence;

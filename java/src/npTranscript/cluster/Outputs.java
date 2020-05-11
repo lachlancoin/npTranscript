@@ -19,7 +19,6 @@ import ch.systemsx.cisd.hdf5.IHDF5SimpleWriter;
 import htsjdk.samtools.fastq.FastqRecord;
 import htsjdk.samtools.fastq.FastqWriter;
 import htsjdk.samtools.fastq.FastqWriterFactory;
-import htsjdk.samtools.util.SequenceUtil;
 import japsa.bio.np.ErrorCorrection;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
@@ -88,16 +87,13 @@ public class Outputs{
 			this.altT.close();
 			//this.clusters.close();
 			for(int i=0; i<clusters.length; i++){
-				if(so[i]!=null) this.so[i].close();
+				//if(so[i]!=null) this.so[i].close();
 				if(clusters[i]!=null) this.clusters[i].run();
 				
 			}
 			for(int i=0; i<leftover_l.length; i++){
 				if(leftover_l[i]!=null) this.leftover_l[i].close();
 				if(unspliced[i]!=null) this.unspliced[i].close();
-			/*	if(leftover_r[i]!=null) this.leftover_r[i].close();
-				if(fusion_l[i]!=null) this.fusion_l[i].close();
-				if(fusion_r[i]!=null) this.fusion_r[i].close();*/
 			}
 		}
 			
@@ -105,7 +101,7 @@ public class Outputs{
 		boolean writeDirectToZip = false;
 		
 		int genome_index=0;
-		final FOutp[] so;
+		//final FOutp[] so;
 	//	int currentIndex=0;
 		
 		/*public void updateChromIndex(int currentIndex2) throws IOException{
@@ -136,19 +132,19 @@ public class Outputs{
 			
 			 if(doMSA!=null && mergeSourceClusters){
 				 clusters = new CompressDir[] {new CompressDir(new File(resDir,  genome_index+"." +"clusters"))};
-				 so =  new FOutp[] {new FOutp("consensus")};
+		//		 so =  new FOutp[] {new FOutp("consensus")};
 			 }else if(doMSA!=null && !mergeSourceClusters){
 				 clusters =  new CompressDir[type_nmes.length];
-				 this.so = new FOutp[type_nmes.length];
+			//	 this.so = new FOutp[type_nmes.length];
 				 for(int i=0; i<clusters.length; i++){
 					 String nmei =  genome_index+"."+type_nmes[i]+".";
 					 clusters[i] = new CompressDir(new File(resDir, nmei+"clusters"));
-					 so[i] = new FOutp(nmei+"consensus" );
+				//	 so[i] = new FOutp(nmei+"consensus" );
 				 }
 			 }else{
 				 //no msa
 				clusters = new CompressDir[1];
-				so = new FOutp[1];
+			//	so = new FOutp[1];
 			 }
 			 leftover_l = new FOutp[type_nmes.length];
 			 unspliced = new FOutp[type_nmes.length];
@@ -302,7 +298,7 @@ public class Outputs{
 	    			Sequence consensus = ErrorCorrection.getConsensus(seqList);
 					consensus.setDesc("ID="+ID+";subID="+val.id()+";key="+cc.breaks_hash.secondKey+";seqlen="+consensus.length()+";count="+seqList.size()+";type_nme="+cc.getTypeNme(seqlen));
 					consensus.setName(ID1);
-					consensus.print(so[source].os);
+				//	consensus.print(so[source].os);
 					if(!keepAlignment) faoFile.delete();
 	    		}
 			}

@@ -1,8 +1,6 @@
 package npTranscript.cluster;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 /**
  * @author Lachlan Coin
  *

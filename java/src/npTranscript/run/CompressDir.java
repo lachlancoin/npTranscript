@@ -7,14 +7,11 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.util.ArrayList;
 import java.util.zip.Adler32;
 import java.util.zip.CheckedOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import japsa.bio.np.ErrorCorrection;
-import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
 
 

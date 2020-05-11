@@ -8,6 +8,7 @@ import java.util.Map;
 
 import japsa.seq.Sequence;
 
+
 /**
  * @author Lachlan Coin
  *
@@ -363,8 +364,8 @@ public class CigarCluster  {
 		public int merge(CigarCluster c1, int num_sources, int src_index) {
 			if(c1.start < start) start = c1.start;
 			if(c1.end > end) end = c1.end;
-			if(breakSt<0 || (c1.breakSt>=0 & c1.breakSt < breakSt)) breakSt = c1.breakSt;
-			if(breakEnd<0 || (c1.breakEnd>=0 &  c1.breakEnd > breakEnd)) breakEnd = c1.breakEnd;
+			if(breakSt<0 || (c1.breakSt>=0 & c1.breakSt > breakSt)) breakSt = c1.breakSt;
+			if(breakEnd<0 || (c1.breakEnd>=0 &  c1.breakEnd < breakEnd)) breakEnd = c1.breakEnd;
 			//int subID;
 			
 			if(c1.all_breaks!=null){

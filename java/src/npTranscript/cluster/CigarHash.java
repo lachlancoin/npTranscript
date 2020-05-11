@@ -1,6 +1,5 @@
 package npTranscript.cluster;
 
-import java.util.ArrayList;
 /**
  * @author Lachlan Coin
  *
