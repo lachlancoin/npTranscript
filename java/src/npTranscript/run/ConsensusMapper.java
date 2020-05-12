@@ -50,26 +50,34 @@ public class ConsensusMapper extends CommandLine {
 	
 	static class Indel{
 		int start;
-		int len;
+		String seq;
 		//int len;
-		Indel(int start, int len){
+		Indel(int start, String seq){
 			this.start = start;
-			this.len = len;
+			this.seq = seq;
+			//this.len = len;
 		}
 		public String toString(){
-			if(len==1) return start+"";
-			else return start+"-"+len;
+			//if(len==1) return start+"";
+			//else
+				return start+":"+seq;
+		}
+		public int len() {
+			// TODO Auto-generated method stub
+			return seq.length();
 		}
 	}
 	//getString(List<Indel>)
-	static int getGaps(char[] seq, Pattern p, List<Indel> allMatches){
+	//gaps in seq ; non gaps in seq2
+	static int getGaps(char[] seq,char[] seq2, Pattern p, List<Indel> allMatches){
 		String seqr = new String(seq);
+		String seqr2 = new String(seq2);
 		Matcher m = p.matcher(seqr);
 		int tot =0;
 		while (m.find()) {
 				int len =  m.end()-m.start();
 				tot+=len;
-			   allMatches.add(new Indel(m.start(),len));
+			   allMatches.add(new Indel(m.start(),seqr2.substring(m.start(), m.end())));
 		}
 		return tot;
 	}
@@ -78,7 +86,7 @@ public class ConsensusMapper extends CommandLine {
 	private static String removeGapsInRef(char[] seq1, char[]  seqRef,List<Indel> gaps, int startInRef) {
 		if(seq1.length!=seqRef.length) throw new RuntimeException("!!");
 		gaps.clear();
-		int gap = getGaps(seqRef,p1, gaps);
+		int gap = getGaps(seqRef,seq1,p1, gaps);
 		char[] seq1_new = new char[seq1.length - gap];
 		int st =0;
 		int target_st =0;
@@ -94,9 +102,9 @@ public class ConsensusMapper extends CommandLine {
 				//System.arraycopy(seq1, st, seq1_new, target_st, len);
 				target_st+=len;
 			}
-			st = end+ indel.len;
+			st = end+ indel.len();
 			indel.start = indel.start-total_gap+startInRef;  // adjust indel so that start position now is in ref coords (i.e. remove total_gap
-			total_gap+=indel.len;
+			total_gap+=indel.len();
 		}
 		if(st < seqRef.length){
 			int len = seqRef.length - st;
@@ -125,8 +133,15 @@ public class ConsensusMapper extends CommandLine {
 		SWGAlignment align; 
 		
 		File fasta_in = new File(fasta);
-		File fasta_out = new File(fasta_in.getParentFile(), fasta+".corrected.fa");
+		File fasta_out = new File(fasta_in.getParentFile(), fasta+".ref_aligned.fa");
 		OutputStreamWriter os1 = new OutputStreamWriter(new FileOutputStream(fasta_out));
+		
+		File fasta_out1 = new File(fasta_in.getParentFile(), fasta+".ref.fa");
+		OutputStreamWriter os2 = new OutputStreamWriter(new FileOutputStream(fasta_out1));
+		
+		
+		File fasta_out2 = new File(fasta_in.getParentFile(), fasta+".unmapped_insertion.fa");
+		OutputStreamWriter os3 = new OutputStreamWriter(new FileOutputStream(fasta_out2));
 	
 		//SequenceOutputStream os =new SequenceOutputStream(os1);
 		int step = 100;
@@ -148,44 +163,73 @@ public class ConsensusMapper extends CommandLine {
 			SWGAlignment right_align = SWGAlignment.align(readSeq, refSeq.subSequence(right_offset, refSeq.length()));
 			int right_start1 = right_align.getStart1();
 			int right_end1 = right_start1 + right_align.getSequence1().length - right_align.getGaps1();
+			double identR = (double) right_align.getIdentity()/(double) right_align.getLength();
 			
-			SWGAlignment left_align = SWGAlignment.align(readSeq.subSequence(0, right_start1-1), refSeq.subSequence(0, startBr+offset));
+			Sequence readSeqLeft=readSeq.subSequence(0, right_start1-1);
+			SWGAlignment left_align = SWGAlignment.align(readSeqLeft, refSeq.subSequence(0, startBr+offset));
 		
 			double identL = (double) left_align.getIdentity()/(double) left_align.getLength();
-			
-			//start_end on read
 			int left_start1 = left_align.getStart1();
 			int left_end1 = left_start1 + left_align.getSequence1().length - left_align.getGaps1();
 			
-			System.err.println(left_start1+","+left_end1+","+right_start1 +","+right_end1);
-			if(right_start1 < left_end1) {
+			if(right_start1 <= left_end1) {
 				throw new RuntimeException("problem");
 			}
 			
 			
+			
+			
+			//System.err.println(left_start1+","+left_end1+","+right_start1 +","+right_end1);
+			
+			
+			
 			int left_start = left_align.getStart2();
 			int left_end = left_start + left_align.getSequence2().length - left_align.getGaps2();
-			double identR = (double) right_align.getIdentity()/(double) right_align.getLength();
+			//double identR = (double) right_align.getIdentity()/(double) right_align.getLength();
 			int right_start = right_align.getStart2() + right_offset;
 			int right_end = right_start + right_align.getSequence2().length - right_align.getGaps2();
 			List<Indel> gaps1 = new ArrayList<Indel>(); //insertions relative to reference
 			List<Indel> gaps2 = new ArrayList<Indel>();
 			String sequ1 = removeGapsInRef(left_align.getSequence1(), left_align.getSequence2(),gaps1, left_start);
 			String sequ2 =removeGapsInRef(right_align.getSequence1(), right_align.getSequence2(), gaps2, right_start);
+			gaps1.addAll(gaps2);
+			String sequ1_refonly = (new String(left_align.getSequence2())).replaceAll("-", "");
 			String sequ2_refonly = (new String(right_align.getSequence2())).replaceAll("-", "");
 		if(sequ2.length()!=sequ2_refonly.length()) throw new RuntimeException("this should not happen");
-			os1.write(">"+readSeq.getName()+".L"+" "+left_start+","+left_end+" "+readSeq.getDesc()+" "+gaps1.toString().replaceAll("\\s+", "")+"\n");
-			for(int j=0; j<sequ1.length(); j+=step){
-				os1.write(sequ1.substring(j, Math.min(sequ1.length(), j+step)));
-				os1.write("\n");
-			}
-			os1.write(">"+readSeq.getName()+".R"+" "+right_start+","+right_end+" "+readSeq.getDesc()+" "+gaps2.toString().replaceAll("\\s+", "")+"\n");
-			for(int j=0; j<sequ2.length(); j+=step){
-				os1.write(sequ2.substring(j, Math.min(sequ2.length(), j+step)));
-				os1.write("\n");
+		  writeFasta(os1, sequ1,sequ2, readSeq.getName(),left_start+","+left_end+","+right_start+","+right_end+" "
+		+left_start1+","+left_end1+","+right_start1+","+right_end1
+				  +" "+readSeq.getDesc()+" "+gaps1.toString().replaceAll("\\s+", "")+"\n");
+		  writeFasta(os2, sequ1_refonly,sequ2_refonly, readSeq.getName(),left_start+","+left_end+","+right_start+","+right_end+" "
+					+left_start1+","+left_end1+","+right_start1+","+right_end1
+							  +" "+readSeq.getDesc());
+		  
+		  if(right_start1 > left_end1+1){
+				// remaining = null;
+				 Sequence remaining=readSeqLeft.subSequence(left_end1, readSeqLeft.length());
+				  writeFasta(os3, new String(remaining.charSequence()),null,  readSeq.getName(),left_start+","+left_end+","+right_start+","+right_end+" "
+							+left_start1+","+left_end1+","+right_start1+","+right_end1
+									  +" "+readSeq.getDesc());
+				//System.err.println("unmapped insertion: "+left_start1+","+left_end1+","+right_start1+","+right_end1+""+remaining);
 			}
 		}
 		os1.close();
+		os2.close();
+		os3.close();
+	}
+	private static void writeFasta(OutputStreamWriter os1, String sequ1,String sequ2,  String name, String desc) throws IOException{
+		os1.write(">"+name+" "+desc+"\n");
+		int step = 100;
+		for(int j=0; j<sequ1.length(); j+=step){
+			String substr = sequ1.substring(j, Math.min(sequ1.length(), j+step));
+			os1.write(substr);
+			os1.write("\n");
+		}
+		if(sequ2!=null){
+		for(int j=0; j<sequ2.length(); j+=step){
+			os1.write(sequ2.substring(j, Math.min(sequ2.length(), j+step)));
+			os1.write("\n");
+		}
+		}
 	}
 	
 }

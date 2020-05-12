@@ -252,10 +252,11 @@ public class Outputs{
 				seq.writeFasta(out);
 				out.close();
 				cluster.closeWriter(out);
-				
-				OutputStreamWriter osw = cluster.getWriter(entryname, false, true);
-				osw.write(str);osw.write("\n");
-				cluster.closeWriter(osw);
+				if(str!=null){
+					OutputStreamWriter osw = cluster.getWriter(entryname, false, true);
+					osw.write(str);osw.write("\n");
+					cluster.closeWriter(osw);
+				}
 			}
 		}
 		

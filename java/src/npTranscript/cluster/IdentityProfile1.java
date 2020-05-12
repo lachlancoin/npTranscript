@@ -8,6 +8,7 @@ import java.util.List;
 import org.apache.commons.math3.linear.OpenMapRealMatrix;
 import org.apache.commons.math3.linear.SparseRealMatrix;
 
+import htsjdk.samtools.SAMRecord;
 import japsa.bio.np.barcode.SWGAlignment;
 import japsa.seq.Sequence;
 
@@ -75,9 +76,11 @@ public class IdentityProfile1 {
 	public static boolean subclusterBasedOnStEnd = false;
 	
 	public String[] clusterID = new String[2];
-	public boolean processRefPositions(int startPos, int endPos, String id, boolean cluster_reads, int  readLength, int refLength, int src_index , Sequence readSeq,
+	public boolean processRefPositions(SAMRecord sam, String id, boolean cluster_reads, int  readLength, int refLength, int src_index , Sequence readSeq,
 			int start_read, int end_read, char strand, SWGAlignment align
 			) throws IOException, NumberFormatException{
+		int startPos = sam.getAlignmentStart();
+		int endPos = sam.getAlignmentEnd();
 		boolean hasSplice = false;
 		CigarHash2 breaks  = coRefPositions.breaks;
 		int seqlen = refLength;
@@ -173,9 +176,28 @@ public class IdentityProfile1 {
 		+type_nme+"\t"+chrom+"\t"
 		+startPos+"\t"+endPos+"\t"+prev_position+"\t"+position+"\t"+coRefPositions.getError(src_index)+"\t"+upstream+"\t"+downstream+"\t"+strand;
 		this.o.printRead(str);
+		if(Outputs.doMSA!=null && (seqlen - endPos)<100){
+			int st1 = position>0 ? position : startPos; // start after break
+			inner: for(int i=annot.start.size()-1; i>=0; i--){
+				if(st1 > annot.start.get(i)) break inner;
+				else{
+					int start_ref = annot.start.get(i);
+					int start_read1 =  sam.getReadPositionAtReferencePosition(start_ref);
+					int end_ref = sam.getReferencePositionAtReadPosition(end_read);
+					Sequence readSeq1 = readSeq.subSequence(start_read1, end_read);
+					readSeq1.setDesc(start_read1+","+end_read+","+(end_read-start_read1)+" "+start_ref+","+end_ref+","+(end_ref-start_ref));
+					this.o.writeToCluster(annot.genes.get(i),"", source_index, readSeq1, null, readSeq.getName());
+				}
+			}
+		//	int end1 = endPos;
+		}
+		
 		if(Outputs.doMSA!=null && Outputs.doMSA.contains(type_nme)) {
 			Sequence readSeq1 = readSeq.subSequence(start_read, end_read);
-			readSeq1.setDesc("st="+start_read+";end="+end_read+";len="+(end_read-start_read));
+			int end_ref = sam.getReferencePositionAtReadPosition(end_read);
+			int start_ref = sam.getReferencePositionAtReadPosition(start_read);
+			//readSeq1.setDesc("st="+start_read+";end="+end_read+";len="+(end_read-start_read));
+			readSeq1.setDesc(start_read+","+end_read+","+(end_read-start_read)+" "+start_ref+","+end_ref+","+(end_ref-start_ref));
 			this.o.writeToCluster(clusterID[0],clusterID[1], source_index, readSeq1, str, readSeq.getName());
 		}
 		return hasSplice;
