@@ -13,7 +13,7 @@ JSA_CP=${npTranscript}/npTranscript.jar:${classpath}
 
 
 
-str="java -Xmx${JSA_MEM} -ea -Djava.awt.headless=true -Dfile.encoding=UTF-8 -classpath ${JSA_CP} npTranscript.run.ViralTranscriptAnalysisCmd2 $@"
+str="java -Xmx${JSA_MEM} -ea -Djava.awt.headless=true -Dfile.encoding=UTF-8 -classpath ${JSA_CP} npTranscript.run.ConsensusMapper $@"
 echo "running .."
 echo $str
 $str
