@@ -192,7 +192,7 @@ public class TranscriptUtils {
 			}
 			//String flanking = start_flank1+"\t"+start_flank2+"\t"+end_flank1+"\t"+end_flank2;
 			boolean splice = profile.processRefPositions(sam, id, 
-					cluster_reads, readSeq.length(), refSeq.length(), source_index, readSeq,st_r, end_r, strand, align_5prime);
+					cluster_reads, readSeq.length(), refSeq, source_index, readSeq,st_r, end_r, strand, align_5prime);
 			//String ID = profile.clusterID
 			if(!splice && Outputs.writeUnSplicedFastq){
 				

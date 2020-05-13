@@ -134,4 +134,11 @@ public class Annotation{
 		public int seqlen() {
 			return seqlen;
 		}
+
+		public void adjust3UTR(int seqlen2) {
+			if(this.end.get(end.size()-1)>seqlen2 && this.start.get(end.size()-1) < seqlen2){
+				end.set(end.size()-1, seqlen2);
+			}
+			
+		}
 	}

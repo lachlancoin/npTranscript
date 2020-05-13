@@ -77,15 +77,32 @@ public class IdentityProfile1 {
 	public static boolean subclusterBasedOnStEnd = false;
 	
 	public String[] clusterID = new String[2];
-	public boolean processRefPositions(SAMRecord sam, String id, boolean cluster_reads, int  readLength, int refLength, int src_index , Sequence readSeq,
+	public boolean processRefPositions(SAMRecord sam, String id, boolean cluster_reads, int  readLength, Sequence refSeq, int src_index , Sequence readSeq,
 			int start_read, int end_read, char strand, SWGAlignment align
 			) throws IOException, NumberFormatException{
 		int startPos = sam.getAlignmentStart();
 		int endPos = sam.getAlignmentEnd();
 		boolean hasSplice = false;
-		CigarHash2 breaks  = coRefPositions.breaks;
-		int seqlen = refLength;
 		Annotation annot = this.all_clusters.annot;
+
+		CigarHash2 breaks  = coRefPositions.breaks;
+		int seqlen = refSeq.length();
+		char[] last10bp = refSeq.subSequence(seqlen-10, seqlen).charSequence();
+		boolean polyA = true;
+		for(int i=0; i<last10bp.length; i++){
+			if(last10bp[i]!='A') polyA = false;
+			
+		}
+		if(polyA){
+			int i =1;
+			while(refSeq.charAt(seqlen-i)=='A'){
+				i++;
+			}
+			seqlen = seqlen-(i-1);
+			annot.adjust3UTR(seqlen);
+		}
+	//	if()
+	
 		coRefPositions.end = endPos;
 		coRefPositions.start = startPos;
 		breaks.add(coRefPositions.end);
