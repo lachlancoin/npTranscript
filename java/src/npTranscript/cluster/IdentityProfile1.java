@@ -80,8 +80,8 @@ public class IdentityProfile1 {
 	public boolean processRefPositions(SAMRecord sam, String id, boolean cluster_reads, int  readLength, Sequence refSeq, int src_index , Sequence readSeq,
 			int start_read, int end_read, char strand, SWGAlignment align
 			) throws IOException, NumberFormatException{
-		int startPos = sam.getAlignmentStart();
-		int endPos = sam.getAlignmentEnd();
+		int startPos = sam.getAlignmentStart()+1; // transfer to one based
+		int endPos = sam.getAlignmentEnd()+1;
 		boolean hasSplice = false;
 		Annotation annot = this.all_clusters.annot;
 
@@ -123,8 +123,8 @@ public class IdentityProfile1 {
 		if( align!=null ){
 			if(align.getIdentity()>0.8 * start_read){
 				//hasSplice= true;
-				int newStartPos = align.getStart2();
-				int newBreakPos = align.getStart2() + align.getSequence2().length -  align.getGaps2();
+				int newStartPos = align.getStart2() + 1; // transfer to 1-based
+				int newBreakPos = newStartPos + align.getSequence2().length -  align.getGaps2();
 				int gap = startPos - newBreakPos;
 				if(gap<0) throw new RuntimeException("should not happen");
 				if(gap>maxg) {
@@ -198,7 +198,7 @@ public class IdentityProfile1 {
 		if(Outputs.doMSA!=null && (seqlen - endPos)<100){
 			int st1 = position>0 ? position : startPos; // start after break
 			inner: for(int i=annot.start.size()-1; i>=0; i--){
-				String gene = annot.genes.get(i);
+			//	String gene = annot.genes.get(i);
 				if(st1 > annot.start.get(i)) break inner;
 				else if(endPos > annot.end.get(i)){
 					boolean include = false;
@@ -211,8 +211,8 @@ public class IdentityProfile1 {
 						}
 					}
 					if(include){
-						int start_ref = annot.start.get(i);
-						int end_ref = annot.end.get(i);
+						int start_ref = annot.start.get(i)-1; // need to put back in zero coords
+						int end_ref = annot.end.get(i)-1;// need to put back in zero coords
 						int start_read1 =  sam.getReadPositionAtReferencePosition(start_ref, true);
 						int end_read1 =  sam.getReadPositionAtReferencePosition(end_ref, true);
 						double diff = end_ref - start_ref;
