@@ -159,7 +159,7 @@ public class IdentityProfile1 {
 		}
 		
 		String type_nme = coRefPositions.getTypeNme(seqlen);
-		//String breakSt1 = coRefPositions.breaks.toString();
+		String breakSt = coRefPositions.breaks.toString();
 		//coRefPositions.breaks.adjustBreaks(annot);
 		// need to group by start position if we annotating by break pos,e.g. so 5'mapping reads map together
 		String roundStartP = annotByBreakPosition ? TranscriptUtils.round(startPos, CigarHash2.round)+"" : 
@@ -171,29 +171,41 @@ public class IdentityProfile1 {
 		clusterID[0] = chrom+".NA";
 		clusterID[1] = "NA";
 		}
+		
 	//	System.err.println(id);
 	//	String br_cluster_str = "";//sm==null ? "": coRefPositions.break_point_cluster+"\t";
 		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"+start_read+"\t"+end_read+"\t"
 		+type_nme+"\t"+chrom+"\t"
-		+startPos+"\t"+endPos+"\t"+prev_position+"\t"+position+"\t"+coRefPositions.getError(src_index)+"\t"+upstream+"\t"+downstream+"\t"+strand;
+		+startPos+"\t"+endPos+"\t"+prev_position+"\t"+position+"\t"+coRefPositions.getError(src_index)+"\t"+upstream+"\t"+downstream+"\t"+strand+"\t"+breakSt;
 		this.o.printRead(str);
 		if(Outputs.doMSA!=null && (seqlen - endPos)<100){
 			int st1 = position>0 ? position : startPos; // start after break
 			inner: for(int i=annot.start.size()-1; i>=0; i--){
 				if(st1 > annot.start.get(i)) break inner;
 				else if(endPos > annot.end.get(i)){
-					int start_ref = annot.start.get(i);
-					int end_ref = annot.end.get(i);
-					int start_read1 =  sam.getReadPositionAtReferencePosition(start_ref, true);
-					int end_read1 =  sam.getReadPositionAtReferencePosition(end_ref, true);
-					//int end_ref = sam.getReferencePositionAtReadPosition(end_read);
-					//System.err.println(start_read1+","+end_read1+","+readSeq.length());
-					if(end_read1<start_read1){
-						throw new RuntimeException("!!");
+					boolean include = false;
+					inner1: for(int k=0; k<breaks.size(); k+=2){
+						int st = breaks.get(k);
+						int end = breaks.get(k+1);
+						if(st-10 < annot.start.get(i) && end+10 > annot.end.get(i)){
+							include=true;
+							break inner1;
+						}
 					}
-					Sequence readSeq1 = readSeq.subSequence(start_read1, end_read1);
-					readSeq1.setDesc(start_ref+","+end_ref+";"+start_read1+","+end_read1+";"+(end_read1-start_read1));
-					this.o.writeToCluster("ORF_"+annot.genes.get(i),null, source_index, readSeq1, null, readSeq.getName());
+					if(include){
+						int start_ref = annot.start.get(i);
+						int end_ref = annot.end.get(i);
+						int start_read1 =  sam.getReadPositionAtReferencePosition(start_ref, true);
+						int end_read1 =  sam.getReadPositionAtReferencePosition(end_ref, true);
+						//int end_ref = sam.getReferencePositionAtReadPosition(end_read);
+						//System.err.println(start_read1+","+end_read1+","+readSeq.length());
+						if(end_read1<start_read1){
+							throw new RuntimeException("!!");
+						}
+						Sequence readSeq1 = readSeq.subSequence(start_read1, end_read1);
+						readSeq1.setDesc(start_ref+","+end_ref+";"+start_read1+","+end_read1+";"+(end_read1-start_read1));
+						this.o.writeToCluster("ORF_"+annot.genes.get(i),null, source_index, readSeq1, null, readSeq.getName());
+					}
 				}
 			}
 		//	int end1 = endPos;

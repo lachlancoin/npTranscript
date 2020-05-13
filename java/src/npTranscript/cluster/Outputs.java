@@ -164,7 +164,7 @@ public class Outputs{
 			 readClusters = new PrintWriter(
 					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(reads_file))));
 			 readClusters.println("readID\tclusterId\tsubID\tsource\tlength\tstart_read\tend_read\t"
-			 		+ "type_nme\tchrom\tstartPos\tendPos\tbreakStart\tbreakEnd\terrorRatio\tupstream\tdownstream\tstrand");
+			 		+ "type_nme\tchrom\tstartPos\tendPos\tbreakStart\tbreakEnd\terrorRatio\tupstream\tdownstream\tstrand\tbreaks");
 		
 			 transcripts_file = new File(resDir,genome_index+ ".transcripts.txt.gz");
 			//	newReadCluster(genome_index);
