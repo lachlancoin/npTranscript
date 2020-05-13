@@ -181,6 +181,7 @@ public class IdentityProfile1 {
 		if(Outputs.doMSA!=null && (seqlen - endPos)<100){
 			int st1 = position>0 ? position : startPos; // start after break
 			inner: for(int i=annot.start.size()-1; i>=0; i--){
+				String gene = annot.genes.get(i);
 				if(st1 > annot.start.get(i)) break inner;
 				else if(endPos > annot.end.get(i)){
 					boolean include = false;
