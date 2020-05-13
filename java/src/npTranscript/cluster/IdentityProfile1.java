@@ -197,14 +197,18 @@ public class IdentityProfile1 {
 						int end_ref = annot.end.get(i);
 						int start_read1 =  sam.getReadPositionAtReferencePosition(start_ref, true);
 						int end_read1 =  sam.getReadPositionAtReferencePosition(end_ref, true);
-						//int end_ref = sam.getReferencePositionAtReadPosition(end_read);
-						//System.err.println(start_read1+","+end_read1+","+readSeq.length());
-						if(end_read1<start_read1){
-							throw new RuntimeException("!!");
+						double diff = end_ref - start_ref;
+						double diff1 = end_read1 - start_read1;
+						if(diff1>0 && diff1> 0.8 *diff){
+							//int end_ref = sam.getReferencePositionAtReadPosition(end_read);
+							//System.err.println(start_read1+","+end_read1+","+readSeq.length());
+							//if(end_read1<start_read1){
+							//	throw new RuntimeException("!!");
+							//}
+							Sequence readSeq1 = readSeq.subSequence(start_read1, end_read1);
+							readSeq1.setDesc(start_ref+","+end_ref+";"+start_read1+","+end_read1+";"+(end_read1-start_read1));
+							this.o.writeToCluster("ORF_"+annot.genes.get(i),null, source_index, readSeq1, null, readSeq.getName());
 						}
-						Sequence readSeq1 = readSeq.subSequence(start_read1, end_read1);
-						readSeq1.setDesc(start_ref+","+end_ref+";"+start_read1+","+end_read1+";"+(end_read1-start_read1));
-						this.o.writeToCluster("ORF_"+annot.genes.get(i),null, source_index, readSeq1, null, readSeq.getName());
 					}
 				}
 			}
