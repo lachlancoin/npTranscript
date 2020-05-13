@@ -194,7 +194,7 @@ public class TranscriptUtils {
 			boolean splice = profile.processRefPositions(sam, id, 
 					cluster_reads, readSeq.length(), refSeq.length(), source_index, readSeq,st_r, end_r, strand, align_5prime);
 			//String ID = profile.clusterID
-			if(!splice){
+			if(!splice && Outputs.writeUnSplicedFastq){
 				
 				String start_flank1 = refSeq.subSequence(Math.max(0, sam.getAlignmentStart()-10),sam.getAlignmentStart()).toString();
 				String start_flank2 = refSeq.subSequence(sam.getAlignmentStart(),Math.min(sam.getAlignmentStart()+10, refSeq.length())).toString();

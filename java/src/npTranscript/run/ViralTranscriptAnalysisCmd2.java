@@ -209,6 +209,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 	//	addBoolean("coexpression", false, "whether to calc coexperssion matrices (large memory for small bin size)");
 		addBoolean("overwrite", false, "whether to overwrite existing results files");
 		addBoolean("keepAlignment", false, "whether to keep alignment for MSA");
+		addBoolean("writeUnsplicedFastq", false, "whether to extract the unspliced fastq for further analysis");
 		addBoolean("coronavirus", true, "whether to run in coronavirus mode (necessary to do breakpoint analysis, but takes more memory)");
 		addStdHelp();
 	}
@@ -272,7 +273,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 	//	String msa = cmdLine.getStringVal("aligner");
 		//if(msa==null) throw new RuntimeException("!!");
 	//	ErrorCorrection.msa = msa;
-		
+		Outputs.writeUnSplicedFastq = cmdLine.getBooleanVal("writeUnsplicedFastq");
 		if(coronavirus){
 			System.err.println("running in coronavirus mode");
 			calcBreaks  = true; 
@@ -283,11 +284,11 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			TranscriptUtils.extra_threshold1 =50;
 			annotByBreakPosition = true;
 			CigarHash2.subclusterBasedOnStEnd = true;
-			Outputs.writeUnSplicedFastq = true;
+		
 		}else{
 			TranscriptUtils.coronavirus = false;
 			TranscriptUtils.extra_threshold1 = 1000000;
-			Outputs.writeUnSplicedFastq = false;
+			//Outputs.writeUnSplicedFastq = false;
 			TranscriptUtils.checkAlign = false;
 			System.err.println("running in host mode");
 			CigarHash2.subclusterBasedOnStEnd = false;

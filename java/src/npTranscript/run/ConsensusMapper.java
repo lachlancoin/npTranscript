@@ -17,6 +17,7 @@ import japsa.seq.SequenceOutputStream;
 import japsa.seq.SequenceReader;
 import japsa.util.CommandLine;
 import japsa.util.deploy.Deployable;
+import npTranscript.cluster.CigarHash2;
 
 @Deployable(scriptName = "npConsensus.run", scriptDesc = "Analysis of consensus")
 public class ConsensusMapper extends CommandLine {
@@ -117,6 +118,11 @@ public class ConsensusMapper extends CommandLine {
 		return new String(seq1_new);
 	}
 	
+	static List<Integer> readBreaks(String[]br){
+		Integer[] breaks = new Integer[br.length];
+		for(int k=0; k<br.length; k++) breaks[k] = Integer.parseInt(br[k]);
+		return Arrays.asList(breaks);
+	}
 	
 	private static char lower(char c) {
 		return (new String(new char[] {c})).toLowerCase().charAt(0);
@@ -130,17 +136,17 @@ public class ConsensusMapper extends CommandLine {
 		int genome_index = Integer.parseInt(fasta.split("\\.")[0]);
 		Sequence refSeq = genomes.get(genome_index);
 		ArrayList<Sequence> reads = SequenceReader.readAll(fasta, Alphabet.DNA());
-		SWGAlignment align; 
 		
 		File fasta_in = new File(fasta);
-		File fasta_out = new File(fasta_in.getParentFile(), fasta+".ref_aligned.fa");
+		String fastanme = fasta_in.getName().replaceAll(".fasta", "").replaceAll(".fa", ".fa");
+		File fasta_out = new File(fasta_in.getParentFile(), fastanme+".ref_aligned.fa");
 		OutputStreamWriter os1 = new OutputStreamWriter(new FileOutputStream(fasta_out));
 		
-		File fasta_out1 = new File(fasta_in.getParentFile(), fasta+".ref.fa");
+		File fasta_out1 = new File(fasta_in.getParentFile(), fastanme+".ref.fa");
 		OutputStreamWriter os2 = new OutputStreamWriter(new FileOutputStream(fasta_out1));
 		
 		
-		File fasta_out2 = new File(fasta_in.getParentFile(), fasta+".unmapped_insertion.fa");
+		File fasta_out2 = new File(fasta_in.getParentFile(),fastanme+".unmapped_insertion.fa");
 		OutputStreamWriter os3 = new OutputStreamWriter(new FileOutputStream(fasta_out2));
 	
 		//SequenceOutputStream os =new SequenceOutputStream(os1);
@@ -149,87 +155,112 @@ public class ConsensusMapper extends CommandLine {
 			Sequence readSeq = reads.get(i);
 			String nme = readSeq.getName();
 			String[] desc = readSeq.getDesc().split(";"); //ID0.0;MT007544.1;1;29893;5_3;22;27904;2;leader;ORF8;-1;2262
-			int start = Integer.parseInt(desc[header.indexOf("start")]); 
-			int end = Integer.parseInt(desc[header.indexOf("end")]);
-			int startBr = Integer.parseInt(desc[header.indexOf("startBreak")]);
-			int endBr = Integer.parseInt(desc[header.indexOf("endBreak")]);
-			String leftGene = 			desc[header.indexOf("leftGene")];
-			String rightGene = 			desc[header.indexOf("rightGene")];
-
+			List<Integer> breaks = ConsensusMapper.readBreaks(desc[0].split(","));
+			
+	//		int startBr = Integer.parseInt(desc[0].split(",")[0]); 
+	//		int endBr = Integer.parseInt(desc[0].split(",")[1]); 
+			//int startBr = Integer.parseInt(desc[header.indexOf("startBreak")]);
+			//int endBr = Integer.parseInt(desc[header.indexOf("endBreak")]);
+			//String leftGene = 			desc[header.indexOf("leftGene")];
+			//String rightGene = 			desc[header.indexOf("rightGene")];
 			
 			
-			int right_offset = endBr - offset;
 			
-			SWGAlignment right_align = SWGAlignment.align(readSeq, refSeq.subSequence(right_offset, refSeq.length()));
-			int right_start1 = right_align.getStart1();
-			int right_end1 = right_start1 + right_align.getSequence1().length - right_align.getGaps1();
-			double identR = (double) right_align.getIdentity()/(double) right_align.getLength();
+			int[] start1 = new int[(int) Math.floor((double)breaks.size()/2.0)];
+			int[] end1= new int[start1.length];
+			int[] start = new int[start1.length];
+			int[] end = new int[ end1.length];
+			//double[] ident = new double[start1.length];
+			List<Indel> [] gaps = new List[start1.length];
+			String[] sequ = new String[start1.length];
+			String[] remaining = new String[start1.length];
+			String[] sequ_refonly = new String[start1.length];
+			SWGAlignment[] align = new SWGAlignment[start1.length];
+			List<Indel> allgaps = new ArrayList<Indel>();
+			Integer[] breaks_reads = new Integer[breaks.size()];
+			Integer[] breaks_ref = new Integer[breaks.size()];
+			double ident = 0;
+			double totlen = 0;
+			for(int k1=start1.length-1; k1>=0; k1--){
+				Sequence readSeq1 =k1==start1.length-1 ? readSeq: readSeq.subSequence(0, start1[k1+1]-1);
+				int endBr = Math.min( breaks.get(2*k1+1) + offset, refSeq.length());
+				int stBr = Math.max(0,breaks.get(2*k1) - offset);
+				int right_offset = endBr;
+				align[k1] = SWGAlignment.align(readSeq1, refSeq.subSequence(stBr, endBr));
+				start1[k1] = align[k1].getStart1();
+				start[k1] = align[k1].getStart2();
+				end1[k1] = start1[k1] + align[k1].getSequence1().length - align[k1].getGaps1();
+				end[k1] = start[k1] + align[k1].getSequence2().length - align[k1].getGaps2();
+				
+				gaps[k1] = new ArrayList<Indel>();
+				sequ[k1] = removeGapsInRef(align[k1].getSequence1(), align[k1].getSequence2(),gaps[k1], start[k1]);
+				allgaps.addAll(gaps[k1]);
+				sequ_refonly[k1]= (new String(align[k1].getSequence2())).replaceAll("-", "");
+				if(sequ[k1].length()!=sequ_refonly[k1].length()) throw new RuntimeException("this should not happen");
+				breaks_ref[2*k1] = start[k1]+stBr;
+				breaks_ref[2*k1+1] =end[k1]+stBr;
+				breaks_reads[2*k1] = start1[k1];
+				breaks_reads[2*k1+1] = end1[k1];
+				ident+= align[k1].getIdentity();
+				totlen +=sequ_refonly[k1].length();
+				if(k1<start1.length-1){
+					if(start1[k1+1] <= end1[k1]) {
+						throw new RuntimeException("problem");
+					}else{
+						if(end1[k1]+1<start1[k1+1]){
+							remaining[k1]=new String(readSeq.subSequence(end1[k1], start1[k1+1]).charSequence());
+						}
+					}
+				}else{
+				/*	if(end1[k1]+1<readSeq.length()){
+						remaining[k1]=new String(readSeq.subSequence(end1[k1], readSeq.length()).charSequence());
+					}*/
+				}
 			
-			Sequence readSeqLeft=readSeq.subSequence(0, right_start1-1);
-			SWGAlignment left_align = SWGAlignment.align(readSeqLeft, refSeq.subSequence(0, startBr+offset));
-		
-			double identL = (double) left_align.getIdentity()/(double) left_align.getLength();
-			int left_start1 = left_align.getStart1();
-			int left_end1 = left_start1 + left_align.getSequence1().length - left_align.getGaps1();
-			
-			if(right_start1 <= left_end1) {
-				throw new RuntimeException("problem");
 			}
-			
-			
-			
-			
-			//System.err.println(left_start1+","+left_end1+","+right_start1 +","+right_end1);
-			
-			
-			
-			int left_start = left_align.getStart2();
-			int left_end = left_start + left_align.getSequence2().length - left_align.getGaps2();
-			//double identR = (double) right_align.getIdentity()/(double) right_align.getLength();
-			int right_start = right_align.getStart2() + right_offset;
-			int right_end = right_start + right_align.getSequence2().length - right_align.getGaps2();
-			List<Indel> gaps1 = new ArrayList<Indel>(); //insertions relative to reference
-			List<Indel> gaps2 = new ArrayList<Indel>();
-			String sequ1 = removeGapsInRef(left_align.getSequence1(), left_align.getSequence2(),gaps1, left_start);
-			String sequ2 =removeGapsInRef(right_align.getSequence1(), right_align.getSequence2(), gaps2, right_start);
-			gaps1.addAll(gaps2);
-			String sequ1_refonly = (new String(left_align.getSequence2())).replaceAll("-", "");
-			String sequ2_refonly = (new String(right_align.getSequence2())).replaceAll("-", "");
-		if(sequ2.length()!=sequ2_refonly.length()) throw new RuntimeException("this should not happen");
-		  writeFasta(os1, sequ1,sequ2, readSeq.getName(),left_start+","+left_end+","+right_start+","+right_end+" "
-		+left_start1+","+left_end1+","+right_start1+","+right_end1
-				  +" "+readSeq.getDesc()+" "+gaps1.toString().replaceAll("\\s+", "")+"\n");
-		  writeFasta(os2, sequ1_refonly,sequ2_refonly, readSeq.getName(),left_start+","+left_end+","+right_start+","+right_end+" "
-					+left_start1+","+left_end1+","+right_start1+","+right_end1
-							  +" "+readSeq.getDesc());
-		  
-		  if(right_start1 > left_end1+1){
+			String identity =String.format("%5.3g", ident/totlen);
+		  writeFasta(os1, sequ, readSeq.getName(),getString(breaks_ref)+";"+getString(breaks_reads)+";"+identity
+				 +" "+allgaps.toString().replaceAll("\\s+", ""));
+		  writeFasta(os2, sequ_refonly,readSeq.getName(),getString(breaks_ref)+";"+getString(breaks_reads)+";"+identity);
+		  writeFasta(os3, remaining,readSeq.getName(),getString(breaks_ref)+";"+getString(breaks_reads));
+		/*  if(right_start1 > left_end1+1){
 				// remaining = null;
 				 Sequence remaining=readSeqLeft.subSequence(left_end1, readSeqLeft.length());
 				  writeFasta(os3, new String(remaining.charSequence()),null,  readSeq.getName(),left_start+","+left_end+","+right_start+","+right_end+" "
 							+left_start1+","+left_end1+","+right_start1+","+right_end1
 									  +" "+readSeq.getDesc());
 				//System.err.println("unmapped insertion: "+left_start1+","+left_end1+","+right_start1+","+right_end1+""+remaining);
-			}
+			}*/
 		}
 		os1.close();
 		os2.close();
 		os3.close();
 	}
-	private static void writeFasta(OutputStreamWriter os1, String sequ1,String sequ2,  String name, String desc) throws IOException{
+	private static void writeFasta(OutputStreamWriter os1, String[] sequ1,  String name, String desc) throws IOException{
+		boolean allnull = true;
+		for(int i=0; i<sequ1.length; i++){
+			if(sequ1[i]!=null) allnull=false;
+		}
+		if(allnull) return;
 		os1.write(">"+name+" "+desc+"\n");
 		int step = 100;
-		for(int j=0; j<sequ1.length(); j+=step){
-			String substr = sequ1.substring(j, Math.min(sequ1.length(), j+step));
-			os1.write(substr);
-			os1.write("\n");
+		for(int k=0; k<sequ1.length; k++){
+			if(sequ1[k]!=null){
+			for(int j=0; j<sequ1[k].length(); j+=step){
+				String substr = sequ1[k].substring(j, Math.min(sequ1[k].length(), j+step));
+				os1.write(substr);
+				os1.write("\n");
+			}
+			}
 		}
-		if(sequ2!=null){
-		for(int j=0; j<sequ2.length(); j+=step){
-			os1.write(sequ2.substring(j, Math.min(sequ2.length(), j+step)));
-			os1.write("\n");
+	}
+	public static String getString(Integer[] l){
+		StringBuffer sb = new StringBuffer();
+		for(int i=0; i<l.length; i++){
+			if(i>0) sb.append(",");
+			sb.append(l[i]);
 		}
-		}
+		return sb.toString();
 	}
 	
 }

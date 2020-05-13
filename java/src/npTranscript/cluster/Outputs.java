@@ -65,7 +65,7 @@ public class Outputs{
 	public static boolean gzipFasta = false;
 	public static boolean keepAlignment = true;
 	public static boolean keepinputFasta = true;
-	public static boolean writeUnSplicedFastq = true;
+	public static boolean writeUnSplicedFastq = false;
 	
 		public File transcripts_file;
 		public File reads_file; 
@@ -246,7 +246,8 @@ public class Outputs{
 		public void writeToCluster(String ID, String subID,  int i, Sequence seq, String str, String name) throws IOException{
 			CompressDir cluster = this.getCluster(i);
 			seq.setName(name);
-			String entryname =  ID+"."+subID;
+			String entryname =  ID;
+			if(subID!=null) entryname = entryname+"."+subID;
 			if(cluster!=null){
 				SequenceOutputStream out   = cluster.getSeqStream(entryname+".fa", true);
 				seq.writeFasta(out);

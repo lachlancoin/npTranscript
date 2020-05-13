@@ -1,6 +1,7 @@
 package npTranscript.cluster;
 
 import java.util.ArrayList;
+import java.util.List;
 /**
  * @author Lachlan Coin
  *
@@ -39,14 +40,17 @@ public class CigarHash2 extends ArrayList<Integer> {
 	 */
 	@Override
 	public String toString(){
+		return getString(this);
+	}
+	
+	public static String getString(List<Integer> l){
 		StringBuffer sb = new StringBuffer();
-		for(int i=0; i<this.size(); i++){
-			if(i>0) sb.append(";");
-			sb.append(this.get(i));
+		for(int i=0; i<l.size(); i++){
+			if(i>0) sb.append(",");
+			sb.append(l.get(i));
 		}
 		return sb.toString();
 	}
-	
 	
 	
 	private boolean addR(Integer i){ 

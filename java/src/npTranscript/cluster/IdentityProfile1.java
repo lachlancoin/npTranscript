@@ -2,6 +2,7 @@ package npTranscript.cluster;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -180,13 +181,19 @@ public class IdentityProfile1 {
 			int st1 = position>0 ? position : startPos; // start after break
 			inner: for(int i=annot.start.size()-1; i>=0; i--){
 				if(st1 > annot.start.get(i)) break inner;
-				else{
+				else if(endPos > annot.end.get(i)){
 					int start_ref = annot.start.get(i);
-					int start_read1 =  sam.getReadPositionAtReferencePosition(start_ref);
-					int end_ref = sam.getReferencePositionAtReadPosition(end_read);
-					Sequence readSeq1 = readSeq.subSequence(start_read1, end_read);
-					readSeq1.setDesc(start_read1+","+end_read+","+(end_read-start_read1)+" "+start_ref+","+end_ref+","+(end_ref-start_ref));
-					this.o.writeToCluster(annot.genes.get(i),"", source_index, readSeq1, null, readSeq.getName());
+					int end_ref = annot.end.get(i);
+					int start_read1 =  sam.getReadPositionAtReferencePosition(start_ref, true);
+					int end_read1 =  sam.getReadPositionAtReferencePosition(end_ref, true);
+					//int end_ref = sam.getReferencePositionAtReadPosition(end_read);
+					//System.err.println(start_read1+","+end_read1+","+readSeq.length());
+					if(end_read1<start_read1){
+						throw new RuntimeException("!!");
+					}
+					Sequence readSeq1 = readSeq.subSequence(start_read1, end_read1);
+					readSeq1.setDesc(start_ref+","+end_ref+";"+start_read1+","+end_read1+";"+(end_read1-start_read1));
+					this.o.writeToCluster("ORF_"+annot.genes.get(i),null, source_index, readSeq1, null, readSeq.getName());
 				}
 			}
 		//	int end1 = endPos;
@@ -194,10 +201,14 @@ public class IdentityProfile1 {
 		
 		if(Outputs.doMSA!=null && Outputs.doMSA.contains(type_nme)) {
 			Sequence readSeq1 = readSeq.subSequence(start_read, end_read);
-			int end_ref = sam.getReferencePositionAtReadPosition(end_read);
-			int start_ref = sam.getReferencePositionAtReadPosition(start_read);
+		//	int end_ref = sam.getReferencePositionAtReadPosition(end_read);
+		//	int start_ref = sam.getReferencePositionAtReadPosition(start_read);
 			//readSeq1.setDesc("st="+start_read+";end="+end_read+";len="+(end_read-start_read));
-			readSeq1.setDesc(start_read+","+end_read+","+(end_read-start_read)+" "+start_ref+","+end_ref+","+(end_ref-start_ref));
+			List<Integer>read_breaks = new ArrayList<Integer>();
+			for(int i=0; i<breaks.size(); i++){
+				read_breaks.add(sam.getReadPositionAtReferencePosition(breaks.get(i), true));
+			}
+			readSeq1.setDesc(breaks.toString()+";"+CigarHash2.getString(read_breaks)+";"+(end_read-start_read));
 			this.o.writeToCluster(clusterID[0],clusterID[1], source_index, readSeq1, str, readSeq.getName());
 		}
 		return hasSplice;
