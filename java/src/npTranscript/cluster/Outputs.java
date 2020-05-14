@@ -25,6 +25,7 @@ import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
 import npTranscript.cluster.CigarCluster.Count;
 import npTranscript.run.CompressDir;
+import npTranscript.run.SequenceOutputStream1;
 
 public class Outputs{
 	static final FastqWriterFactory factory = new FastqWriterFactory();
@@ -85,6 +86,7 @@ public class Outputs{
 			//readClusters.close();
 			clusterW.close();
 			this.altT.close();
+		
 			//this.clusters.close();
 			for(int i=0; i<clusters.length; i++){
 				//if(so[i]!=null) this.so[i].close();
@@ -218,9 +220,10 @@ public class Outputs{
 		//	clusterW.writeStringArray("header", str.toArray(new String[0]));
 		}
 
-		public PrintWriter getBreakPointPw( String chrom, int i)  throws IOException{
+		public PrintWriter getBreakPointPw( String chrom, int i, boolean second)  throws IOException{
 			System.err.println("writing breakpoint files");
-				File outfile1_ = new File(resDir,chrom+".breakpoints."+type_nmes[i]+"."+i +".txt.gz");
+				File outfile1_ = second ? new File(resDir,chrom+".breakpoints2."+type_nmes[i]+"."+i +".txt.gz") : 
+						new File(resDir,chrom+".breakpoints."+type_nmes[i]+"."+i +".txt.gz");
 				PrintWriter pw = new PrintWriter(
 					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outfile1_))));
 			
@@ -249,15 +252,14 @@ public class Outputs{
 			String entryname =  ID;
 			if(subID!=null) entryname = entryname+"."+subID;
 			if(cluster!=null){
-				SequenceOutputStream out   = cluster.getSeqStream(entryname+".fa", true);
-				seq.writeFasta(out);
-				out.close();
+				SequenceOutputStream1 out   = cluster.getSeqStream(entryname+".fa", true);
+				out.write(seq);
 				cluster.closeWriter(out);
-				if(str!=null){
+			/*	if(str!=null){
 					OutputStreamWriter osw = cluster.getWriter(entryname, false, true);
 					osw.write(str);osw.write("\n");
 					cluster.closeWriter(osw);
-				}
+				}*/
 			}
 		}
 		

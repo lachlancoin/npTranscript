@@ -7,6 +7,9 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.zip.Adler32;
 import java.util.zip.CheckedOutputStream;
 import java.util.zip.ZipEntry;
@@ -35,7 +38,7 @@ public class CompressDir {
 	    CheckedOutputStream checksum;
 	    ZipOutputStream outS;
 	    OutputStreamWriter osw;
-	    SequenceOutputStream osw_s;
+	    SequenceOutputStream1 osw_s;
 	    
 	   public  File inDir;
 	    int len;
@@ -65,6 +68,13 @@ public class CompressDir {
 	    
 	    
 	    public void run() throws IOException{
+	    	if(this.currentStreams.size()>0){
+	    		for(Iterator<SequenceOutputStream1> it = currentStreams.values().iterator(); it.hasNext();){
+	    			SequenceOutputStream1 so = it.next();
+	    			so.printAll();
+	    			so.close();
+	    		}
+	    	}
 	    	try{
 	    	File[] f = inDir.listFiles();
 	    	for(int i=0; i<f.length; i++){
@@ -113,12 +123,13 @@ public class CompressDir {
 	    	}
 	    }
 	    
-	    public void closeWriter(SequenceOutputStream osw_s) throws IOException{
+	    public void closeWriter(SequenceOutputStream1 osw_s) throws IOException{
 	    	if(osw_s==this.osw_s){
 	    	   osw_s.flush();
 	           outS.closeEntry();
 	    	}else{
-	    		osw_s.close();
+	    		boolean closed = osw_s.close();
+	    		if(closed) this.currentStreams.remove(osw_s.entryname());
 	    	}
 	    }
 	    
@@ -130,18 +141,27 @@ public class CompressDir {
 	    		osw.close();
 	    	}
 	    }
-	    public SequenceOutputStream getSeqStream(String entry,  boolean append) throws IOException{
+	    
+	    Map<String, SequenceOutputStream1> currentStreams = new HashMap<String, SequenceOutputStream1>();
+	    
+	    public SequenceOutputStream1 getSeqStream(String entry,  boolean append) throws IOException{
 	    	boolean writeDirectToZip = false;
 	    	if(writeDirectToZip){
 	    	//	if(append) throw new
 		    	ZipEntry headings = new ZipEntry(entry);
 			    outS.putNextEntry(headings);
-			    return new SequenceOutputStream(outS);
+			    return new SequenceOutputStream1(outS);
+		    }else{
+		    	if(currentStreams.containsKey(entry)){
+		    		return currentStreams.get(entry);
 		    	}else{
 		    		File f = new File(inDir, entry);
 		    		if(append && ! f.exists()) append=false;
-		    		return new SequenceOutputStream((new FileOutputStream(f, append)));
+		    		SequenceOutputStream1 so1 =  new SequenceOutputStream1(f, append);
+		    		currentStreams.put(so1.entryname(), so1);
+		    		return so1;
 		    	}
+		    }
 	    }
 	    
 	    public OutputStreamWriter getWriter(String entry, boolean writeDirectToZip)throws IOException{

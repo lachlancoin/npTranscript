@@ -49,12 +49,18 @@ public class IdentityProfile1 {
 		this.breakpoints = new SparseRealMatrix[this.num_sources];
 		this.breakSt = new SparseVector[this.num_sources];
 		this.breakEnd = new SparseVector[this.num_sources];
+		this.breakpoints2 = new SparseRealMatrix[this.num_sources];
+		this.breakSt2 = new SparseVector[this.num_sources];
+		this.breakEnd2 = new SparseVector[this.num_sources];
 		if(calcBreakpoints){
 			System.err.println("calculating break point usage");
 			for(int i=0; i<breakpoints.length; i++){
 				this.breakSt[i] = new SparseVector();
 				this.breakEnd[i] = new SparseVector();
 				breakpoints[i] = new OpenMapRealMatrix(seqlen, seqlen);
+				this.breakSt2[i] = new SparseVector();
+				this.breakEnd2[i] = new SparseVector();
+				breakpoints2[i] = new OpenMapRealMatrix(seqlen, seqlen);
 			}
 		}
 		
@@ -109,13 +115,22 @@ public class IdentityProfile1 {
 		//int distToEnd = refLength - endPos;	
 		int maxg = 0;
 		int maxg_ind = -1;
+		int maxg2=0;
+		int maxg_ind2 =-1; 
 		for(int i=1; i<breaks.size()-1; i+=2){
 			int gap = breaks.get(i+1)-breaks.get(i);
 			if(gap>maxg){
+				maxg2 = maxg;
+				maxg_ind2 = maxg_ind;
 				maxg = gap;
 				maxg_ind = i;
+			}else if(gap>maxg2){
+				maxg2 = gap;
+				maxg_ind2 = i;
 			}
 		}
+		
+		
 		int prev_position = -1;
 		int position = -1;
 		String upstream = null;
@@ -141,6 +156,15 @@ public class IdentityProfile1 {
 			//this is to fix any missed upstream alignments
 			
 		}
+		if(maxg2>TranscriptUtils.break_thresh){
+			prev_position = breaks.get(maxg_ind2);
+			position = breaks.get(maxg_ind2+1);
+			if(breakpoints2[source_index]!=null){
+				this.breakpoints2[this.source_index].addToEntry(prev_position, position, 1);
+				this.breakSt2[this.source_index].addToEntry(prev_position, 1);
+				this.breakEnd2[this.source_index].addToEntry(position,  1);
+			}
+		}
 		if(maxg>TranscriptUtils.break_thresh){
 			hasSplice = true;
 			prev_position = breaks.get(maxg_ind);
@@ -153,10 +177,7 @@ public class IdentityProfile1 {
 				if(upstream==null) upstream =  this.chrom_index+"."+TranscriptUtils.round(prev_position, CigarHash2.round);
 				if(downstream==null) downstream = this.chrom_index+"."+ TranscriptUtils.round(position, CigarHash2.round);
 			}
-			/*if(this.sm!=null){
-				 coRefPositions.break_point_cluster = ((IntegerField)this.sm.getEntry(prev_position, position)).getVal();
-				
-			}*/
+			
 			coRefPositions.breakSt = prev_position;
 			coRefPositions.breakEnd = position;
 			if(breakpoints[source_index]!=null){
@@ -165,6 +186,7 @@ public class IdentityProfile1 {
 				this.breakEnd[this.source_index].addToEntry(position,  1);
 			}
 		}
+		
 		if(!annotByBreakPosition ){
 			if(annot!=null){
 				downstream = annot.nextDownstream(endPos);
@@ -256,8 +278,8 @@ public class IdentityProfile1 {
 	
 	private final CigarCluster coRefPositions;
 	private CigarClusters all_clusters;
-	final public SparseRealMatrix[] breakpoints;;
-	final public SparseVector[] breakSt, breakEnd;
+	final public SparseRealMatrix[] breakpoints, breakpoints2;;
+	final public SparseVector[] breakSt, breakEnd , breakSt2, breakEnd2;
 	
 	public int refBase, readBase;
 
@@ -273,9 +295,16 @@ public class IdentityProfile1 {
 	public void printBreakPoints()  throws IOException {
 		for(int i=0; i<this.breakpoints.length; i++){
 			if(breakpoints[i]!=null){
-				PrintWriter pw = o.getBreakPointPw(chrom_index+"",i);
+				{
+				PrintWriter pw = o.getBreakPointPw(chrom_index+"",i, false);
 				printMatrix(this.breakpoints[i],this.breakSt[i], this.breakEnd[i],  pw);
 				pw.close();
+				}
+				{
+				PrintWriter pw = o.getBreakPointPw(chrom_index+"",i, true);
+				printMatrix(this.breakpoints2[i],this.breakSt2[i], this.breakEnd2[i],  pw);
+				pw.close();
+				}
 			}
 		}
 	}

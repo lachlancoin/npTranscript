@@ -196,7 +196,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		addString("pattern", null, "Pattern of read name, used for filtering");
 		addInt("qual", 0, "Minimum quality required");
 		addInt("bin", 1, "Bin size for numerical hashing");
-		addInt("breakThresh", 10, "Thresh for break points to match clusters");
+		addInt("breakThresh", 1000, "Thresh for break points to match clusters.  If bigger than genome size then no break points");
 		addInt("coverageDepthThresh", 100, "Threshhold for writing base level depth information to h5 file");
 		addInt("isoformDepthThresh", 10, "Threshhold for printing out all isoforms");
 		addDouble("msaDepthThresh", 10, "Threshhold for running MSA per subcluster");
@@ -267,7 +267,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		Outputs.keepAlignment = cmdLine.getBooleanVal("keepAlignment");
 		Outputs.keepinputFasta = Outputs.keepAlignment ;
 		//Outputs.MSA_at_cluster = false;
-		boolean calcBreaks = false;// whether to calculate data for the break point heatmap, true for SARS_COV2
+		boolean calcBreaks = cmdLine.getBooleanVal("calcBreaks");// whether to calculate data for the break point heatmap, true for SARS_COV2
 		boolean filterBy5_3 = false;// should be true for SARS_COV2
 		boolean annotByBreakPosition = false;  // should be true for SARS_COV2
 	//	String msa = cmdLine.getStringVal("aligner");
@@ -283,7 +283,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			TranscriptUtils.coronavirus = true;
 			TranscriptUtils.extra_threshold1 =50;
 			annotByBreakPosition = true;
-			CigarHash2.subclusterBasedOnStEnd = true;
+			CigarHash2.subclusterBasedOnStEnd = false;
 		
 		}else{
 			TranscriptUtils.coronavirus = false;
@@ -543,7 +543,8 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 								annot = new Annotation(new File(annot_file), currentIndex+"", seqlen);
 							}
 							outp = new Outputs(resDir,  in_nmes, overwrite, currentIndex, true, true, seqlen); 
-							profile = new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh, annot, calcBreaks, chr.getName(), currentIndex);
+							boolean calcBreaks1 = calcBreaks && break_thresh < seqlen;
+							profile = new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh, annot, calcBreaks1, chr.getName(), currentIndex);
 					}
 					try{
 						TranscriptUtils.identity1(chr, readSeq, sam, profile, source_index, cluster_reads, chr.length());
