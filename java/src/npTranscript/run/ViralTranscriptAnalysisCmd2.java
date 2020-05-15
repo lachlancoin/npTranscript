@@ -267,7 +267,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		Outputs.keepAlignment = cmdLine.getBooleanVal("keepAlignment");
 		Outputs.keepinputFasta = Outputs.keepAlignment ;
 		//Outputs.MSA_at_cluster = false;
-		boolean calcBreaks = cmdLine.getBooleanVal("calcBreaks");// whether to calculate data for the break point heatmap, true for SARS_COV2
+		boolean calcBreaks=true;// = cmdLine.getBooleanVal("calcBreaks");// whether to calculate data for the break point heatmap, true for SARS_COV2
 		boolean filterBy5_3 = false;// should be true for SARS_COV2
 		boolean annotByBreakPosition = false;  // should be true for SARS_COV2
 	//	String msa = cmdLine.getStringVal("aligner");
@@ -292,6 +292,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			TranscriptUtils.checkAlign = false;
 			System.err.println("running in host mode");
 			CigarHash2.subclusterBasedOnStEnd = false;
+			calcBreaks = false;
 		}
 			errorAnalysis(bamFile, reference, annotFile,readList,annotationType, 
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  sorted , 
@@ -430,7 +431,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			Sequence chr = genomes.get(currentIndex);
 			int primelen = 1000;
 		//	Sequence chr3prime = chr.subSequence(chr.length()-primelen, chr.length());
-		//	Sequence chr5prime = chr.subSequence(0	, primelen);
+			Sequence chr5prime = TranscriptUtils.coronavirus ? chr.subSequence(0	, primelen) : null;
 
 			Set<String> doneChr = new HashSet<String>();
 			
@@ -501,6 +502,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 					currentIndex = refIndex;
 					String prev_chrom = chr==null ? "null": chr.getName();
 					chr = genomes.get(currentIndex);
+					chr5prime = TranscriptUtils.coronavirus ? chr.subSequence(0	, primelen) : null;
 				//	 chr3prime = chr.subSequence(chr.length()-primelen, chr.length());
 				//	chr5prime = chr.subSequence(0	, primelen);
 				//	outp.updateChromIndex(currentIndex);
@@ -547,7 +549,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 							profile = new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh, annot, calcBreaks1, chr.getName(), currentIndex);
 					}
 					try{
-						TranscriptUtils.identity1(chr, readSeq, sam, profile, source_index, cluster_reads, chr.length());
+						TranscriptUtils.identity1(chr, chr5prime, readSeq, sam, profile, source_index, cluster_reads, chr.length());
 					}catch(NumberFormatException exc){
 						System.err.println(readSeq.getName());
 						exc.printStackTrace();

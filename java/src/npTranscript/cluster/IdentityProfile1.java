@@ -84,7 +84,7 @@ public class IdentityProfile1 {
 	
 	public String[] clusterID = new String[2];
 	public boolean processRefPositions(SAMRecord sam, String id, boolean cluster_reads, int  readLength, Sequence refSeq, int src_index , Sequence readSeq,
-			int start_read, int end_read, char strand, SWGAlignment align
+			int start_read, int end_read, char strand, SWGAlignment align5prime
 			) throws IOException, NumberFormatException{
 		int startPos = sam.getAlignmentStart()+1; // transfer to one based
 		int endPos = sam.getAlignmentEnd()+1;
@@ -133,36 +133,52 @@ public class IdentityProfile1 {
 		
 		int prev_position = -1;
 		int position = -1;
+		int prev_position2 = -1;
+		int position2 = -1;
+
 		String upstream = null;
 		String downstream = null;
-		if( align!=null ){
-			if(align.getIdentity()>0.8 * start_read){
+		String upstream2 = null;
+		String downstream2 = null;
+		if( align5prime!=null ){
+			if(align5prime.getIdentity()>0.8 * Math.max(start_read,align5prime.getLength())){
 				//hasSplice= true;
-				int newStartPos = align.getStart2() + 1; // transfer to 1-based
-				int newBreakPos = newStartPos + align.getSequence2().length -  align.getGaps2();
-				int gap = startPos - newBreakPos;
-				if(gap<0) throw new RuntimeException("should not happen");
-				if(gap>maxg) {
-				//	System.err.println("identified 5'leader in read "+id);
-					maxg = gap;
-					maxg_ind =1;
+				int newStartPos = align5prime.getStart2() + 1; // transfer to 1-based
+				int newBreakPos = newStartPos + align5prime.getSequence2().length -  align5prime.getGaps2();
+				if(newBreakPos < startPos){
+					int gap = startPos - newBreakPos;
+					if(gap<0) throw new RuntimeException("should not happen");
+					if(gap>maxg) {
+						maxg2 = maxg;
+						maxg_ind2 = maxg_ind;
+					//	System.err.println("identified 5'leader in read "+id);
+						maxg = gap;
+						maxg_ind =1;
+					}
+					startPos = newStartPos;
+					coRefPositions.start = newStartPos;
+					coRefPositions.breaks.add(0, newBreakPos);
+					coRefPositions.breaks.add(0, newStartPos);
 				}
-				startPos = newStartPos;
-				coRefPositions.start = newStartPos;
-				coRefPositions.breaks.add(0, newBreakPos);
-				coRefPositions.breaks.add(0, newStartPos);
-				
 			}
 			//this is to fix any missed upstream alignments
 			
 		}
 		if(maxg2>TranscriptUtils.break_thresh){
-			prev_position = breaks.get(maxg_ind2);
-			position = breaks.get(maxg_ind2+1);
+			prev_position2 = breaks.get(maxg_ind2);
+			position2= breaks.get(maxg_ind2+1);
+			if(annotByBreakPosition ){
+				if(annot!=null){
+					downstream2 = annot.nextDownstream(position2);
+					upstream2 = annot.nextUpstream(prev_position2);
+				}
+				if(upstream2==null) upstream2 =  this.chrom_index+"."+TranscriptUtils.round(prev_position2, CigarHash2.round);
+				if(downstream2==null) downstream2 = this.chrom_index+"."+ TranscriptUtils.round(position2, CigarHash2.round);
+			}
 			if(breakpoints2[source_index]!=null){
-				this.breakpoints2[this.source_index].addToEntry(prev_position, position, 1);
-				this.breakSt2[this.source_index].addToEntry(prev_position, 1);
-				this.breakEnd2[this.source_index].addToEntry(position,  1);
+				this.breakpoints2[this.source_index].addToEntry(prev_position2, position2, 1);
+				this.breakSt2[this.source_index].addToEntry(prev_position2, 1);
+				this.breakEnd2[this.source_index].addToEntry(position2,  1);
 			}
 		}
 		if(maxg>TranscriptUtils.break_thresh){
@@ -194,7 +210,8 @@ public class IdentityProfile1 {
 			}
 			if(upstream==null) upstream =  this.chrom_index+"."+TranscriptUtils.round(startPos, CigarHash2.round);
 			if(downstream==null) downstream =  this.chrom_index+"."+TranscriptUtils.round(endPos, CigarHash2.round);
-
+			if(upstream2==null) upstream2 =  ".";
+			if(downstream2==null) downstream2 =  ".";
 		}
 		
 		String type_nme = coRefPositions.getTypeNme(seqlen);
@@ -215,7 +232,7 @@ public class IdentityProfile1 {
 	//	String br_cluster_str = "";//sm==null ? "": coRefPositions.break_point_cluster+"\t";
 		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"+start_read+"\t"+end_read+"\t"
 		+type_nme+"\t"+chrom+"\t"
-		+startPos+"\t"+endPos+"\t"+prev_position+"\t"+position+"\t"+coRefPositions.getError(src_index)+"\t"+upstream+"\t"+downstream+"\t"+strand+"\t"+breakSt;
+		+startPos+"\t"+endPos+"\t"+prev_position+"\t"+position+"\t"+prev_position2+"\t"+position2+"\t"+coRefPositions.getError(src_index)+"\t"+upstream+"\t"+downstream+"\t"+upstream2+"\t"+downstream2+"\t"+strand+"\t"+breakSt;
 		this.o.printRead(str);
 		if(Outputs.doMSA!=null && (seqlen - endPos)<100){
 			int st1 = position>0 ? position : startPos; // start after break
