@@ -4,8 +4,8 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --mem=9000 # mb
-#SBATCH --time=100:00:00
+#SBATCH --mem=15000 # mb
+#SBATCH --time=200:00:00
 #SBATCH --output=corona1.stdout
 #SBATCH --error=corona1.stderr
 #SBATCH --cpus-per-task=8
@@ -29,13 +29,15 @@ fi
 
 reference="${npTranscript}/data/SARS-Cov2/wuhan_coronavirus_australia.fasta.gz"
 coord_file="${npTranscript}/data/SARS-Cov2/Coordinates.csv"
-alias abpoa='/sw/abpoa/v1.0.1/abpoa'
+#alias abpoa='/sw/abpoa/v1.0.1/abpoa'
 dat=$(date +%Y%m%d%H%M%S)
+echo $dat
 resdir="results_${dat}"
-opts="--bin=100 --breakThresh=1000 --coverageDepthThresh=0 --extra_threshold=200 --msaDepthThresh=50 --doMSA=5_3:5_no3"
+opts="--bin=100 --breakThresh=1000  --isoformDepthThresh=10000 --coverageDepthThresh=0 --extra_threshold=5000000 --msaDepthThresh=20 --doMSA=5_3"
 #opts="${opts} --maxReads 10000"
 bash ${npTranscript}/scripts/run.sh --bamFile=${bamfiles1}   --reference=${reference} --annotation ${coord_file} --resdir ${resdir} ${opts} ${opts1}
 
 cd ${resdir}
-bash ${npTranscript}/scripts/consensus.sh 0
-Rscript ~/github/npTranscript/R/npTranscript.R  ~/github/npTranscript/data/SARS-Cov2
+#bash ${npTranscript}/scripts/consensus.sh 0
+echo "now running R script"
+#Rscript ~/github/npTranscript/R/npTranscript.R  ~/github/npTranscript/data/SARS-Cov2
