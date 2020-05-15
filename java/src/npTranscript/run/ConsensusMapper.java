@@ -84,10 +84,11 @@ public class ConsensusMapper extends CommandLine {
 	}
 	
 	/** removes positions in first sequence which cause gaps in second sequence */
-	private static String removeGapsInRef(char[] seq1, char[]  seqRef,List<Indel> gaps, int startInRef) {
+	private static String removeGapsInRef(char[] seq1, char[]  seqRef,List<Indel> gaps, List<Indel> gaps2, int startInRef, int offset) {
 		if(seq1.length!=seqRef.length) throw new RuntimeException("!!");
 		gaps.clear();
 		int gap = getGaps(seqRef,seq1,p1, gaps);
+		int gap2 = getGaps(seq1,seqRef,p1, gaps2);
 		char[] seq1_new = new char[seq1.length - gap];
 		int st =0;
 		int target_st =0;
@@ -104,7 +105,7 @@ public class ConsensusMapper extends CommandLine {
 				target_st+=len;
 			}
 			st = end+ indel.len();
-			indel.start = indel.start-total_gap+startInRef;  // adjust indel so that start position now is in ref coords (i.e. remove total_gap
+			indel.start = indel.start-total_gap+startInRef+offset;  // adjust indel so that start position now is in ref coords (i.e. remove total_gap
 			total_gap+=indel.len();
 		}
 		if(st < seqRef.length){
@@ -172,11 +173,13 @@ public class ConsensusMapper extends CommandLine {
 			int[] end = new int[ end1.length];
 			//double[] ident = new double[start1.length];
 			List<Indel> [] gaps = new List[start1.length];
+			List<Indel> [] gaps2 = new List[start1.length];
 			String[] sequ = new String[start1.length];
 			String[] remaining = new String[start1.length];
 			String[] sequ_refonly = new String[start1.length];
 			SWGAlignment[] align = new SWGAlignment[start1.length];
 			List<Indel> allgaps = new ArrayList<Indel>();
+			List<Indel> allgaps2 = new ArrayList<Indel>();
 			Integer[] breaks_reads = new Integer[breaks.size()];
 			Integer[] breaks_ref = new Integer[breaks.size()];
 			double ident = 0;
@@ -185,16 +188,17 @@ public class ConsensusMapper extends CommandLine {
 				Sequence readSeq1 =k1==start1.length-1 ? readSeq: readSeq.subSequence(0, start1[k1+1]-1);
 				int endBr = Math.min( breaks.get(2*k1+1) + offset, refSeq.length());
 				int stBr = Math.max(0,breaks.get(2*k1) - offset);
-				int right_offset = endBr;
+			//	int right_offset = endBr;
 				align[k1] = SWGAlignment.align(readSeq1, refSeq.subSequence(stBr, endBr));
 				start1[k1] = align[k1].getStart1();
 				start[k1] = align[k1].getStart2();
 				end1[k1] = start1[k1] + align[k1].getSequence1().length - align[k1].getGaps1();
 				end[k1] = start[k1] + align[k1].getSequence2().length - align[k1].getGaps2();
 				
-				gaps[k1] = new ArrayList<Indel>();
-				sequ[k1] = removeGapsInRef(align[k1].getSequence1(), align[k1].getSequence2(),gaps[k1], start[k1]);
+				gaps[k1] = new ArrayList<Indel>();gaps2[k1] = new ArrayList<Indel>();
+				sequ[k1] = removeGapsInRef(align[k1].getSequence1(), align[k1].getSequence2(),gaps[k1],gaps2[k1], start[k1], stBr);
 				allgaps.addAll(gaps[k1]);
+				allgaps2.addAll(gaps2[k1]);
 				sequ_refonly[k1]= (new String(align[k1].getSequence2())).replaceAll("-", "");
 				if(sequ[k1].length()!=sequ_refonly[k1].length()) throw new RuntimeException("this should not happen");
 				breaks_ref[2*k1] = start[k1]+stBr;
@@ -220,7 +224,7 @@ public class ConsensusMapper extends CommandLine {
 			}
 			String identity =String.format("%5.3g", ident/totlen);
 		  writeFasta(os1, sequ, readSeq.getName(),getString(breaks_ref)+";"+getString(breaks_reads)+";"+identity
-				 +" "+allgaps.toString().replaceAll("\\s+", ""));
+				 +" "+allgaps.toString().replaceAll("\\s+", "")+" "+allgaps2.toString().replaceAll("\\s+", ""));
 		  writeFasta(os2, sequ_refonly,readSeq.getName(),getString(breaks_ref)+";"+getString(breaks_reads)+";"+identity);
 		  writeFasta(os3, remaining,readSeq.getName(),getString(breaks_ref)+";"+getString(breaks_reads));
 		/*  if(right_start1 > left_end1+1){
@@ -236,6 +240,8 @@ public class ConsensusMapper extends CommandLine {
 		os2.close();
 		os3.close();
 	}
+static boolean writeNumb = false;
+	
 	private static void writeFasta(OutputStreamWriter os1, String[] sequ1,  String name, String desc) throws IOException{
 		boolean allnull = true;
 		for(int i=0; i<sequ1.length; i++){
@@ -243,11 +249,12 @@ public class ConsensusMapper extends CommandLine {
 		}
 		if(allnull) return;
 		os1.write(">"+name+" "+desc+"\n");
-		int step = 100;
+		int step = 70;
 		for(int k=0; k<sequ1.length; k++){
 			if(sequ1[k]!=null){
 			for(int j=0; j<sequ1[k].length(); j+=step){
 				String substr = sequ1[k].substring(j, Math.min(sequ1[k].length(), j+step));
+				if(writeNumb) os1.write(j+" ");
 				os1.write(substr);
 				os1.write("\n");
 			}

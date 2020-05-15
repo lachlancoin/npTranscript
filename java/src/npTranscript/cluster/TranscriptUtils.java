@@ -80,7 +80,7 @@ public class TranscriptUtils {
 	 * @param sam
 	 * @return
 	 */
-	public static void identity1(Sequence refSeq,  Sequence readSeq, SAMRecord sam, IdentityProfile1 profile, 
+	public static void identity1(Sequence refSeq, Sequence fivePrimeRefSeq,  Sequence readSeq, SAMRecord sam, IdentityProfile1 profile, 
 			int source_index, boolean cluster_reads, int seqlen) throws NumberFormatException{
 		int readPos = 0;// start from 0
 		//Outputs output = profile.o;
@@ -186,9 +186,9 @@ public class TranscriptUtils {
 			char strand = sam.getReadNegativeStrandFlag() ? '-': '+';
 			SWGAlignment align_5prime = null;
 			
-			if(TranscriptUtils.coronavirus && st_r > extra_threshold1 && sam.getAlignmentStart()> 100 ){
+			if(TranscriptUtils.coronavirus && st_r > extra_threshold1 && st_r < 1000 && sam.getAlignmentStart()> 100 ){
 				//good candidate for a missed 5' alignment
-				 align_5prime = SWGAlignment.align(readSeq.subSequence(0, st_r), refSeq.subSequence(0, st_r+20));
+				 align_5prime = SWGAlignment.align(readSeq.subSequence(0, st_r), fivePrimeRefSeq);
 			}
 			//String flanking = start_flank1+"\t"+start_flank2+"\t"+end_flank1+"\t"+end_flank2;
 			boolean splice = profile.processRefPositions(sam, id, 
