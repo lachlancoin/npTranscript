@@ -263,7 +263,7 @@ public class IdentityProfile1 {
 							//	throw new RuntimeException("!!");
 							//}
 							Sequence readSeq1 = readSeq.subSequence(start_read1, end_read1);
-							readSeq1.setDesc(start_ref+","+end_ref+";"+start_read1+","+end_read1+";"+(end_read1-start_read1));
+							readSeq1.setDesc(source_index+";"+start_ref+","+end_ref+";"+start_read1+","+end_read1+";"+(end_read1-start_read1));
 							this.o.writeToCluster("ORF_"+annot.genes.get(i),null, source_index, readSeq1, null, readSeq.getName());
 						}
 					}
