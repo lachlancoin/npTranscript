@@ -65,7 +65,7 @@ while read entry; do
 	${abpoa} $tmpfile | sed "s/Consensus_sequence/${entryname} ${firstline}/" >> $outfile
 	#rm -f $tmpfile
 done < $todolist
-#rm $todolist
+rm $todolist
 
 #rmdir $tododir
 
