@@ -165,8 +165,13 @@ public class Outputs{
 			 reads_file = new File(resDir,genome_index+ ".readToCluster.txt.gz");
 			 readClusters = new PrintWriter(
 					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(reads_file))));
-			 readClusters.println("readID\tclusterId\tsubID\tsource\tlength\tstart_read\tend_read\t"
-			 		+ "type_nme\tchrom\tstartPos\tendPos\tbreakStart\tbreakEnd\tbreakStart2\tbreakEnd2\terrorRatio\tbreakStart\tbreakEnd\tbreakStart2\tbreakEnd2\tstrand\tbreaks");
+//			 readID  clusterId       subID   source  length  start_read      end_read   
+			 //type_nme        chrom   startPos        endPos  breakStart      breakEnd        errorRatio
+			 //upstream        downstream      strand  breaks
+
+			 String header = 
+ "readID\tclusterId\tsubID\tsource\tlength\tstart_read\tend_read\ttype_nme\tchrom\tstartPos\tendPos\tbreakStart\tbreakEnd\tbreakStart2\tbreakEnd2\terrorRatio\tupstream\tdownstream\tupstream2\tdownstream2\tstrand\tbreaks";
+			 readClusters.println(header); //\tbreakStart\tbreakEnd\tbreakStart2\tbreakEnd2\tstrand\tbreaks");
 		
 			 transcripts_file = new File(resDir,genome_index+ ".transcripts.txt.gz");
 			//	newReadCluster(genome_index);
@@ -183,7 +188,7 @@ public class Outputs{
 				 }
 			 }
 			 transcriptsP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(transcripts_file))));
-				String transcriptP_header = "ID\tchrom\tstart\tend\ttype_nme\tstartBreak\tendBreak\tisoforms\tleftGene\trightGene\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true)
+				String transcriptP_header = "ID\tchrom\tstart\tend\ttype_nme\tstartBreak\tendBreak\tisoforms\tleftGene\trightGene\tleftGene2\trightGene2\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true)
 				+"\t"+TranscriptUtils.getString("depth", num_sources, true)+"\t"+TranscriptUtils.getString("errors", num_sources, true)
 				+"\t"+TranscriptUtils.getString("error_ratio", num_sources, true);
 				StringBuffer nme_info = new StringBuffer();
@@ -246,22 +251,37 @@ public class Outputs{
 
 		
 		
-		public void writeToCluster(String ID, String subID,  int i, Sequence seq, String str, String name) throws IOException{
+		public void writeToCluster(String ID, String subID,  int i, Sequence seq, String baseQ,  String str, String name, char strand) throws IOException{
 			CompressDir cluster = this.getCluster(i);
-			seq.setName(name);
+			if(strand=='-'){
+				seq = Alphabet.DNA().complement(seq);
+				baseQ = new StringBuilder(baseQ).reverse().toString();
+			}
+		 	seq.setName(name);
 			String entryname =  ID;
 			if(subID!=null) entryname = entryname+"."+subID;
 			if(cluster!=null){
 				SequenceOutputStream1 out   = cluster.getSeqStream(entryname+".fa", true);
 				out.write(seq);
 				cluster.closeWriter(out);
-			/*	if(str!=null){
-					OutputStreamWriter osw = cluster.getWriter(entryname, false, true);
-					osw.write(str);osw.write("\n");
-					cluster.closeWriter(osw);
-				}*/
 			}
 		}
+		
+		
+		public void writeLeft(Sequence subseq,String baseQ,  boolean negStrand, int source_index)  throws IOException{
+			FOutp[] leftover = this.leftover_l;
+				//	fusion ? (left ? this.fusion_l : this.fusion_r) : (left ? this.leftover_l : this.leftover_r);
+			FastqWriter writer = leftover[source_index].fastq;
+			if(negStrand){
+				subseq = Alphabet.DNA().complement(subseq);
+				baseQ = new StringBuilder(baseQ).reverse().toString();
+			}
+			 writer.write(new FastqRecord(subseq.getName()+ " "+subseq.getDesc(), new String(subseq.charSequence()), "", baseQ));
+
+		//	subseq.writeFasta(leftover[source_index].os);
+		//	leftover[source_index].os.flush();
+		}
+
 		
 		public void writeIntMatrix(String id, int[][] matr) {
 			this.clusterW.writeIntMatrix(id, matr);
@@ -356,20 +376,7 @@ public class Outputs{
 			
 		}
 
-		public void writeLeft(Sequence subseq,String baseQ,  boolean negStrand, int source_index)  throws IOException{
-			FOutp[] leftover = this.leftover_l;
-				//	fusion ? (left ? this.fusion_l : this.fusion_r) : (left ? this.leftover_l : this.leftover_r);
-			FastqWriter writer = leftover[source_index].fastq;
-			if(negStrand){
-				subseq = Alphabet.DNA().complement(subseq);
-				baseQ = new StringBuilder(baseQ).reverse().toString();
-			}
-			 writer.write(new FastqRecord(subseq.getName()+ " "+subseq.getDesc(), new String(subseq.charSequence()), "", baseQ));
-
-		//	subseq.writeFasta(leftover[source_index].os);
-		//	leftover[source_index].os.flush();
-		}
-
+		
 		public void writeUnspliced(Sequence readseq, String baseQ, boolean negStrand, int source_index) {
 			if(unspliced==null || unspliced[source_index]==null) return ;
 			FastqWriter writer = unspliced[source_index].fastq;

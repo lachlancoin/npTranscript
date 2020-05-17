@@ -191,8 +191,10 @@ public class TranscriptUtils {
 				 align_5prime = SWGAlignment.align(readSeq.subSequence(0, st_r), fivePrimeRefSeq);
 			}
 			//String flanking = start_flank1+"\t"+start_flank2+"\t"+end_flank1+"\t"+end_flank2;
-			boolean splice = profile.processRefPositions(sam, id, 
-					cluster_reads, readSeq.length(), refSeq, source_index, readSeq,st_r, end_r, strand, align_5prime);
+			//SAMRecord sam, String id, boolean cluster_reads, int  readLength, Sequence refSeq, int src_index , Sequence readSeq, String baseQ, 
+			//int start_read, int end_read, char strand, SWGAlignment align5prime
+			boolean splice = profile.processRefPositions(sam, id, cluster_reads, readSeq.length(), 
+					refSeq, source_index, readSeq,baseQ, st_r, end_r, strand, align_5prime);
 			//String ID = profile.clusterID
 			if(!splice && Outputs.writeUnSplicedFastq){
 				

@@ -131,11 +131,10 @@ public class ConsensusMapper extends CommandLine {
 	private static void run(String fasta, String refFile, int offset) throws IOException {
 		// TODO Auto-generated method stub
 		ArrayList<Sequence> genomes = SequenceReader.readAll(refFile, Alphabet.DNA());
-		List<String> header = Arrays.asList(
-				"ID      chrom start   end     type_nme        startBreak      endBreak        isoforms        leftGene        rightGene       totLen  countTotal".split("\\s+")
-		);
-		int genome_index = Integer.parseInt(fasta.split("\\.")[0]);
-		Sequence refSeq = genomes.get(genome_index);
+		//List<String> header = Arrays.asList(
+		//		"ID      chrom start   end     type_nme        startBreak      endBreak        isoforms        leftGene        rightGene       totLen  countTotal".split("\\s+")
+		//);
+		
 		ArrayList<Sequence> reads = SequenceReader.readAll(fasta, Alphabet.DNA());
 		
 		File fasta_in = new File(fasta);
@@ -152,20 +151,29 @@ public class ConsensusMapper extends CommandLine {
 	
 		//SequenceOutputStream os =new SequenceOutputStream(os1);
 		int step = 100;
+		int genome_index =0;
+		try{
+		 genome_index = Integer.parseInt(fasta.split("\\.")[0]);
+		}catch(Exception exc){
+			exc.printStackTrace();
+		}
+		Sequence refSeq = genomes.get(genome_index);
 		for(int i=0; i< reads.size(); i++){
 			Sequence readSeq = reads.get(i);
 			String nme = readSeq.getName();
 			String[] desc = readSeq.getDesc().split(";"); //ID0.0;MT007544.1;1;29893;5_3;22;27904;2;leader;ORF8;-1;2262
-			List<Integer> breaks = ConsensusMapper.readBreaks(desc[0].split(","));
-			
-	//		int startBr = Integer.parseInt(desc[0].split(",")[0]); 
-	//		int endBr = Integer.parseInt(desc[0].split(",")[1]); 
-			//int startBr = Integer.parseInt(desc[header.indexOf("startBreak")]);
-			//int endBr = Integer.parseInt(desc[header.indexOf("endBreak")]);
-			//String leftGene = 			desc[header.indexOf("leftGene")];
-			//String rightGene = 			desc[header.indexOf("rightGene")];
-			
-			
+			String[] br = desc[0].split(",");
+			List<Integer> breaks;
+			if(br.length==0){
+				int currIndex = Integer.parseInt(desc[0]);
+				if(currIndex!=genome_index){
+					genome_index = currIndex;
+					refSeq = genomes.get(genome_index);
+				}
+				breaks = ConsensusMapper.readBreaks(desc[1].split(","));
+			}else{
+				breaks = ConsensusMapper.readBreaks(desc[0].split(","));
+			}
 			
 			int[] start1 = new int[(int) Math.floor((double)breaks.size()/2.0)];
 			int[] end1= new int[start1.length];
@@ -249,7 +257,7 @@ static boolean writeNumb = false;
 		}
 		if(allnull) return;
 		os1.write(">"+name+" "+desc+"\n");
-		int step = 70;
+		int step = Integer.MAX_VALUE;
 		for(int k=0; k<sequ1.length; k++){
 			if(sequ1[k]!=null){
 			for(int j=0; j<sequ1[k].length(); j+=step){

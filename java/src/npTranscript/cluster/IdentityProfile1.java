@@ -83,7 +83,7 @@ public class IdentityProfile1 {
 	public static boolean subclusterBasedOnStEnd = false;
 	
 	public String[] clusterID = new String[2];
-	public boolean processRefPositions(SAMRecord sam, String id, boolean cluster_reads, int  readLength, Sequence refSeq, int src_index , Sequence readSeq,
+	public boolean processRefPositions(SAMRecord sam, String id, boolean cluster_reads, int  readLength, Sequence refSeq, int src_index , Sequence readSeq, String baseQ, 
 			int start_read, int end_read, char strand, SWGAlignment align5prime
 			) throws IOException, NumberFormatException{
 		int startPos = sam.getAlignmentStart()+1; // transfer to one based
@@ -263,8 +263,9 @@ public class IdentityProfile1 {
 							//	throw new RuntimeException("!!");
 							//}
 							Sequence readSeq1 = readSeq.subSequence(start_read1, end_read1);
-							readSeq1.setDesc(source_index+";"+start_ref+","+end_ref+";"+start_read1+","+end_read1+";"+(end_read1-start_read1));
-							this.o.writeToCluster("ORF_"+annot.genes.get(i),null, source_index, readSeq1, null, readSeq.getName());
+							String baseQ1 = baseQ.length()<=1 ? baseQ : baseQ.substring(start_read1, end_read1);
+							readSeq1.setDesc(chrom_index+";"+start_ref+","+end_ref+";"+start_read1+","+end_read1+";"+(end_read1-start_read1));
+							this.o.writeToCluster("ORF_"+annot.genes.get(i),null, source_index, readSeq1, baseQ1,null, readSeq.getName(), strand);
 						}
 					}
 				}
@@ -274,6 +275,7 @@ public class IdentityProfile1 {
 		
 		if(Outputs.doMSA!=null && Outputs.doMSA.contains(type_nme)) {
 			Sequence readSeq1 = readSeq.subSequence(start_read, end_read);
+			String baseQ1 = baseQ.length()<=1 ? baseQ :baseQ.substring(start_read, end_read);
 		//	int end_ref = sam.getReferencePositionAtReadPosition(end_read);
 		//	int start_ref = sam.getReferencePositionAtReadPosition(start_read);
 			//readSeq1.setDesc("st="+start_read+";end="+end_read+";len="+(end_read-start_read));
@@ -281,8 +283,8 @@ public class IdentityProfile1 {
 			for(int i=0; i<breaks.size(); i++){
 				read_breaks.add(sam.getReadPositionAtReferencePosition(breaks.get(i), true));
 			}
-			readSeq1.setDesc(breaks.toString()+";"+CigarHash2.getString(read_breaks)+";"+(end_read-start_read));
-			this.o.writeToCluster(clusterID[0],clusterID[1], source_index, readSeq1, str, readSeq.getName());
+			readSeq1.setDesc(chrom_index+";"+breaks.toString()+";"+CigarHash2.getString(read_breaks)+";"+(end_read-start_read));
+			this.o.writeToCluster(clusterID[0],clusterID[1], source_index, readSeq1, baseQ1, str, readSeq.getName(), strand);
 		}
 		return hasSplice;
 	}
