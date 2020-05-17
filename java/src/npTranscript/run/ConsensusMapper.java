@@ -164,7 +164,7 @@ public class ConsensusMapper extends CommandLine {
 			String[] desc = readSeq.getDesc().split(";"); //ID0.0;MT007544.1;1;29893;5_3;22;27904;2;leader;ORF8;-1;2262
 			String[] br = desc[0].split(",");
 			List<Integer> breaks;
-			if(br.length==0){
+			if(br.length==1){
 				int currIndex = Integer.parseInt(desc[0]);
 				if(currIndex!=genome_index){
 					genome_index = currIndex;
