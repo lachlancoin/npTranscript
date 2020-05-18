@@ -12,8 +12,6 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=31000 # mb
 #SBATCH --time=100:00:00
-#SBATCH --output=abpoa_%A_%a.out
-#SBATCH --error=abpoa_%A_%a.err
 
 abpoa='/sw/abpoa/v1.0.1/abpoa'
 npTranscript=${HOME}/github/npTranscript
@@ -62,7 +60,8 @@ while read entry; do
 	tmpfile="${tododir}/${entry}"
 	unzip -p $zipfile $entry > $tmpfile
 	firstline=$(head -n 1 $tmpfile |  cut -f 2- -d ' ')
-	${abpoa} $tmpfile | sed "s/Consensus_sequence/${entryname} ${firstline}/" >> $outfile
+	count=$(grep '^[>@]' $tmpfile | wc -l)
+	${abpoa} $tmpfile | sed "s/Consensus_sequence/${entryname} ${firstline} ${count}/" >> $outfile
 	#rm -f $tmpfile
 done < $todolist
 rm $todolist
@@ -72,6 +71,6 @@ rm $todolist
 
 ##NOW MAP TO REF
 export JSA_MEM=8000m
-bash ${npTranscript}/scripts/run_map_consensus.sh   --reference=${reference} --fasta=${outfile} --offset 1000
+bash ${npTranscript}/scripts/run_map_consensus.sh   --reference=${reference} --fasta=${outfile} --offset 100
 
 
