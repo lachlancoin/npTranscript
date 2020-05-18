@@ -122,7 +122,6 @@ type_nme = attr(transcripts_all[[1]], "info")
 #isoforms = readIsoformH5(infilesAltT[[1]],  transcripts_all[[1]])
 #}
 count_df = grep('count[0-9]', names(transcripts_all[[1]]))
-
 transcript_counts = lapply(transcripts_all, function(transcripts)  apply(transcripts[,count_df, drop=F], 2,sum))
 total_reads  = apply(data.frame(transcript_counts),1,sum)
 names(total_reads) = type_nme

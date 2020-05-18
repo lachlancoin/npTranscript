@@ -170,7 +170,7 @@ public class Outputs{
 			 //upstream        downstream      strand  breaks
 
 			 String header = 
- "readID\tclusterId\tsubID\tsource\tlength\tstart_read\tend_read\ttype_nme\tchrom\tstartPos\tendPos\tbreakStart\tbreakEnd\tbreakStart2\tbreakEnd2\terrorRatio\tupstream\tdownstream\tupstream2\tdownstream2\tstrand\tbreaks";
+ "readID\tclusterId\tsubID\tsource\tlength\tstart_read\tend_read\ttype_nme\tchrom\tstartPos\tendPos\tnum_breaks\tleader_break\terrorRatio\tORFs\tstrand\tbreaks";
 			 readClusters.println(header); //\tbreakStart\tbreakEnd\tbreakStart2\tbreakEnd2\tstrand\tbreaks");
 		
 			 transcripts_file = new File(resDir,genome_index+ ".transcripts.txt.gz");
@@ -187,8 +187,15 @@ public class Outputs{
 					 throw new RuntimeException("will not overwrite file "+f[i].getAbsolutePath());
 				 }
 			 }
+			 
+//						cc.id()+"\t"+chrom+"\t"+cc.start+"\t"+cc.end+"\t"+cc.getTypeNme(seqlen)+"\t"+
+//					cc.all_breaks.size()+"\t"+((double)cc.breaks.size()-2.0)/2.0+"\t"+cc.breaks_hash.secondKey+"\t"+
+//					cc.totLen+"\t"+cc.readCountSum()+"\t"+read_count
+//							+"\t"+cc.getTotDepthSt(true)+"\t"+cc.getTotDepthSt(false)+"\t"+cc.getErrorRatioSt());
+			 
 			 transcriptsP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(transcripts_file))));
-				String transcriptP_header = "ID\tchrom\tstart\tend\ttype_nme\tstartBreak\tendBreak\tisoforms\tleftGene\trightGene\tleftGene2\trightGene2\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true)
+				String transcriptP_header = "ID\tchrom\tstart\tend\ttype_nme\tisoforms\tnum_breaks\tleader_break\tORFs"
+					+"\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true)
 				+"\t"+TranscriptUtils.getString("depth", num_sources, true)+"\t"+TranscriptUtils.getString("errors", num_sources, true)
 				+"\t"+TranscriptUtils.getString("error_ratio", num_sources, true);
 				StringBuffer nme_info = new StringBuffer();
@@ -225,10 +232,10 @@ public class Outputs{
 		//	clusterW.writeStringArray("header", str.toArray(new String[0]));
 		}
 
-		public PrintWriter getBreakPointPw( String chrom, int i, boolean second)  throws IOException{
+		public PrintWriter getBreakPointPw( String chrom, int i, int j)  throws IOException{
 			System.err.println("writing breakpoint files");
-				File outfile1_ = second ? new File(resDir,chrom+".breakpoints2."+type_nmes[i]+"."+i +".txt.gz") : 
-						new File(resDir,chrom+".breakpoints."+type_nmes[i]+"."+i +".txt.gz");
+				File outfile1_ =  new File(resDir,chrom+".breakpoints."+type_nmes[i]+"."+j +".txt.gz") ;
+//						new File(resDir,chrom+".breakpoints."+type_nmes[i]+"."+i +".txt.gz");
 				PrintWriter pw = new PrintWriter(
 					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outfile1_))));
 			

@@ -161,30 +161,39 @@ public class CigarClusters {
 		}
 		
 	}
-	public String process1(CigarCluster cc,   Outputs o,String chrom,int chrom_index){
+	public void process1(CigarCluster cc,   Outputs o,String chrom,int chrom_index){
 		String read_count = TranscriptUtils.getString(cc.readCount);
-		int startPos, endPos;
+	/*	int startPos, endPos, startPos2, endPos2;
 		if(!IdentityProfile1.annotByBreakPosition ){
 			startPos = cc.start;
 			endPos =cc.end;
+			startPos2 =-1;
+			endPos2 = -1;
 			
-
 		}else{
 			startPos = cc.breakSt;
 			endPos = cc.breakEnd;
-		}
-		String downstream = annot==null ? null : annot.nextDownstream(endPos);
-		String upstream = annot==null ? null : annot.nextUpstream(startPos);
-		if(upstream==null) upstream =  chrom_index+"."+TranscriptUtils.round(startPos, CigarHash2.round)+"";
-		if(downstream==null) downstream = chrom_index+"."+ TranscriptUtils.round(endPos, CigarHash2.round)+"";
+			startPos2 = cc.breakSt2;
+			endPos2 = cc.breakEnd2;
+		} */
+	//	String downstream = annot==null ? null : annot.nextDownstream(endPos, chrom_index);
+	//	String upstream = annot==null ? null : annot.nextUpstream(startPos, chrom_index);
+	//	String downstream2 = annot==null ||  endPos2<0 ? null : annot.nextDownstream(endPos2, chrom_index);
+	//	String upstream2 = annot==null||  startPos2<0  ? null : annot.nextUpstream(startPos2, chrom_index);
+	//	if(upstream==null) upstream =  chrom_index+"."+TranscriptUtils.round(startPos, CigarHash2.round)+"";
+	//	if(downstream==null) downstream = chrom_index+"."+ TranscriptUtils.round(endPos, CigarHash2.round)+"";
+		boolean hasLeaderBreak = cc.breaks.size()>1 &&  annot.isLeader(cc.breaks.get(1)*CigarHash2.round);
+
 		o.printTranscript(
 			cc.id()+"\t"+chrom+"\t"+cc.start+"\t"+cc.end+"\t"+cc.getTypeNme(seqlen)+"\t"+
 		//cc.breaks.toString()+"\t"+cc.breaks.hashCode()+"\t"+
-		cc.breakSt+"\t"+cc.breakEnd+"\t"+cc.all_breaks.size()+"\t"+
-		upstream+"\t"+downstream+"\t"+
+	//	cc.breakSt+"\t"+cc.breakEnd+"\t"+cc.breakSt2+"\t"+cc.breakEnd2+"\t"+
+		cc.all_breaks.size()+"\t"+cc.numBreaks()+"\t"+(hasLeaderBreak? 1: 0)+"\t"+cc.breaks_hash.secondKey+"\t"+
+	//	upstream+"\t"+downstream+"\t"+
+	//	upstream2+"\t"+downstream2+"\t"+
 		cc.totLen+"\t"+cc.readCountSum()+"\t"+read_count
 				+"\t"+cc.getTotDepthSt(true)+"\t"+cc.getTotDepthSt(false)+"\t"+cc.getErrorRatioSt());
-		return TranscriptUtils.round(cc.start, 100)+"."+downstream+"."+upstream+"."+TranscriptUtils.round(seqlen-cc.end, 100);
+		//return TranscriptUtils.round(cc.start, 100)+"."+downstream+"."+upstream+"."+TranscriptUtils.round(seqlen-cc.end, 100);
 	}
 	
 	public void getConsensus(  

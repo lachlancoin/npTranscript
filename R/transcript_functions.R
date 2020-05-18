@@ -198,6 +198,26 @@ motifAnalysis<-function(results, ks, offset, base, top=1, remove_repeat=T){
   
 }
 
+.expandLev<-function(lev_){
+	m1 = apply(t(data.frame(lapply(lev_[,1], function(x) strsplit(as.character(x), "\\.")[[1]]))), c(1,2), as.numeric)
+	mat  = cbind(m1,lev_[,2])
+	dimnames(mat)= NULL
+	mat
+}
+.stEndKmer<-function(lev_a,right= 0:8, left = -8:-1){
+	res = data.frame(
+	breakSt = lev_a[,1],
+	breakStart_l = getKmer(fasta[[1]], lev_a[,1],right),
+	breakStart_r = getKmer(fasta[[1]], lev_a[,1],left),
+	breakEnd = lev_a[,2],
+	breakEnd_l = getKmer(fasta[[1]], lev_a[,2],right),
+	breakEnd_r = getKmer(fasta[[1]], lev_a[,2],left),
+	cnt = lev_a[,3]
+	)
+	res
+}
+
+
 getDimNames<-function(out_res, type = 1){
   l = list()
   for(i in 1:length(out_res)){
@@ -349,7 +369,7 @@ split1<-function(fi) strsplit(fi,"_")[[1]][1]
 
 
 
-plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = F, title = "",  logy=F, leg_size = 6, xlim  = NULL, show=F, updatenmes = F){
+plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = F, title = "",  logy=F, leg_size = 6, xlim  = NULL, show=F, updatenmes = F, fill = F){
   if(!is.factor(df$clusterID)) df$clusterID = as.factor(df$clusterID)  #types[df$type]
  # names(df)[3] = "depth"
   #ids =  as.character(rel_count$ID)
@@ -361,13 +381,15 @@ plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = F, title = ""
     #}
     df[,k1]  = df[,k1]*(1e6/totalReadCount)
   }
-  ggp<-ggplot(df, aes_string(x="pos", fill="clusterID", colour = "clusterID", y = names(df)[k1])) +geom_line() +theme_bw()
+  ggp<-ggplot(df, aes_string(x="pos", fill="clusterID", colour = "clusterID", y = names(df)[k1])) +theme_bw()+geom_line() 
+if(fill) ggp<-ggp+geom_area()
   ggp<-ggp+ggtitle(title)+labs(y= if(rawdepth)  "depth" else "TPM");
   if(logy) ggp<-ggp+scale_y_continuous(trans='log10')
   if(leg_size==0  || length(levels(as.factor(as.character(df$type))))>20){
     ggp<-ggp+theme(legend.position="none")
   }else{
-    ggp<-ggp+theme(plot.title = element_text(size = 12, face = "bold"),legend.title=element_text(size=leg_size), legend.text=element_text(size=leg_size))
+    ggp<-ggp+theme(plot.title = element_text(size = 12, face = "bold"),legend.position="left",
+legend.title=element_text(size=leg_size), legend.text=element_text(size=leg_size))
   }
   #
   if(updatenmes){
@@ -437,14 +459,15 @@ loess_smooth<-function(clusters,  inds,span = 0.05){
 
 
 
-makeCovPlots<-function(clusters_,  header, total_reads, t, type_nme,  leg_size=6, logy=F, rawdepth = T, xlim = list(NULL),   show=F, 
+makeCovPlots<-function(clusters_,  header, total_reads, t, type_nme,  leg_size=6, logy=F, rawdepth = T, xlim = list(NULL),   show=F, fill=F,
 count_indf = grep("count[0-9]", names(transcripts_))){
  dinds  = grep("depth", header)
   ggps = list()
   for(j in 1:length(xlim)){
+	leg_size1 = if(j==1) leg_size else  0
     for( k in 1:length(count_indf)){
       ggps[[length(ggps)+1]] = plotClusters(clusters_, dinds[k],  total_reads[k], t, fimo, xlim = xlim[[j]], rawdepth = rawdepth,  
-                                            title =type_nme[k], logy=logy, leg_size =leg_size, show=show)
+                                            title =type_nme[k], logy=logy, leg_size =leg_size1, show=show, fill =fill)
     }
   }
   
@@ -1162,7 +1185,7 @@ trans
 }
 
 
-readH5<-function(h5file, header, transcripts_, span =0.0){
+readH5<-function(h5file, header, transcripts_, pos = NULL,  span =0.0, cumul= if(!is.null(pos)) F else T){
  dinds  = grep("depth", header)
  pos_ind = which(header=="pos")
  names = h5ls(h5file)$name
@@ -1170,16 +1193,28 @@ readH5<-function(h5file, header, transcripts_, span =0.0){
  if(length(inds)==0) return (NULL)
  IDS = transcripts_$ID[inds]
  clusters_ = matrix(NA, nrow =0, ncol = length(header)+1)
- 
+  mat_prev = NULL
 
   for(i in 1:length(IDS)){
 	ID = IDS[i]
 	mat = t(h5read(h5file,as.character(ID)))
-	
+
+	if(!is.null(pos)) {
+		mat2 = matrix(0, nrow = length(pos), ncol  = dim(mat)[2])
+		mat2[,1] = pos
+		mat = mat[which(mat[,1] %in% pos),]
+		mat2[match(mat[,1],pos),-1] =mat[,-1]
+		mat = mat2
+	}
 	mat = data.frame(mat)
 	names(mat) = header
+	
+	if( !is.null(mat_prev) && !is.null(pos) && cumul) {
+		mat[,dinds]	 = mat[,dinds] + mat_prev[,dinds]
+	}
+	if(!is.null(pos)) mat_prev = mat
 	mat1 = loess_smooth(mat, dinds, span)
-	cname = paste(transcripts_$leftGene[i], transcripts_$rightGene[i], sep=".")
+	cname = transcripts_$ORFs[i]  #paste(ID, transcripts_$leftGene[i], transcripts_$rightGene[i], sep=".")
 	clusterID = rep(cname, dim(mat1)[1])
 	mat1 = cbind(mat1,clusterID )
 	clusters_ = rbind(clusters_,mat1)
@@ -1195,7 +1230,8 @@ plotHeatmap<-function(h5file, header,  transcripts1, jk, logHeatmap = F,xlim = l
   title = paste(title, featureName)
 #countdf = grep(featureName, names(transcripts1))
  IDS = transcripts1$ID
-cnames = apply(cbind(as.character(transcripts1$leftGene), as.character(transcripts1$rightGene)), 1, paste, collapse=".")
+cnames =transcripts1$ORFs;
+# apply(cbind(as.character(transcripts1$leftGene), as.character(transcripts1$rightGene)), 1, paste, collapse=".")
   for(jj in 1:length(xlim)){
     print(paste('jj',xlim[[jj]]))
     xmin = xlim[[jj]][1]
@@ -1389,11 +1425,14 @@ t
 .readTranscripts<-function(infilesT ){
 inf = scan(infilesT, nlines=1, what=character())
 transcripts = read.table( infilesT,sep="\t", head=T)
-countAll = apply(transcripts[,grep("count", names(transcripts))],1,sum)
-comb_l = apply(cbind(as.character(transcripts$leftGene), as.character(transcripts$rightGene)),1,function(x) paste(x, collapse="."))
-transcripts = cbind(transcripts, comb_l, countAll)
-
-o = order(countAll, decreasing=T)
+#countAll = apply(transcripts[,grep("count", names(transcripts))],1,sum)
+#comb_l = apply(cbind(as.character(transcripts$leftGene), as.character(transcripts$rightGene)),1,function(x) paste(x, collapse="."))
+#comb_l2 = apply(cbind(as.character(transcripts$leftGene2), as.character(transcripts$rightGene2)),1,function(x) paste(x, collapse="."))
+#transcripts = cbind(transcripts, comb_l, comb_l2, countAll)
+o = order(transcripts$countT, decreasing=T)
+ORFs = as.character(transcripts$ORFs)
+ORFS_uniq = unique(ORFs[o])
+transcripts$ORFs = factor(ORFs,levels=ORFS_uniq, labels = ORFS_uniq)
 transcripts = transcripts[o,]
 err_ratio_inds = grep("error_ratio", names(transcripts))
 transcripts[,err_ratio_inds] =apply(transcripts[,err_ratio_inds,drop=F], c(1,2), function(x) if(is.na(x)) -0.01 else x)
@@ -1404,10 +1443,13 @@ transcripts
 .splitTranscripts<-function(transcripts, seqlen, nmes,splice = F){
 	transcripts_all = list()
 	if(splice){
-		spliced = transcripts$comb_l=="0.-1.0.-1"
-		transcripts_all[[1]] = 	transcripts[!spliced,,drop=F]
-			transcripts_all[[2]] = 	transcripts[spliced,,drop=F]
-		names(transcripts_all) = c("spliced","unspliced")
+		lead_inds =transcripts$ORFs %in% sort(unique( c(grep(";leader", transcripts$ORFs,v=T), grep("start", transcripts$ORFs,v=T))))
+		transcripts_all[[1]] = 	transcripts[transcripts$num_breaks==0,,drop=F]
+		transcripts_all[[2]] = 	transcripts[transcripts$num_breaks==1 & lead_inds,,drop=F]
+		transcripts_all[[3]] = 	transcripts[transcripts$num_breaks==1 & !lead_inds,,drop=F]
+		transcripts_all[[4]] = 	transcripts[transcripts$num_breaks>=2 & lead_inds,,drop=F]
+		transcripts_all[[5]] = 	transcripts[transcripts$num_breaks>=2 & !lead_inds,,drop=F]
+		names(transcripts_all) = c("unspliced","spliced1_leader","spliced1_noleader","spliced2_leader","spliced2_noleader");
 	
 	}else{
 		transcripts_all[[1]] = (transcripts[which(transcripts$start<100 & transcripts$end > seqlen -100),, drop=F])
@@ -1421,7 +1463,7 @@ transcripts
 
 
 
-.sumByLevel<-function(reads, nme1=c(  "comb_l"), target="source", mincount = 0.1, limit = 20){
+.sumByLevel<-function(reads, nme1=c(  "ORFs"), target="source", mincount = 0.1, limit = 20){
 	
 	target_ind = which(names(reads) %in% target)
 	inds1 = which(names(reads) %in% nme1)
@@ -1445,7 +1487,7 @@ transcripts
 	matr[apply(counts,1,sum)>limit,,drop=F]
 }
 
-.plotGeneExpression<-function(reads_, nme1 = c("comb_l"), target = "source", limit = 20, mincount = 0.1, removeNA = T){
+.plotGeneExpression<-function(reads_, nme1 = c("ORFs"), target = "source", limit = 20, mincount = 0.1, removeNA = T){
 	reads1 = if(!removeNA) reads_ else reads_[!is.na(reads_$upstream) & !is.na(reads_$downstream),]
 	#print(dim(reads1))
 	sumByLevel = .sumByLevel(reads1, nme1=nme1 ,target=target,  mincount = mincount, limit = limit)
@@ -1453,7 +1495,7 @@ transcripts
 	extra = paste("+", mincount, sep="")
 	lev = levels(reads_$source);
 	#print(head(sumByLevel))
-	ggp<-ggplot(sumByLevel, aes_string(x=lev[1], y=lev[length(lev)], fill = "comb_l", colour = "comb_l")) + geom_point(size = 4)  #+ theme_bw()
+	ggp<-ggplot(sumByLevel, aes_string(x=lev[1], y=lev[length(lev)], fill = "ORFs", colour = "ORFs")) + geom_point(size = 4)  #+ theme_bw()
 	ggp<-ggp+scale_y_continuous(trans='log10')+scale_x_continuous(trans='log10')
 	ggp<-ggp+xlab(paste("Cell depth", extra)) + ylab(paste("Virion depth", extra))
 	ggp<-ggp+theme(text = element_text(size=20))
@@ -1612,7 +1654,7 @@ if(!is.null(clusterId)) subr = subr[subr$clusterId==clusterId,,drop=F]
 	#h_all
 }
 
-.plotGeneExpr<-function(tocomp,transcripts_all, todo =1:length(transcripts_all),  extra = 0.1, mint = 2, maxt = 10, count_df = grep('count[0-9]', names(transcripts_all[[1]])),
+.plotGeneExpr<-function(tocomp,transcripts_all, todo =1:length(transcripts_all),  extra = 0.1, mint_ = 2, maxt_ = 10, count_df = grep('count[0-9]', names(transcripts_all[[1]])),
  type_nme = attr(transcripts_all[[1]], "info")){
 ggps = list()
 maxv = 0
@@ -1621,9 +1663,11 @@ for(k in todo){
   if(maxk>maxv) maxv = maxk
 }
 for(k in todo){
- 	if(dim(transcripts_all[[k]])[1]>maxt) mint = max(mint, transcripts_all[[k]]$countAll[maxt])
-	cco = transcripts_all[[k]]$countAll>mint
+	mint = mint_
+ 	if(dim(transcripts_all[[k]])[1]>maxt_) mint = max(mint, transcripts_all[[k]]$countT[maxt_])
+	cco = transcripts_all[[k]]$countT>mint
 	tf_k = transcripts_all[[k]][cco,,drop=F]
+	
 	tf_k[,count_df] = tf_k[,count_df] + extra
 	lev = names(tf_k)[count_df][tocomp]
 	type_nme1 = type_nme[tocomp]
@@ -1632,17 +1676,17 @@ for(k in todo){
 	{
 	  st = i+1
 	   for(j in st:length(lev)){
-		print(paste(k,i,j))
+		#print(paste(k,i,j))
 		ncol = ncol+1
-		ggp<-ggplot(tf_k, aes_string(x=lev[i], y=lev[j], fill = "comb_l", colour = "comb_l")) +geom_point() #+ geom_point(size = 4)  #+ theme_bw()
+		ggp<-ggplot(tf_k, aes_string(x=lev[i], y=lev[j], fill = "ORFs", colour = "ORFs")) +geom_point() #+ geom_point(size = 4)  #+ theme_bw()
 		ggp<-ggp+scale_y_continuous(trans='log10', limits = c(extra,maxv))+scale_x_continuous(trans='log10', limits = c(extra,maxv))
 		ggp<-ggp+xlab(paste(type_nme1[i], extra,sep="+")) + ylab(paste(type_nme1[j], extra, sep="+"))+ggtitle(names(transcripts_all)[k])
-		ggp<-ggp+ geom_point(size = 4)
+		ggp<-ggp+ geom_point(size = 1)
 		ggps[[length(ggps)+1]] <- ggp
 	  }
 	}
 }
-print(length(ggps))
+#print(length(ggps))
 nrow = floor(length(todo)/2)
   ml<-marrangeGrob(ggps,nrow = nrow, ncol = 2, as.table=F) 
 invisible(ml)
@@ -1662,7 +1706,7 @@ reads_leader
 }
 
 
-plotErrorViolin<-function(reads,reads_no_leader ,  inds1 = NULL,  inds2 = NULL, x = "downstream",  ord = "genepos", y = "errorRatio", fill = "source"){
+plotErrorViolin<-function(reads,reads_no_leader ,  inds1 = NULL,  inds2 = NULL, x = "ORFs",  ord = "genepos", y = "errorRatio", fill = "source"){
 	subm = if(is.null(inds1)) reads else reads[inds1 ,]
 	if(!is.null(reads_no_leader)){
 		reads1 =if(is.null(inds2)) reads_no_leader else reads_no_leader[inds2 ,] 

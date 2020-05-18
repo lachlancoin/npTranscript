@@ -34,25 +34,26 @@ public class GFFAnnotation extends Annotation{
 		return m;
 	}
 	@Override
-	public String nextDownstream(int rightBreak){
+	public String nextDownstream(int rightBreak, int chrom_index){
 		if(rightBreak<0) return null;
 		for(int i=0; i<end.size(); i++){
 			if(rightBreak -tolerance <= end.get(i) && rightBreak+tolerance>=start.get(i) ){//&& rightBreak < end.get(i)){
 				return genes.get(i);
 			}
 		}
-		return null;
+		return  "end"+chrom_index;
+		
 	}
 	
 	@Override
-	public String nextUpstream(int leftBreak){
+	public String nextUpstream(int leftBreak, int chrom_index){
 		if(leftBreak<0) return null;
 		for(int i=start.size()-1; i>=0 ;i--){
 			if(leftBreak + tolerance >= start.get(i) && leftBreak-tolerance<=end.get(i)){// && leftBreak-tolerance<end.get(i)){
 				return genes.get(i);
 			}
 		}
-		return null;
+		return "st"+chrom_index;
 	}
 	
 	@Override

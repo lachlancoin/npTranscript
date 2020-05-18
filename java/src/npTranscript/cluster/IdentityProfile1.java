@@ -46,21 +46,17 @@ public class IdentityProfile1 {
 		readBase = 0;
 		int seqlen = refSeq.length();
 		all_clusters =new CigarClusters(refSeq, annot, num_sources);
-		this.breakpoints = new SparseRealMatrix[this.num_sources];
-		this.breakSt = new SparseVector[this.num_sources];
-		this.breakEnd = new SparseVector[this.num_sources];
-		this.breakpoints2 = new SparseRealMatrix[this.num_sources];
-		this.breakSt2 = new SparseVector[this.num_sources];
-		this.breakEnd2 = new SparseVector[this.num_sources];
+		this.breakpoints = new SparseRealMatrix[this.num_sources][2];
+		this.breakSt = new SparseVector[this.num_sources][2];
+		this.breakEnd = new SparseVector[this.num_sources][2];
+		
 		if(calcBreakpoints){
 			System.err.println("calculating break point usage");
 			for(int i=0; i<breakpoints.length; i++){
-				this.breakSt[i] = new SparseVector();
-				this.breakEnd[i] = new SparseVector();
-				breakpoints[i] = new OpenMapRealMatrix(seqlen, seqlen);
-				this.breakSt2[i] = new SparseVector();
-				this.breakEnd2[i] = new SparseVector();
-				breakpoints2[i] = new OpenMapRealMatrix(seqlen, seqlen);
+				this.breakSt[i] = new SparseVector[] {new SparseVector(),new SparseVector()};
+				this.breakEnd[i] = new SparseVector[] {new SparseVector(),new SparseVector()};
+				breakpoints[i] = new OpenMapRealMatrix[] {new OpenMapRealMatrix(seqlen, seqlen),new OpenMapRealMatrix(seqlen, seqlen)};
+			
 			}
 		}
 		
@@ -107,120 +103,70 @@ public class IdentityProfile1 {
 			seqlen = seqlen-(i-1);
 			annot.adjust3UTR(seqlen);
 		}
-	//	if()
-	
+		
 		coRefPositions.end = endPos;
 		coRefPositions.start = startPos;
 		breaks.add(coRefPositions.end);
-		//int distToEnd = refLength - endPos;	
-		int maxg = 0;
-		int maxg_ind = -1;
-		int maxg2=0;
-		int maxg_ind2 =-1; 
-		for(int i=1; i<breaks.size()-1; i+=2){
-			int gap = breaks.get(i+1)-breaks.get(i);
-			if(gap>maxg){
-				maxg2 = maxg;
-				maxg_ind2 = maxg_ind;
-				maxg = gap;
-				maxg_ind = i;
-			}else if(gap>maxg2){
-				maxg2 = gap;
-				maxg_ind2 = i;
-			}
-		}
 		
-		
-		int prev_position = -1;
-		int position = -1;
-		int prev_position2 = -1;
-		int position2 = -1;
-
-		String upstream = null;
-		String downstream = null;
-		String upstream2 = null;
-		String downstream2 = null;
 		if( align5prime!=null ){
 			if(align5prime.getIdentity()>0.8 * Math.max(start_read,align5prime.getLength())){
-				//hasSplice= true;
 				int newStartPos = align5prime.getStart2() + 1; // transfer to 1-based
 				int newBreakPos = newStartPos + align5prime.getSequence2().length -  align5prime.getGaps2();
 				if(newBreakPos < startPos){
-					int gap = startPos - newBreakPos;
-					if(gap<0) throw new RuntimeException("should not happen");
-					if(gap>maxg) {
-						maxg2 = maxg;
-						maxg_ind2 = maxg_ind;
-					//	System.err.println("identified 5'leader in read "+id);
-						maxg = gap;
-						maxg_ind =1;
-					}
 					startPos = newStartPos;
 					coRefPositions.start = newStartPos;
 					coRefPositions.breaks.add(0, newBreakPos);
 					coRefPositions.breaks.add(0, newStartPos);
 				}
 			}
-			//this is to fix any missed upstream alignments
+		}
+		//String roundStartP = annotByBreakPosition ? TranscriptUtils.round(startPos, CigarHash2.round)+"" : 	"";
+		StringBuffer secondKey =new StringBuffer();
+		//String upstream, upstream2, downstream, downstream2;
+		int maxg = 0;
+		int maxg_ind = -1;
+		int maxg2=0;
+		int maxg_ind2 =-1; 
+		boolean hasLeaderBreak = breaks.size()>1 &&  annot.isLeader(breaks.get(1));
+		secondKey.append(annot.nextUpstream(startPos,chrom_index)+";");
+		if(annotByBreakPosition){
 			
-		}
-		if(maxg2>TranscriptUtils.break_thresh){
-			prev_position2 = breaks.get(maxg_ind2);
-			position2= breaks.get(maxg_ind2+1);
-			if(annotByBreakPosition ){
-				if(annot!=null){
-					downstream2 = annot.nextDownstream(position2);
-					upstream2 = annot.nextUpstream(prev_position2);
+			for(int i=1; i<breaks.size()-1; i+=2){
+				int gap = breaks.get(i+1)-breaks.get(i);
+				String upst = annot.nextUpstream(breaks.get(i), chrom_index);
+				secondKey.append(upst+",");
+				secondKey.append(annot.nextDownstream(breaks.get(i+1), chrom_index)+";");
+				if(gap > TranscriptUtils.break_thresh){
+					if(annot.isLeader(breaks.get(i))){
+						this.addBreakPoint(source_index, 0, breaks.get(i), breaks.get(i+1));
+						hasLeaderBreak = true;
+					}else{
+						this.addBreakPoint(source_index, 1, breaks.get(i), breaks.get(i+1));
+
+					}
 				}
-				if(upstream2==null) upstream2 =  this.chrom_index+"."+TranscriptUtils.round(prev_position2, CigarHash2.round);
-				if(downstream2==null) downstream2 = this.chrom_index+"."+ TranscriptUtils.round(position2, CigarHash2.round);
-			}
-			if(breakpoints2[source_index]!=null){
-				this.breakpoints2[this.source_index].addToEntry(prev_position2, position2, 1);
-				this.breakSt2[this.source_index].addToEntry(prev_position2, 1);
-				this.breakEnd2[this.source_index].addToEntry(position2,  1);
-			}
-		}
-		if(maxg>TranscriptUtils.break_thresh){
-			hasSplice = true;
-			prev_position = breaks.get(maxg_ind);
-			position = breaks.get(maxg_ind+1);
-			if(annotByBreakPosition ){
-				if(annot!=null){
-					downstream = annot.nextDownstream(position);
-					upstream = annot.nextUpstream(prev_position);
+				
+				if(gap>maxg && annot.isLeader(breaks.get(i))){
+					maxg2 = maxg;
+					maxg_ind2 = maxg_ind;
+					maxg = gap;
+					maxg_ind = i;
+				}else if(gap>maxg2){
+					maxg2 = gap;
+					maxg_ind2 = i;
 				}
-				if(upstream==null) upstream =  this.chrom_index+"."+TranscriptUtils.round(prev_position, CigarHash2.round);
-				if(downstream==null) downstream = this.chrom_index+"."+ TranscriptUtils.round(position, CigarHash2.round);
-			}
-			
-			coRefPositions.breakSt = prev_position;
-			coRefPositions.breakEnd = position;
-			if(breakpoints[source_index]!=null){
-				this.breakpoints[this.source_index].addToEntry(prev_position, position, 1);
-				this.breakSt[this.source_index].addToEntry(prev_position, 1);
-				this.breakEnd[this.source_index].addToEntry(position,  1);
 			}
 		}
+		secondKey.append(annot.nextDownstream(breaks.get(breaks.size()-1), chrom_index));
 		
-		if(!annotByBreakPosition ){
-			if(annot!=null){
-				downstream = annot.nextDownstream(endPos);
-				upstream = annot.nextUpstream(startPos);
-			}
-			if(upstream==null) upstream =  this.chrom_index+"."+TranscriptUtils.round(startPos, CigarHash2.round);
-			if(downstream==null) downstream =  this.chrom_index+"."+TranscriptUtils.round(endPos, CigarHash2.round);
-			if(upstream2==null) upstream2 =  ".";
-			if(downstream2==null) downstream2 =  ".";
-		}
+		
 		
 		String type_nme = coRefPositions.getTypeNme(seqlen);
 		String breakSt = coRefPositions.breaks.toString();
 		//coRefPositions.breaks.adjustBreaks(annot);
 		// need to group by start position if we annotating by break pos,e.g. so 5'mapping reads map together
-		String roundStartP = annotByBreakPosition ? TranscriptUtils.round(startPos, CigarHash2.round)+"" : 
-					"";
-		coRefPositions.breaks_hash.setSecondKey(roundStartP+"."+upstream+"."+downstream);
+		String secondKeySt = secondKey.toString();
+		coRefPositions.breaks_hash.setSecondKey(secondKeySt);
 		
 		if(cluster_reads)  this.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources,  this.chrom_index, clusterID); // this also clears current cluster
 		else{
@@ -232,19 +178,20 @@ public class IdentityProfile1 {
 	//	String br_cluster_str = "";//sm==null ? "": coRefPositions.break_point_cluster+"\t";
 		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"+start_read+"\t"+end_read+"\t"
 		+type_nme+"\t"+chrom+"\t"
-		+startPos+"\t"+endPos+"\t"+prev_position+"\t"+position+"\t"+prev_position2+"\t"+position2+"\t"+coRefPositions.getError(src_index)+"\t"+upstream+"\t"+downstream+"\t"+upstream2+"\t"+downstream2+"\t"+strand+"\t"+breakSt;
+		+startPos+"\t"+endPos+"\t"+coRefPositions.numBreaks()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
+		+coRefPositions.getError(src_index)+"\t"+secondKeySt+"\t"+strand+"\t"+breakSt;
 		this.o.printRead(str);
 		if(Outputs.doMSA!=null && (seqlen - endPos)<100){
-			int st1 = position>0 ? position : startPos; // start after break
+			int st1 = startPos; //position>0 ? position : startPos; // start after break
 			inner: for(int i=annot.start.size()-1; i>=0; i--){
 			//	String gene = annot.genes.get(i);
-				if(st1 > annot.start.get(i)) break inner;
-				else if(endPos > annot.end.get(i)){
+				if(st1 -10> annot.start.get(i)) break inner;
+				if(endPos > annot.end.get(i)){
 					boolean include = false;
 					inner1: for(int k=0; k<breaks.size(); k+=2){
 						int st = breaks.get(k);
 						int end = breaks.get(k+1);
-						if(st-10 < annot.start.get(i) && end+10 > annot.end.get(i)){
+						if(st-5 < annot.start.get(i) && end+5 > annot.end.get(i)){
 							include=true;
 							break inner1;
 						}
@@ -284,11 +231,20 @@ public class IdentityProfile1 {
 				read_breaks.add(sam.getReadPositionAtReferencePosition(breaks.get(i), true));
 			}
 			readSeq1.setDesc(chrom_index+";"+breaks.toString()+";"+CigarHash2.getString(read_breaks)+";"+(end_read-start_read));
-			this.o.writeToCluster(clusterID[0],clusterID[1], source_index, readSeq1, baseQ1, str, readSeq.getName(), strand);
+			this.o.writeToCluster(secondKeySt,clusterID[1], source_index, readSeq1, baseQ1, str, readSeq.getName(), strand);
 		}
 		return hasSplice;
 	}
 	
+	private void addBreakPoint(int source_index,int i, int prev_position, int position) {
+		if(breakpoints[source_index][i]!=null){
+			this.breakpoints[this.source_index][i].addToEntry(prev_position, position, 1);
+			this.breakSt[this.source_index][i].addToEntry(prev_position, 1);
+			this.breakEnd[this.source_index][i].addToEntry(position,  1);
+		}
+		
+	}
+
 	public void addRefPositions(int position, boolean match) {
 		//we add back in one here to convert it to a 1 based index
 		coRefPositions.add(position+1, this.source_index, match);
@@ -297,8 +253,8 @@ public class IdentityProfile1 {
 	
 	private final CigarCluster coRefPositions;
 	private CigarClusters all_clusters;
-	final public SparseRealMatrix[] breakpoints, breakpoints2;;
-	final public SparseVector[] breakSt, breakEnd , breakSt2, breakEnd2;
+	final public SparseRealMatrix[][] breakpoints;
+	final public SparseVector[][] breakSt, breakEnd ;
 	
 	public int refBase, readBase;
 
@@ -314,14 +270,10 @@ public class IdentityProfile1 {
 	public void printBreakPoints()  throws IOException {
 		for(int i=0; i<this.breakpoints.length; i++){
 			if(breakpoints[i]!=null){
+				for(int j=0 ; j<breakpoints[i].length; j++)
 				{
-				PrintWriter pw = o.getBreakPointPw(chrom_index+"",i, false);
-				printMatrix(this.breakpoints[i],this.breakSt[i], this.breakEnd[i],  pw);
-				pw.close();
-				}
-				{
-				PrintWriter pw = o.getBreakPointPw(chrom_index+"",i, true);
-				printMatrix(this.breakpoints2[i],this.breakSt2[i], this.breakEnd2[i],  pw);
+				PrintWriter pw = o.getBreakPointPw(chrom_index+"",i, j);
+				printMatrix(this.breakpoints[i][j],this.breakSt[i][j], this.breakEnd[i][j],  pw);
 				pw.close();
 				}
 			}

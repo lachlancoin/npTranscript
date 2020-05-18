@@ -21,6 +21,8 @@ public class CigarCluster  {
 		static int round2 = 100;
 		int breakSt = -1;
 		int breakEnd = -1;
+		int breakSt2 = -1;
+		int breakEnd2 = -1;
 		
 		private final String id;
 		
@@ -98,6 +100,8 @@ public class CigarCluster  {
 			this(id, num_sources);
 			this.breakSt = c1.breakSt;
 			this.breakEnd = c1.breakEnd;
+			this.breakSt2 = c1.breakSt2;
+			this.breakEnd2 = c1.breakEnd2;
 			this.breaks.addAllR(c1.breaks);
 			all_breaks = new HashMap<CigarHash2, Count>();
 			//if(all_breaks.size()>0) throw new RuntimeException("should be zero");
@@ -124,6 +128,8 @@ public class CigarCluster  {
 			map.clear();
 			this.breakSt=-1;
 			this.breakEnd = -1;
+			this.breakSt2=-1;
+			this.breakEnd2 = -1;
 			for(int i=0; i<maps.length; i++){
 				maps[i].clear();
 				errors[i].clear();
@@ -366,6 +372,8 @@ public class CigarCluster  {
 			if(c1.end > end) end = c1.end;
 			if(breakSt<0 || (c1.breakSt>=0 & c1.breakSt > breakSt)) breakSt = c1.breakSt;
 			if(breakEnd<0 || (c1.breakEnd>=0 &  c1.breakEnd < breakEnd)) breakEnd = c1.breakEnd;
+			if(breakSt2<0 || (c1.breakSt2>=0 & c1.breakSt2 > breakSt2)) breakSt2 = c1.breakSt2;
+			if(breakEnd2<0 || (c1.breakEnd2>=0 &  c1.breakEnd2 < breakEnd2)) breakEnd2 = c1.breakEnd2;
 			//int subID;
 			
 			if(c1.all_breaks!=null){
@@ -404,6 +412,10 @@ public class CigarCluster  {
 			if(start <=TranscriptUtils.startThresh) return end >= seqlen -TranscriptUtils.endThresh ? nmes[0] : nmes[1];
 			else return end >= seqlen -TranscriptUtils.endThresh ? nmes[2] : nmes[3];
 			//return null;
+		}
+
+		public int numBreaks() {
+			return (int)Math.round(((double)this.breaks.size()-2.0)/2.0);
 		}
 
 		

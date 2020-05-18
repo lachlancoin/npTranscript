@@ -28,24 +28,24 @@ public class Annotation{
 		public static int correctionDistLeft = 10000;
 		public static int correctionDistRight = 10000;	
 	
-		public String nextDownstream(int rightBreak){
+		public String nextDownstream(int rightBreak, int chrom_index){
 			if(rightBreak<0) return null;
 			for(int i=0; i<start.size(); i++){
 				if(rightBreak -tolerance <= start.get(i) ){//&& rightBreak < end.get(i)){
 					return genes.get(i);
 				}
 			}
-			return null;
+			return "end"+(chrom_index>0 ? "."+chrom_index : "");
 		}
 		
-		public String nextUpstream(int leftBreak){
-			if(leftBreak<0) return null;
+		public String nextUpstream(int leftBreak, int chrom_index){
+			if(leftBreak<0) return  "null";
 			for(int i=start.size()-1; i>=0 ;i--){
 				if(leftBreak >= start.get(i)){// && leftBreak-tolerance<end.get(i)){
 					return genes.get(i);
 				}
 			}
-			return null;
+			return "st"+(chrom_index>0 ? "."+chrom_index : "");
 		}
 	
     int updateLeft(int en, int refStart){
@@ -140,5 +140,9 @@ public class Annotation{
 				end.set(end.size()-1, seqlen2);
 			}
 			
+		}
+
+		public boolean isLeader(int prev_pos) {
+			return prev_pos < this.start.get(1)-tolerance;
 		}
 	}

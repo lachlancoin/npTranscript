@@ -12,9 +12,9 @@ if(install){
  BiocManager::install("biomaRt")
  BiocManager::install("edgeR")
 }
-library(VGAM)
-library(biomaRt)
-library(edgeR)
+#library(VGAM)
+#library(biomaRt)
+#library(edgeR)
 library(stats)
 library(rhdf5)
 read.gff(file, na.strings = c(".", "?"), GFF3 = TRUE)

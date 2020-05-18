@@ -1,7 +1,14 @@
 ##BREAKPOINT ANALYSIS
 breakPs = list()
 for(i in 1:length(infilesBr))  breakPs[[i]] = readBreakPoints(infilesBr[i], i, addOne = FALSE) 
-names(breakPs) = type_nme[1:length(breakPs)]
+
+if(length(breakPs)==length(type_nme)){
+ names(breakPs) = type_nme[1:length(breakPs)] 
+}else{
+ names(breakPs) = infilesBr
+
+}
+ total_reads = rep(1, length(breakPs))
 
 genes = grep("leader",grep("UTR", grep("none",t$gene[-2], inv=T, v=T), inv=T, v=T),v=T, inv=T)
 
@@ -28,8 +35,15 @@ endcs_1[5,dim(endcs_1)[2]] = length(fasta[[1]])
 
 special = data.frame(
   "Leader_100b'"  = c( minpos,100,1, maxpos-10000,maxpos,100),
-  "Leader_10kb"= c(1,10000,50, maxpos-10000,maxpos,100)
+  "Leader_10kb"= c(1,10000,50, maxpos-10000,maxpos,100),
+  "full"= c(1,seqlen,1000, 1,seqlen,1000),
+  "start"= c(1,10000,100, 1,10000,100),
+"end"= c(27000,seqlen,100, 27000,seqlen,100),
+"end1"= c(27000,seqlen,50, 27000,seqlen,50),
+"end2"= c(27700,27950,10, 29000,29500,10),
+"end3"= c(27300,27500,10, 29400,29600,10)
 )
+
 
 if(RUN_ALL){
 	
@@ -40,11 +54,12 @@ if(RUN_ALL){
 	
 
 	print("special")
-	 plotAllHM(special, "full" , resdir,  breakPs, t, fimo, total_reads, type_nme = type_nme, log=T)	
+	 plotAllHM(special, "full" , resdir,  breakPs, t, fimo, total_reads, type_nme = names(breakPs), log=T)	
+
 	print("endcs_1")
-	 plotAllHM(endcs_1, "regional_100b_leader" , resdir,  breakPs, t, fimo, total_reads, type_nme = type_nme,  log=T)	
+	 plotAllHM(endcs_1, "regional_100b_leader" , resdir,  breakPs, t, fimo, total_reads, type_nme = names(breakPs),  log=T)	
 print("endcs_2")
-	plotAllHM(endcs_2, "regional_10kb_leader" , resdir,  breakPs, t, fimo, total_reads, type_nme = type_nme, plotHM = F,  log=T)	
+	plotAllHM(endcs_2, "regional_10kb_leader" , resdir,  breakPs, t, fimo, total_reads, type_nme = names(breakPs), plotHM = F,  log=T)	
 	
 	
 
