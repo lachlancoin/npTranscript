@@ -1,6 +1,6 @@
 
 ##TRANSCRIPT COVERAGE ANALYSIS
-min_t_count1 = 20
+min_t_count = 20
 maxt_ =10
 max_h = unlist(lapply(transcripts_all, function(transcripts)  max(transcripts[,grep('count[0-9]', names(transcripts)), drop=F])))
 
