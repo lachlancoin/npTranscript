@@ -3,6 +3,7 @@ package npTranscript.cluster;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
@@ -78,29 +79,25 @@ public class IdentityProfile1 {
 
 	public static boolean subclusterBasedOnStEnd = false;
 	
+	
+	
 	public String[] clusterID = new String[2];
-	public boolean processRefPositions(SAMRecord sam, String id, boolean cluster_reads, int  readLength, Sequence refSeq, int src_index , Sequence readSeq, String baseQ, 
-			int start_read, int end_read, char strand, SWGAlignment align5prime
+	public boolean processRefPositions(SAMRecord sam, String id, boolean cluster_reads, Sequence refSeq, int src_index , Sequence readSeq, String baseQ, 
+			int start_read, int end_read, char strand, SWGAlignment align5prime, SWGAlignment align3prime,
+			SWGAlignment align3primeRev,
+			int offset_3prime, int polyAlen
 			) throws IOException, NumberFormatException{
 		int startPos = sam.getAlignmentStart()+1; // transfer to one based
 		int endPos = sam.getAlignmentEnd()+1;
 		boolean hasSplice = false;
+		int  readLength = readSeq.length();
 		Annotation annot = this.all_clusters.annot;
 
 		CigarHash2 breaks  = coRefPositions.breaks;
 		int seqlen = refSeq.length();
-		char[] last10bp = refSeq.subSequence(seqlen-10, seqlen).charSequence();
-		boolean polyA = true;
-		for(int i=0; i<last10bp.length; i++){
-			if(last10bp[i]!='A') polyA = false;
-			
-		}
-		if(polyA){
-			int i =1;
-			while(refSeq.charAt(seqlen-i)=='A'){
-				i++;
-			}
-			seqlen = seqlen-(i-1);
+	
+		if(polyAlen>0){
+			seqlen = seqlen-(polyAlen);
 			annot.adjust3UTR(seqlen);
 		}
 		
@@ -110,6 +107,8 @@ public class IdentityProfile1 {
 		
 		if( align5prime!=null ){
 			if(align5prime.getIdentity()>0.8 * Math.max(start_read,align5prime.getLength())){
+				System.err.println("rescued 5' "+readSeq.getName());
+
 				int newStartPos = align5prime.getStart2() + 1; // transfer to 1-based
 				int newBreakPos = newStartPos + align5prime.getSequence2().length -  align5prime.getGaps2();
 				if(newBreakPos < startPos){
@@ -117,6 +116,44 @@ public class IdentityProfile1 {
 					coRefPositions.start = newStartPos;
 					coRefPositions.breaks.add(0, newBreakPos);
 					coRefPositions.breaks.add(0, newStartPos);
+				}
+			}
+		}
+		if( align3prime!=null ){
+			//System.err.println(readSeq.subSequence(end_read, readSeq.length()));
+			double diff = readLength-end_read;
+			double ident = align3prime.getIdentity();
+			double alignLen = align3prime.getLength();
+			int read_st = align3prime.getStart1();
+			//getStartEnd(SWGAlignment align, int offset1, int offset2,  boolean negStrand1) 
+		/*	getStartEnd(align3prime, seq1, seq2, 0, offset_3prime, false);
+			
+			
+			getStartEnd(align3primeRev, seq11, seq21, 0, offset_3prime, true);
+			double perc = (double) seq1[2]/(double)seq1[3];
+			double perc1 = (double) seq11[2]/(double)seq11[3];
+			double perc_ = (double) seq1[3]/diff;
+			double perc1_ = (double) seq11[3]/diff;
+			if(perc>0.8 || perc1>0.8){
+			System.err.println(perc+" "+perc_);
+			System.err.println("rev "+perc1+" "+perc1_);
+			System.err.println(Arrays.asList(seq1)+";"+Arrays.asList(seq2));
+			System.err.println("rev "+Arrays.asList(seq11)+";"+Arrays.asList(seq21));
+			System.err.println("###");
+			}*/
+			if(ident > 0.8 *Math.max(alignLen,diff)){// && read_st< 20){
+				int newBreakPos = offset_3prime+ align3prime.getStart2() + 1; // transfer to 1-based
+				int newEndPos = newBreakPos + align3prime.getSequence2().length -  align3prime.getGaps2();
+			//	int endp_diff = refSeq.length() - newEndPos;
+			// this is in the extra bit of the read
+				int read_end = read_st + align3prime.getSequence1().length - align3prime.getGaps1();
+				System.err.println(newBreakPos+"-"+newEndPos);
+				if(newEndPos > endPos){
+					System.err.println("rescued 3' "+readSeq.getName());
+					endPos = newEndPos;
+					coRefPositions.end = newEndPos;
+					coRefPositions.breaks.add( newBreakPos);
+					coRefPositions.breaks.add( newEndPos);
 				}
 			}
 		}
@@ -236,6 +273,37 @@ public class IdentityProfile1 {
 		return hasSplice;
 	}
 	
+	static Integer[] seq1 = new Integer[4];
+	static Integer[] seq2 = new  Integer[4];
+	static Integer[] seq11 = new Integer[4];
+	static Integer[] seq21 = new  Integer[4];
+	
+	private static  void getStartEnd(SWGAlignment align, Integer[] seq1, Integer[] seq2,  int offset1, int offset2,  boolean negStrand1) {
+		int len1 = align.getOriginalSequence1().length();
+		seq1[0] = align.getStart1();
+		seq1[1] = align.getStart1()+align.getSequence1().length - align.getGaps1();
+		seq1[2] = align.getIdentity();
+		seq1[3] = align.getLength();
+		seq2[0] = align.getStart2();
+		seq2[1] = align.getStart2()+align.getSequence2().length - align.getGaps2();
+		seq2[2] = align.getIdentity();
+		seq2[3] = align.getLength();
+		if(negStrand1){
+			int a = seq1[1];
+			seq1[1] = len1 - seq1[0];
+			seq1[0] = len1 - a;
+		}
+		seq1[0]= seq1[0]+offset1;
+		seq1[1] = seq1[1]+offset1;
+		seq2[0]= seq2[0]+offset2;
+		seq2[1] = seq2[1]+offset2;
+	}
+
+	private Integer[][] getStartEnd(SWGAlignment align3prime, int offset_3prime) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 	private void addBreakPoint(int source_index,int i, int prev_position, int position) {
 		if(breakpoints[source_index][i]!=null){
 			this.breakpoints[this.source_index][i].addToEntry(prev_position, position, 1);
