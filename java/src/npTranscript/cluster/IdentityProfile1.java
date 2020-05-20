@@ -104,7 +104,7 @@ public class IdentityProfile1 {
 		coRefPositions.end = endPos;
 		coRefPositions.start = startPos;
 		breaks.add(coRefPositions.end);
-		
+		boolean includeInConsensus = true;
 		if( align5prime!=null ){
 			if(align5prime.getIdentity()>0.8 * Math.max(start_read,align5prime.getLength())){
 				System.err.println("rescued 5' "+readSeq.getName());
@@ -120,6 +120,7 @@ public class IdentityProfile1 {
 			}
 		}
 		if( align3prime!=null ){
+			
 			//System.err.println(readSeq.subSequence(end_read, readSeq.length()));
 			double diff = readLength-end_read;
 			double ident = align3prime.getIdentity();
@@ -142,11 +143,10 @@ public class IdentityProfile1 {
 			System.err.println("###");
 			}*/
 			if(ident > 0.8 *Math.max(alignLen,diff)){// && read_st< 20){
+				includeInConsensus = false;
 				int newBreakPos = offset_3prime+ align3prime.getStart2() + 1; // transfer to 1-based
 				int newEndPos = newBreakPos + align3prime.getSequence2().length -  align3prime.getGaps2();
-			//	int endp_diff = refSeq.length() - newEndPos;
-			// this is in the extra bit of the read
-				int read_end = read_st + align3prime.getSequence1().length - align3prime.getGaps1();
+//				int read_end = read_st + align3prime.getSequence1().length - align3prime.getGaps1();
 				System.err.println(newBreakPos+"-"+newEndPos);
 				if(newEndPos > endPos){
 					System.err.println("rescued 3' "+readSeq.getName());
@@ -218,7 +218,7 @@ public class IdentityProfile1 {
 		+startPos+"\t"+endPos+"\t"+coRefPositions.numBreaks()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
 		+coRefPositions.getError(src_index)+"\t"+secondKeySt+"\t"+strand+"\t"+breakSt;
 		this.o.printRead(str);
-		if(Outputs.doMSA!=null && (seqlen - endPos)<100){
+		if(Outputs.doMSA!=null && (seqlen - endPos)<100 && includeInConsensus){
 			int st1 = startPos; //position>0 ? position : startPos; // start after break
 			inner: for(int i=annot.start.size()-1; i>=0; i--){
 			//	String gene = annot.genes.get(i);
@@ -257,7 +257,7 @@ public class IdentityProfile1 {
 		//	int end1 = endPos;
 		}
 		
-		if(Outputs.doMSA!=null && Outputs.doMSA.contains(type_nme)) {
+		if(Outputs.doMSA!=null && Outputs.doMSA.contains(type_nme) && includeInConsensus) {
 			Sequence readSeq1 = readSeq.subSequence(start_read, end_read);
 			String baseQ1 = baseQ.length()<=1 ? baseQ :baseQ.substring(start_read, end_read);
 		//	int end_ref = sam.getReferencePositionAtReadPosition(end_read);
