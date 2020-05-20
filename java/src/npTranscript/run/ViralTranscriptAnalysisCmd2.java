@@ -60,6 +60,7 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import japsa.seq.Alphabet;
+import japsa.seq.Alphabet.DNA;
 import japsa.seq.JapsaAnnotation;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
@@ -429,9 +430,11 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			int currentIndex = 0;
 			
 			Sequence chr = genomes.get(currentIndex);
-			int primelen = 1000;
+			int primelen = 500;//chr.length();
 		//	Sequence chr3prime = chr.subSequence(chr.length()-primelen, chr.length());
-			Sequence chr5prime = TranscriptUtils.coronavirus ? chr.subSequence(0	, primelen) : null;
+			Sequence chr5prime = TranscriptUtils.coronavirus ? chr.subSequence(0	, Math.min( primelen, chr.length())) : null;
+			//int polyAlen = TranscriptUtils.coronavirus ? TranscriptUtils.polyAlen(chr) : 0;
+			Sequence chr3prime = TranscriptUtils.coronavirus ? chr.subSequence(Math.max(0, chr.length()-primelen), chr.length()) : null;
 
 			Set<String> doneChr = new HashSet<String>();
 			
@@ -502,7 +505,13 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 					currentIndex = refIndex;
 					String prev_chrom = chr==null ? "null": chr.getName();
 					chr = genomes.get(currentIndex);
-					chr5prime = TranscriptUtils.coronavirus ? chr.subSequence(0	, primelen) : null;
+					chr5prime = TranscriptUtils.coronavirus ? chr.subSequence(0	, Math.min( primelen, chr.length())) : null;
+					//int polyAlen = TranscriptUtils.coronavirus ? TranscriptUtils.polyAlen(chr) : 0;
+					chr3prime = TranscriptUtils.coronavirus ? chr.subSequence(Math.max(0, chr.length()-primelen), chr.length()) : null;
+
+
+					//	TranscriptUtils.coronavirus ? chr.subSequence(chr.length()-primelen, chr.length()) : null;
+
 				//	 chr3prime = chr.subSequence(chr.length()-primelen, chr.length());
 				//	chr5prime = chr.subSequence(0	, primelen);
 				//	outp.updateChromIndex(currentIndex);
@@ -549,7 +558,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 							profile = new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh, annot, calcBreaks1, chr.getName(), currentIndex);
 					}
 					try{
-						TranscriptUtils.identity1(chr, chr5prime, readSeq, sam, profile, source_index, cluster_reads, chr.length());
+						TranscriptUtils.identity1(chr, chr5prime,chr3prime, readSeq, sam, profile, source_index, cluster_reads, chr.length());
 					}catch(NumberFormatException exc){
 						System.err.println(readSeq.getName());
 						exc.printStackTrace();

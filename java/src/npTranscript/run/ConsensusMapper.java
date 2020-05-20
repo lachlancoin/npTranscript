@@ -161,19 +161,18 @@ public class ConsensusMapper extends CommandLine {
 		for(int i=0; i< reads.size(); i++){
 			Sequence readSeq = reads.get(i);
 			String nme = readSeq.getName();
-			String[] desc = readSeq.getDesc().split(";"); //ID0.0;MT007544.1;1;29893;5_3;22;27904;2;leader;ORF8;-1;2262
+			String[] descr = readSeq.getDesc().split("\\s+");
+			String[] desc = descr[0].split(";"); //ID0.0;MT007544.1;1;29893;5_3;22;27904;2;leader;ORF8;-1;2262
 			String[] br = desc[0].split(",");
 			List<Integer> breaks;
-			if(br.length==1){
+			
 				int currIndex = Integer.parseInt(desc[0]);
 				if(currIndex!=genome_index){
 					genome_index = currIndex;
 					refSeq = genomes.get(genome_index);
 				}
 				breaks = ConsensusMapper.readBreaks(desc[1].split(","));
-			}else{
-				breaks = ConsensusMapper.readBreaks(desc[0].split(","));
-			}
+			
 			
 			int[] start1 = new int[(int) Math.floor((double)breaks.size()/2.0)];
 			int[] end1= new int[start1.length];
@@ -232,9 +231,9 @@ public class ConsensusMapper extends CommandLine {
 			}
 			String identity =String.format("%5.3g", ident/totlen);
 		  writeFasta(os1, sequ, readSeq.getName(),getString(breaks_ref)+";"+getString(breaks_reads)+";"+identity
-				 +" "+allgaps.toString().replaceAll("\\s+", "")+" "+allgaps2.toString().replaceAll("\\s+", ""));
-		  writeFasta(os2, sequ_refonly,readSeq.getName(),getString(breaks_ref)+";"+getString(breaks_reads)+";"+identity);
-		  writeFasta(os3, remaining,readSeq.getName(),getString(breaks_ref)+";"+getString(breaks_reads));
+				 +" "+allgaps.toString().replaceAll("\\s+", "")+" "+allgaps2.toString().replaceAll("\\s+", "")+" "+descr[1]);
+		  writeFasta(os2, sequ_refonly,readSeq.getName(),getString(breaks_ref)+";"+getString(breaks_reads)+";"+identity+" "+descr[1]);
+		  writeFasta(os3, remaining,readSeq.getName(),getString(breaks_ref)+";"+getString(breaks_reads)+" "+descr[1]);
 		/*  if(right_start1 > left_end1+1){
 				// remaining = null;
 				 Sequence remaining=readSeqLeft.subSequence(left_end1, readSeqLeft.length());

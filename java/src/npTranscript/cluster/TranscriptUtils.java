@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.SequenceUtil;
 import japsa.bio.np.barcode.SWGAlignment;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
@@ -16,6 +17,8 @@ public class TranscriptUtils {
 	public static int startThresh = 100;
 	public static int extra_threshold = 500;
 	public static int extra_threshold1 = 50;
+	public static int extra_threshold2 = 10;
+
 	public static boolean coronavirus = true;
 	static int round(int pos, int round) {
 		int res = (int) Math.floor((double) (pos) / (double) round);
@@ -80,7 +83,7 @@ public class TranscriptUtils {
 	 * @param sam
 	 * @return
 	 */
-	public static void identity1(Sequence refSeq, Sequence fivePrimeRefSeq,  Sequence readSeq, SAMRecord sam, IdentityProfile1 profile, 
+	public static void identity1(Sequence refSeq, Sequence fivePrimeRefSeq, Sequence threePrimeRefSeq,   Sequence readSeq, SAMRecord sam, IdentityProfile1 profile, 
 			int source_index, boolean cluster_reads, int seqlen) throws NumberFormatException{
 		int readPos = 0;// start from 0
 		//Outputs output = profile.o;
@@ -185,16 +188,30 @@ public class TranscriptUtils {
 			String baseQ = sam.getBaseQualityString();
 			char strand = sam.getReadNegativeStrandFlag() ? '-': '+';
 			SWGAlignment align_5prime = null;
-			
+			SWGAlignment align_3prime = null;
+			SWGAlignment align_3primeRev = null;
+
+			int offset_3prime =0;
+			int polyAlen = TranscriptUtils.polyAlen(refSeq);
 			if(TranscriptUtils.coronavirus && st_r > extra_threshold1 && st_r < 1000 && sam.getAlignmentStart()> 100 ){
 				//good candidate for a missed 5' alignment
 				 align_5prime = SWGAlignment.align(readSeq.subSequence(0, st_r), fivePrimeRefSeq);
 			}
+			int diff_r = readSeq.length() -end_r;
+			int seqlen1 = refSeq.length()-polyAlen;
+			if(TranscriptUtils.coronavirus && diff_r > extra_threshold2 && diff_r < 1000 && sam.getAlignmentEnd()< seqlen1- 100 ){
+				//good candidate for a missed 3' alignment
+				 align_3prime = SWGAlignment.align(readSeq.subSequence(end_r+1,readSeq.length()), threePrimeRefSeq);
+				// align_3primeRev = SWGAlignment.align(TranscriptUtils.revCompl(readSeq.subSequence(end_r+1,readSeq.length())), threePrimeRefSeq);
+
+				 offset_3prime = refSeq.length()-threePrimeRefSeq.length();
+			}
 			//String flanking = start_flank1+"\t"+start_flank2+"\t"+end_flank1+"\t"+end_flank2;
 			//SAMRecord sam, String id, boolean cluster_reads, int  readLength, Sequence refSeq, int src_index , Sequence readSeq, String baseQ, 
 			//int start_read, int end_read, char strand, SWGAlignment align5prime
-			boolean splice = profile.processRefPositions(sam, id, cluster_reads, readSeq.length(), 
-					refSeq, source_index, readSeq,baseQ, st_r, end_r, strand, align_5prime);
+			
+			boolean splice = profile.processRefPositions(sam, id, cluster_reads, 
+					refSeq, source_index, readSeq,baseQ, st_r, end_r, strand, align_5prime, align_3prime,align_3primeRev, offset_3prime, polyAlen);
 			//String ID = profile.clusterID
 			if(!splice && Outputs.writeUnSplicedFastq){
 				
@@ -212,34 +229,18 @@ public class TranscriptUtils {
 			String desc = ";start="+sam.getAlignmentStart()+";end="+sam.getAlignmentEnd()+";full_length="+readSeq.length()+";strand="+strand;
 			
 			if(st_r >extra_threshold  ){
-				Sequence spanning1 = refSeq.subSequence(Math.max(0, sam.getAlignmentStart()-10),sam.getAlignmentStart());
-				Sequence spanning2 = refSeq.subSequence(sam.getAlignmentStart(),Math.min(refSeq.length(), sam.getAlignmentStart()+10));
 				Sequence leftseq = readSeq.subSequence(0, st_r);
 				String baseQL = baseQ.equals("*") ?  baseQ : baseQ.substring(0, st_r);
 
 				if(sam.getReadNegativeStrandFlag()) {
-					spanning1 = Alphabet.DNA().complement(spanning1);
-					spanning2 = Alphabet.DNA().complement(spanning2);
-					leftseq = Alphabet.DNA().complement(leftseq);
+					leftseq =TranscriptUtils.revCompl(leftseq); 
+							
 					baseQL = (new StringBuilder(baseQ)).reverse().toString();
 				}
 			
 				leftseq.setName(readSeq.getName()+".L");
-				 align_5prime = SWGAlignment.align(leftseq, refSeq);
-				 String extra="NA";
 				
-				
-				 if(align_5prime.getIdentity()>leftseq.length()*0.8){
-					
-					 extra = getString(align_5prime, false);
-				 }else if(checkNegStrand){
-					 align_5prime = SWGAlignment.align(Alphabet.DNA().complement(leftseq), refSeq);
-					 if(align_5prime.getIdentity()>leftseq.length()*0.8){
-						 extra=getString(align_5prime, true);
-					 }
-					 	
-				 }
-				leftseq.setDesc("len="+leftseq.length()+desc+" "+extra+" "+spanning1.toString()+" "+spanning2.toString());//+";mtch5="+mtch_5+";mtch_3="+mtch_3);
+				leftseq.setDesc("len="+leftseq.length()+desc);//+";mtch5="+mtch_5+";mtch_3="+mtch_3);
 				profile.o.writeLeft(leftseq,baseQL,sam.getReadNegativeStrandFlag(), source_index);// (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)leftseq1.length());
 				
 			}
@@ -252,28 +253,16 @@ public class TranscriptUtils {
 					String baseQR = baseQ.equals("*") ?  baseQ : baseQ.substring(end_r, readSeq.length());
 				 
 				if(sam.getReadNegativeStrandFlag()) {
-					spanning1 = Alphabet.DNA().complement(spanning1);
-					spanning2 = Alphabet.DNA().complement(spanning2);
-					rightseq = Alphabet.DNA().complement(rightseq);
+					rightseq = TranscriptUtils.revCompl(rightseq);
 					baseQR = (new StringBuilder(baseQ)).reverse().toString();
 				
 				}
 				 align_5prime = SWGAlignment.align(rightseq, refSeq);
-				 String extra="NA";
-				 if(align_5prime.getIdentity()>rightseq.length()*0.8){
-					
-					 extra = getString(align_5prime, false);
-				 }else if(checkNegStrand){
-					 align_5prime = SWGAlignment.align(Alphabet.DNA().complement(rightseq), refSeq);
-					 if(align_5prime.getIdentity()>rightseq.length()*0.8){
-						 extra=getString(align_5prime, true);
-					 }
-					 	
-				 }
+				 
 				
 				//int mtch_5  = TranscriptUtils.checkAlign ?  checkAlignmentIsNovel(rightseq1, refSeq5prime, "right 5") : 0;
 				//int mtch_3 = TranscriptUtils.checkAlign ? checkAlignmentIsNovel(rightseq1, refSeq3prime, "right 3"): 0;
-				rightseq.setDesc("len="+rightseq.length()+desc+" "+extra+" "+spanning1.toString()+" "+spanning2.toString());//+";mtch5="+mtch_5+";mtch_3="+mtch_3);
+				rightseq.setDesc("len="+rightseq.length()+desc+" "+spanning1.toString()+" "+spanning2.toString());//+";mtch5="+mtch_5+";mtch_3="+mtch_3);
 				profile.o.writeLeft(rightseq,baseQR, sam.getReadNegativeStrandFlag(), source_index);///,  (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)rightseq1.length());
 			}
 			
@@ -282,6 +271,29 @@ public class TranscriptUtils {
 			exc.printStackTrace();
 		}
 
+	}
+	
+	private static Sequence revCompl(Sequence leftseq) {
+		String sequence = SequenceUtil.reverseComplement(leftseq.toString());
+		return new Sequence(Alphabet.DNA(), sequence.toCharArray(), leftseq.getName());
+	}
+
+	public static int polyAlen(Sequence refSeq){
+		int seqlen = refSeq.length();
+		char[] last10bp = refSeq.subSequence(seqlen-10, seqlen).charSequence();
+		boolean polyA = true;
+		for(int i=0; i<last10bp.length; i++){
+			if(last10bp[i]!='A') polyA = false;
+			
+		}
+		if(polyA){
+			int i =1;
+			while(refSeq.charAt(seqlen-i)=='A'){
+				i++;
+			}
+			return i-1;
+		}
+		return 0;
 	}
 
 	private static String getString(SWGAlignment align_5prime, boolean neg) {

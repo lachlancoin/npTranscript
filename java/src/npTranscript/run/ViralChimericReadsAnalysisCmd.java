@@ -38,10 +38,12 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.TreeSet;
 
 import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.Range;
@@ -55,6 +57,7 @@ import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
+import htsjdk.samtools.SAMUtils;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
@@ -70,6 +73,8 @@ import japsa.util.deploy.Deployable;
 
 @Deployable(scriptName = "npChimera.run", scriptDesc = "Detection of chimeric reads")
 public class ViralChimericReadsAnalysisCmd extends CommandLine {
+
+	private static boolean IN_DEBUG_MODE;
 	
 	public ViralChimericReadsAnalysisCmd() {
 		super();
@@ -80,9 +85,10 @@ public class ViralChimericReadsAnalysisCmd extends CommandLine {
 		addString("outPrefix", null, "Prefix for output files", true);
 		addString("reference", null, "Reference file in FASTA format", true);
 		addInt("hitThresh", 200, "Length threshold for hits on the genome");
-		addInt("clipThresh", 20, "Lenght threshold for clipping.");
+		addInt("clipThresh", 20, "Length threshold for clipping.");
 		addInt("leftOverThresh", 200, "Length threshold for left over sequences");
 		addInt("flankSize", 20, "Flanking size for the reference sequence at fusion point.");
+		addBoolean("debug", false, "Running in debug mode.");
 		addStdHelp();
 	}
 	
@@ -95,6 +101,8 @@ public class ViralChimericReadsAnalysisCmd extends CommandLine {
 		hit_thresh = cmdLine.getIntVal("hitThresh");
 		clip_thresh = cmdLine.getIntVal("clipThresh");
 		leftover_thresh = cmdLine.getIntVal("leftOverThresh");
+		IN_DEBUG_MODE = cmdLine.getBooleanVal("debug");
+		
 		if(clip_thresh>leftover_thresh) {
 			System.err.println("WRANING: leftOverThresh is smaller than clipThresh. "
 					+ "Set leftOverThresh="+clip_thresh);
@@ -128,16 +136,21 @@ public class ViralChimericReadsAnalysisCmd extends CommandLine {
 		String out_fq = out_prefix+"_complete.fastq";
 		String out_leftover = out_prefix+"_leftover.fastq";
 		String out_bam = out_prefix+".bam";
+		String out_qual = IN_DEBUG_MODE ? out_prefix+"_qual.txt" : null; 
 		
-		if(new File(out_fq).exists()||new File(out_leftover).exists()||new File(out_bam).exists()) {
+		if(new File(out_fq).exists() ||
+				new File(out_leftover).exists() ||
+				new File(out_bam).exists() ||
+				out_qual!=null&&new File(out_qual).exists()) {
 			throw new RuntimeException("Output file exsits!!!");
 		}
 		
 		try {
 			BufferedWriter bw_complete = new BufferedWriter(new FileWriter(new File(out_fq)));
 			BufferedWriter bw_leftover = new BufferedWriter(new FileWriter(new File(out_leftover)));
+			BufferedWriter bw_qual = IN_DEBUG_MODE ? new BufferedWriter(new FileWriter(new File(out_qual))) : null;
 			IndexedFastaSequenceFile dict = new IndexedFastaSequenceFile(new File(reference));
-				
+			
 			SAMFileWriter samWriter = null;
 			for(String f : files) {
 				List<String> bam_files = new ArrayList<>();
@@ -145,6 +158,7 @@ public class ViralChimericReadsAnalysisCmd extends CommandLine {
 				if(!file.exists()) {
 					bw_complete.close();
 					bw_leftover.close();
+					if(IN_DEBUG_MODE) bw_qual.close();
 					dict.close();
 					if(samWriter!=null) samWriter.close();
 					throw new RuntimeException("!!!");
@@ -183,11 +197,11 @@ public class ViralChimericReadsAnalysisCmd extends CommandLine {
 							continue;
 						}
 						records.clear();
-						if(!record.isSecondaryAlignment()&&!isPolyATailorRepeat(record)) 
+						if(!record.isSecondaryAlignment()) 
 							records.add(record);
 						while((record = iterator.hasNext()?iterator.next():null)!=null &&
 								record.getReadName().equals(read_id)) {
-							if(!record.isSecondaryAlignment()&&!isPolyATailorRepeat(record))
+							if(!record.isSecondaryAlignment())
 								records.add(record);
 						}
 						
@@ -263,12 +277,13 @@ public class ViralChimericReadsAnalysisCmd extends CommandLine {
 						//       leftover sequence will be only at 5'-end or 3'-end (otherwise will be filtered out by #2)
 						//     - the reference sequence flanking 20bp of the upstream and downstream at the fusion point
 						//       will be always 41bp by default - padded with 'N' if flanking sequence is too short
-						// 4. the FASTQ header of the leftover sequences will contain three information fields
+						// 4. the FASTQ header of the leftover sequences will contain for information fields
 						//     - add '-y' option for alignment with minimap2
 						//     - SAMRecord getStringAttribute() could be used to retrieve these information
 						//       record.getStringAttribute("AP") for the alignment position of the original sequence
 						//       record.getStringAttribute("LO") for the position of the leftover sequence
-						//       record.getStringAttribute("FS") for the flanking sequence on the reference sequence
+						//       record.getStringAttribute("FR") for the flanking sequence on the reference sequence
+						//       record.getStringAttribute("FQ") for the flanking sequence on the query/read sequence
 						
 						Block block = blocks.get(0);
 						String refId = block.str_id;
@@ -320,27 +335,70 @@ public class ViralChimericReadsAnalysisCmd extends CommandLine {
 						
 						String refSequence = dict.getSequence(refId).getBaseString();
 						boolean isChimera = false;
-						if(qstart>leftover_thresh){
+						if(qstart>leftover_thresh&&leftOverAt5End){
 							String seqstr = sequence.substring(0, qstart-1);
 							String qualstr = qual.substring(0, qstart-1);
-							String refstr = getFlankSequence(refSequence, sstart-1, flank_size);
-							if(!isPositiveStrand) refstr = SequenceUtil.reverseComplement(refstr);
-							bw_leftover.write("@"+read_id+" LO:Z:"+1+","+(qstart-1)+","+readLen+" "+desc+" "+"FS:Z:"+refstr+"\n");
-							bw_leftover.write(seqstr+"\n");
-							bw_leftover.write("+\n");
-							bw_leftover.write(qualstr+"\n");
-							isChimera = true;
+							
+							// check quality score in a maximum of 100bp downstream region
+							// check the entire leftover sequence
+							int[] quals = getPhredScaledQualityScoreFromString(new StringBuilder(qualstr).reverse().toString());
+							int[] qs100 = new int[Math.min(100, quals.length)];
+							System.arraycopy(quals, 0, qs100, 0, qs100.length);
+							
+							if(!containsChimericRegion(qs100, 30, 10, 1, "median") &&
+									!containsChimericRegion(quals, 30, 10, 1, "q75")) {
+								String fqstr = getFlankSequence(sequence, qstart-1, flank_size);
+								String frstr = getFlankSequence(refSequence, sstart-1, flank_size);
+								if(!isPositiveStrand) frstr = SequenceUtil.reverseComplement(frstr);
+								bw_leftover.write("@"+read_id+" LO:Z:"+1+","+(qstart-1)+","+readLen+" "+desc+" "+
+										"FR:Z:"+frstr+","+sstart+","+(isPositiveStrand?"f":"r")+" "+
+										"FQ:Z:"+fqstr+","+qstart+",3'\n"); // match at 3'-end
+								bw_leftover.write(seqstr+"\n");
+								bw_leftover.write("+\n");
+								bw_leftover.write(qualstr+"\n");
+								if(IN_DEBUG_MODE) {
+									String fqQualStr = getFlankSequence(qual, qstart-1, 300, '!');
+									//bw_qual.write(read_id+"|"+fqstr+"|"+fqQualStr+"|"+qstart+"|3'\t");
+									bw_qual.write(read_id);
+									//reverse quality str to make the flanking position at the 3'-end
+									for(char c : new StringBuilder(fqQualStr).reverse().toString().toCharArray())
+										bw_qual.write("\t"+(c=='!'?-1:SAMUtils.fastqToPhred(c)));
+									bw_qual.write("\n");
+								}
+								isChimera = true;
+							}
 						}
-						if(qend<=readLen-leftover_thresh) {
+						if(qend<=readLen-leftover_thresh&&leftOverAt3End) {
 							String seqstr = sequence.substring(qend);
 							String qualstr = qual.substring(qend);
-							String refstr = getFlankSequence(refSequence, send-1, flank_size);
-							if(!isPositiveStrand) refstr = SequenceUtil.reverseComplement(refstr);
-							bw_leftover.write("@"+read_id+" LO:Z:"+(qend+1)+","+readLen+","+readLen+" "+desc+" "+"FS:Z:"+refstr+"\n");
-							bw_leftover.write(seqstr+"\n");
-							bw_leftover.write("+\n");
-							bw_leftover.write(qualstr+"\n");
-							isChimera = true;
+							
+							// check quality score in a maximum of 100bp downstream region
+							// check the entire leftover sequence
+							int[] quals = getPhredScaledQualityScoreFromString(qualstr);
+							int[] qs100 = new int[Math.min(100, quals.length)];
+							System.arraycopy(quals, 0, qs100, 0, qs100.length);
+							
+							if(!containsChimericRegion(qs100, 30, 10, 1, "median") &&
+									!containsChimericRegion(quals, 30, 10, 1, "q75")) {
+								String fqstr = getFlankSequence(sequence, qend-1, flank_size);
+								String frstr = getFlankSequence(refSequence, send-1, flank_size);
+								if(!isPositiveStrand) frstr = SequenceUtil.reverseComplement(frstr);
+								bw_leftover.write("@"+read_id+" LO:Z:"+(qend+1)+","+readLen+","+readLen+" "+desc+" "+
+										"FR:Z:"+frstr+","+send+","+(isPositiveStrand?"f":"r")+" "+
+										"FQ:Z:"+fqstr+","+qend+",5'\n"); // match at 5'-end
+								bw_leftover.write(seqstr+"\n");
+								bw_leftover.write("+\n");
+								bw_leftover.write(qualstr+"\n");
+								if(IN_DEBUG_MODE) {
+									String fqQualStr = getFlankSequence(qual, qend-1, 300, '!');
+									//bw_qual.write(read_id+"|"+fqstr+"|"+fqQualStr+"|"+qend+"|5'");
+									bw_qual.write(read_id);
+									for(char c : fqQualStr.toCharArray())
+										bw_qual.write("\t"+(c=='!'?-1:SAMUtils.fastqToPhred(c)));
+									bw_qual.write("\n");
+								}
+								isChimera = true;
+							}
 						}
 						
 						if(isChimera) {		
@@ -363,66 +421,22 @@ public class ViralChimericReadsAnalysisCmd extends CommandLine {
 			samWriter.close();
 			bw_complete.close();
 			bw_leftover.close();
+			if(IN_DEBUG_MODE) bw_qual.close();
 			dict.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
-	
-	private static boolean isPolyATailorRepeat(SAMRecord record) {
+
+	private static int[] getPhredScaledQualityScoreFromString(String qualstr) {
 		// TODO Auto-generated method stub
-		String seqstr = record.getReadString();
-		if(!record.isSecondaryOrSupplementary()) {
-			int readLen = record.getReadLength();
-			int st = 0, ed = 0;
-			CigarElement c = record.getCigar().getFirstCigarElement();
-			if(c.getOperator().isClipping()) st = c.getLength();
-			c = record.getCigar().getLastCigarElement();
-			if(c.getOperator().isClipping()) ed = c.getLength();
-			ed = readLen-ed;
-			seqstr = seqstr.substring(st, ed);
-		}
-		
-		return isPolyATailorRepeat(seqstr);
+		int[] quals = new int[qualstr.length()];
+		for(int i=0; i<qualstr.length(); i++)
+			quals[i] = SAMUtils.fastqToPhred(qualstr.charAt(i));
+		return quals;
 	}
-		
-	private static boolean isPolyATailorRepeat(String seqstr) {	
-		int[] b = new int[5];
-		for(char c : seqstr.toCharArray()) {
-			switch(Character.toUpperCase(c)) {
-				case 'A':
-					b[0]++;
-					break;
-				case 'T':
-					b[1]++;
-					break;
-				case 'U':
-					b[2]++;
-					break;
-				case 'C':
-					b[3]++;
-					break;
-				case 'G':
-					b[4]++;
-					break;
-				default:
-					break;	
-			}
-		}
-		
-		int max=0, secmax=0;
-		for(int i : b) {
-			if(i>=max) {
-				secmax = max;
-				max = i;
-			} else if(i>secmax) {
-				secmax = i;
-			}
-		}
-		return max+secmax>=(b[0]+b[1]+b[2]+b[3]+b[4])*0.8;
-	}
-	
+
 	private static boolean isPolyATail(String seqstr) {	
 		int[] b = new int[3];
 		for(char c : seqstr.toCharArray()) {
@@ -441,25 +455,175 @@ public class ViralChimericReadsAnalysisCmd extends CommandLine {
 			}
 		}
 		
-		double max = seqstr.length()*0.8;
+		double max = seqstr.length()*0.5;
 		return b[0]>=max||b[1]>=max||b[2]>=max;
 	}
 	
 	private static String getFlankSequence(String sequence, int p, int flank) {
+		// TODO Auto-generated method stub
+		return getFlankSequence(sequence, p, flank, 'N');
+	}
+	
+	private static String getFlankSequence(String sequence, int p, int flank, char pad) {
 		// TODO Auto-generated method stub
 		StringBuilder flank_str = new StringBuilder();
 		int readLen = sequence.length();
 		flank_str.setLength(0);
 		if(p<flank) {
 			for(int k=0; k<flank-p; k++)
-				flank_str.append('N');
+				flank_str.append(pad);
 		}
 		flank_str.append(sequence.substring(Math.max(0, p-flank), Math.min(readLen, p+flank+1)));
 		if(p+flank+1>readLen) {
 			for(int k=0; k<p+flank+1-readLen; k++)
-				flank_str.append('N');
+				flank_str.append(pad);
 		}
+		// for better visualization only
+		// will remove for a release
+		// flank_str.replace(flank, flank+1, "["+flank_str.charAt(flank)+"]");
 		return flank_str.toString();
+	}
+	
+	private static boolean containsChimericRegion(int[] quals, int windowSize, double qualThresh, int countThresh, String statsMethod) {
+		int count = 0;
+		double stat;
+		double q = -1;
+		switch(statsMethod.toLowerCase()) {
+		case "q25":
+			q = 0.25;
+			break;
+		case "q50":
+		case "median":
+			q = 0.5;
+			break;
+		case "q75":
+			q = 0.75;
+			break;
+		case "mean":
+			ArrayDeque <Integer> deque = new ArrayDeque<>();
+			double sum = 0;
+			for(int i = 0; i <= quals.length; i++) {
+				if (i >= windowSize) {
+					stat = sum / windowSize;
+					if(stat<qualThresh) {
+						++count;
+						if(count>=countThresh)
+							return true;
+					}
+					sum -= deque.pop();
+				}
+				if (i < quals.length) {
+					deque.offer(quals[i]);
+					sum += quals[i];
+				}
+			}
+			break;
+		default:
+			throw new RuntimeException("!!!");
+		}
+		SlidingWindowPercentile medianWindow = new SlidingWindowPercentile(quals, q);
+		for(int i = 0; i <= quals.length; i++) {
+			if (i >= windowSize) {
+				stat = medianWindow.getPercentile();
+				if(stat<qualThresh) {
+					++count;
+					if(count>=countThresh)
+						return true;
+				}
+				medianWindow.remove(i-windowSize);
+			}
+			if (i < quals.length) {
+				medianWindow.add(i);
+			}
+		}
+		return false;
+	}
+	
+	public static double[] slidingWindowMeans(int[] nums, int k) {
+		double[] means = new double[nums.length - k + 1];
+		ArrayDeque <Integer> deque = new ArrayDeque<>();
+		double sum = 0;
+		for(int i = 0; i <= nums.length; i++) {
+			if (i >= k) {
+				means[i - k] = sum / k;
+				sum -= deque.pop();
+			}
+			if (i < nums.length) {
+				deque.offer(nums[i]);
+				sum += nums[i];
+			}
+		}
+		return means;
+	}
+	
+	public static double[] slidingWindowPercentiles(int[] nums, int k, double q) {
+		double[] medians = new double[nums.length - k + 1];
+		SlidingWindowPercentile medianWindow = new SlidingWindowPercentile(nums, q);
+		for(int i = 0; i <= nums.length; i++) {
+			if (i >= k) {
+				medians[i - k] = medianWindow.getPercentile();
+				medianWindow.remove(i - k);
+			}
+			if (i < nums.length) {
+				medianWindow.add(i);
+			}
+		}
+		return medians;
+	}
+	
+	public static double[] slidingWindowMedians(int[] nums, int k) {
+		return slidingWindowPercentiles(nums, k, 0.5);
+	}
+	
+	private static class SlidingWindowPercentile {
+		private TreeSet<Integer> lower;
+		private TreeSet<Integer> upper;
+		private int[] elements;
+		private double percentile;
+		
+		public SlidingWindowPercentile(int[] nums, double p) {
+			if(p<0||p>1) throw new RuntimeException("!!!");
+			elements = nums;
+			Comparator<Integer> c = new Comparator<Integer>(){
+				public int compare(Integer a, Integer b) {
+					return elements[a] == elements[b] ? a - b : elements[a] < elements[b] ? -1 : 1;
+				}
+			};
+			lower = new TreeSet<>(c);
+			upper = new TreeSet<>(c);
+			percentile = p;
+		}
+
+		public void add(int i) {
+			if (lower.size()*(1-percentile) <= upper.size()*percentile) {
+				upper.add(i);
+				int m = upper.first();
+				upper.remove(m);
+				lower.add(m);
+			} else {
+				lower.add(i);
+				int m = lower.last();
+				lower.remove(m);
+				upper.add(m);
+			}
+		}
+
+		public boolean remove(int i) {
+			return lower.remove(i) || upper.remove(i);
+		}
+
+		public double getPercentile() {
+			double qval;
+			int n = lower.size()+upper.size();
+			if(lower.size()>n*percentile) {
+				qval = elements[lower.last()];
+			} else if(upper.size()<n*(1-percentile)) {
+				qval = elements[upper.first()];
+			} else {
+				qval = ((double) elements[lower.last()] + elements[upper.first()])/2;
+			}
+			return qval;
+		}
 	}
 }
 
