@@ -25,7 +25,7 @@ fi
 
 
 if [ ! $2 ]; then
- ID="ID"
+ ID=".fa"
 fi
 
 n=$SLURM_ARRAY_TASK_ID
@@ -44,16 +44,13 @@ mkdir -p $tododir
 mkdir -p $outdir
 todolist=$chrom.$n.$ID.todo.txt
 fulllist=$(less $zipfile  | grep $ID  | grep .fa | rev | cut -f 1 -d ' ' | rev)
-echo $fulllist
+#echo $fulllist
 echo $fulllist | wc
-less ${chrom}.clusters.zip  | grep $ID | grep .fa  | rev | cut -f 1 -d ' ' | rev | tail -n +$n | head -n 1 > $todolist
-#unzip -l $zipfile  | tr -s ' ' | cut -f 5 -d ' ' | grep -v ${ID} | grep '.fa' | tail -n +$n | head -n 1 > $todolist
-ID1=$(head -n 1 $todolist | cut -f 1 | rev | cut -f 2- -d '.' | rev)
+#entry=$(less ${chrom}.clusters.zip  | grep $ID | grep .fa  | rev | cut -f 1 -d ' ' | rev | tail -n +$n | head -n 1)
+entry=$(less ${chrom}.todo.txt | rev | cut -f 1 -d ' ' | rev | tail -n +$n | head -n 1)
+ID1=$(echo $entry | cut -f 1 | rev | cut -f 2- -d '.' | rev)
 outfile="${outdir}/${ID1}.fasta"
-rm $outfile
-while read entry; do
 	echo $entry
-	#entry=$(head -n $n $todolist | tail -n +1)
 	entryname=$(echo $entry | sed 's/.fa//')
 	clustid=$(echo $entry | cut -f 1-2 -d .)
 	#desc=$(less $chrom.transcripts.txt.gz | grep -P "${clustid}\t" | head -n 1 | sed 's/\t/;/g' | cut -f 1-12 -d ';')
@@ -63,8 +60,7 @@ while read entry; do
 	count=$(grep '^[>@]' $tmpfile | wc -l)
 	${abpoa} $tmpfile | sed "s/Consensus_sequence/${entryname} ${firstline} ${count}/" >> $outfile
 	#rm -f $tmpfile
-done < $todolist
-rm $todolist
+#rm $todolist
 
 #rmdir $tododir
 
