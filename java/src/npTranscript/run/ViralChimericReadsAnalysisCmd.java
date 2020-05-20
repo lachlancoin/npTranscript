@@ -277,7 +277,7 @@ public class ViralChimericReadsAnalysisCmd extends CommandLine {
 						//       leftover sequence will be only at 5'-end or 3'-end (otherwise will be filtered out by #2)
 						//     - the reference sequence flanking 20bp of the upstream and downstream at the fusion point
 						//       will be always 41bp by default - padded with 'N' if flanking sequence is too short
-						// 4. the FASTQ header of the leftover sequences will contain for information fields
+						// 4. the FASTQ header of the leftover sequences will contain four information fields
 						//     - add '-y' option for alignment with minimap2
 						//     - SAMRecord getStringAttribute() could be used to retrieve these information
 						//       record.getStringAttribute("AP") for the alignment position of the original sequence
@@ -613,16 +613,17 @@ public class ViralChimericReadsAnalysisCmd extends CommandLine {
 		}
 
 		public double getPercentile() {
-			double qval;
-			int n = lower.size()+upper.size();
-			if(lower.size()>n*percentile) {
-				qval = elements[lower.last()];
-			} else if(upper.size()<n*(1-percentile)) {
-				qval = elements[upper.first()];
-			} else {
-				qval = ((double) elements[lower.last()] + elements[upper.first()])/2;
-			}
-			return qval;
+			if(lower.isEmpty()&&upper.isEmpty()) return Double.NaN;
+			if(lower.isEmpty()) return elements[upper.first()];
+			if(upper.isEmpty()) return elements[lower.last()];
+			
+			int n1 = lower.size();
+			int n2 = upper.size();
+			int n = n1+n2-1;
+			double p1 = (double)(n1-1)/n;
+			double p2 = (double)n1/n;
+			
+			return elements[lower.last()]+(elements[upper.first()]-elements[lower.last()])*(percentile-p1)/(p2-p1);
 		}
 	}
 }
