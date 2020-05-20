@@ -210,7 +210,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 	//	addBoolean("coexpression", false, "whether to calc coexperssion matrices (large memory for small bin size)");
 		addBoolean("overwrite", false, "whether to overwrite existing results files");
 		addBoolean("keepAlignment", false, "whether to keep alignment for MSA");
-		addBoolean("writeUnsplicedFastq", false, "whether to extract the unspliced fastq for further analysis");
+		addBoolean("writePolyA", true, "whether write reads with polyA in middle");
 		addBoolean("coronavirus", true, "whether to run in coronavirus mode (necessary to do breakpoint analysis, but takes more memory)");
 		addStdHelp();
 	}
@@ -274,7 +274,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 	//	String msa = cmdLine.getStringVal("aligner");
 		//if(msa==null) throw new RuntimeException("!!");
 	//	ErrorCorrection.msa = msa;
-		Outputs.writeUnSplicedFastq = cmdLine.getBooleanVal("writeUnsplicedFastq");
+		Outputs.writePolyA = cmdLine.getBooleanVal("writePolyA");
 		if(coronavirus){
 			System.err.println("running in coronavirus mode");
 			calcBreaks  = true; 
@@ -455,13 +455,12 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 				}
 				
 				if(sam==null) break outer;
-				//if(sam.isSecondaryAlignment()) throw new RuntimeException("secondary");
 				int source_index = (Integer) sam.getAttribute(src_tag);
 				if (pattern != null && (!sam.getReadName().contains(pattern)))
 					continue;
 				Sequence readSeq = new Sequence(Alphabet.DNA(), sam.getReadString(), sam.getReadName());
 				if (readSeq.length() <= 1) {
-					// LOG.warn(sam.getReadName() +" ignored");
+					//LOG.warn(sam.getReadName() +" ignored");
 					
 					// TODO: This might be secondary alignment, need to do something about it
 					continue;

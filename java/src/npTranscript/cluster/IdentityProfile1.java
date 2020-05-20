@@ -59,6 +59,8 @@ public class IdentityProfile1 {
 				breakpoints[i] = new OpenMapRealMatrix[] {new OpenMapRealMatrix(seqlen, seqlen),new OpenMapRealMatrix(seqlen, seqlen)};
 			
 			}
+		}else{
+			System.err.println("not calculating breakpoints");
 		}
 		
 	}
@@ -164,7 +166,7 @@ public class IdentityProfile1 {
 		int maxg_ind = -1;
 		int maxg2=0;
 		int maxg_ind2 =-1; 
-		boolean hasLeaderBreak = breaks.size()>1 &&  annot.isLeader(breaks.get(1));
+		boolean hasLeaderBreak = TranscriptUtils.coronavirus? (breaks.size()>1 &&  annot.isLeader(breaks.get(1))) : false;
 		secondKey.append(annot.nextUpstream(startPos,chrom_index)+";");
 		if(annotByBreakPosition){
 			
@@ -273,36 +275,9 @@ public class IdentityProfile1 {
 		return hasSplice;
 	}
 	
-	static Integer[] seq1 = new Integer[4];
-	static Integer[] seq2 = new  Integer[4];
-	static Integer[] seq11 = new Integer[4];
-	static Integer[] seq21 = new  Integer[4];
 	
-	private static  void getStartEnd(SWGAlignment align, Integer[] seq1, Integer[] seq2,  int offset1, int offset2,  boolean negStrand1) {
-		int len1 = align.getOriginalSequence1().length();
-		seq1[0] = align.getStart1();
-		seq1[1] = align.getStart1()+align.getSequence1().length - align.getGaps1();
-		seq1[2] = align.getIdentity();
-		seq1[3] = align.getLength();
-		seq2[0] = align.getStart2();
-		seq2[1] = align.getStart2()+align.getSequence2().length - align.getGaps2();
-		seq2[2] = align.getIdentity();
-		seq2[3] = align.getLength();
-		if(negStrand1){
-			int a = seq1[1];
-			seq1[1] = len1 - seq1[0];
-			seq1[0] = len1 - a;
-		}
-		seq1[0]= seq1[0]+offset1;
-		seq1[1] = seq1[1]+offset1;
-		seq2[0]= seq2[0]+offset2;
-		seq2[1] = seq2[1]+offset2;
-	}
 
-	private Integer[][] getStartEnd(SWGAlignment align3prime, int offset_3prime) {
-		// TODO Auto-generated method stub
-		return null;
-	}
+	
 
 	private void addBreakPoint(int source_index,int i, int prev_position, int position) {
 		if(breakpoints[source_index][i]!=null){
@@ -337,7 +312,7 @@ public class IdentityProfile1 {
 
 	public void printBreakPoints()  throws IOException {
 		for(int i=0; i<this.breakpoints.length; i++){
-			if(breakpoints[i]!=null){
+			if(breakpoints[i]!=null && breakpoints[i][0]!=null){
 				for(int j=0 ; j<breakpoints[i].length; j++)
 				{
 				PrintWriter pw = o.getBreakPointPw(chrom_index+"",i, j);

@@ -41,7 +41,7 @@ public class GFFAnnotation extends Annotation{
 				return genes.get(i);
 			}
 		}
-		return  "end"+chrom_index;
+		return   chrom_index+"."+TranscriptUtils.round(rightBreak,CigarHash2.round);
 		
 	}
 	
@@ -53,7 +53,7 @@ public class GFFAnnotation extends Annotation{
 				return genes.get(i);
 			}
 		}
-		return "st"+chrom_index;
+		return chrom_index+"."+TranscriptUtils.round(leftBreak,CigarHash2.round);
 	}
 	
 	@Override

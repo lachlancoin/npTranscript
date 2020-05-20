@@ -182,7 +182,7 @@ public class CigarClusters {
 	//	String upstream2 = annot==null||  startPos2<0  ? null : annot.nextUpstream(startPos2, chrom_index);
 	//	if(upstream==null) upstream =  chrom_index+"."+TranscriptUtils.round(startPos, CigarHash2.round)+"";
 	//	if(downstream==null) downstream = chrom_index+"."+ TranscriptUtils.round(endPos, CigarHash2.round)+"";
-		boolean hasLeaderBreak = cc.breaks.size()>1 &&  annot.isLeader(cc.breaks.get(1)*CigarHash2.round);
+		boolean hasLeaderBreak = TranscriptUtils.coronavirus  ? (cc.breaks.size()>1 &&  annot.isLeader(cc.breaks.get(1)*CigarHash2.round)) : false;
 
 		o.printTranscript(
 			cc.id()+"\t"+chrom+"\t"+cc.start+"\t"+cc.end+"\t"+cc.getTypeNme(seqlen)+"\t"+

@@ -369,12 +369,17 @@ readTranscriptHostAll<-function(infilesT,
   for(i in 1:length(chroms)){
     infilesT1 = paste(chroms[i],"transcripts.txt.gz", sep=".")
     print(infilesT1)
-    dfi = .readTranscriptsHost(infilesT1,target=target,filter = filter, combined_depth_thresh = combined_depth_thresh, start = start_text)
+
+    dfi = try(.readTranscriptsHost(infilesT1,target=target,filter = filter, combined_depth_thresh = combined_depth_thresh, start = start_text))
+if(inherits(dfi,"try-error")) {
+	dfs[[i]] = NULL
+}else{
     dfi = dfi[order(dfi$start),]
     if(dim(dfi)[1]>0){
       chrom_names[i] = dfi$chrs[1]
      # print(chrom_n)
       dfs[[i]] = dfi
+	print(dim(dfi))
       ncol = dim(dfi)[[2]]
       print(ncol)
       print(' not null')
@@ -382,6 +387,7 @@ readTranscriptHostAll<-function(infilesT,
       print("is null")
       dfs[[i]] = NULL
     }
+  }
   }
   lengs = unlist(lapply(dfs,function(x) if(is.null(x)) NA else dim(x)[1]))
   inds = which(!is.na(lengs))
@@ -519,7 +525,10 @@ readIsoformH5<-function(h5file,  transcripts_){
   names(target)[names(target)=="start"] = start_text
   
   header = names(read.table( infilesT1,sep="\t", head=T, nrows = 3, comment.char='#'))
-   extra = grep("count[0-9]", header)
+   extra = grep("count[0-9]", header,v=T)
+extran = as.list(rep("numeric", length(extra)))
+names(extran) = extra
+target = c(target,extran)
   #print(header)
   inf = scan(infilesT1, nlines=1, what=character())
   #if(length(grep("#", inf))>0) attr(transcripts,"info") = sub("#", "",inf)
@@ -527,9 +536,9 @@ readIsoformH5<-function(h5file,  transcripts_){
   inf = sub('#','',inf)
   types = unlist(lapply(inf, function(x) rev(strsplit(x,"_")[[1]])[1]))
   header_inds = match(names(target),header)
-  colClasses = rep(NULL, length(header));
+  colClasses = rep(NA, length(header));
   colClasses[header_inds] = target
-  colClass = cbind(rep("numeric", length(extra)), colClasses)
+  #colClass = cbind(rep("numeric", length(extra)), colClasses)
   transcripts = read.table( infilesT1,sep="\t", head=T, comment.char='#', colClasses= colClasses)
   if(!is.null(filter)){
     for(k in 1:length(filter)){
@@ -545,39 +554,39 @@ readIsoformH5<-function(h5file,  transcripts_){
   
   
   header_inds1 = match(names(target),names(transcripts))
-  head_inds1 = grep("count[0-9]", names(transcripts));
-  countT = apply(transcripts[,head_inds1,drop=F],1,function(x) sum(as.numeric(x)))
- # print(countT)
-indsk = countT>combined_depth_thresh
-  transcripts = transcripts [indsk,c(header_inds1, head_inds1)] 
-countT = countT[indsk]
-  transcripts = cbind(transcripts, countT)
+ # head_inds1 = grep("count[0-9]", names(transcripts));
+countT = as.numeric(transcripts$countTotal)
+ # countT = apply(transcripts[,head_inds1,drop=F],1,function(x) sum(as.numeric(x)))
+  print(countT)
+ 
+indsk = countT>=combined_depth_thresh
+  transcripts = transcripts [indsk,header_inds1, drop=F] 
+
+#geneID= as.character(unlist(lapply(strsplit(transcripts$ORFs,";"), function(v) v[1])))
+
+#rightGene = as.character(unlist(lapply(strsplit(transcripts$ORFs,";"), function(v) v[length(v)])))
+#transcripts = cbind(transcripts, geneID, rightGene)
+#transcripts$geneID = as.character(transcripts$geneID)
  # names(transcripts)[1:2] = types
-  names(transcripts)  = sub("leftGene", "geneID" ,names(transcripts))
+ # names(transcripts)  = sub("ORFs", "geneID" ,names(transcripts))
   names(transcripts)  = sub("chrom", "chrs" ,names(transcripts))
-  geneID = transcripts$geneID
-  type = rep(NA, length(geneID))
-  type[ grep(prefix, transcripts$geneID)] = "left"
-  missing = grep(prefix, transcripts$geneID,inv=T)
-  if(length(missing)>0){
-    have = grep(prefix,transcripts$rightGene[missing])
-    transcripts$geneID[missing[have]] = transcripts$rightGene[missing[have]]
-    type[missing[have]] = "right"
-  }
-  diff = transcripts$end - transcripts$start
-  #o = order(countAll, decreasing=T)
-  #transcripts = transcripts[o,]
-  #err_ratio_inds = grep("error_ratio", names(transcripts))
-  #transcripts[,err_ratio_inds] =apply(transcripts[,err_ratio_inds,drop=F], c(1,2), function(x) if(is.na(x)) -0.01 else x)
-  
-#print(inf)
-  if(length(grep("#", inf))>0) attr(transcripts,"info") = sub("#", "",inf)
- # print(inf)
-  type = as.factor(type)
-  res = cbind(transcripts, type, diff)
-  attr(res,"types")=types
-  attr(res,"info")=inf
-  res
+  #geneID = transcripts$geneID
+  #type = rep(NA, length(geneID))
+  #type[ grep(prefix, transcripts$geneID)] = "left"
+  #missing = grep(prefix, transcripts$geneID,inv=T)
+  #if(length(missing)>0){
+  #  have = grep(prefix,transcripts$rightGene[missing])
+  #  transcripts$geneID[missing[have]] = transcripts$rightGene[missing[have]]
+  #  type[missing[have]] = "right"
+  #}
+ # diff = transcripts$end - transcripts$start
+  if(length(grep("#", inf))>0) inf = sub("#", "",inf)
+  print(inf)
+  #type = as.factor(type)
+ # res = cbind(transcripts, type, diff)
+  attr(transcripts,"types")=types
+  attr(transcripts,"info")=inf
+  transcripts
 }
 
 .appendGeneNamesToDepth<-function(depth, transcripts, sort= "pv1"){

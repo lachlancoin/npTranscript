@@ -75,7 +75,7 @@ public class TranscriptUtils {
 	public  static boolean checkNegStrand = false;
 	
 	
-	
+	public static Sequence polyA = new Sequence(Alphabet.DNA(), "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".toCharArray(), "polyA");
 	/**
 	 * Get the identity between a read sequence from a sam and a reference sequence
 	 * 
@@ -206,30 +206,56 @@ public class TranscriptUtils {
 
 				 offset_3prime = refSeq.length()-threePrimeRefSeq.length();
 			}
-			//String flanking = start_flank1+"\t"+start_flank2+"\t"+end_flank1+"\t"+end_flank2;
-			//SAMRecord sam, String id, boolean cluster_reads, int  readLength, Sequence refSeq, int src_index , Sequence readSeq, String baseQ, 
-			//int start_read, int end_read, char strand, SWGAlignment align5prime
+			Sequence leftseq = null;  Sequence rightseq = null;
+			if(st_r> 20){
+				leftseq = readSeq.subSequence(0,st_r);
+				SWGAlignment polyAlign =  SWGAlignment.align(leftseq, polyA);
+				if(polyAlign.getIdentity() > 0.9 * polyAlign.getLength()  && polyAlign.getLength()>15){
+					int st = polyAlign.getStart1();
+					int end = st + polyAlign.getLength() - polyAlign.getGaps1();
+					if(st> 10){
+						String nme = readSeq.getName();
+					//	readSeq.setName(nme+".L");
+						profile.o.writePolyA(readSeq.subSequence(0, end),  nme+".L",
+								baseQ.length()==1 ? baseQ: baseQ.substring(0,end), sam.getReadNegativeStrandFlag(),source_index);
+					//	readSeq.setName(nme+".R");
+						profile.o.writePolyA(readSeq.subSequence( end+1, readSeq.length()),  nme+".R",
+								baseQ.length()==1 ? baseQ: baseQ.substring(end+1, st_r), sam.getReadNegativeStrandFlag(),source_index);
+						System.err.println("internal polyA 5´ ");
+						return;
+					}
+				}
+
+			}
+			if(readSeq.length() -  end_r >20){
+				rightseq = readSeq.subSequence(end_r+1, readSeq.length());
+				SWGAlignment polyAlign =  SWGAlignment.align(rightseq, polyA);
+				if(polyAlign.getIdentity() > 0.9 * polyAlign.getLength()  && polyAlign.getLength()>10 ){
+					 int st = polyAlign.getStart1() + end_r;
+					 int end = st + polyAlign.getLength() - polyAlign.getGaps1();
+					 if(end< readSeq.length()-10){
+						 String nme = readSeq.getName();
+						
+							profile.o.writePolyA(readSeq.subSequence(0, end), nme+".L",
+									baseQ.length()==1 ? baseQ: baseQ.substring(0,end), sam.getReadNegativeStrandFlag(),source_index);
+							profile.o.writePolyA(readSeq.subSequence( end, readSeq.length()),  nme+".R",
+									baseQ.length()==1 ? baseQ: baseQ.substring(end, readSeq.length()), sam.getReadNegativeStrandFlag(),source_index);
+							System.err.println("internal polyA 3'");
+					return;
+					 }
+				}
+			}
 			
 			boolean splice = profile.processRefPositions(sam, id, cluster_reads, 
 					refSeq, source_index, readSeq,baseQ, st_r, end_r, strand, align_5prime, align_3prime,align_3primeRev, offset_3prime, polyAlen);
 			//String ID = profile.clusterID
-			if(!splice && Outputs.writeUnSplicedFastq){
-				
-				String start_flank1 = refSeq.subSequence(Math.max(0, sam.getAlignmentStart()-10),sam.getAlignmentStart()).toString();
-				String start_flank2 = refSeq.subSequence(sam.getAlignmentStart(),Math.min(sam.getAlignmentStart()+10, refSeq.length())).toString();
-				String end_flank1 = refSeq.subSequence(Math.max(0, sam.getAlignmentEnd()-10),sam.getAlignmentEnd()).toString();
-				String end_flank2 = refSeq.subSequence(sam.getAlignmentEnd(),Math.min(sam.getAlignmentEnd()+10,refSeq.length())).toString();
-				
-				int len = sam.getAlignmentEnd() - sam.getAlignmentStart();
-				readSeq.setDesc(profile.clusterID[0]+" "+profile.clusterID[1]+" "+st_r+" "+end_r+" "+readSeq.length()+" "+sam.getAlignmentStart()+" "+sam.getAlignmentEnd()+" "+len+" "+start_flank1+" "+start_flank2+" "+end_flank1+" "+end_flank2);
-				profile.o.writeUnspliced(readSeq, baseQ, sam.getReadNegativeStrandFlag(), source_index);
-			}
+			
 		//	System.err.println(refSeq.length());
 			if(!splice && (sam.getAlignmentStart()>100 || sam.getAlignmentEnd()<(refSeq.length()-100))){
 			String desc = ";start="+sam.getAlignmentStart()+";end="+sam.getAlignmentEnd()+";full_length="+readSeq.length()+";strand="+strand;
 			
-			if(st_r >extra_threshold  ){
-				Sequence leftseq = readSeq.subSequence(0, st_r);
+			if(st_r >extra_threshold  && leftseq!=null ){
+				//if(leftseq==null) leftseq = readSeq.subSequence(0, st_r);
 				String baseQL = baseQ.equals("*") ?  baseQ : baseQ.substring(0, st_r);
 
 				if(sam.getReadNegativeStrandFlag()) {
@@ -245,7 +271,7 @@ public class TranscriptUtils {
 				
 			}
 			if(readSeq.length() -  end_r >extra_threshold){
-				Sequence rightseq = readSeq.subSequence(end_r, readSeq.length());
+			//	Sequence rightseq = readSeq.subSequence(end_r, readSeq.length());
 				Sequence spanning1 = refSeq.subSequence(Math.max(0, sam.getAlignmentEnd()-10),sam.getAlignmentEnd());
 				Sequence spanning2 = refSeq.subSequence(sam.getAlignmentEnd(),Math.min(refSeq.length(), sam.getAlignmentEnd()+10));
 				
@@ -308,13 +334,30 @@ public class TranscriptUtils {
 		 return strand+","+align_5prime.getScore()+","+align_5prime.getIdentity()+" "+st1+","+end1+" "+st2+","+end2;
 	}
 
-	private static int checkAlignmentIsNovel(Sequence leftseq, Sequence refSeq, String type) {
+	static Integer[] seq1 = new Integer[4];
+	static Integer[] seq2 = new  Integer[4];
+	static Integer[] seq11 = new Integer[4];
+	static Integer[] seq21 = new  Integer[4];
 	
-			SWGAlignment align = SWGAlignment.align(leftseq, refSeq);
-			return align.getIdentity();
-		
-			
-		
+	 static  void getStartEnd(SWGAlignment align, Integer[] seq1, Integer[] seq2,  int offset1, int offset2,  boolean negStrand1) {
+		int len1 = align.getOriginalSequence1().length();
+		seq1[0] = align.getStart1();
+		seq1[1] = align.getStart1()+align.getSequence1().length - align.getGaps1();
+		seq1[2] = align.getIdentity();
+		seq1[3] = align.getLength();
+		seq2[0] = align.getStart2();
+		seq2[1] = align.getStart2()+align.getSequence2().length - align.getGaps2();
+		seq2[2] = align.getIdentity();
+		seq2[3] = align.getLength();
+		if(negStrand1){
+			int a = seq1[1];
+			seq1[1] = len1 - seq1[0];
+			seq1[0] = len1 - a;
+		}
+		seq1[0]= seq1[0]+offset1;
+		seq1[1] = seq1[1]+offset1;
+		seq2[0]= seq2[0]+offset2;
+		seq2[1] = seq2[1]+offset2;
 	}
 	
 	

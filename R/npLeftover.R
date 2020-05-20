@@ -17,7 +17,7 @@ if(install){
 #library(edgeR)
 library(stats)
 library(rhdf5)
-read.gff(file, na.strings = c(".", "?"), GFF3 = TRUE)
+#read.gff(file, na.strings = c(".", "?"), GFF3 = TRUE)
 #library(seqinr)
 
 
@@ -40,7 +40,7 @@ read.gff(file, na.strings = c(".", "?"), GFF3 = TRUE)
 
 src = c( "../../R" , "~/github/npTranscript/R" )
 #source(.findFile(src, "transcript_functions.R"))
-
+source(.findFile(src, "transcript_functions.R"))
 source(.findFile(src, "diff_expr_functs.R"))
 
 prefix = "ENSC"; #for vervet monkey
@@ -69,24 +69,31 @@ if(isVirus){
 
 
 target= list( chrom="character", 
-             leftGene="character", rightGene="character", start = "numeric", 
-             end="numeric", ID="character", isoforms="numeric" ,type_nme="character")
+             ORFs ="character",start = "numeric", 
+             end="numeric", ID="character", isoforms="numeric" ,type_nme="character", countTotal="numeric")
 
 
 ##READ TRANSCRIPT DATA
 
- gfft = read.table("annotation.csv.gz", sep="\t", header=T, fill=T, quote='\"')
+
 
           
 
 #"gene:ncRNA_gene:pseudogene"
 infilesT = grep("transcripts.txt", dir(), v=T)
 transcripts = readTranscriptHostAll(infilesT, start_text = start_text,target = target,   filter = filter, combined_depth_thresh = 1)
+names(transcripts)[grep("count[0-9]",names(transcripts))] = sub("_leftover", "" ,attr(transcripts,"info"))
+geneID= as.character(unlist(lapply(strsplit(transcripts$ORFs,";"), function(v) v[1])))
+rightGene = as.character(unlist(lapply(strsplit(transcripts$ORFs,";"), function(v) v[length(v)])))
+transcripts = cbind(transcripts, geneID, rightGene)
+
+
 getlev(transcripts$chr)      
 head(getlev(transcripts[,names(transcripts) %in% c("chrs","start")]))                
                                    
 info = attr(transcripts,'info')
 
+gfft = read.table("annotation.csv.gz", sep="\t", header=T, fill=T, quote='\"')
 gfft = gfft[match(transcripts$geneID, gfft$ID),]
 gfft[,1] = transcripts$ID
 

@@ -66,13 +66,13 @@ public class Outputs{
 	public static boolean gzipFasta = false;
 	public static boolean keepAlignment = true;
 	public static boolean keepinputFasta = true;
-	public static boolean writeUnSplicedFastq = false;
+	public static boolean writePolyA = false;
 	
 		public File transcripts_file;
 		public File reads_file; 
 		private final File outfile, outfile1, outfile2, outfile2_1, outfile4, outfile5, outfile6, outfile7, outfile10;
 		//outfile9;
-		private final FOutp[] leftover_l, unspliced;//, leftover_r, fusion_l, fusion_r;
+		private final FOutp[] leftover_l, polyA;//, leftover_r, fusion_l, fusion_r;
 	
 		final int seqlen;
 		 PrintWriter transcriptsP,readClusters;
@@ -95,7 +95,7 @@ public class Outputs{
 			}
 			for(int i=0; i<leftover_l.length; i++){
 				if(leftover_l[i]!=null) this.leftover_l[i].close();
-				if(unspliced[i]!=null) this.unspliced[i].close();
+				if(polyA[i]!=null) this.polyA[i].close();
 			}
 		}
 			
@@ -149,14 +149,14 @@ public class Outputs{
 			//	so = new FOutp[1];
 			 }
 			 leftover_l = new FOutp[type_nmes.length];
-			 unspliced = new FOutp[type_nmes.length];
+			 polyA = new FOutp[type_nmes.length];
 		/*	 leftover_r = new FOutp[type_nmes.length];
 			 fusion_l = new FOutp[type_nmes.length];
 			 fusion_r = new FOutp[type_nmes.length];*/
 		//	 String nmei = genome_index+"."
 			 for(int i=0; i<leftover_l.length; i++){
 				 this.leftover_l[i]=  new FOutp(type_nmes[i]+".leftover", true);
-				 if(writeUnSplicedFastq) this.unspliced[i]=  new FOutp(type_nmes[i]+".unspliced", true);
+				 if(writePolyA) this.polyA[i]=  new FOutp(type_nmes[i]+".polyA", true);
 				/* this.leftover_r[i]=  new FOutp(type_nmes[i]+".leftover_r" , true);
 				 this.fusion_l[i]=  new FOutp(type_nmes[i]+".fusion_l" , true);
 				 this.fusion_r[i]=  new FOutp(type_nmes[i]+".fusion_r" , true);*/
@@ -384,18 +384,19 @@ public class Outputs{
 		}
 
 		
-		public void writeUnspliced(Sequence readseq, String baseQ, boolean negStrand, int source_index) {
-			if(unspliced==null || unspliced[source_index]==null) return ;
-			FastqWriter writer = unspliced[source_index].fastq;
+		public void writePolyA(Sequence readseq, String nme, String baseQ, boolean negStrand, int source_index) {
+			if(polyA==null || polyA[source_index]==null) return ;
+			FastqWriter writer = polyA[source_index].fastq;
 			if(writer==null) return;
 			if(negStrand){
 				readseq = Alphabet.DNA().complement(readseq);
 				baseQ = new StringBuilder(baseQ).reverse().toString();
 			}
-			 writer.write(new FastqRecord(readseq.getName()+ " "+readseq.getDesc(), new String(readseq.charSequence()), "", baseQ));
+			 writer.write(new FastqRecord(nme+ " "+readseq.getDesc(), new String(readseq.charSequence()), "", baseQ));
 
 			
 		}
+
 
 		
 
