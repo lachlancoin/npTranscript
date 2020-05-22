@@ -18,7 +18,9 @@ public class TranscriptUtils {
 	public static int startThresh = 100;
 	public static int extra_threshold = 500;
 	public static int extra_threshold1 = 50;
-	public static int extra_threshold2 = 10;
+	public static int extra_threshold2 = 20;
+	public static boolean attempt5rescue = false;
+	public static boolean attempt3rescue = false;
 
 	public static boolean coronavirus = true;
 	static int round(int pos, int round) {
@@ -200,13 +202,13 @@ public class TranscriptUtils {
 
 			int offset_3prime =0;
 			int polyAlen = TranscriptUtils.polyAlen(refSeq);
-			if(TranscriptUtils.coronavirus && st_r > extra_threshold1 && st_r < 1000 && sam.getAlignmentStart()> 100 ){
+			if(TranscriptUtils.coronavirus && st_r > extra_threshold1 && attempt5rescue && st_r < 1000 && sam.getAlignmentStart()> 100 ){
 				//good candidate for a missed 5' alignment
 				 align_5prime = SWGAlignment.align(readSeq.subSequence(0, st_r), fivePrimeRefSeq);
 			}
 			
 			int seqlen1 = refSeq.length()-polyAlen;
-			if(TranscriptUtils.coronavirus && diff_r > extra_threshold2 && diff_r < 1000 && sam.getAlignmentEnd()< seqlen1- 100 ){
+			if(TranscriptUtils.coronavirus && diff_r > extra_threshold2 && attempt3rescue &&  diff_r < 1000 && sam.getAlignmentEnd()< seqlen1- 100 ){
 				//good candidate for a missed 3' alignment
 				 align_3prime = SWGAlignment.align(readSeq.subSequence(end_r+1,readSeq.length()), threePrimeRefSeq);
 				// align_3primeRev = SWGAlignment.align(TranscriptUtils.revCompl(readSeq.subSequence(end_r+1,readSeq.length())), threePrimeRefSeq);
@@ -256,11 +258,12 @@ public class TranscriptUtils {
 			String secondKey= profile.processRefPositions(sam, id, cluster_reads, 
 					refSeq, source_index, readSeq,baseQ, st_r, end_r, strand, align_5prime, align_3prime,align_3primeRev, offset_3prime, polyAlen);
 			//String ID = profile.clusterID
-			seq11[0]=  st_r; seq11[1] = end_r; 
-			seq11[2] = sam.getAlignmentStart(); seq11[3] = sam.getAlignmentEnd();
+			diff_r = readSeq.length() - profile.readEn;
+			seq11[0]=  profile.readSt; seq11[1] = profile.readEn; 
+			seq11[2] = profile.startPos; seq11[3] = profile.endPos;
 			
 		//	System.err.println(refSeq.length());
-			if( (sam.getAlignmentStart()>extra_threshold || sam.getAlignmentEnd()<(refSeq.length()-extra_threshold))){
+			if( (profile.startPos>extra_threshold || profile.endPos <(refSeq.length()-extra_threshold))){
 			//String desc = ";start="+sam.getAlignmentStart()+";end="+sam.getAlignmentEnd()+";full_length="+readSeq.length()+";strand="+strand;
 			
 			if(st_r >extra_threshold  && leftseq!=null ){

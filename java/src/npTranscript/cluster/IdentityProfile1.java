@@ -81,7 +81,8 @@ public class IdentityProfile1 {
 
 	public static boolean subclusterBasedOnStEnd = false;
 	
-	
+	public int startPos, endPos;
+	public int readSt, readEn; 
 	
 	public String[] clusterID = new String[2];
 	public String processRefPositions(SAMRecord sam, String id, boolean cluster_reads, Sequence refSeq, int src_index , Sequence readSeq, String baseQ, 
@@ -89,8 +90,9 @@ public class IdentityProfile1 {
 			SWGAlignment align3primeRev,
 			int offset_3prime, int polyAlen
 			) throws IOException, NumberFormatException{
-		int startPos = sam.getAlignmentStart()+1; // transfer to one based
-		int endPos = sam.getAlignmentEnd()+1;
+		startPos = sam.getAlignmentStart()+1; // transfer to one based
+		endPos = sam.getAlignmentEnd()+1;
+		readSt = start_read; readEn = end_read;
 		boolean hasSplice = false;
 		int  readLength = readSeq.length();
 		Annotation annot = this.all_clusters.annot;
@@ -110,10 +112,11 @@ public class IdentityProfile1 {
 		if( align5prime!=null ){
 			if(align5prime.getIdentity()>0.8 * Math.max(start_read,align5prime.getLength())){
 				System.err.println("rescued 5' "+readSeq.getName());
-
+			
 				int newStartPos = align5prime.getStart2() + 1; // transfer to 1-based
 				int newBreakPos = newStartPos + align5prime.getSequence2().length -  align5prime.getGaps2();
 				if(newBreakPos < startPos){
+					readSt = align5prime.getStart1();
 					startPos = newStartPos;
 					coRefPositions.start = newStartPos;
 					coRefPositions.breaks.add(0, newBreakPos);
@@ -127,30 +130,14 @@ public class IdentityProfile1 {
 			double diff = readLength-end_read;
 			double ident = align3prime.getIdentity();
 			double alignLen = align3prime.getLength();
-			int read_st = align3prime.getStart1();
-			//getStartEnd(SWGAlignment align, int offset1, int offset2,  boolean negStrand1) 
-		/*	getStartEnd(align3prime, seq1, seq2, 0, offset_3prime, false);
-			
-			
-			getStartEnd(align3primeRev, seq11, seq21, 0, offset_3prime, true);
-			double perc = (double) seq1[2]/(double)seq1[3];
-			double perc1 = (double) seq11[2]/(double)seq11[3];
-			double perc_ = (double) seq1[3]/diff;
-			double perc1_ = (double) seq11[3]/diff;
-			if(perc>0.8 || perc1>0.8){
-			System.err.println(perc+" "+perc_);
-			System.err.println("rev "+perc1+" "+perc1_);
-			System.err.println(Arrays.asList(seq1)+";"+Arrays.asList(seq2));
-			System.err.println("rev "+Arrays.asList(seq11)+";"+Arrays.asList(seq21));
-			System.err.println("###");
-			}*/
 			if(ident > 0.8 *Math.max(alignLen,diff)){// && read_st< 20){
 				includeInConsensus = false;
 				int newBreakPos = offset_3prime+ align3prime.getStart2() + 1; // transfer to 1-based
 				int newEndPos = newBreakPos + align3prime.getSequence2().length -  align3prime.getGaps2();
 //				int read_end = read_st + align3prime.getSequence1().length - align3prime.getGaps1();
-				System.err.println(newBreakPos+"-"+newEndPos);
+			//	System.err.println(newBreakPos+"-"+newEndPos);
 				if(newEndPos > endPos){
+					this.readEn = end_read+align3prime.getStart1()+align3prime.getLength()-align3prime.getGaps1();
 					System.err.println("rescued 3' "+readSeq.getName());
 					endPos = newEndPos;
 					coRefPositions.end = newEndPos;

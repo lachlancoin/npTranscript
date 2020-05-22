@@ -212,6 +212,8 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 	//	addBoolean("coexpression", false, "whether to calc coexperssion matrices (large memory for small bin size)");
 		addBoolean("overwrite", false, "whether to overwrite existing results files");
 		addBoolean("keepAlignment", false, "whether to keep alignment for MSA");
+		addBoolean("attempt5rescue", true, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
+		addBoolean("attempt3rescue", true, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
 		addBoolean("writePolyA", true, "whether write reads with polyA in middle");
 		addBoolean("coronavirus", true, "whether to run in coronavirus mode (necessary to do breakpoint analysis, but takes more memory)");
 		addStdHelp();
@@ -258,6 +260,8 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 	TranscriptUtils.extra_threshold = cmdLine.getIntVal("extra_threshold");
 		TranscriptUtils.tryComplementOnExtra = cmdLine.getBooleanVal("tryComplementOnExtra");
 		TranscriptUtils.reAlignExtra = cmdLine.getBooleanVal("reAlignExtra");
+		TranscriptUtils.attempt5rescue = cmdLine.getBooleanVal("attempt5rescue");
+		TranscriptUtils.attempt3rescue = cmdLine.getBooleanVal("attempt3rescue");
 		boolean sorted = true;
 		boolean coronavirus = cmdLine.getBooleanVal("coronavirus");
 		String[] msaOpts = cmdLine.getStringVal("doMSA").split(":"); //e.g 5_3:sep or all:sep
