@@ -84,7 +84,7 @@ public class IdentityProfile1 {
 	
 	
 	public String[] clusterID = new String[2];
-	public boolean processRefPositions(SAMRecord sam, String id, boolean cluster_reads, Sequence refSeq, int src_index , Sequence readSeq, String baseQ, 
+	public String processRefPositions(SAMRecord sam, String id, boolean cluster_reads, Sequence refSeq, int src_index , Sequence readSeq, String baseQ, 
 			int start_read, int end_read, char strand, SWGAlignment align5prime, SWGAlignment align3prime,
 			SWGAlignment align3primeRev,
 			int offset_3prime, int polyAlen
@@ -272,7 +272,7 @@ public class IdentityProfile1 {
 			readSeq1.setDesc(chrom_index+";"+breaks.toString()+";"+CigarHash2.getString(read_breaks)+";"+(end_read-start_read));
 			this.o.writeToCluster(secondKeySt,clusterID[1], source_index, readSeq1, baseQ1, str, readSeq.getName(), strand);
 		}
-		return hasSplice;
+		return secondKeySt;
 	}
 	
 	
@@ -294,8 +294,8 @@ public class IdentityProfile1 {
 	}
 
 	
-	private final CigarCluster coRefPositions;
-	private CigarClusters all_clusters;
+	final CigarCluster coRefPositions;
+	public CigarClusters all_clusters;
 	final public SparseRealMatrix[][] breakpoints;
 	final public SparseVector[][] breakSt, breakEnd ;
 	

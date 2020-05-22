@@ -194,6 +194,8 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		addString("chroms", "all", "Restrict to these chroms, colon delimited", false);
 		addString("resdir", "results"+System.currentTimeMillis(), "results directory");
 		addInt("maxReads", Integer.MAX_VALUE, "ORF annotation file");
+		addBoolean("tryComplementOnExtra", false, "look for negative strand matches on left over seqs");
+		addBoolean("reAlignExtra", false, "whether to try realigning the extra sequence");
 		addString("pattern", null, "Pattern of read name, used for filtering");
 		addInt("qual", 0, "Minimum quality required");
 		addInt("bin", 1, "Bin size for numerical hashing");
@@ -254,7 +256,8 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		int coverageDepthThresh = cmdLine.getIntVal("coverageDepthThresh");
 		IdentityProfile1.msaDepthThresh =(int) Math.floor(cmdLine.getDoubleVal("msaDepthThresh"));
 	TranscriptUtils.extra_threshold = cmdLine.getIntVal("extra_threshold");
-		
+		TranscriptUtils.tryComplementOnExtra = cmdLine.getBooleanVal("tryComplementOnExtra");
+		TranscriptUtils.reAlignExtra = cmdLine.getBooleanVal("reAlignExtra");
 		boolean sorted = true;
 		boolean coronavirus = cmdLine.getBooleanVal("coronavirus");
 		String[] msaOpts = cmdLine.getStringVal("doMSA").split(":"); //e.g 5_3:sep or all:sep

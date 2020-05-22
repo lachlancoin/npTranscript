@@ -1,6 +1,7 @@
 package npTranscript.cluster;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMRecord;
@@ -76,6 +77,8 @@ public class TranscriptUtils {
 	
 	
 	public static Sequence polyA = new Sequence(Alphabet.DNA(), "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".toCharArray(), "polyA");
+	public  static boolean tryComplementOnExtra = false;
+	public static boolean reAlignExtra = false;
 	/**
 	 * Get the identity between a read sequence from a sam and a reference sequence
 	 * 
@@ -185,6 +188,10 @@ public class TranscriptUtils {
 			int tol=5;
 			int st_r = sam.getReadPositionAtReferencePosition(sam.getAlignmentStart());
 			int end_r = sam.getReadPositionAtReferencePosition(sam.getAlignmentEnd());
+			int diff_r = readSeq.length() -end_r;
+			
+			
+			
 			String baseQ = sam.getBaseQualityString();
 			char strand = sam.getReadNegativeStrandFlag() ? '-': '+';
 			SWGAlignment align_5prime = null;
@@ -197,7 +204,7 @@ public class TranscriptUtils {
 				//good candidate for a missed 5' alignment
 				 align_5prime = SWGAlignment.align(readSeq.subSequence(0, st_r), fivePrimeRefSeq);
 			}
-			int diff_r = readSeq.length() -end_r;
+			
 			int seqlen1 = refSeq.length()-polyAlen;
 			if(TranscriptUtils.coronavirus && diff_r > extra_threshold2 && diff_r < 1000 && sam.getAlignmentEnd()< seqlen1- 100 ){
 				//good candidate for a missed 3' alignment
@@ -245,14 +252,16 @@ public class TranscriptUtils {
 					 }
 				}
 			}
-			
-			boolean splice = profile.processRefPositions(sam, id, cluster_reads, 
+			 
+			String secondKey= profile.processRefPositions(sam, id, cluster_reads, 
 					refSeq, source_index, readSeq,baseQ, st_r, end_r, strand, align_5prime, align_3prime,align_3primeRev, offset_3prime, polyAlen);
 			//String ID = profile.clusterID
+			seq11[0]=  st_r; seq11[1] = end_r; 
+			seq11[2] = sam.getAlignmentStart(); seq11[3] = sam.getAlignmentEnd();
 			
 		//	System.err.println(refSeq.length());
-			if(!splice && (sam.getAlignmentStart()>100 || sam.getAlignmentEnd()<(refSeq.length()-100))){
-			String desc = ";start="+sam.getAlignmentStart()+";end="+sam.getAlignmentEnd()+";full_length="+readSeq.length()+";strand="+strand;
+			if( (sam.getAlignmentStart()>extra_threshold || sam.getAlignmentEnd()<(refSeq.length()-extra_threshold))){
+			//String desc = ";start="+sam.getAlignmentStart()+";end="+sam.getAlignmentEnd()+";full_length="+readSeq.length()+";strand="+strand;
 			
 			if(st_r >extra_threshold  && leftseq!=null ){
 				//if(leftseq==null) leftseq = readSeq.subSequence(0, st_r);
@@ -264,18 +273,36 @@ public class TranscriptUtils {
 					baseQL = (new StringBuilder(baseQ)).reverse().toString();
 				}
 			
-				leftseq.setName(readSeq.getName()+".L");
+				leftseq.setName(readSeq.getName());
+				StringBuffer desc = new StringBuffer();
+				desc.append("L "+secondKey+" "+st_r+" "+getString(seq11));
+				if(reAlignExtra){
+				align_5prime = SWGAlignment.align(leftseq, refSeq);
+				 TranscriptUtils.getStartEnd(align_5prime, seq1, seq2, 0, 0, sam.getReadNegativeStrandFlag());
+				String secondKey1 =  profile.all_clusters.annot.nextUpstream(seq1[2], profile.chrom_index)+";"+profile.all_clusters.annot.nextDownstream(seq1[3], profile.chrom_index);
+				desc.append(" "+String.format("%5.3g",(double)seq2[1]/(double) seq2[0]).trim()+" "+secondKey1+" "+getString(seq1)+";"+getString(seq2));
+				if(tryComplementOnExtra){
+					align_5prime = SWGAlignment.align(TranscriptUtils.revCompl(leftseq), refSeq);
+					 TranscriptUtils.getStartEnd(align_5prime, seq1, seq2, 0, 0, !sam.getReadNegativeStrandFlag());
+						 secondKey1 =  profile.all_clusters.annot.nextUpstream(seq1[2], profile.chrom_index)+";"+profile.all_clusters.annot.nextDownstream(seq1[3], profile.chrom_index);
+
+					 desc.append(" "+secondKey1+" "+String.format("%5.3g",(double)seq2[1]/(double) seq2[0]).trim()+" "+getString(seq1)+";"+getString(seq2));
+						
+				}
+				}
 				
-				leftseq.setDesc("len="+leftseq.length()+desc);//+";mtch5="+mtch_5+";mtch_3="+mtch_3);
+				leftseq.setDesc(desc.toString());
+
+				//leftseq.setDesc("len="+leftseq.length()+desc);//+";mtch5="+mtch_5+";mtch_3="+mtch_3);
 				profile.o.writeLeft(leftseq,baseQL,sam.getReadNegativeStrandFlag(), source_index);// (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)leftseq1.length());
 				
 			}
-			if(readSeq.length() -  end_r >extra_threshold){
+			if(diff_r >extra_threshold && rightseq!=null){
 			//	Sequence rightseq = readSeq.subSequence(end_r, readSeq.length());
-				Sequence spanning1 = refSeq.subSequence(Math.max(0, sam.getAlignmentEnd()-10),sam.getAlignmentEnd());
-				Sequence spanning2 = refSeq.subSequence(sam.getAlignmentEnd(),Math.min(refSeq.length(), sam.getAlignmentEnd()+10));
+			///	Sequence spanning1 = refSeq.subSequence(Math.max(0, sam.getAlignmentEnd()-10),sam.getAlignmentEnd());
+			//	Sequence spanning2 = refSeq.subSequence(sam.getAlignmentEnd(),Math.min(refSeq.length(), sam.getAlignmentEnd()+10));
 				
-				 rightseq.setName(readSeq.getName()+".R");
+				 rightseq.setName(readSeq.getName());
 					String baseQR = baseQ.equals("*") ?  baseQ : baseQ.substring(end_r, readSeq.length());
 				 
 				if(sam.getReadNegativeStrandFlag()) {
@@ -283,13 +310,26 @@ public class TranscriptUtils {
 					baseQR = (new StringBuilder(baseQ)).reverse().toString();
 				
 				}
-				 align_5prime = SWGAlignment.align(rightseq, refSeq);
-				 
-				
-				//int mtch_5  = TranscriptUtils.checkAlign ?  checkAlignmentIsNovel(rightseq1, refSeq5prime, "right 5") : 0;
-				//int mtch_3 = TranscriptUtils.checkAlign ? checkAlignmentIsNovel(rightseq1, refSeq3prime, "right 3"): 0;
-				rightseq.setDesc("len="+rightseq.length()+desc+" "+spanning1.toString()+" "+spanning2.toString());//+";mtch5="+mtch_5+";mtch_3="+mtch_3);
-				profile.o.writeLeft(rightseq,baseQR, sam.getReadNegativeStrandFlag(), source_index);///,  (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)rightseq1.length());
+				StringBuffer desc = new StringBuffer();
+				desc.append("R "+secondKey+" "+diff_r+" "+getString(seq11));
+				if(reAlignExtra){
+				 align_3prime = SWGAlignment.align(rightseq, refSeq);
+					
+				 TranscriptUtils.getStartEnd(align_3prime, seq1, seq2, end_r, 0, sam.getReadNegativeStrandFlag());
+					String secondKey1 =  profile.all_clusters.annot.nextUpstream(seq1[2], profile.chrom_index)+";"+profile.all_clusters.annot.nextDownstream(seq1[3], profile.chrom_index);
+
+				 desc.append(" "+String.format("%5.3g",(double)seq2[1]/(double) seq2[0]).trim()+" "+secondKey1+" "+getString(seq1)+";"+getString(seq2));
+				 if(tryComplementOnExtra){
+						align_3prime = SWGAlignment.align(TranscriptUtils.revCompl(rightseq), refSeq);
+						 TranscriptUtils.getStartEnd(align_3prime, seq1, seq2, end_r, 0, !sam.getReadNegativeStrandFlag());
+							 secondKey1 =  profile.all_clusters.annot.nextUpstream(seq1[2], profile.chrom_index)+";"+profile.all_clusters.annot.nextDownstream(seq1[3], profile.chrom_index);
+
+						 desc.append(" "+secondKey1+" "+String.format("%5.3g",(double)seq2[1]/(double) seq2[0]).trim()+" "+getString(seq1)+";"+getString(seq2));
+							
+					}
+				}
+				 rightseq.setDesc(desc.toString());
+				 profile.o.writeLeft(rightseq,baseQR, sam.getReadNegativeStrandFlag(), source_index);///,  (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)rightseq1.length());
 			}
 			
 		}
@@ -299,6 +339,10 @@ public class TranscriptUtils {
 
 	}
 	
+	private static String getString(Integer[] seq12) {
+		return CigarHash2.getString(Arrays.asList(seq12));
+	}
+
 	private static Sequence revCompl(Sequence leftseq) {
 		String sequence = SequenceUtil.reverseComplement(leftseq.toString());
 		return new Sequence(Alphabet.DNA(), sequence.toCharArray(), leftseq.getName());
@@ -335,20 +379,20 @@ public class TranscriptUtils {
 	}
 
 	static Integer[] seq1 = new Integer[4];
-	static Integer[] seq2 = new  Integer[4];
+	static Integer[] seq2 = new  Integer[2];
 	static Integer[] seq11 = new Integer[4];
-	static Integer[] seq21 = new  Integer[4];
+	static Integer[] seq21 = new  Integer[2];
 	
 	 static  void getStartEnd(SWGAlignment align, Integer[] seq1, Integer[] seq2,  int offset1, int offset2,  boolean negStrand1) {
 		int len1 = align.getOriginalSequence1().length();
 		seq1[0] = align.getStart1();
 		seq1[1] = align.getStart1()+align.getSequence1().length - align.getGaps1();
-		seq1[2] = align.getIdentity();
-		seq1[3] = align.getLength();
-		seq2[0] = align.getStart2();
-		seq2[1] = align.getStart2()+align.getSequence2().length - align.getGaps2();
-		seq2[2] = align.getIdentity();
-		seq2[3] = align.getLength();
+		seq2[1] = align.getIdentity();
+		seq2[0] = align.getLength();
+		seq1[2] = align.getStart2();
+		seq1[3] = align.getStart2()+align.getSequence2().length - align.getGaps2();
+		//seq2[2] = align.getIdentity();
+		//seq2[3] = align.getLength();
 		if(negStrand1){
 			int a = seq1[1];
 			seq1[1] = len1 - seq1[0];
@@ -356,8 +400,8 @@ public class TranscriptUtils {
 		}
 		seq1[0]= seq1[0]+offset1;
 		seq1[1] = seq1[1]+offset1;
-		seq2[0]= seq2[0]+offset2;
-		seq2[1] = seq2[1]+offset2;
+		seq1[2]= seq1[2]+offset2;
+		seq1[3] = seq1[3]+offset2;
 	}
 	
 	
