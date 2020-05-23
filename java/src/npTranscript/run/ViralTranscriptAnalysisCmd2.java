@@ -60,7 +60,6 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import japsa.seq.Alphabet;
-import japsa.seq.Alphabet.DNA;
 import japsa.seq.JapsaAnnotation;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
@@ -69,6 +68,7 @@ import japsa.util.deploy.Deployable;
 import npTranscript.cluster.Annotation;
 import npTranscript.cluster.CigarHash;
 import npTranscript.cluster.CigarHash2;
+import npTranscript.cluster.EmptyAnnotation;
 import npTranscript.cluster.GFFAnnotation;
 import npTranscript.cluster.IdentityProfile1;
 import npTranscript.cluster.Outputs;
@@ -187,7 +187,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		setDesc(annotation.scriptDesc());
 		addString("bamFile", null, "Name of bam file", true);
 		addString("reference", null, "Name of reference genome", true);
-		addString("annotation", null, "ORF annotation file or GFF file", true);
+		addString("annotation", null, "ORF annotation file or GFF file", false);
 		addString("readList", null, "List of reads", false);
 		String all_types = "gene:ncRNA_gene:pseudogene:miRNA";			
 			addString("type", all_types, "Type of annotation (only included if annotation is GFF file", false);
@@ -318,7 +318,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		if(!chroms.equals("all")){
 			chrs = new HashSet<String>(Arrays.asList(chroms.split(":")));
 		}
-		boolean gff = annot_file.contains(".gff");
+		boolean gff = annot_file !=null && annot_file.contains(".gff");
 		Map<String, JapsaAnnotation> anno  = null;
 		//boolean SARS = !gff;
 		if(gff){
@@ -557,7 +557,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 									pw.close();
 								}
 							}else{
-								annot = new Annotation(new File(annot_file), currentIndex+"", seqlen);
+								annot = annot_file == null ? new EmptyAnnotation(chr.getName(), seqlen) :  new Annotation(new File(annot_file), currentIndex+"", seqlen);
 							}
 							outp = new Outputs(resDir,  in_nmes, overwrite, currentIndex, true, true, seqlen); 
 							boolean calcBreaks1 = calcBreaks && break_thresh < seqlen;
