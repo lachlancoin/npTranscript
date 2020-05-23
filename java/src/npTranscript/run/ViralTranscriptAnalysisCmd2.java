@@ -266,7 +266,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		boolean coronavirus = cmdLine.getBooleanVal("coronavirus");
 		String[] msaOpts = cmdLine.getStringVal("doMSA").split(":"); //e.g 5_3:sep or all:sep
 		
-		Outputs.doMSA =Arrays.asList((msaOpts[0].equals("all") ?"5_3:no5_3:5_no3:no5_no3": msaOpts[0]).split(":")) ;
+		Outputs.doMSA =Arrays.asList((msaOpts[0].equals("all") ?"5_3,no5_3,5_no3,no5_no3": msaOpts[0]).split(",")) ;
 		if(msaOpts[0].equals("false")){
 			Outputs.doMSA = null;
 		}else{

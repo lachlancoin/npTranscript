@@ -245,8 +245,9 @@ public class IdentityProfile1 {
 			}
 		//	int end1 = endPos;
 		}
-		
-		if(Outputs.doMSA!=null && Outputs.doMSA.contains(type_nme) && includeInConsensus) {
+		hasSplice = coRefPositions.breaks.size()>2;
+
+		if(Outputs.doMSA!=null && Outputs.doMSA.contains(type_nme) && hasSplice &&  includeInConsensus) {
 			Sequence readSeq1 = readSeq.subSequence(start_read, end_read);
 			String baseQ1 = baseQ.length()<=1 ? baseQ :baseQ.substring(start_read, end_read);
 		//	int end_ref = sam.getReferencePositionAtReadPosition(end_read);
