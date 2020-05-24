@@ -74,13 +74,22 @@ public class SequenceOutputStream1 {
 			int read_st_new = Math.max(0, st_target-start); //truncate if st[i] < st_target 
 			int read_end_new = seq.length()-Math.max(0,  end-en_target ); //truncate if en[i]> en_target 
 		//	System.err.println(read_st_new+" "+read_end_new+" "+seq.length());
-			Sequence seq1 = seq.subSequence(read_st_new, read_end_new);
-			seq1.setName(seq.getName());
-			seq1.setDesc(seq.getDesc()+" "+read_st_new+","+read_end_new+","+seq1.length());
-			this.stack.push(seq1);
+			if(read_st_new < read_end_new){
+				Sequence seq1 = seq.subSequence(read_st_new, read_end_new);
+				seq1.setName(seq.getName());
+				seq1.setDesc(seq.getDesc()+" "+read_st_new+","+read_end_new+","+seq1.length());
+				this.stack.push(seq1);
+			}else{
+				System.err.println("excluded "+seq.getName()+" from clusters");
+			}
 		}
-		this.printAll();
+		if(this.stack.size()>min_seqs){
+			this.printAll();
+		}else{
+			this.stack.clear();
+		}
 		this.close();
+		
 	}
 	static double perc_target = 0.5; // more means greater truncation
   private OutputStreamWriter so; 
