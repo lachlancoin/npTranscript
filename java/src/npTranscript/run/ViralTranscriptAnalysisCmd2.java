@@ -501,9 +501,12 @@ public static boolean combineOutput = false;
 					if( profile!=null && currentIndex>=0){
 						profile.printBreakPoints();
 						profile.getConsensus();
-						if(!combineOutput)outp.close();
+						if(!combineOutput){
+							outp.close();
+							outp = null;
+						}
 						profile= null;
-						outp = null;
+						
 						doneChr.add(chr.getName());
 						System.err.println("finished "+chr.getName());
 						if(chrToInclude != null ){
