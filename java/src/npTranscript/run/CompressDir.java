@@ -84,9 +84,10 @@ public class CompressDir {
 	    	try{
 	    	File[] f = inDir.listFiles();
 	    	for(int i=0; i<f.length; i++){
-	    	
-	    	this.writeHeader(f[i]);
-	    	this.delete(f[i]);
+	    		if(!f[i].getName().startsWith(".")){
+	    			this.writeHeader(f[i]);
+	    			this.delete(f[i]);
+	    		}
 	    	}
 	    	this.delete(inDir);
 	    	this.close();
