@@ -34,12 +34,14 @@ fi
 
 n=$SLURM_ARRAY_TASK_ID
 if [ ! $SLURM_ARRAY_TASK_ID ] ; then
- n=$3
+ n=$4
 fi
 
 if [ ! $n ]; then
  n=1
 fi
+
+echo "reference "$reference
 
 zipfile="${chrom}.clusters.zip"
 tododir="${chrom}.clusters"
