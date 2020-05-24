@@ -15,10 +15,10 @@
 
 abpoa='/sw/abpoa/v1.0.1/abpoa'
 npTranscript=${HOME}/github/npTranscript
-reference="${npTranscript}/data/SARS-Cov2/wuhan_coronavirus_australia.fasta.gz"
 
 chrom=$1
 ID=$2
+reference=$3
 if [ ! $1 ]; then
  chrom="0"
 fi
@@ -28,14 +28,20 @@ if [ ! $2 ]; then
  ID=".fa"
 fi
 
+if [ ! $3 ] ; then
+reference="${npTranscript}/data/SARS-Cov2/wuhan_coronavirus_australia.fasta.gz"
+fi
+
 n=$SLURM_ARRAY_TASK_ID
 if [ ! $SLURM_ARRAY_TASK_ID ] ; then
- n=$3
+ n=$4
 fi
 
 if [ ! $n ]; then
  n=1
 fi
+
+echo "reference "$reference
 
 zipfile="${chrom}.clusters.zip"
 tododir="${chrom}.clusters"

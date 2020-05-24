@@ -34,7 +34,7 @@ dat=$(date +%Y%m%d%H%M%S)
 echo $dat
 resdir="results_${dat}"
 ##note that to do separate msa for multiple input bams you type --doMsa=5_3:sep
-opts="--bin=100 --breakThresh=1000  --isoformDepthThresh=10000 --coverageDepthThresh=0 --extra_threshold=5000000 --msaDepthThresh=20 --doMSA=5_3:sep"
+opts="--bin=100 --breakThresh=1000  --isoformDepthThresh=10000 --coverageDepthThresh=0 --extra_threshold=200 --msaDepthThresh=20 --doMSA=all:sep --reAlignExtra=true"
 #opts="${opts} --maxReads 10000"
 bash ${npTranscript}/scripts/run.sh --bamFile=${bamfiles1}   --reference=${reference} --annotation ${coord_file} --resdir ${resdir} ${opts} ${opts1}
 
