@@ -77,7 +77,7 @@ public class Outputs{
 		//outfile9;
 		private final FOutp[] leftover_l, polyA;//, leftover_r, fusion_l, fusion_r;
 	
-		final int seqlen;
+	//	final int seqlen;
 		 PrintWriter transcriptsP,readClusters;
 		 IHDF5SimpleWriter clusterW = null;
 		 IHDF5SimpleWriter altT = null;
@@ -117,11 +117,11 @@ public class Outputs{
 			 if(readClusters!=null) readClusters.close();
 			
 		}*/
-		public Outputs(File resDir,  String[] type_nmes, boolean overwrite, int currentIndex, boolean isoforms, boolean cluster_depth, int seqlen) throws IOException{
+		public Outputs(File resDir,  String[] type_nmes, boolean overwrite, int currentIndex, boolean isoforms, boolean cluster_depth) throws IOException{
 			this.type_nmes = type_nmes;
 			this.genome_index= currentIndex;
 			 this.resDir = resDir;
-			 this.seqlen = seqlen;
+		//	 this.seqlen = seqlen;
 			 int num_sources = type_nmes.length;
 			 outfile = new File(resDir,genome_index+ ".txt");
 			 outfile1 = new File(resDir, genome_index+ "coref.txt");
@@ -307,39 +307,6 @@ public class Outputs{
 			return mergeSourceClusters ? Arrays.stream(val.count()).sum()  : val.count()[source];
 		}
 
-		public void msa(String ID, int source,  CigarCluster cc) throws IOException, InterruptedException{
-			// TODO Auto-generated method stub
-			if(true) return;
-			//NOTE no longer calculating msa
-			
-			//int source = mergeSourceClusters ? 0 : source1;
-			CompressDir cluster = getCluster(source);
-			if(cluster==null) return ;
-			Iterator<Entry<CigarHash2, Count>> it  = cc.all_breaks.entrySet().iterator();
-			for(; it.hasNext();){
-					Entry<CigarHash2,Count> ch = it.next();
-					CigarHash2 key = ch.getKey();
-					Count val = ch.getValue();
-					
-					String ID1 = ID+"."+val.id();
-			File faiFile =new File(cluster.inDir, ID1+".fa");//f[i].getName()+""); 
-				if(faiFile.exists() && val.count()[source]>IdentityProfile1.msaDepthThresh){
-				File faoFile =new File(cluster.inDir, ID1+".fasta");
-	    		ErrorCorrection.runMultipleAlignment(faiFile.getAbsolutePath(),
-	    				faoFile.getAbsolutePath());
-	    		ArrayList<Sequence> seqList;
-	    		if(faoFile.exists()){
-	    			seqList = ErrorCorrection.readMultipleAlignment(faoFile.getAbsolutePath());
-	    			Sequence consensus = ErrorCorrection.getConsensus(seqList);
-					consensus.setDesc("ID="+ID+";subID="+val.id()+";key="+cc.breaks_hash.secondKey+";seqlen="+consensus.length()+";count="+seqList.size()+";type_nme="+cc.getTypeNme(seqlen));
-					consensus.setName(ID1);
-				//	consensus.print(so[source].os);
-					if(!keepAlignment) faoFile.delete();
-	    		}
-			}
-				if(!keepinputFasta) faiFile.delete();
-			}
-		}
 		
 		public void writeString(String id, Map<CigarHash2, Count> all_breaks, int num_sources) {
 			int[][]str = new int[all_breaks.size()][];

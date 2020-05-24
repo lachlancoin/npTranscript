@@ -197,6 +197,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		addInt("minClusterEntries",10,"threshold for consensus");
 		addBoolean("tryComplementOnExtra", false, "look for negative strand matches on left over seqs");
 		addBoolean("reAlignExtra", false, "whether to try realigning the extra sequence");
+		addBoolean("combineOutput", false, "whether to combine output from different chroms");
 		addString("pattern", null, "Pattern of read name, used for filtering");
 		addInt("qual", 0, "Minimum quality required");
 		addInt("bin", 1, "Bin size for numerical hashing");
@@ -254,7 +255,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		int startThresh = cmdLine.getIntVal("startThresh");
 		int endThresh = cmdLine.getIntVal("endThresh");
 		int maxReads = cmdLine.getIntVal("maxReads");
-	
+	ViralTranscriptAnalysisCmd2.combineOutput = cmdLine.getBooleanVal("combineOutput");
 		int isoformDepthThresh  = cmdLine.getIntVal("isoformDepthThresh");
 		int coverageDepthThresh = cmdLine.getIntVal("coverageDepthThresh");
 		IdentityProfile1.msaDepthThresh =(int) Math.floor(cmdLine.getDoubleVal("msaDepthThresh"));
@@ -268,6 +269,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		String[] msaOpts = cmdLine.getStringVal("doMSA").split(":"); //e.g 5_3:sep or all:sep
 		
 		Outputs.doMSA =Arrays.asList((msaOpts[0].equals("all") ?"5_3,no5_3,5_no3,no5_no3": msaOpts[0]).split(",")) ;
+		Outputs.minClusterEntries = cmdLine.getIntVal("minClusterEntries");
 		if(msaOpts[0].equals("false")){
 			Outputs.doMSA = null;
 		}else{
@@ -337,7 +339,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		
 		// paramEst(bamFile, reference, qual);
 	}
-
+public static boolean combineOutput = false;
 	
 	/**
 	 * Error analysis of a bam file. Assume it has been sorted
@@ -407,6 +409,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 	//	genes_all_pw.close();
 		IdentityProfile1 profile = null;
 		Outputs outp = null;
+		if(combineOutput)	outp = new Outputs(resDir,  in_nmes, overwrite, 0, true, true); 
 		final SAMRecordIterator[] samIters = new SAMRecordIterator[len];
 		SamReader[] samReaders = new SamReader[len];
 		outer1: for (int ii = 0; ii < len; ii++) {
@@ -498,7 +501,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 					if( profile!=null && currentIndex>=0){
 						profile.printBreakPoints();
 						profile.getConsensus();
-						outp.close();
+						if(!combineOutput)outp.close();
 						profile= null;
 						outp = null;
 						doneChr.add(chr.getName());
@@ -564,7 +567,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 								annot = annot_file == null ? new EmptyAnnotation(chr.getName(), chr.getDesc(), seqlen, annotation_pw) :  new Annotation(new File(annot_file), currentIndex+"", seqlen);
 							}
 						//	pw.close();
-							outp = new Outputs(resDir,  in_nmes, overwrite, currentIndex, true, true, seqlen); 
+						if(!combineOutput)	outp = new Outputs(resDir,  in_nmes, overwrite, currentIndex, true, true); 
 							boolean calcBreaks1 = calcBreaks && break_thresh < seqlen;
 							profile = new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh, annot, calcBreaks1, chr.getName(), currentIndex);
 					}

@@ -89,7 +89,8 @@ public class CigarClusters {
 			clusterID = clust.id();
 		}
 	clusterIDs[0] = clusterID;
-	clusterIDs[1] = "_"+subID.toString(CigarHash2.round)+"_";
+	
+	clusterIDs[1] = "_"+subID.toString(CigarHash2.round, 1, subID.size()-1)+"_";
 		
 		//return clusterID;
 	}
@@ -135,21 +136,7 @@ public class CigarClusters {
 		cc.addZeros(seqlen); 
 		String id = cc.id();
 		int totalDepth = cc.readCountSum();
-		if(Outputs.doMSA!=null && Outputs.doMSA.contains(cc.getTypeNme(seqlen))){
-			try{
-			if(o.mergeSourceClusters){
-				o.msa(id,0,cc);	
-			}else{
-			for(int k=0; k<this.num_sources; k++){
-				o.msa(id,k,cc);
-				
-			}
-			}
-				
-			}catch(Exception exc){
-				exc.printStackTrace();
-			}
-		}
+		
 		if(o.clusterW!=null && totalDepth>IdentityProfile1.writeCoverageDepthThresh){
 		
 		 int[][] matr =cc.getClusterDepth(num_sources, this.refseq);
