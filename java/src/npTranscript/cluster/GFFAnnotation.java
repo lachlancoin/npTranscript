@@ -83,7 +83,7 @@ public class GFFAnnotation extends Annotation{
 		String descr="";
 		String biotype = "biotype";
 		String biot;
-		pw.println("ID\tName\tdescription\tbiotype");
+	//	pw.println("ID\tName\tdescription\tbiotype");
 		System.err.println("num features" +annot.numFeatures());
 		for(int i=0; i<annot.numFeatures(); i++){
 			JapsaFeature f = annot.getFeature(i);
@@ -120,5 +120,9 @@ public class GFFAnnotation extends Annotation{
 		}
 		
 		super.mkOrfs();
+	}
+	public GFFAnnotation(String chrom, int seqlen) {
+		// TODO Auto-generated constructor stub
+		super(chrom,seqlen);
 	}
 }

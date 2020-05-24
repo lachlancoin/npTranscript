@@ -266,7 +266,7 @@ public class TranscriptUtils {
 			if( (profile.startPos>extra_threshold || profile.endPos <(refSeq.length()-extra_threshold))){
 			//String desc = ";start="+sam.getAlignmentStart()+";end="+sam.getAlignmentEnd()+";full_length="+readSeq.length()+";strand="+strand;
 			
-			if(st_r >extra_threshold  && leftseq!=null ){
+			if(st_r >extra_threshold  && st_r > diff_r &&  leftseq!=null ){
 				//if(leftseq==null) leftseq = readSeq.subSequence(0, st_r);
 				String baseQL = baseQ.equals("*") ?  baseQ : baseQ.substring(0, st_r);
 
@@ -279,8 +279,11 @@ public class TranscriptUtils {
 				leftseq.setName(readSeq.getName());
 				StringBuffer desc = new StringBuffer();
 				desc.append("L "+secondKey+" "+st_r+" "+getString(seq11));
+			
 				if(reAlignExtra){
-				align_5prime = SWGAlignment.align(leftseq, refSeq);
+					Sequence refSeq1 = refSeq.length() < 30000  ? refSeq : 
+							refSeq.subSequence(profile.startPos - 10000, profile.endPos+1000);
+				align_5prime = SWGAlignment.align(leftseq, refSeq1);
 				 TranscriptUtils.getStartEnd(align_5prime, seq1, seq2, 0, 0, sam.getReadNegativeStrandFlag());
 				String secondKey1 =  profile.all_clusters.annot.nextUpstream(seq1[2], profile.chrom_index)+";"+profile.all_clusters.annot.nextDownstream(seq1[3], profile.chrom_index);
 				desc.append(" "+String.format("%5.3g",(double)seq2[1]/(double) seq2[0]).trim()+" "+secondKey1+" "+getString(seq1)+";"+getString(seq2));
@@ -300,7 +303,7 @@ public class TranscriptUtils {
 				profile.o.writeLeft(leftseq,baseQL,sam.getReadNegativeStrandFlag(), source_index);// (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)leftseq1.length());
 				
 			}
-			if(diff_r >extra_threshold && rightseq!=null){
+			if(diff_r >extra_threshold && diff_r> st_r &&  rightseq!=null){
 			//	Sequence rightseq = readSeq.subSequence(end_r, readSeq.length());
 			///	Sequence spanning1 = refSeq.subSequence(Math.max(0, sam.getAlignmentEnd()-10),sam.getAlignmentEnd());
 			//	Sequence spanning2 = refSeq.subSequence(sam.getAlignmentEnd(),Math.min(refSeq.length(), sam.getAlignmentEnd()+10));
@@ -316,7 +319,11 @@ public class TranscriptUtils {
 				StringBuffer desc = new StringBuffer();
 				desc.append("R "+secondKey+" "+diff_r+" "+getString(seq11));
 				if(reAlignExtra){
-				 align_3prime = SWGAlignment.align(rightseq, refSeq);
+					
+					Sequence refSeq1 = refSeq.length() < 30000  ? refSeq : 
+							refSeq.subSequence(profile.startPos - 10000, profile.endPos+1000);
+					
+				 align_3prime = SWGAlignment.align(rightseq, refSeq1);
 					
 				 TranscriptUtils.getStartEnd(align_3prime, seq1, seq2, end_r, 0, sam.getReadNegativeStrandFlag());
 					String secondKey1 =  profile.all_clusters.annot.nextUpstream(seq1[2], profile.chrom_index)+";"+profile.all_clusters.annot.nextDownstream(seq1[3], profile.chrom_index);

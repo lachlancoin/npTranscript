@@ -347,6 +347,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			int writeIsoformDepthThresh, int writeCoverageDepthThresh) throws IOException {
 		boolean cluster_reads = true;
 		CigarHash2.round = round;
+		
 		IdentityProfile1.annotByBreakPosition = annotByBreakPosition;
 		CigarHash.cluster_by_annotation =true;// cluster_by_annotation;
 		TranscriptUtils.startThresh = startThresh;
@@ -355,6 +356,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		IdentityProfile1.writeCoverageDepthThresh =writeCoverageDepthThresh;
 		File annotSummary = new File(resdir, "annotation.csv.gz");
 		if(annotSummary.exists()) annotSummary.delete();
+		PrintWriter annotation_pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(annotSummary, false))));
 		boolean calcTree = false;
 		String[] bamFiles_ = bamFiles.split(":");
 		if(bamFiles.equals("all") || bamFiles.equals(".")){
@@ -542,6 +544,8 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 							int seqlen = chr.length();
 						//	if(!anno.containsKey(chr))
 							Annotation annot = null;
+						
+							
 							if(gff){
 								JapsaAnnotation annot1 = anno.get(chr.getName());
 								if(annot1==null){
@@ -552,17 +556,18 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 									}
 								}else{
 									
-									PrintWriter pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(annotSummary, true))));
-									annot = new GFFAnnotation(annot1, seqlen, pw);
-									pw.close();
+									annot = new GFFAnnotation(annot1, seqlen, annotation_pw);
+									
 								}
 							}else{
-								annot = annot_file == null ? new EmptyAnnotation(chr.getName(), seqlen) :  new Annotation(new File(annot_file), currentIndex+"", seqlen);
+								annot = annot_file == null ? new EmptyAnnotation(chr.getName(), chr.getDesc(), seqlen, annotation_pw) :  new Annotation(new File(annot_file), currentIndex+"", seqlen);
 							}
+						//	pw.close();
 							outp = new Outputs(resDir,  in_nmes, overwrite, currentIndex, true, true, seqlen); 
 							boolean calcBreaks1 = calcBreaks && break_thresh < seqlen;
 							profile = new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh, annot, calcBreaks1, chr.getName(), currentIndex);
 					}
+				
 					try{
 						TranscriptUtils.identity1(chr, chr5prime,chr3prime, readSeq, sam, profile, source_index, cluster_reads, chr.length());
 					}catch(NumberFormatException exc){
@@ -592,26 +597,9 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			}
 			
 		});
+		if(annotation_pw!=null) annotation_pw.close();
 		
-		for(int i=0; i<reads_files.length; i++){
-			System.err.println(reads_files[i]);
-			File read_fle = reads_files[i];
-			final String prefix = read_fle.getName().split("\\.")[0]+".";
-			System.err.println(prefix);
-			File[] transcript_files = resDir.listFiles(new FileFilter(){
-
-				@Override
-				public boolean accept(File pathname) {
-					// TODO Auto-generated method stub
-					return pathname.getName().contains(".transcripts.txt") && pathname.getName().startsWith(prefix);
-				}
-				
-			});
-			/*if(transcript_files.length==1){
-				ExtractClusterCmd.cluster(resDir,transcript_files[0],reads_files[i], filterBy5_3);
-			}*/
-		}
 	
 	}
-
+	
 }
