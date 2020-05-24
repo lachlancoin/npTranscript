@@ -77,18 +77,19 @@ public class CigarClusters {
 	
 	public void matchCluster(CigarCluster c1,  int source_index, int num_sources, int chrom_index,String[] clusterIDs) throws NumberFormatException{
 		String clusterID;
-		int subID=0;
+		CigarHash2 subID ;
 		if(!l.containsKey(c1.breaks_hash)){
 			CigarCluster newc = new CigarCluster("ID"+chrom_index+"."+l.keySet().size(), num_sources, c1, source_index);
 			clusterID = newc.id();
 			l.put(newc.breaks_hash, newc);
+			subID = newc.breaks;
 		}else{
 			CigarCluster clust = l.get(c1.breaks_hash);
 			subID = clust.merge(c1, num_sources, source_index);
 			clusterID = clust.id();
 		}
 	clusterIDs[0] = clusterID;
-	clusterIDs[1] = subID+"";
+	clusterIDs[1] = "_"+subID.toString(CigarHash2.round)+"_";
 		
 		//return clusterID;
 	}

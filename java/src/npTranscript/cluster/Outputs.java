@@ -28,12 +28,14 @@ import npTranscript.run.CompressDir;
 import npTranscript.run.SequenceOutputStream1;
 
 public class Outputs{
+	
+	
 	static final FastqWriterFactory factory = new FastqWriterFactory();
 	
 	 class FOutp{
 		//String nme;
 		//boolean gz;
-		SequenceOutputStream os;
+		OutputStreamWriter os;
 		FastqWriter fastq ;
 		File f; 
 		FOutp(String nme	) throws IOException{
@@ -50,7 +52,7 @@ public class Outputs{
 				f = new File(resDir,genome_index+"."+nme+".fasta"+(gz ? ".gz": ""));
 				OutputStream os1 = new FileOutputStream(f);
 				if(gz) os1 = new GZIPOutputStream(os1);
-				os =new SequenceOutputStream(os1);
+				os =new OutputStreamWriter(os1);
 			}
 		}
 		public void close() throws IOException {
@@ -67,6 +69,7 @@ public class Outputs{
 	public static boolean keepAlignment = true;
 	public static boolean keepinputFasta = true;
 	public static boolean writePolyA = false;
+	public static int minClusterEntries = 10;
 	
 		public File transcripts_file;
 		public File reads_file; 
@@ -90,7 +93,7 @@ public class Outputs{
 			//this.clusters.close();
 			for(int i=0; i<clusters.length; i++){
 				//if(so[i]!=null) this.so[i].close();
-				if(clusters[i]!=null) this.clusters[i].run();
+				if(clusters[i]!=null) this.clusters[i].run(Outputs.minClusterEntries *2);
 				
 			}
 			for(int i=0; i<leftover_l.length; i++){
@@ -133,14 +136,14 @@ public class Outputs{
 		//	String prefix = readsF.getName().split("\\.")[0];
 			
 			 if(doMSA!=null && mergeSourceClusters){
-				 clusters = new CompressDir[] {new CompressDir(new File(resDir,  genome_index+"." +"clusters"))};
+				 clusters = new CompressDir[] {new CompressDir(new File(resDir,  genome_index+"." +"clusters"), true)};
 		//		 so =  new FOutp[] {new FOutp("consensus")};
 			 }else if(doMSA!=null && !mergeSourceClusters){
 				 clusters =  new CompressDir[type_nmes.length];
 			//	 this.so = new FOutp[type_nmes.length];
 				 for(int i=0; i<clusters.length; i++){
 					 String nmei =  genome_index+"."+type_nmes[i]+".";
-					 clusters[i] = new CompressDir(new File(resDir, nmei+"clusters"));
+					 clusters[i] = new CompressDir(new File(resDir, nmei+"clusters"), true);
 				//	 so[i] = new FOutp(nmei+"consensus" );
 				 }
 			 }else{
@@ -261,7 +264,7 @@ public class Outputs{
 		public void writeToCluster(String ID, String subID,  int i, Sequence seq, String baseQ,  String str, String name, char strand) throws IOException{
 			CompressDir cluster = this.getCluster(i);
 			if(strand=='-'){
-				seq = Alphabet.DNA().complement(seq);
+				seq = TranscriptUtils.revCompl(seq);
 				baseQ = new StringBuilder(baseQ).reverse().toString();
 			}
 		 	seq.setName(name);
@@ -269,6 +272,7 @@ public class Outputs{
 			if(subID!=null) entryname = entryname+"."+subID;
 			if(cluster!=null){
 				SequenceOutputStream1 out   = cluster.getSeqStream(entryname+".fa", true);
+				//Outputs.writeFasta(out, seq);
 				out.write(seq);
 				cluster.closeWriter(out);
 			}
@@ -280,7 +284,7 @@ public class Outputs{
 				//	fusion ? (left ? this.fusion_l : this.fusion_r) : (left ? this.leftover_l : this.leftover_r);
 			FastqWriter writer = leftover[source_index].fastq;
 			if(negStrand){
-				subseq = Alphabet.DNA().complement(subseq);
+				subseq = TranscriptUtils.revCompl(subseq);
 				baseQ = new StringBuilder(baseQ).reverse().toString();
 			}
 			 writer.write(new FastqRecord(subseq.getName()+ " "+subseq.getDesc(), new String(subseq.charSequence()), "", baseQ));
@@ -389,7 +393,7 @@ public class Outputs{
 			FastqWriter writer = polyA[source_index].fastq;
 			if(writer==null) return;
 			if(negStrand){
-				readseq = Alphabet.DNA().complement(readseq);
+				readseq = TranscriptUtils.revCompl(readseq);
 				baseQ = new StringBuilder(baseQ).reverse().toString();
 			}
 			 writer.write(new FastqRecord(nme+ " "+readseq.getDesc(), new String(readseq.charSequence()), "", baseQ));

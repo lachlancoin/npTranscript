@@ -3,6 +3,7 @@ package npTranscript.run;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.Stack;
 import java.util.zip.ZipOutputStream;
 
@@ -10,7 +11,31 @@ import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
 
 public class SequenceOutputStream1 {
-  private SequenceOutputStream so; 
+	
+	public  void writeFasta(Sequence seq) throws IOException{
+		String[] sequ1 = new String[] {seq.toString()};
+		String name = seq.getName();
+		String desc = seq.getDesc();
+		boolean allnull = true;
+		for(int i=0; i<sequ1.length; i++){
+			if(sequ1[i]!=null) allnull=false;
+		}
+		if(allnull) return;
+		so.write(">"+name+" "+desc+"\n");
+		int step = Integer.MAX_VALUE;
+		for(int k=0; k<sequ1.length; k++){
+			if(sequ1[k]!=null){
+			for(int j=0; j<sequ1[k].length(); j+=step){
+				String substr = sequ1[k].substring(j, Math.min(sequ1[k].length(), j+step));
+				//if(writeNumb) os1.write(j+" ");
+				so.write(substr);
+				so.write("\n");
+			}
+			}
+		}
+	}
+	
+  private OutputStreamWriter so; 
   File target ;
   boolean append;
   int thresh = 10;
@@ -24,20 +49,20 @@ public class SequenceOutputStream1 {
   
 
   public SequenceOutputStream1(ZipOutputStream outS) {
-	so = new SequenceOutputStream(outS);
+	so = new OutputStreamWriter(outS);
   }
 
 
 public void printAll() throws IOException {
-	if(so==null) so = new SequenceOutputStream(new FileOutputStream(target, append));
+	if(so==null) so = new OutputStreamWriter(new FileOutputStream(target, append));
 	while(stack.size()>0){
-		stack.pop().writeFasta(so);;
+		writeFasta(stack.pop());;
 	}
 }
 
   
   public void write(Sequence seq) throws IOException {
-	  if(so!=null) seq.writeFasta(so);
+	  if(so!=null) writeFasta(seq);
 	  else{
 		stack.push(seq);
 		if(stack.size()==thresh){

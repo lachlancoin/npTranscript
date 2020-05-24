@@ -367,7 +367,7 @@ public class CigarCluster  {
 			return source.values().stream() .reduce(0, Integer::sum);
 		}*/
 		
-		public int merge(CigarCluster c1, int num_sources, int src_index) {
+		public CigarHash2 merge(CigarCluster c1, int num_sources, int src_index) {
 			if(c1.start < start) start = c1.start;
 			if(c1.end > end) end = c1.end;
 			if(breakSt<0 || (c1.breakSt>=0 & c1.breakSt > breakSt)) breakSt = c1.breakSt;
@@ -405,7 +405,7 @@ public class CigarCluster  {
 				maps[i].merge( c1.maps[i]);
 				errors[i].merge(c1.errors[i]);
 			}
-			return count.id();
+			return br;
 		}
 		static String[] nmes = new String[] {"5_3", "5_no3", "no5_3", "no5_no3"};
 		public String getTypeNme(int seqlen) {

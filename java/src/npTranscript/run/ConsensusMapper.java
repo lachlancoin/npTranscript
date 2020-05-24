@@ -249,7 +249,7 @@ public class ConsensusMapper extends CommandLine {
 	}
 static boolean writeNumb = false;
 	
-	private static void writeFasta(OutputStreamWriter os1, String[] sequ1,  String name, String desc) throws IOException{
+	public static void writeFasta(OutputStreamWriter os1, String[] sequ1,  String name, String desc) throws IOException{
 		boolean allnull = true;
 		for(int i=0; i<sequ1.length; i++){
 			if(sequ1[i]!=null) allnull=false;

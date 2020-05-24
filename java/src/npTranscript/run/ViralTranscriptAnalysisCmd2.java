@@ -194,6 +194,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		addString("chroms", "all", "Restrict to these chroms, colon delimited", false);
 		addString("resdir", "results"+System.currentTimeMillis(), "results directory");
 		addInt("maxReads", Integer.MAX_VALUE, "ORF annotation file");
+		addInt("minClusterEntries",10,"threshold for consensus");
 		addBoolean("tryComplementOnExtra", false, "look for negative strand matches on left over seqs");
 		addBoolean("reAlignExtra", false, "whether to try realigning the extra sequence");
 		addString("pattern", null, "Pattern of read name, used for filtering");

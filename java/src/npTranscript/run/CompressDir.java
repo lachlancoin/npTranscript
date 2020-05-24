@@ -22,7 +22,7 @@ import japsa.seq.SequenceOutputStream;
 public class CompressDir {
 	/** Class used to write compressed file 
 	* allows writing direct to zip, or to file, which is appeneded at end
-	 * */
+	 *
 	public static void main(String[] args){
 		try{
 			//if(true) System.exit(0);
@@ -31,7 +31,7 @@ public class CompressDir {
 		}catch(Exception exc){
 			exc.printStackTrace();
 		}
-	}
+	} */
 	
 	
 	 FileOutputStream dest;
@@ -43,8 +43,9 @@ public class CompressDir {
 	   public  File inDir;
 	    int len;
 	    
-	    public CompressDir(File f) throws IOException{
+	    public CompressDir(File f, boolean includeFileLength) throws IOException{
 	    	this.inDir = f;
+	    	this.includeFileLength = includeFileLength;
 	    	inDir.mkdir();
 	    	len = inDir.getAbsolutePath().length()+1;
 	    	 dest = new FileOutputStream(new File(inDir.getParentFile(), inDir.getName()+".zip"));
@@ -56,7 +57,7 @@ public class CompressDir {
 	         outS.setMethod(ZipOutputStream.DEFLATED);
 	    }
 	    
-	    public CompressDir(File parent, String name) throws IOException{
+	    public CompressDir(File parent, String name,boolean includeFileLength) throws IOException{
 	    	 dest = new FileOutputStream(new File(parent, name));
 	         checksum = new   CheckedOutputStream(dest, new Adler32());
 	         outS = new 
@@ -64,10 +65,11 @@ public class CompressDir {
 	           BufferedOutputStream(checksum));
 	         osw = new OutputStreamWriter(outS);
 	         outS.setMethod(ZipOutputStream.DEFLATED);
+	         this.includeFileLength = includeFileLength;
 	    }
 	    
 	    
-	    public void run() throws IOException{
+	    public void run(int  min_lines) throws IOException{
 	    	if(this.currentStreams.size()>0){
 	    		for(Iterator<SequenceOutputStream1> it = currentStreams.values().iterator(); it.hasNext();){
 	    			SequenceOutputStream1 so = it.next();
@@ -78,7 +80,8 @@ public class CompressDir {
 	    	try{
 	    	File[] f = inDir.listFiles();
 	    	for(int i=0; i<f.length; i++){
-	    	this.writeHeader(f[i]);
+	    	
+	    	this.writeHeader(f[i],min_lines);
 	    	this.delete(f[i]);
 	    	}
 	    	this.delete(inDir);
@@ -89,7 +92,15 @@ public class CompressDir {
 	    	}
 	    }
 	   
-	    public void close() throws IOException{
+	    private int getLength(File file)  throws IOException{
+	    	BufferedReader reader = new BufferedReader(new FileReader(file));
+	    	int lines = 0;
+	    	while (reader.readLine() != null) lines++;
+	    	reader.close();
+	    	return lines;
+		}
+
+		public void close() throws IOException{
 	    	this.outS.close();
 	    }
 	    public void delete(File f) throws Exception{
@@ -101,14 +112,21 @@ public class CompressDir {
 	    	}
 	    	f.delete();
 	    }
-	    public void writeHeader(File f) throws IOException{
-	    	this.writeHeader(f,f.getAbsolutePath().substring(len));
+	    final boolean includeFileLength;
+	    public void writeHeader(File f, int min_lines) throws IOException{
+	    	int leng = min_lines >0 || includeFileLength  ? getLength(f) : 0;
+	    	//String len1 =  leng+;
+	    	String parent = f.getParentFile().getAbsolutePath();
+	    	String name = parent+"/"+"_"+leng+"_"+f.getName();
+	    	if(leng>=min_lines){
+	    		this.writeHeader(f,name.substring(len), min_lines);
+	    	}
 	    }
-	    public void writeHeader(File f, String newname) throws IOException{
+	    public void writeHeader(File f, String newname, int min_lines) throws IOException{
 	    	if(f.isDirectory()){
 	    		File[] f1 = f.listFiles();
 	    		for(int i=0; i<f1.length; i++){
-	    			writeHeader(f1[i]);
+	    			writeHeader(f1[i], min_lines);
 	    		}
 	    	}
 	    	else{
@@ -180,11 +198,11 @@ public class CompressDir {
 		        
 	    }
 
-	    public static void compress(File dir) {
+	   /* public static void compress(File dir) {
 			try{
 						(new CompressDir(dir)).run();
 			}catch(Exception exc){
 				exc.printStackTrace();
 			}
-		}
+		} */
 }

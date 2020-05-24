@@ -353,7 +353,7 @@ public class TranscriptUtils {
 		return CigarHash2.getString(Arrays.asList(seq12));
 	}
 
-	private static Sequence revCompl(Sequence leftseq) {
+	public static Sequence revCompl(Sequence leftseq) {
 		String sequence = SequenceUtil.reverseComplement(leftseq.toString());
 		return new Sequence(Alphabet.DNA(), sequence.toCharArray(), leftseq.getName());
 	}

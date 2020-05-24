@@ -56,7 +56,7 @@ public class ExtractClusterCmd extends CommandLine {
 			String[] grpName = "upstream:downstream".split(":");
 			for(int i=0; i<types.length; i++){
 				String[] filters = new String[] {"type_nme",types[i]};
-				CompressDir outdir = new CompressDir(in, "clusters_"+types[i]+".zip");
+				CompressDir outdir = new CompressDir(in, "clusters_"+types[i]+".zip", true);
 				ec.run(readsF, outdir,	sort, filters, 
 					filters1,grpName, false);
 			}
@@ -149,7 +149,7 @@ public class ExtractClusterCmd extends CommandLine {
 				
 				//for(int k=0; k<readsF.length; k++){
 					String prefix = readsF.getName().split("\\.")[0];
-					CompressDir comp = new CompressDir(in, prefix+".clusters_"+types[ij]+".zip");
+					CompressDir comp = new CompressDir(in, prefix+".clusters_"+types[ij]+".zip", true);
 				ec.run(readsF, comp,	sort, filters, 
 					filters1,grpName, false);
 				
@@ -161,7 +161,7 @@ public class ExtractClusterCmd extends CommandLine {
 			//	File outdir = new File(in, "clusters");
 				//for(int k=0; k<readsF.length; k++){
 					String prefix = readsF.getName().split("\\.")[0];
-					CompressDir comp = new CompressDir(in, prefix+".clusters.zip");
+					CompressDir comp = new CompressDir(in, prefix+".clusters.zip", true);
 					ec.run(readsF, comp,	sort, null, filters1,grpName, false);
 					comp.close();
 				//}
