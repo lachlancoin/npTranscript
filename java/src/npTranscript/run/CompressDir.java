@@ -70,18 +70,22 @@ public class CompressDir {
 	    
 	    
 	    public void run(int  min_lines) throws IOException{
-	    	if(this.currentStreams.size()>0){
-	    		for(Iterator<SequenceOutputStream1> it = currentStreams.values().iterator(); it.hasNext();){
-	    			SequenceOutputStream1 so = it.next();
-	    			so.printAll();
-	    			so.close();
+	    	//if(this.currentStreams.size()>0){
+	    		for(Iterator<Map.Entry<String, SequenceOutputStream1>> it = currentStreams.entrySet().iterator(); it.hasNext();){
+	    			Map.Entry<String, SequenceOutputStream1> so = it.next();
+	    			so.getValue().printAll();
+	    			so.getValue().close();
+	    			if(so.getKey().indexOf("ORF_")<0){
+	    				so.getValue().trim((int) Math.floor((double)min_lines/2.0));
+	    			}
 	    		}
-	    	}
+	    	//}
+	    	
 	    	try{
 	    	File[] f = inDir.listFiles();
 	    	for(int i=0; i<f.length; i++){
 	    	
-	    	this.writeHeader(f[i],min_lines);
+	    	this.writeHeader(f[i]);
 	    	this.delete(f[i]);
 	    	}
 	    	this.delete(inDir);
@@ -113,20 +117,16 @@ public class CompressDir {
 	    	f.delete();
 	    }
 	    final boolean includeFileLength;
-	    public void writeHeader(File f, int min_lines) throws IOException{
-	    	int leng = min_lines >0 || includeFileLength  ? getLength(f) : 0;
-	    	//String len1 =  leng+;
-	    	String parent = f.getParentFile().getAbsolutePath();
-	    	String name = parent+"/"+"_"+leng+"_"+f.getName();
-	    	if(leng>=min_lines){
-	    		this.writeHeader(f,name.substring(len), min_lines);
-	    	}
+	    public void writeHeader(File f) throws IOException{
+	    	
+	    		this.writeHeader(f,f.getAbsolutePath().substring(len));
+	    	
 	    }
-	    public void writeHeader(File f, String newname, int min_lines) throws IOException{
+	    public void writeHeader(File f, String newname) throws IOException{
 	    	if(f.isDirectory()){
 	    		File[] f1 = f.listFiles();
 	    		for(int i=0; i<f1.length; i++){
-	    			writeHeader(f1[i], min_lines);
+	    			writeHeader(f1[i]);
 	    		}
 	    	}
 	    	else{

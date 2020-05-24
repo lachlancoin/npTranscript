@@ -4,11 +4,16 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Stack;
+import java.util.TreeSet;
 import java.util.zip.ZipOutputStream;
 
+import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
-import japsa.seq.SequenceOutputStream;
+import japsa.seq.SequenceReader;
 
 public class SequenceOutputStream1 {
 	
@@ -35,6 +40,49 @@ public class SequenceOutputStream1 {
 		}
 	}
 	
+	public void trim(int min_seqs) throws IOException {
+		this.so = null;
+		ArrayList<Sequence> genomes = SequenceReader.readAll(target.getAbsolutePath(), Alphabet.DNA());
+		target.delete();
+    
+		
+		if(genomes.size()<min_seqs) return;
+    	target = new File(target.getParentFile(),genomes.size()+"_"+target.getName());
+
+		int[] st = new int[genomes.size()];
+		int[] en = new int[genomes.size()];
+		for(int i=0; i<genomes.size(); i++){
+			String[] desc = genomes.get(i).getDesc().split("\\s+");
+			String[] refbreaks = desc[1].split(",");
+			
+			int start = Integer.parseInt(refbreaks[0]);
+			int end= Integer.parseInt(refbreaks[refbreaks.length-1]);
+			st[i] = start;
+			en[i] = end;
+		}
+		Arrays.sort(st); Arrays.sort(en);
+		
+		int mid = (int) Math.floor((double) genomes.size()*perc_target);
+		int st_target = st[mid]; int en_target = en[en.length-mid];
+		for(int i=0; i<genomes.size(); i++){
+			String[] desc = genomes.get(i).getDesc().split("\\s+");
+			String[] refbreaks = desc[1].split(",");
+		//	String[] readbreaks = desc[2].split(",");
+			Sequence seq = genomes.get(i);
+			int start = Integer.parseInt(refbreaks[0]);
+			int end= Integer.parseInt(refbreaks[refbreaks.length-1]);
+			int read_st_new = Math.max(0, st_target-start); //truncate if st[i] < st_target 
+			int read_end_new = seq.length()-Math.max(0,  end-en_target ); //truncate if en[i]> en_target 
+		//	System.err.println(read_st_new+" "+read_end_new+" "+seq.length());
+			Sequence seq1 = seq.subSequence(read_st_new, read_end_new);
+			seq1.setName(seq.getName());
+			seq1.setDesc(seq.getDesc()+" "+read_st_new+","+read_end_new+","+seq1.length());
+			this.stack.push(seq1);
+		}
+		this.printAll();
+		this.close();
+	}
+	static double perc_target = 0.5; // more means greater truncation
   private OutputStreamWriter so; 
   File target ;
   boolean append;

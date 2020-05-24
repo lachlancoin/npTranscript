@@ -254,10 +254,10 @@ public class IdentityProfile1 {
 			//readSeq1.setDesc("st="+start_read+";end="+end_read+";len="+(end_read-start_read));
 			List<Integer>read_breaks = new ArrayList<Integer>();
 			for(int i=0; i<breaks.size(); i++){
-				read_breaks.add(sam.getReadPositionAtReferencePosition(breaks.get(i), true));
+				read_breaks.add(sam.getReadPositionAtReferencePosition(breaks.get(i)-1, true));
 			}
-			readSeq1.setDesc(chrom_index+";"+breaks.toString()+";"+CigarHash2.getString(read_breaks)+";"+(end_read-start_read));
-			this.o.writeToCluster(secondKeySt,clusterID[1], source_index, readSeq1, baseQ1, str, readSeq.getName(), strand);
+			readSeq1.setDesc(chrom_index+" "+breaks.toString()+" "+CigarHash2.getString(read_breaks)+" "+(end_read-start_read));
+			this.o.writeToCluster(secondKeySt,"_"+clusterID[1]+"_", source_index, readSeq1, baseQ1, str, readSeq.getName(), strand);
 		}
 		return secondKeySt;
 	}

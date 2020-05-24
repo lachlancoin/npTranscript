@@ -85,8 +85,8 @@ public class Outputs{
 		CompressDir[] clusters;
 		String[] type_nmes;
 		public void close() throws IOException{
-			//transcriptsP.close();
-			//readClusters.close();
+			transcriptsP.close();
+			readClusters.close();
 			clusterW.close();
 			this.altT.close();
 		

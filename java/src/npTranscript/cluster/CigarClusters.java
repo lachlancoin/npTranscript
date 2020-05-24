@@ -90,7 +90,7 @@ public class CigarClusters {
 		}
 	clusterIDs[0] = clusterID;
 	
-	clusterIDs[1] = "_"+subID.toString(CigarHash2.round, 1, subID.size()-1)+"_";
+	clusterIDs[1] = subID.toString(CigarHash2.round, 1, subID.size()-1);
 		
 		//return clusterID;
 	}
@@ -187,13 +187,13 @@ public class CigarClusters {
 	public void getConsensus(  
 			Outputs o, String chrom, int chrom_index
 			) throws IOException{
-		o.readClusters.close();
+		//o.readClusters.close();
 		for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();) {
 			CigarCluster cc = it.next();
 			this.process1(cc, o, chrom, chrom_index);
 		}
 		System.err.println("closing transcripts pw");
-	   o.transcriptsP.close();
+	 //  o.transcriptsP.close();
       
 		for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();) {
 			CigarCluster cc = it.next();
