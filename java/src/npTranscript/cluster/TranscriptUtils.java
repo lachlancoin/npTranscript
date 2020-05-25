@@ -81,6 +81,7 @@ public class TranscriptUtils {
 	public static Sequence polyA = new Sequence(Alphabet.DNA(), "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".toCharArray(), "polyA");
 	public  static boolean tryComplementOnExtra = false;
 	public static boolean reAlignExtra = false;
+	public static boolean findPolyA = false;
 	/**
 	 * Get the identity between a read sequence from a sam and a reference sequence
 	 * 
@@ -216,7 +217,7 @@ public class TranscriptUtils {
 				 offset_3prime = refSeq.length()-threePrimeRefSeq.length();
 			}
 			Sequence leftseq = null;  Sequence rightseq = null;
-			if(st_r> 20){
+			if(st_r> 20 && TranscriptUtils.findPolyA){
 				leftseq = readSeq.subSequence(0,st_r);
 				SWGAlignment polyAlign =  SWGAlignment.align(leftseq, polyA);
 				if(polyAlign.getIdentity() > 0.9 * polyAlign.getLength()  && polyAlign.getLength()>15){
@@ -229,14 +230,14 @@ public class TranscriptUtils {
 								baseQ.length()==1 ? baseQ: baseQ.substring(0,end), sam.getReadNegativeStrandFlag(),source_index);
 					//	readSeq.setName(nme+".R");
 						profile.o.writePolyA(readSeq.subSequence( end+1, readSeq.length()),  nme+".R",
-								baseQ.length()==1 ? baseQ: baseQ.substring(end+1, st_r), sam.getReadNegativeStrandFlag(),source_index);
+								baseQ.length()==1 ? baseQ: baseQ.substring(end+1, readSeq.length()), sam.getReadNegativeStrandFlag(),source_index);
 						System.err.println("internal polyA 5´ ");
 						return;
 					}
 				}
 
 			}
-			if(readSeq.length() -  end_r >20){
+			if(readSeq.length() -  end_r >20 && TranscriptUtils.findPolyA){
 				rightseq = readSeq.subSequence(end_r+1, readSeq.length());
 				SWGAlignment polyAlign =  SWGAlignment.align(rightseq, polyA);
 				if(polyAlign.getIdentity() > 0.9 * polyAlign.getLength()  && polyAlign.getLength()>10 ){

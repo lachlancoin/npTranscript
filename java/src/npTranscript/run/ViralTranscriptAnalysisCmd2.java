@@ -286,6 +286,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 	//	ErrorCorrection.msa = msa;
 		Outputs.writePolyA = cmdLine.getBooleanVal("writePolyA");
 		if(coronavirus){
+			TranscriptUtils.findPolyA = true;
 			System.err.println("running in coronavirus mode");
 			calcBreaks  = true; 
 			filterBy5_3 = true;
@@ -297,6 +298,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			CigarHash2.subclusterBasedOnStEnd = false;
 		
 		}else{
+			TranscriptUtils.findPolyA = true;
 			TranscriptUtils.coronavirus = false;
 			TranscriptUtils.extra_threshold1 = 1000000;
 			//Outputs.writeUnSplicedFastq = false;
