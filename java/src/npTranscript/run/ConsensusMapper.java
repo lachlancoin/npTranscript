@@ -173,7 +173,7 @@ public class ConsensusMapper extends CommandLine {
 					genome_index = currIndex;
 					refSeq = genomes.get(genome_index);
 				}
-				if(nme.indexOf(refSeq.getName())<0){
+			/*	if(nme.indexOf(refSeq.getName())<0){
 					for(int j=0; j<genomes.size(); j++){
 						String nme1 = genomes.get(j).getName();
 							//	System.err.println(nme1);
@@ -183,7 +183,7 @@ public class ConsensusMapper extends CommandLine {
 						}
 					}
 				}
-				if(nme.indexOf(refSeq.getName())<0) throw new RuntimeException(nme);
+				if(nme.indexOf(refSeq.getName())<0) throw new RuntimeException(nme);*/
 				breaks = ConsensusMapper.readBreaks(descr[2].split(","));
 			
 			
