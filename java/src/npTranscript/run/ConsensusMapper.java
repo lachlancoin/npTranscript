@@ -161,7 +161,7 @@ public class ConsensusMapper extends CommandLine {
 		for(int i=0; i< reads.size(); i++){
 			Sequence readSeq = reads.get(i);
 			String nme = readSeq.getName();
-			String[] descr = readSeq.getDesc().split("\\s+");
+			String[] descr = readSeq.getDesc().indexOf(";")>=0 ? readSeq.getDesc().split(";") : readSeq.getDesc().split("\\s+");
 		//	String[] desc = descr[0].split(";"); //ID0.0;MT007544.1;1;29893;5_3;22;27904;2;leader;ORF8;-1;2262
 			
 			//>104_NR_146148.1;NR_146148.1.__ 70207 605,1217 0,518 512 0,512,512 81
