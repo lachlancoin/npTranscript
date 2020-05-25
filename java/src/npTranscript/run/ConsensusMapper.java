@@ -161,7 +161,13 @@ public class ConsensusMapper extends CommandLine {
 		for(int i=0; i< reads.size(); i++){
 			Sequence readSeq = reads.get(i);
 			String nme = readSeq.getName();
-			String[] descr = readSeq.getDesc().indexOf(";")>=0 ? readSeq.getDesc().split(";") : readSeq.getDesc().split("\\s+");
+			int ref_index = 1;
+			String split ="\\s+";
+			if(readSeq.getDesc().indexOf(";")>=0 ){
+				split=";";
+				//ref_index = 1;		
+			}
+			String[] descr = readSeq.getDesc().split(split);
 		//	String[] desc = descr[0].split(";"); //ID0.0;MT007544.1;1;29893;5_3;22;27904;2;leader;ORF8;-1;2262
 			
 			//>104_NR_146148.1;NR_146148.1.__ 70207 605,1217 0,518 512 0,512,512 81
@@ -184,7 +190,7 @@ public class ConsensusMapper extends CommandLine {
 					}
 				}
 				if(nme.indexOf(refSeq.getName())<0) throw new RuntimeException(nme);*/
-				breaks = ConsensusMapper.readBreaks(descr[2].split(","));
+				breaks = ConsensusMapper.readBreaks(descr[ref_index].split(","));
 			
 			
 			int[] start1 = new int[(int) Math.floor((double)breaks.size()/2.0)];
@@ -244,9 +250,9 @@ public class ConsensusMapper extends CommandLine {
 			}
 			String identity =String.format("%5.3g", ident/totlen);
 		  writeFasta(os1, sequ, readSeq.getName(),getString(breaks_ref)+";"+getString(breaks_reads)+";"+identity
-				 +" "+allgaps.toString().replaceAll("\\s+", "")+" "+allgaps2.toString().replaceAll("\\s+", "")+" "+descr[1]);
-		  writeFasta(os2, sequ_refonly,readSeq.getName(),getString(breaks_ref)+";"+getString(breaks_reads)+";"+identity+" "+descr[1]);
-		  writeFasta(os3, remaining,readSeq.getName(),getString(breaks_ref)+";"+getString(breaks_reads)+" "+descr[1]);
+				 +" "+allgaps.toString().replaceAll("\\s+", "")+" "+allgaps2.toString().replaceAll("\\s+", "")+" "+descr[ref_index]);
+		  writeFasta(os2, sequ_refonly,readSeq.getName(),getString(breaks_ref)+";"+getString(breaks_reads)+";"+identity+" "+descr[ref_index]);
+		  writeFasta(os3, remaining,readSeq.getName(),getString(breaks_ref)+";"+getString(breaks_reads)+" "+descr[ref_index]);
 		/*  if(right_start1 > left_end1+1){
 				// remaining = null;
 				 Sequence remaining=readSeqLeft.subSequence(left_end1, readSeqLeft.length());
