@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Stack;
 import java.util.zip.ZipOutputStream;
 
@@ -38,7 +40,22 @@ public class SequenceOutputStream1 {
 		}
 	}
 	
-	public static File trim(File target, int min_seqs) throws IOException {
+	public static  class DetailsComparator implements Comparator<Detail>{
+		 String type = "st";
+		 
+		 DetailsComparator(String c){
+			 type = c;
+		 }
+
+		@Override
+		public int compare(Detail o1, Detail o2) {
+			return o1.val(type).compareTo(o2.val(type));
+		}
+		
+		 
+	 }
+	
+	 public static File trim(File target, int min_seqs) throws IOException {
 	//	this.so = null;
 		ArrayList<Sequence> genomes = SequenceReader.readAll(target.getAbsolutePath(), Alphabet.DNA());
 		target.delete();
@@ -46,43 +63,64 @@ public class SequenceOutputStream1 {
 		
 		if(genomes.size()<min_seqs) return null;
     	target = new File(target.getParentFile(),genomes.size()+"_"+target.getName());
-    	
-		int[] st = new int[genomes.size()];
-		int[] en = new int[genomes.size()];
+    	Detail[] det = new Detail[genomes.size()];
+		
 		for(int i=0; i<genomes.size(); i++){
 			String[] desc = genomes.get(i).getDesc().split("\\s+");
 			String[] refbreaks = desc[1].split(",");
-			
+			det[i] = new Detail(i);
 			int start = Integer.parseInt(refbreaks[0]);
 			int end= Integer.parseInt(refbreaks[refbreaks.length-1]);
-			st[i] = start;
-			en[i] = end;
+			det[i].st= start;
+			det[i].en = end;
+			if(refbreaks.length>2){
+				int br_start = Integer.parseInt(refbreaks[1]);
+				int br_end = Integer.parseInt(refbreaks[refbreaks.length-2]);
+				det[i].span_l = br_start - start;
+				det[i].span_r = end - br_end;
+			}else{
+				det[i].span_l = end-start;
+			}
 		}
-		Arrays.sort(st); Arrays.sort(en);
-		
+		/*; 
+		Arrays.sort(en);
+		*/
 		int mid = (int) Math.floor((double) genomes.size()*perc_target);
-		int st_target = st[mid]; int en_target = en[en.length-mid];
-		
+		Arrays.sort(det, new DetailsComparator("st"));
+		int st_target = det[mid].st; 
+		Arrays.sort(det, new DetailsComparator("en"));
+		int en_target = det[det.length-mid].en;
+		Arrays.sort(det, new DetailsComparator("index"));
+
 		SequenceOutputStream1 so = new SequenceOutputStream1(target, false);
+		int excl_count =0;
 		for(int i=0; i<genomes.size(); i++){
-			String[] desc = genomes.get(i).getDesc().split("\\s+");
-			String[] refbreaks = desc[1].split(",");
-		//	String[] readbreaks = desc[2].split(",");
+			if(det[i].index!=i) throw new RuntimeException("!!");
+	//		String[] desc = genomes.get(i).getDesc().split("\\s+");
+//			String[] refbreaks = desc[1].split(",");
 			Sequence seq = genomes.get(i);
-			int start = Integer.parseInt(refbreaks[0]);
-			int end= Integer.parseInt(refbreaks[refbreaks.length-1]);
+			int start = det[i].st;
+			int end= det[i].en;
+			if(start<st_target+10 && end>en_target - 10){
 			int read_st_new = Math.max(0, st_target-start); //truncate if st[i] < st_target 
 			int read_end_new = seq.length()-Math.max(0,  end-en_target ); //truncate if en[i]> en_target 
 		//	System.err.println(read_st_new+" "+read_end_new+" "+seq.length());
+			
 			if(read_st_new < read_end_new){
 				Sequence seq1 = seq.subSequence(read_st_new, read_end_new);
 				seq1.setName(seq.getName());
 				seq1.setDesc(seq.getDesc()+" "+read_st_new+","+read_end_new+","+seq1.length());
 				so.stack.push(seq1);
 			}else{
-				System.err.println("excluded "+seq.getName()+" from clusters");
+				excl_count++;
+				//System.err.println("excluded "+seq.getName()+" from clusters");
+			}
+			}else{
+				excl_count++;
+//				System.err.println("excluded "+seq.getName()+" from clusters");
 			}
 		}
+		if(excl_count>0) System.err.println("excluded "+excl_count+" of "+genomes.size());
 		if(so.stack.size()>min_seqs){
 			so.printAll();
 		}else{

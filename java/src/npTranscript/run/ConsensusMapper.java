@@ -165,7 +165,7 @@ public class ConsensusMapper extends CommandLine {
 		//	String[] desc = descr[0].split(";"); //ID0.0;MT007544.1;1;29893;5_3;22;27904;2;leader;ORF8;-1;2262
 			
 			//>104_NR_146148.1;NR_146148.1.__ 70207 605,1217 0,518 512 0,512,512 81
-			String[] br = descr[1].split(",");
+		//	String[] br = descr[1].split(",");
 			List<Integer> breaks;
 			
 				int currIndex = Integer.parseInt(descr[0]);
@@ -173,6 +173,17 @@ public class ConsensusMapper extends CommandLine {
 					genome_index = currIndex;
 					refSeq = genomes.get(genome_index);
 				}
+				if(nme.indexOf(refSeq.getName())<0){
+					for(int j=0; j<genomes.size(); j++){
+						String nme1 = genomes.get(j).getName();
+							//	System.err.println(nme1);
+						if(nme.indexOf(nme1)>=0){
+							
+							refSeq = genomes.get(j);
+						}
+					}
+				}
+				if(nme.indexOf(refSeq.getName())<0) throw new RuntimeException(nme);
 				breaks = ConsensusMapper.readBreaks(descr[2].split(","));
 			
 			
