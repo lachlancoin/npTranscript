@@ -75,16 +75,23 @@ public class ConsensusMapper extends CommandLine {
 		String seqr2 = new String(seq2);
 		Matcher m = p.matcher(seqr);
 		int tot =0;
+	//	int seq2Gaps = 0;
+		int prev =0;
 		while (m.find()) {
-				int len =  m.end()-m.start();
-				tot+=len;
-			   allMatches.add(new Indel(m.start(),seqr2.substring(m.start(), m.end())));
+		//	for(int k=prev; k<m.start(); k++){
+			//	if(seq2[k]=='-') seq2Gaps++;
+		//	}
+			prev=m.start();
+			int len =  m.end()-m.start();
+			seqr2.subSequence(0, m.start());
+			tot+=len;
+			  allMatches.add(new Indel(m.start(),seqr2.substring(m.start(), m.end())));
 		}
 		return tot;
 	}
 	
 	/** removes positions in first sequence which cause gaps in second sequence */
-	private static String removeGapsInRef(char[] seq1, char[]  seqRef,List<Indel> gaps, List<Indel> gaps2, int startInRef, int offset) {
+	private static String removeGapsInRef(char[] seq1, char[]  seqRef, List<Indel> gaps, List<Indel> gaps2, int startInRef, int offset) {
 		if(seq1.length!=seqRef.length) throw new RuntimeException("!!");
 		gaps.clear();
 		int gap = getGaps(seqRef,seq1,p1, gaps);
@@ -93,6 +100,16 @@ public class ConsensusMapper extends CommandLine {
 		int st =0;
 		int target_st =0;
 		int total_gap =0;
+		int prev_start =0;
+		for(int i=0; i<gaps2.size(); i++){
+			Indel indel = gaps2.get(i);
+			for(int k=prev_start; k<indel.start; k++){
+				if(seqRef[k]=='-') total_gap++; // insertion in ref
+			}
+			prev_start = indel.start+indel.len();
+			indel.start = indel.start - total_gap + startInRef+offset;
+		}
+		total_gap =0;
 		for(int i=0; i<gaps.size(); i++){
 			Indel indel = gaps.get(i);
 			int end = indel.start; // end of previous non gapped sequence
@@ -108,6 +125,7 @@ public class ConsensusMapper extends CommandLine {
 			indel.start = indel.start-total_gap+startInRef+offset;  // adjust indel so that start position now is in ref coords (i.e. remove total_gap
 			total_gap+=indel.len();
 		}
+		
 		if(st < seqRef.length){
 			int len = seqRef.length - st;
 			for(int j=0; j<len; j++){
