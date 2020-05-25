@@ -70,23 +70,34 @@ public class CompressDir {
 	    
 	    
 	    public void run(int  min_lines) throws IOException{
-	    	//if(this.currentStreams.size()>0){
+	    if(this.currentStreams.size()>0){
 	    		for(Iterator<Map.Entry<String, SequenceOutputStream1>> it = currentStreams.entrySet().iterator(); it.hasNext();){
 	    			Map.Entry<String, SequenceOutputStream1> so = it.next();
 	    			so.getValue().printAll();
 	    			so.getValue().close();
-	    			if(so.getKey().indexOf("ORF_")<0){
-	    				so.getValue().trim((int) Math.floor((double)min_lines/2.0));
-	    			}
 	    		}
-	    	//}
+	    }
+	    			
+	    		  	//}
 	    	
 	    	try{
 	    	File[] f = inDir.listFiles();
+	    	int min_seqs = (int) Math.floor((double)min_lines/2.0);
 	    	for(int i=0; i<f.length; i++){
 	    		if(!f[i].getName().startsWith(".")){
-	    			this.writeHeader(f[i]);
-	    			this.delete(f[i]);
+	    			if(!f[i].getName().startsWith("annot_")){
+	    				try{
+	    					
+	    				f[i] = SequenceOutputStream1.trim(f[i],min_seqs);
+	    				}catch(Exception exc){
+	    					System.err.println("problem with "+f[i]);
+	    					exc.printStackTrace();
+	    				}
+	    			}
+	    			if(f[i]!=null && f[i].exists()){
+	    				this.writeHeader(f[i]);
+	    				this.delete(f[i]);
+	    			}
 	    		}
 	    	}
 	    	this.delete(inDir);

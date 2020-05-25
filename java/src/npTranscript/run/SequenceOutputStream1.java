@@ -6,9 +6,7 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Stack;
-import java.util.TreeSet;
 import java.util.zip.ZipOutputStream;
 
 import japsa.seq.Alphabet;
@@ -40,15 +38,15 @@ public class SequenceOutputStream1 {
 		}
 	}
 	
-	public void trim(int min_seqs) throws IOException {
-		this.so = null;
+	public static File trim(File target, int min_seqs) throws IOException {
+	//	this.so = null;
 		ArrayList<Sequence> genomes = SequenceReader.readAll(target.getAbsolutePath(), Alphabet.DNA());
 		target.delete();
     
 		
-		if(genomes.size()<min_seqs) return;
+		if(genomes.size()<min_seqs) return null;
     	target = new File(target.getParentFile(),genomes.size()+"_"+target.getName());
-
+    	
 		int[] st = new int[genomes.size()];
 		int[] en = new int[genomes.size()];
 		for(int i=0; i<genomes.size(); i++){
@@ -64,6 +62,8 @@ public class SequenceOutputStream1 {
 		
 		int mid = (int) Math.floor((double) genomes.size()*perc_target);
 		int st_target = st[mid]; int en_target = en[en.length-mid];
+		
+		SequenceOutputStream1 so = new SequenceOutputStream1(target, false);
 		for(int i=0; i<genomes.size(); i++){
 			String[] desc = genomes.get(i).getDesc().split("\\s+");
 			String[] refbreaks = desc[1].split(",");
@@ -78,18 +78,18 @@ public class SequenceOutputStream1 {
 				Sequence seq1 = seq.subSequence(read_st_new, read_end_new);
 				seq1.setName(seq.getName());
 				seq1.setDesc(seq.getDesc()+" "+read_st_new+","+read_end_new+","+seq1.length());
-				this.stack.push(seq1);
+				so.stack.push(seq1);
 			}else{
 				System.err.println("excluded "+seq.getName()+" from clusters");
 			}
 		}
-		if(this.stack.size()>min_seqs){
-			this.printAll();
+		if(so.stack.size()>min_seqs){
+			so.printAll();
 		}else{
-			this.stack.clear();
+			so.stack.clear();
 		}
-		this.close();
-		
+		so.close();
+		return so.target;
 	}
 	static double perc_target = 0.5; // more means greater truncation
   private OutputStreamWriter so; 

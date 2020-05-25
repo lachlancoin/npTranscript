@@ -238,7 +238,7 @@ public class IdentityProfile1 {
 							Sequence readSeq1 = readSeq.subSequence(start_read1, end_read1);
 							String baseQ1 = baseQ.length()<=1 ? baseQ : baseQ.substring(start_read1, end_read1);
 							readSeq1.setDesc(chrom_index+";"+start_ref+","+end_ref+";"+start_read1+","+end_read1+";"+(end_read1-start_read1));
-							this.o.writeToCluster("ORF_"+annot.genes.get(i),null, source_index, readSeq1, baseQ1,null, readSeq.getName(), strand);
+							this.o.writeToCluster("annot_"+annot.genes.get(i),null, source_index, readSeq1, baseQ1,null, readSeq.getName(), strand);
 						}
 					}
 				}
