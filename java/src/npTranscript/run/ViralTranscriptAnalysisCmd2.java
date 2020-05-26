@@ -298,7 +298,8 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			CigarHash2.subclusterBasedOnStEnd = false;
 		
 		}else{
-			TranscriptUtils.findPolyA = true;
+		//	TranscriptUtils.reAlignExtra = false;
+			TranscriptUtils.findPolyA = false;
 			TranscriptUtils.coronavirus = false;
 			TranscriptUtils.extra_threshold1 = 1000000;
 			//Outputs.writeUnSplicedFastq = false;
@@ -559,7 +560,8 @@ public static boolean combineOutput = false;
 								JapsaAnnotation annot1 = anno.get(chr.getName());
 								if(annot1==null){
 									try{
-										throw new RuntimeException("no annotation for  "+ chr.getName());
+										annot = new EmptyAnnotation(chr.getName(), chr.getDesc(), seqlen, annotation_pw);
+									System.err.println("no annotation for  "+ chr.getName());
 									}catch(Exception exc){
 										exc.printStackTrace();
 									}
