@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=corona2_analysis
+#SBATCH --job-name=npTranscript
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-node=1
@@ -34,10 +34,10 @@ coord_file="../Chlorocebus_sabaeus.ChlSab1.1.99.gff3.gz"
 
 dat=$(date +%Y%m%d%H%M%S)
 resdir="results_${dat}"
-opts="--bin=50 --breakThresh=100 --coronavirus=false --extra_threshold=200 --msaDepthThresh=50 --doMSA=false"
+opts="--bin=50 --breakThresh=100 --coronavirus=false --extra_threshold=5000 --msaDepthThresh=50 --doMSA=false"
 #opts="${opts} --maxReads 10000"
 bash ${npTranscript}/scripts/run.sh --bamFile=${bamfiles1}   --reference=${reference} --annotation ${coord_file} --resdir ${resdir} ${opts} ${opts1}
 
 
 cd ${resdir}
-#Rscript ~/github/npTranscript/R/npTranscript.R  ~/github/npTranscript/data/SARS-Cov2
+Rscript ~/github/npTranscript/R/npDE.R  korean_monkey_control korean_monkey_infected ENSC
