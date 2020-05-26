@@ -1,4 +1,4 @@
-
+install= FALSE
 #ggforce for ggsina
 if(install){
   install.packages("BiocManager")
@@ -12,12 +12,12 @@ if(install){
  BiocManager::install("biomaRt")
  BiocManager::install("edgeR")
 }
-library(VGAM)
-library(biomaRt)
-library(edgeR)
+#library(VGAM)
+#library(biomaRt)
+#library(edgeR)
 library(stats)
 library(rhdf5)
-read.gff(file, na.strings = c(".", "?"), GFF3 = TRUE)
+#read.gff(file, na.strings = c(".", "?"), GFF3 = TRUE)
 #library(seqinr)
 
 
@@ -39,20 +39,15 @@ read.gff(file, na.strings = c(".", "?"), GFF3 = TRUE)
 }
 
 src = c( "../../R" , "~/github/npTranscript/R" )
-#source(.findFile(src, "transcript_functions.R"))
-
+source(.findFile(src, "transcript_functions.R"))
 source(.findFile(src, "diff_expr_functs.R"))
 
+
 prefix = "ENSC"; #for vervet monkey
-#set up mart
-dataset="csabaeus_gene_ensembl"
-if(!is.null(dataset)){
-mart <- useEnsembl(biomart = "ensembl", 
-                   dataset =dataset, 
-                   mirror = "uswest") #asia useast
-}else{
-  mart=NULL
-}
+
+
+
+
 files = dir()
 chroms = NULL
 control_inds = 1
@@ -70,30 +65,43 @@ if(isVirus){
 
 }
 
-#seqfile= "../Chlorocebus_sabaeus.ChlSab1.1.dna.toplevel.fa.gz"
-#fasta = read.fasta(seqfile)
-#seqlen = length(fasta[[1]])
 
 
 target= list( chrom="character", 
-             leftGene="character", rightGene="character", start = "numeric", 
-             end="numeric", ID="character", isoforms="numeric" ,type_nme="character")
+             ORFs ="character",start = "numeric", 
+             end="numeric", ID="character", isoforms="numeric" ,type_nme="character", countTotal="numeric")
 
 
 ##READ TRANSCRIPT DATA
 
- gfft = read.table("annotation.csv.gz", sep="\t", header=T, fill=T, quote='\"')
 
-          
 
-#"gene:ncRNA_gene:pseudogene"
 infilesT = grep("transcripts.txt", dir(), v=T)
 transcripts = readTranscriptHostAll(infilesT, start_text = start_text,target = target,   filter = filter, combined_depth_thresh = 1)
-                                  
+names(transcripts)[grep("count[0-9]",names(transcripts))] = sub("_leftover", "" ,attr(transcripts,"info"))
+geneID= as.character(unlist(lapply(strsplit(transcripts$ORFs,";"), function(v) v[1])))
+rightGene = as.character(unlist(lapply(strsplit(transcripts$ORFs,";"), function(v) v[length(v)])))
+transcripts = cbind(transcripts, geneID, rightGene)
+
+
+head(getlev(transcripts$chr))      
+#head(getlev(transcripts[,names(transcripts) %in% c("chrs","start")]))                
                                    
 info = attr(transcripts,'info')
 
-transcripts = cbind(gfft[match(transcripts$geneID, gfft$ID),],transcripts)
+gfft = read.table("annotation.csv.gz", sep="\t", header=F, fill=T, quote='\"')
+#gfft[,1] = gsub("transcript:", "", as.character(gfft[,1]))
+gfft = gfft[match(transcripts$geneID, gfft[,1]),]
+gfft[,1] = transcripts$ID
+names(gfft)[1] = "ID"
+names(gfft)[2] = "Name"
+
+transcripts = cbind(gfft,transcripts)
+ord = order(transcripts$countT, decreasing=T)
+head(transcripts[ord,])
+
+
+
 ord = order(transcripts$countT, decreasing=T)
 head(transcripts[ord,])
 ##find DE genes
@@ -103,9 +111,6 @@ pos1M = apply(cbind(as.character(DE1$chrs), as.character(binsize*round(DE1$start
 #  pos1M = apply(cbind(as.character(DE1$chrs), DE1$geneID, DE1$rightGene,  as.character(binsize*round(DE1$start/binsize))),1,paste,collapse=".")
 #}
 DE2 = cbind(DE1,pos1M)
-
-desciGT = .getDescEnrich(DE2,mart,thresh = 1e-5, go_thresh=1e-2,nme="pvals1",nme2="pos1M")
-desciLT = .getDescEnrich(DE2,mart,thresh = 1e-5, go_thresh=1e-2,nme="pvals2",nme2="pos1M")
 
 
 
@@ -160,69 +165,14 @@ DE_sig2 = DE2[DE2$pos1M %in% sigChr2$chrs,]
 
 #depth2[depth2$pos100k %in% sigChr2$chrs,]
 
-if(!.is.null(mart)){
-  DE_sig1 = getDescr(DE_sig1, mart,thresh = 1e-3, prefix=prefix)
-  
-  DE_sig2 = getDescr(DE_sig2, mart,thresh = 1e-3, prefix=prefix)
-}
-
 #CHECK DISTRIBUTION (OPTIONAL)
 .qqplot(DE1$FDR1)
 #.qqplot(DE1$FDR2)
 
 
+###BIOMART ANALYSIS
+dataset="csabaeus_gene_ensembl"
+ mirror = "uswest"
+print("####BIOMART ANALYISIS #### ")
+#source(.findFile(src, "biomar_analysis.R"))
 
-
-DE1 = getDescr(DE1, mart,thresh = 1e-10, prefix=prefix)
-
-#FOLLOWING COMMAND OFTEN FAILS!  NEED TO RETRY FEW TIMES with different mirrors
-geneNames = unique(grep(prefix ,DE1$geneID,v=T))
-goObjs = getGoIDs( geneNames,mart)
-
-sigGo1 = lapply(goObjs ,findSigGo_,DE1, fdr_thresh = 1e-5, go_thresh = 1e-4, nme="pvals1")
-sigGo2 = lapply(goObjs ,findSigGo_,DE1, fdr_thresh = 1e-5, go_thresh = 1e-4, nme="pvals2")
-
-names(sigGo1) = names(goObjs)
-names(sigGo2) = names(goObjs)
-
-
-
-
-.qqplot(DE1$FDR1)
-sigChr1 = findSigChrom(DE1,thresh = 1e-5, go_thresh = 1e-4, nme="FDR1",nme2="chrs")
-sigChr2 = findSigChrom(DE1,thresh = 1e-5, go_thresh = 1e-4, nme="FDR2", nme2="chrs")
-findGenesByChrom(DE1_na,"26", fdr_thresh = 1e-5)
-findGenesByChrom(DE1_na,"AQIB01159108.1", fdr_thresh = 1e-5)
-
-
-findGenesByChrom(DE2,"MT", fdr_thresh = 1e-5)
-
-#attr= listAttributes(mart);
-
-##EXPLORATION
-findGenesByChrom(DE1,"MT", fdr_thresh = 1e-5)
-
-#go_categories = list("GO:0001968","GO:0005372","GO:0006412","GO:0002020","GO:0051702")
-
-go_categories2 = as.character(sigGo2[[1]][,1])
-getGoGenes(as.list(go_categories2),goObjs, lessThan=NULL, fdr_thresh = 1e-5)
-
-go_categories1 = as.character(sigGo1[[1]][,1])
-getGoGenes(as.list(go_categories1),goObjs, lessThan=NULL, fdr_thresh = 1e-5)
-
-
-
-
-#findGenes(chromObjs,DE1,"X", fdr_thresh = 1e-5)
-#ACE2  ENSCSAG00000014921
-
-getGene<-function(nme,DE){
-  i = which(DE$geneID== nme)
-  DE[i,]
-}
-genes = list(ACE2 = "ENSCSAG00000014921", 
-             MMP9 = "ENSCSAG00000014722",
-             TMPRSS2 ="ENSCSAG00000008229", cathepsin_L="ENSCSAG00000007387", BSG="ENSCSAG00000013009",
-            FURIN, "ENSCSAG00000017046")
-
-lapply(genes, getGene, DE1)

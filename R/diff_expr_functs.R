@@ -368,10 +368,11 @@ readTranscriptHostAll<-function(infilesT,
   ncol = -1
   for(i in 1:length(chroms)){
     infilesT1 = paste(chroms[i],"transcripts.txt.gz", sep=".")
-    print(infilesT1)
+   # print(infilesT1)
 
     dfi = try(.readTranscriptsHost(infilesT1,target=target,filter = filter, combined_depth_thresh = combined_depth_thresh, start = start_text))
 if(inherits(dfi,"try-error")) {
+	print(infilesT1)
 	dfs[[i]] = NULL
 }else{
     dfi = dfi[order(dfi$start),]
@@ -379,10 +380,10 @@ if(inherits(dfi,"try-error")) {
       chrom_names[i] = dfi$chrs[1]
      # print(chrom_n)
       dfs[[i]] = dfi
-	print(dim(dfi))
+	#print(dim(dfi))
       ncol = dim(dfi)[[2]]
-      print(ncol)
-      print(' not null')
+      #print(ncol)
+      #print(' not null')
     }else{
       print("is null")
       dfs[[i]] = NULL
@@ -394,7 +395,7 @@ if(inherits(dfi,"try-error")) {
   chroms = chroms[inds]
   chrom_names = chrom_names[inds]
   dfs = dfs[inds]
-  print(chrom_names)
+  #print(chrom_names)
   numeric_names = as.numeric(chrom_names)
  # print(numeric_names)
   ord = c()
@@ -418,7 +419,7 @@ if(inherits(dfi,"try-error")) {
   start=1;
   ranges = matrix(nrow = length(dfs), ncol=3)
   for(i in 1:length(dfs)){
-    print(i)
+   # print(i)
     lengi = dim(dfs[[i]])[1]
     ranges[i,] = c(start, start+lengi-1,dfs[[i]]$chrs[1]);
     res[ranges[i,1]:ranges[i,2],] = dfs[[i]]
@@ -557,33 +558,12 @@ target = c(target,extran)
  # head_inds1 = grep("count[0-9]", names(transcripts));
 countT = as.numeric(transcripts$countTotal)
  # countT = apply(transcripts[,head_inds1,drop=F],1,function(x) sum(as.numeric(x)))
-  print(countT)
+ #print(countT)
  
 indsk = countT>=combined_depth_thresh
   transcripts = transcripts [indsk,header_inds1, drop=F] 
-
-#geneID= as.character(unlist(lapply(strsplit(transcripts$ORFs,";"), function(v) v[1])))
-
-#rightGene = as.character(unlist(lapply(strsplit(transcripts$ORFs,";"), function(v) v[length(v)])))
-#transcripts = cbind(transcripts, geneID, rightGene)
-#transcripts$geneID = as.character(transcripts$geneID)
- # names(transcripts)[1:2] = types
- # names(transcripts)  = sub("ORFs", "geneID" ,names(transcripts))
   names(transcripts)  = sub("chrom", "chrs" ,names(transcripts))
-  #geneID = transcripts$geneID
-  #type = rep(NA, length(geneID))
-  #type[ grep(prefix, transcripts$geneID)] = "left"
-  #missing = grep(prefix, transcripts$geneID,inv=T)
-  #if(length(missing)>0){
-  #  have = grep(prefix,transcripts$rightGene[missing])
-  #  transcripts$geneID[missing[have]] = transcripts$rightGene[missing[have]]
-  #  type[missing[have]] = "right"
-  #}
- # diff = transcripts$end - transcripts$start
   if(length(grep("#", inf))>0) inf = sub("#", "",inf)
-  print(inf)
-  #type = as.factor(type)
- # res = cbind(transcripts, type, diff)
   attr(transcripts,"types")=types
   attr(transcripts,"info")=inf
   transcripts

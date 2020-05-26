@@ -123,7 +123,7 @@ type_nme = attr(transcripts_all[[1]], "info")
 #}
 count_df = grep('count[0-9]', names(transcripts_all[[1]]))
 transcript_counts = lapply(transcripts_all, function(transcripts)  apply(transcripts[,count_df, drop=F], 2,sum))
-total_reads  = apply(data.frame(transcript_counts),1,sum)
+total_reads  = apply(data.frame(transcript_counts),1,sum)ls
 names(total_reads) = type_nme
 #max_h = unlist(lapply(transcripts_all, function(transcripts)  max(transcripts[,grep('count[0-9]', names(transcripts)), drop=F])))
 #commented line above due to error (see github issue #3). max_h is created but not referred to.
@@ -184,5 +184,11 @@ if(length(infilesBr)>=1 && length(infiles)>=1){
  	print("no break point files")
 }
 
-
-
+# a = read.table("summary1.txt", sep=";")
+# b = apply(t(data.frame(strsplit(as.character(a[,2]),','))),c(1,2), as.numeric)
+# a =  apply(t(data.frame(strsplit(as.character(a[,1]),','))),c(1,2), as.numeric)
+ #c = cbind(a[,3:4], b[,3:4])
+#overl = apply(c,1,min(v[4] - v[1], v[2] -v[3])) 
+.overlap<-function(v){
+  
+}

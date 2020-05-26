@@ -93,9 +93,11 @@ head(getlev(transcripts[,names(transcripts) %in% c("chrs","start")]))
                                    
 info = attr(transcripts,'info')
 
-gfft = read.table("annotation.csv.gz", sep="\t", header=T, fill=T, quote='\"')
-gfft = gfft[match(transcripts$geneID, gfft$ID),]
+gfft = read.table("annotation.csv.gz", sep="\t", header=F, fill=T, quote='\"')
+gfft = gfft[match(transcripts$geneID, gfft[,1]),]
 gfft[,1] = transcripts$ID
+names(gfft)[1] = "ID"
+names(gfft)[2] = "Name"
 
 transcripts = cbind(gfft,transcripts)
 ord = order(transcripts$countT, decreasing=T)
