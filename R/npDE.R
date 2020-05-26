@@ -112,6 +112,8 @@ gfft = gfft[match(transcripts$geneID, gfft[,1]),]
 gfft[,1] = transcripts$ID
 names(gfft)[1] = "ID"
 names(gfft)[2] = "Name"
+names(gfft)[3] = "Description"
+names(gfft)[4] = "biotype"
 
 transcripts = cbind(gfft,transcripts)
 ord = order(transcripts$countT, decreasing=T)
@@ -121,14 +123,12 @@ head(transcripts[ord,])
 ##find DE genes
 
 DE1 = DEgenes(transcripts, control_names, infected_names,edgeR = F, reorder=F);
-#pos1M = apply(cbind(as.character(DE1$chrs), as.character(binsize*round(DE1$start/binsize))),1,paste,collapse=".")
-#if(mergeByPosAndGene){
-#  pos1M = apply(cbind(as.character(DE1$chrs), DE1$geneID, DE1$rightGene,  as.character(binsize*round(DE1$start/binsize))),1,paste,collapse=".")
-#}
-#DE2 = cbind(DE1,pos1M)
 DE1 = .transferAttributes(DE1, attributes)
 
+.write<-function(DE1, resdir){
+  DE1[,1:9] = apply(DE1[,1:9], c(1,2), function(x) sub(' ' , '', sprintf("%5.3g",x)))
 write.table(DE1[attr(DE1,"order"),],file=paste(resdir,"results.csv",sep="/") , quote=F, row.names=F, sep="\t", col.names=T)
+}
 
 
 pdf(paste(resdir, "/qq.pdf",sep=""))
@@ -138,6 +138,9 @@ pdf(paste(resdir, "/qq.pdf",sep=""))
  .vis(DE1,i=2,min.p=1e-50)
 
 dev.off()
+
+.write(DE1,resdir)
+
 
 #this calculates pvalues for base-level error rates
 
