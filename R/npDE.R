@@ -12,7 +12,22 @@ if(install){
  BiocManager::install("biomaRt")
  BiocManager::install("edgeR")
 }
-#library(VGAM)
+
+args = commandArgs(trailingOnly=TRUE)
+if(length(args)>0){
+	control_names = unlist(strsplit(args[1],':'))
+	infected_names = unlist(strsplit(args[2],':'))
+	prefix = args[3]
+}else{
+	control_names = "korean_monkey_control"
+	infected_names = "korean_monkey_infected"
+	prefix = "ENSC"; #for vervet monkey
+}
+
+
+
+
+library(VGAM)
 #library(biomaRt)
 #library(edgeR)
 library(stats)
@@ -20,7 +35,8 @@ library(rhdf5)
 #read.gff(file, na.strings = c(".", "?"), GFF3 = TRUE)
 #library(seqinr)
 
-
+resdir = "results"
+dir.create(resdir);
 
 .findFile<-function(path, file, exact = T){
   for(i in 1:length(path)){
@@ -43,7 +59,7 @@ source(.findFile(src, "transcript_functions.R"))
 source(.findFile(src, "diff_expr_functs.R"))
 
 
-prefix = "ENSC"; #for vervet monkey
+
 
 
 
@@ -78,6 +94,7 @@ target= list( chrom="character",
 
 infilesT = grep("transcripts.txt", dir(), v=T)
 transcripts = readTranscriptHostAll(infilesT, start_text = start_text,target = target,   filter = filter, combined_depth_thresh = 1)
+attributes = attributes(transcripts)
 names(transcripts)[grep("count[0-9]",names(transcripts))] = sub("_leftover", "" ,attr(transcripts,"info"))
 geneID= as.character(unlist(lapply(strsplit(transcripts$ORFs,";"), function(v) v[1])))
 rightGene = as.character(unlist(lapply(strsplit(transcripts$ORFs,";"), function(v) v[length(v)])))
@@ -101,21 +118,20 @@ ord = order(transcripts$countT, decreasing=T)
 head(transcripts[ord,])
 
 
-
-ord = order(transcripts$countT, decreasing=T)
-head(transcripts[ord,])
 ##find DE genes
-DE1 = DEgenes(transcripts, control_inds, infected_inds,edgeR = F, reorder=F);
-pos1M = apply(cbind(as.character(DE1$chrs), as.character(binsize*round(DE1$start/binsize))),1,paste,collapse=".")
+
+DE1 = DEgenes(transcripts, control_names, infected_names,edgeR = F, reorder=F);
+#pos1M = apply(cbind(as.character(DE1$chrs), as.character(binsize*round(DE1$start/binsize))),1,paste,collapse=".")
 #if(mergeByPosAndGene){
 #  pos1M = apply(cbind(as.character(DE1$chrs), DE1$geneID, DE1$rightGene,  as.character(binsize*round(DE1$start/binsize))),1,paste,collapse=".")
 #}
-DE2 = cbind(DE1,pos1M)
+#DE2 = cbind(DE1,pos1M)
+DE1 = .transferAttributes(DE1, attributes)
+
+write.table(DE1[attr(DE1,"order"),],file=paste(resdir,"results.csv",sep="") , quote=F, row.names=F, sep="\t", col.names=T)
 
 
-
-
-pdf("qq.pdf")
+pdf(paste(resdir, "/qq.pdf",sep=""))
 .qqplot(DE1$pvals1, min.p= 1e-200,main="both")
 .qqplot(DE1$pvals2, min.p= 1e-200,main="infected less",add=T)
 .vis(DE1,i=1,min.p=1e-50)
@@ -124,50 +140,10 @@ pdf("qq.pdf")
 dev.off()
 
 #this calculates pvalues for base-level error rates
-depth=.readH5All(transcripts, chroms = attr(transcripts,"chroms"),thresh = 100)
 
-depth1 = .appendGeneNamesToDepth(depth, transcripts, sort=NULL)
-#depth2 = .appendGeneNamesToDepth(depth, transcripts, sort="pv2")
+print("####DEPTH ANALYSIS #### ")
+#source(.findFile(src, "depth_association.R"))
 
-sigChr1 = findSigChrom(depth1, thresh=1e-3, go_thresh=1e-3, nme="pv1", nme2="gene_names")
-sigChr2 = findSigChrom(depth1, thresh=1e-3, go_thresh=1e-3, nme="pv2", nme2="gene_names")
-
-##this is visualisation
-  pdf("error_associations.pdf")
-  pv_inds = grep("pv", names(depth))
-  .qqplot(depth$pv1,min.p=1e-100)
-  .qqplot(depth$pv2,min.p=1e-100)
-   hist(depth[depth$pv1<1e-3,]$base) ## this is up in controls
-   hist(depth[depth$pv2<1e-3,]$base) ## this is up in cases
-  .vis(depth,i=1,min.p=1e-20)
-  .vis(depth,i=2,min.p=1e-20)
-  dev.off()
-
- # di_2 =   depth$pv2<1e-5 | depth$pv1<1e-5
-  
-  
-chr_inds=attr(depth,"chr_inds")
-chroms = attr(depth,"chroms")
-chroms1 = names(chroms)
-mi = match(chr_inds, chroms)
-mi1 = unlist(lapply(mi, function(x) chroms1[x]))
-pos100k = apply(cbind(as.character(mi1),as.character(binsize*floor(depth1$pos/binsize))),1,paste,collapse=".")
-
-if(mergeByPosAndGene){
-  pos100k = apply(cbind(as.character(mi1),as.character(depth1$gene_names), as.character(binsize*floor(depth1$pos/binsize))),1,paste,collapse=".")
-  
-}
-depth2 = cbind(depth1, pos100k)
-sigChr1 = findSigChrom(depth2, thresh=1e-5, go_thresh=1e-3, nme="pv1", nme2="pos100k")
-DE_sig1 = DE2[DE2$pos1M %in% sigChr1$chrs,]
-sigChr2 = findSigChrom(depth2, thresh=1e-5, go_thresh=1e-3, nme="pv2", nme2="pos100k")
-DE_sig2 = DE2[DE2$pos1M %in% sigChr2$chrs,]
-
-#depth2[depth2$pos100k %in% sigChr2$chrs,]
-
-#CHECK DISTRIBUTION (OPTIONAL)
-.qqplot(DE1$FDR1)
-#.qqplot(DE1$FDR2)
 
 
 ###BIOMART ANALYSIS

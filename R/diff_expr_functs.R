@@ -184,15 +184,21 @@ chisqCombine<-function(pv,log=log){
 #which x is significiantly more or less than expected given y
 #if(lower.tail=T returns p(x<=y) else p(x>=y)
 ##ASSUMES MATCHED DATA BETWEEN CONTROL  AND INFECTED
-DEgenes<-function(df,control_inds,infected_inds, edgeR = F,  type="lt",reorder=F, binom=F, log=F){
+DEgenes<-function(df,control_names,infected_names, edgeR = F,  type="lt",reorder=F, binom=F, log=F){
  
   lower.tail = T
+  control_inds = rep(NA, length(control_names))
+ infected_inds = rep(NA, length(infected_names))
+  for(i  in 1:length(control_inds)){
+	control_inds[i] = which(names(df)==control_names[i])
+infected_inds[i] = which(names(df)==infected_names[i])
+ }
   if(!edgeR){
     pvalsM1 = matrix(NA,nrow = dim(df)[1], ncol = length(control_inds))
     pvalsM2 = matrix(NA,nrow = dim(df)[1], ncol = length(control_inds))
     for(i in 1:length(control_inds)){
-        x = df[,control_inds[i]]
-        y = df[,infected_inds[i]]
+        x = df[,control_inds]
+        y = df[,infected_inds]
         pvalsM1[,i] = betaBinomialP(x,y, binom=binom, lower.tail=lower.tail,log=log)
         pvalsM2[,i] = betaBinomialP(y,x, binom=binom, lower.tail=lower.tail,log=log)
         
@@ -219,6 +225,7 @@ DEgenes<-function(df,control_inds,infected_inds, edgeR = F,  type="lt",reorder=F
   probY1 = (y+0.5)/sum(y+.5)
   ratio1 = probX1/probY1
   output =  data.frame(pvals1,pvals2,FDR1, FDR2, tpm_control, tpm_infected, ratio1,sum_control=x,sum_infected=y)
+  
   output = cbind(output, df)
   orders =order(apply(cbind(pvals1, pvals2),1,min,na.rm=T))
   
@@ -230,13 +237,30 @@ DEgenes<-function(df,control_inds,infected_inds, edgeR = F,  type="lt",reorder=F
   }
   #print('h')
   att = grep('class' ,grep('names', names(attributes(df)), inv=T, v = T),inv=T,v=T)
+  if(length(att)>0){
   for(i in 1:length(att)){
     
     attr(output,att[i]) = attr(df,att[i])
     
   }
+}
   output
 #  output[orders[,1],,drop=F]
+}
+
+.transferAttributes<-function(output, attributes){
+ att = grep('class' ,grep('names', names(attributes), inv=T, v = T),inv=T,v=T)
+ attributes1 = attributes[which(names(attributes) %in% att)]
+ att = names(attributes1)
+ print(att)
+if(length(att)>0){
+  for(i in 1:length(att)){
+    
+   attr(output,att[i]) = attributes1[[i]]
+    
+  }
+}
+ output
 }
 
 
@@ -467,7 +491,7 @@ readIsoformH5<-function(h5file,  transcripts_){
   trans
   
 }
-.readH5All<-function(transcripts, thresh = 1000,chroms= attr(transcripts,"chroms")){
+.readH5All<-function(transcripts, attr = attributes(transcripts), thresh = 1000,chroms= attr[which(names(attr)=="chroms")][[1]]){
   depth = NULL
   ranges = matrix(nrow = length(ord), ncol=2)
   start = 1
@@ -475,9 +499,16 @@ readIsoformH5<-function(h5file,  transcripts_){
   for(i in 1:length(chroms)){
     print(chroms[i])
     infile = paste(chroms[i],"clusters.h5", sep=".")
-    depths[[i]] = readH5_h(infile, transcripts, thresh =thresh,log=F)
-    
+  
+    dfi= try(readH5_h(infile, transcripts, thresh =thresh,log=F))
+    if(inherits(dfi,"try-error")) {
+depths[[i]] = NULL
+	}else{
+depths[[i]]  = dfi
+	}
+
   }
+H5close();
  # if(TRUE) return(depths[[1]])
   
   lengs = unlist(lapply(depths,function(x) if(is.null(x)) NA else dim(x)[1]))
@@ -571,7 +602,7 @@ indsk = countT>=combined_depth_thresh
 
 .appendGeneNamesToDepth<-function(depth, transcripts, sort= "pv1"){
   gene_names=apply(transcripts[match(depth$IDS,
-                                     transcripts$ID),names(transcripts) %in% c("geneID","rightGene")],1,paste,collapse=".")
+                                     transcripts$ID),names(transcripts) %in% c("chrs","geneID","rightGene")],1,paste,collapse=".")
   
   #d_s = depth[,c(grep("depth", names(depth)), grep("errors", names(depth)))]
   #apply(d_s,1 ,function(v) c(v[3]/v[1], v[4]/v[2]))
@@ -697,8 +728,8 @@ findSigChrom<-function( DE, thresh = 1e-10, go_thresh = 1e-5,nme="FDR1", nme2="c
   chr_ind = grep(nme2,names(DE))
   sig =  which(pvs<thresh)
   if(length(sig)==0) return(NULL)
-  lev_all =getlev(DE[,chr_ind])
-  lev_ = getlev(DE[sig,chr_ind])
+  lev_all =getlev(DE[,chr_ind, drop=F])
+  lev_ = getlev(DE[sig,chr_ind, drop=F])
   go_todo = lev_[,1]
   inds_m = match(as.character(lev_[,1]), as.character(lev_all[,1]))
   lev_ = cbind(lev_,lev_all[inds_m,1:2,drop=F])
