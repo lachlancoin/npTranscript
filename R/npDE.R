@@ -128,7 +128,7 @@ DE1 = DEgenes(transcripts, control_names, infected_names,edgeR = F, reorder=F);
 #DE2 = cbind(DE1,pos1M)
 DE1 = .transferAttributes(DE1, attributes)
 
-write.table(DE1[attr(DE1,"order"),],file=paste(resdir,"results.csv",sep="") , quote=F, row.names=F, sep="\t", col.names=T)
+write.table(DE1[attr(DE1,"order"),],file=paste(resdir,"results.csv",sep="/") , quote=F, row.names=F, sep="\t", col.names=T)
 
 
 pdf(paste(resdir, "/qq.pdf",sep=""))
