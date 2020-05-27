@@ -1,0 +1,14 @@
+Name,Type,Minimum,Maximum,Length,Direction,gene
+leader,leader,14,75,61,forward,leader
+ORF1ab gene,gene,266,21555,21289,forward,ORF1ab
+S gene,gene,21563,25384,3821,forward,S
+ORF3a gene,gene,25393,26220,827,forward,ORF3a
+E gene,gene,26245,26472,227,forward,E
+M gene,gene,26523,27191,668,forward,M
+ORF6 gene,gene,27202,27387,185,forward,ORF6
+ORF7a gene,gene,27394,27759,365,forward,ORF7a
+ORF7b gene,gene,27756,27887,131,forward,ORF7b
+ORF8 gene,gene,27894,28259,365,forward,ORF8
+N gene,gene,28274,29533,1259,forward,N
+ORF10 gene,gene,29558,29674,116,forward,ORF10
+3UTR,3'UTR,29675,29903,228,forward,3UTR
