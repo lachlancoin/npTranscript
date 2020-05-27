@@ -56,6 +56,14 @@ public class CigarHash2 extends ArrayList<Integer> {
 		}
 		return sb.toString();
 	}
+	public static String getString(List<Integer> l, int toadd){
+		StringBuffer sb = new StringBuffer();
+		for(int i=0; i<l.size(); i++){
+			if(i>0) sb.append(",");
+			sb.append(l.get(i)+toadd);
+		}
+		return sb.toString();
+	}
 	public static String getString(List<Integer> l, int mult, int st, int end){
 		StringBuffer sb = new StringBuffer();
 		for(int i=st; i<end; i++){

@@ -2,7 +2,9 @@ package npTranscript.run;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,7 +19,6 @@ import japsa.seq.SequenceOutputStream;
 import japsa.seq.SequenceReader;
 import japsa.util.CommandLine;
 import japsa.util.deploy.Deployable;
-import npTranscript.cluster.CigarHash2;
 
 @Deployable(scriptName = "npConsensus.run", scriptDesc = "Analysis of consensus")
 public class ConsensusMapper extends CommandLine {
@@ -31,18 +32,47 @@ public class ConsensusMapper extends CommandLine {
 		setDesc(annotation.scriptDesc());
 		addString("fasta", null, "Name of consensus fasta file", true);
 		addString("reference", null, "Name of reference genome", true);
-		addInt("offset",0, "offset to add from breakpoints",false); // this included for earlier versions of npTranscript
+		addInt("offset",100, "offset to add from breakpoints",false); // this included for earlier versions of npTranscript
+		addInt("extension",15, "number of bases to go either side of break point");
 		addStdHelp();
 
 	}
 	public static void main(String[] args1) throws IOException, InterruptedException {
 		CommandLine cmdLine = new ConsensusMapper();
-		String[] args = cmdLine.stdParseLine(args1);
+		cmdLine.stdParseLine(args1);
 
-		String fasta = cmdLine.getStringVal("fasta");
-		String reference = cmdLine.getStringVal("reference");
+		String[] fasta = cmdLine.getStringVal("fasta").split(":");
+		if(fasta.length==1 ){
+			File f1 = new File(fasta[0]);
+			if(f1.isDirectory()){
+				fasta = f1.list(new FilenameFilter(){
+
+					@Override
+					public boolean accept(File dir, String name) {
+						return name.endsWith(".fasta");
+					}
+					
+				});
+				for(int i=0; i<fasta.length; i++){
+					fasta[i] = f1.getAbsolutePath()+"/"+fasta[i];
+				}
+			}
+		}
+		String ref = cmdLine.getStringVal("reference");
+		ConsensusMapper.extension = cmdLine.getIntVal("extension");
+		String[] reference = ref.split(":");
 		int offset = cmdLine.getIntVal("offset");
-		run(fasta, reference, offset);
+		for(int j=0; j<fasta.length; j++){
+		for(int i=0; i<reference.length; i++){
+			try{
+			run(fasta[j], reference[i], offset);
+			
+			}catch(Exception exc){
+				System.err.println("problem "+fasta[j]+" "+reference[i]);
+			//	exc.printStackTrace();
+			}
+		}
+		}
 	}
 	static Pattern p1 = Pattern.compile("-{1,}"); 
 	static Pattern p2 = Pattern.compile("-{2,}"); //consider two or more to be deletion
@@ -148,34 +178,42 @@ public class ConsensusMapper extends CommandLine {
 	}
 	private static void run(String fasta, String refFile, int offset) throws IOException {
 		// TODO Auto-generated method stub
+		File refer = new File(refFile);
+		String referName = refer.getName();
+		int index = referName.indexOf(".fa");
+		if(index>0){
+			referName = referName.substring(0,index);
+		}
+		
 		ArrayList<Sequence> genomes = SequenceReader.readAll(refFile, Alphabet.DNA());
-		//List<String> header = Arrays.asList(
-		//		"ID      chrom start   end     type_nme        startBreak      endBreak        isoforms        leftGene        rightGene       totLen  countTotal".split("\\s+")
-		//);
 		
 		ArrayList<Sequence> reads = SequenceReader.readAll(fasta, Alphabet.DNA());
 		
 		File fasta_in = new File(fasta);
+		File outdir = new File(fasta_in.getParentFile(),referName);
+		outdir.mkdir();
 		String fastanme = fasta_in.getName().replaceAll(".fasta", "").replaceAll(".fa", ".fa");
-		File fasta_out = new File(fasta_in.getParentFile(), fastanme+".ref_aligned.fa");
+	//	fastanme = fastanme+"."+referName;
+		File fasta_out = new File(outdir, fastanme+".ref_aligned.fa");
 		OutputStreamWriter os1 = new OutputStreamWriter(new FileOutputStream(fasta_out));
 		
-		File fasta_out1 = new File(fasta_in.getParentFile(), fastanme+".ref.fa");
+		File fasta_out1 = new File(outdir, fastanme+".ref.fa");
 		OutputStreamWriter os2 = new OutputStreamWriter(new FileOutputStream(fasta_out1));
 		
 		
-		File fasta_out2 = new File(fasta_in.getParentFile(),fastanme+".unmapped_insertion.fa");
+		File fasta_out2 = new File(outdir,fastanme+".unmapped_insertion.fa");
+		boolean delete_out2 = true;
 		OutputStreamWriter os3 = new OutputStreamWriter(new FileOutputStream(fasta_out2));
 	
+		File fasta_out3 = new File(outdir,fastanme+"."+extension+".breaks.fa");
+		
+		SequenceOutputStream os4 =  new SequenceOutputStream(new FileOutputStream(fasta_out3));
+		
 		//SequenceOutputStream os =new SequenceOutputStream(os1);
 		int step = 100;
-		int genome_index =0;
-		try{
-		 genome_index = Integer.parseInt(fasta.split("\\.")[0]);
-		}catch(Exception exc){
-			exc.printStackTrace();
-		}
-		Sequence refSeq = genomes.get(genome_index);
+	//	int genome_index =0;
+		
+	
 		for(int i=0; i< reads.size(); i++){
 			Sequence readSeq = reads.get(i);
 			String nme = readSeq.getName();
@@ -193,10 +231,10 @@ public class ConsensusMapper extends CommandLine {
 			List<Integer> breaks;
 			
 				int currIndex = Integer.parseInt(descr[0]);
-				if(currIndex!=genome_index){
-					genome_index = currIndex;
-					refSeq = genomes.get(genome_index);
-				}
+				
+					
+				Sequence refSeq  = genomes.get(currIndex);
+				
 			/*	if(nme.indexOf(refSeq.getName())<0){
 					for(int j=0; j<genomes.size(); j++){
 						String nme1 = genomes.get(j).getName();
@@ -211,10 +249,10 @@ public class ConsensusMapper extends CommandLine {
 				breaks = ConsensusMapper.readBreaks(descr[ref_index].split(","));
 			
 			
-			int[] start1 = new int[(int) Math.floor((double)breaks.size()/2.0)];
-			int[] end1= new int[start1.length];
-			int[] start = new int[start1.length];
-			int[] end = new int[ end1.length];
+			int[] start1 = new int[(int) Math.floor((double)breaks.size()/2.0)]; //read
+			int[] end1= new int[start1.length]; //read
+			int[] start = new int[start1.length]; //reference
+			int[] end = new int[ end1.length]; //reference
 			//double[] ident = new double[start1.length];
 			List<Indel> [] gaps = new List[start1.length];
 			List<Indel> [] gaps2 = new List[start1.length];
@@ -229,11 +267,11 @@ public class ConsensusMapper extends CommandLine {
 			double ident = 0;
 			double totlen = 0;
 			for(int k1=start1.length-1; k1>=0; k1--){
-				Sequence readSeq1 =k1==start1.length-1 ? readSeq: readSeq.subSequence(0, start1[k1+1]-1);
+				Sequence readSeq1 =k1==start1.length-1 ? readSeq: readSeq.subSequence(0, start1[k1+1]-1); // chops up the read to remove whatever already mapped
 				int endBr = Math.min( breaks.get(2*k1+1) + offset, refSeq.length());
 				int stBr = Math.max(0,breaks.get(2*k1) - offset);
 			//	int right_offset = endBr;
-				align[k1] = SWGAlignment.align(readSeq1, refSeq.subSequence(stBr, endBr));
+				align[k1] = SWGAlignment.align(readSeq1, refSeq.subSequence(stBr, endBr)); // this is now in 0 based since ref
 				start1[k1] = align[k1].getStart1();
 				start[k1] = align[k1].getStart2();
 				end1[k1] = start1[k1] + align[k1].getSequence1().length - align[k1].getGaps1();
@@ -245,7 +283,7 @@ public class ConsensusMapper extends CommandLine {
 				allgaps2.addAll(gaps2[k1]);
 				sequ_refonly[k1]= (new String(align[k1].getSequence2())).replaceAll("-", "");
 				if(sequ[k1].length()!=sequ_refonly[k1].length()) throw new RuntimeException("this should not happen");
-				breaks_ref[2*k1] = start[k1]+stBr;
+				breaks_ref[2*k1] = start[k1]+stBr; // still 0 based
 				breaks_ref[2*k1+1] =end[k1]+stBr;
 				breaks_reads[2*k1] = start1[k1];
 				breaks_reads[2*k1+1] = end1[k1];
@@ -267,10 +305,15 @@ public class ConsensusMapper extends CommandLine {
 			
 			}
 			String identity =String.format("%5.3g", ident/totlen);
-		  writeFasta(os1, sequ, readSeq.getName(),getString(breaks_ref)+";"+getString(breaks_reads)+";"+identity
+		Sequence[] break_seq = getRefBreaks(breaks_ref, refSeq);
+		writeFasta(os4,break_seq);
+		//keep this as zero based coordinate
+		int toadd = 0;
+		  writeFasta(os1, sequ, readSeq.getName(),getString(breaks_ref,toadd)+";"+getString(breaks_reads,toadd)+";"+identity
 				 +" "+allgaps.toString().replaceAll("\\s+", "")+" "+allgaps2.toString().replaceAll("\\s+", "")+" "+descr[ref_index]);
-		  writeFasta(os2, sequ_refonly,readSeq.getName(),getString(breaks_ref)+";"+getString(breaks_reads)+";"+identity+" "+descr[ref_index]);
-		  writeFasta(os3, remaining,readSeq.getName(),getString(breaks_ref)+";"+getString(breaks_reads)+" "+descr[ref_index]);
+		  writeFasta(os2, sequ_refonly,readSeq.getName(),getString(breaks_ref,toadd)+";"+getString(breaks_reads, toadd)+";"+identity+" "+descr[ref_index]);
+		  if(remaining.length>0 && remaining[0]!=null && remaining[0].length()>0) delete_out2 = false;
+		  writeFasta(os3, remaining,readSeq.getName(),getString(breaks_ref, toadd)+";"+getString(breaks_reads, toadd)+" "+descr[ref_index]);
 		/*  if(right_start1 > left_end1+1){
 				// remaining = null;
 				 Sequence remaining=readSeqLeft.subSequence(left_end1, readSeqLeft.length());
@@ -283,9 +326,33 @@ public class ConsensusMapper extends CommandLine {
 		os1.close();
 		os2.close();
 		os3.close();
+		os4.close();
+		if(delete_out2){
+			fasta_out2.deleteOnExit();
+		}
+	}
+
+private static Sequence[] getRefBreaks(Integer[] breaks_ref, Sequence refSeq) {
+	int len = breaks_ref.length-2; //(int)  Math.round((double) breaks_ref.length-2.0/2.0);
+		Sequence[] res = new Sequence[len];
+		for(int i=0; i<len; i++){
+			int mid = breaks_ref[i+1];
+			res[i] = refSeq.subSequence(mid -extension, mid+extension);
+			res[i].setName(refSeq.getName()+"."+(mid)); //zero based for fasta file coords
+			
+		}
+		return res;
 	}
 static boolean writeNumb = false;
-	
+	public static int extension = 20;
+
+private static void writeFasta(SequenceOutputStream sos, Sequence[] break_seq) throws IOException{
+	// TODO Auto-generated method stub
+for(int i=0; i<break_seq.length; i++){
+	break_seq[i].writeFasta(sos);
+}
+}
+
 	public static void writeFasta(OutputStreamWriter os1, String[] sequ1,  String name, String desc) throws IOException{
 		boolean allnull = true;
 		for(int i=0; i<sequ1.length; i++){
@@ -305,11 +372,11 @@ static boolean writeNumb = false;
 			}
 		}
 	}
-	public static String getString(Integer[] l){
+	public static String getString(Integer[] l, int toadd){
 		StringBuffer sb = new StringBuffer();
 		for(int i=0; i<l.length; i++){
 			if(i>0) sb.append(",");
-			sb.append(l[i]);
+			sb.append((l[i]+toadd));
 		}
 		return sb.toString();
 	}

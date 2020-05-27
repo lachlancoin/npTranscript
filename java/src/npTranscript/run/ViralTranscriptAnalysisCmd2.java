@@ -522,19 +522,14 @@ public static boolean combineOutput = false;
 					}
 					currentIndex = refIndex;
 					String prev_chrom = chr==null ? "null": chr.getName();
+					if(currentIndex>=genomes.size() || currentIndex <0){
+						System.err.println("for some reason the refIndex greater than genome size, so finishing here "+currentIndex+" "+genomes.size());
+						break outer;
+					}
 					chr = genomes.get(currentIndex);
 					chr5prime = TranscriptUtils.coronavirus ? chr.subSequence(0	, Math.min( primelen, chr.length())) : null;
-					//int polyAlen = TranscriptUtils.coronavirus ? TranscriptUtils.polyAlen(chr) : 0;
 					chr3prime = TranscriptUtils.coronavirus ? chr.subSequence(Math.max(0, chr.length()-primelen), chr.length()) : null;
-
-
-					//	TranscriptUtils.coronavirus ? chr.subSequence(chr.length()-primelen, chr.length()) : null;
-
-				//	 chr3prime = chr.subSequence(chr.length()-primelen, chr.length());
-				//	chr5prime = chr.subSequence(0	, primelen);
-				//	outp.updateChromIndex(currentIndex);
 					System.err.println("switch chrom "+prev_chrom+"  to "+chr.getName());
-					
 				}
 				if(source_index!=prev_src_index){
 					System.err.println("switch "+prev_src_index+"  to "+source_index+ " chr:"+chr.getName());
@@ -585,7 +580,7 @@ public static boolean combineOutput = false;
 						System.err.println(readSeq.getName());
 						exc.printStackTrace();
 					}
-			}
+			}//samIter.hasNext()
 			for(int ii=0; ii<samReaders.length; ii++){
 			samReaders[ii].close();
 			}
@@ -599,15 +594,7 @@ public static boolean combineOutput = false;
 			}
 		
 		if(outp!=null) outp.close();
-		File[] reads_files = resDir.listFiles(new FileFilter(){
-
-			@Override
-			public boolean accept(File pathname) {
-				// TODO Auto-generated method stub
-				return pathname.getName().contains("readToCluster.txt");
-			}
-			
-		});
+	
 		if(annotation_pw!=null) annotation_pw.close();
 		
 	

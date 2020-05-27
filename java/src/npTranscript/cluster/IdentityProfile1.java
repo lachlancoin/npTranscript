@@ -249,14 +249,12 @@ public class IdentityProfile1 {
 		if(Outputs.doMSA!=null && Outputs.doMSA.contains(type_nme) && includeInConsensus) {
 			Sequence readSeq1 = readSeq.subSequence(start_read, end_read);
 			String baseQ1 = baseQ.length()<=1 ? baseQ :baseQ.substring(start_read, end_read);
-		//	int end_ref = sam.getReferencePositionAtReadPosition(end_read);
-		//	int start_ref = sam.getReferencePositionAtReadPosition(start_read);
-			//readSeq1.setDesc("st="+start_read+";end="+end_read+";len="+(end_read-start_read));
 			List<Integer>read_breaks = new ArrayList<Integer>();
 			for(int i=0; i<breaks.size(); i++){
 				read_breaks.add(sam.getReadPositionAtReferencePosition(breaks.get(i)-1, true));
 			}
-			readSeq1.setDesc(chrom_index+" "+breaks.toString()+" "+CigarHash2.getString(read_breaks)+" "+(end_read-start_read));
+			//need to put breaks back in 0 coords for fasta file
+			readSeq1.setDesc(chrom_index+" "+CigarHash2.getString(breaks,-1)+" "+CigarHash2.getString(read_breaks)+" "+(end_read-start_read));
 			this.o.writeToCluster(secondKeySt,"_"+clusterID[1]+"_", source_index, readSeq1, baseQ1, str, readSeq.getName(), strand);
 		}
 		return secondKeySt;
