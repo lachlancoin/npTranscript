@@ -354,11 +354,20 @@ public class TranscriptUtils {
 		return CigarHash2.getString(Arrays.asList(seq12));
 	}
 
+	public static Sequence rev(Sequence leftseq) {
+		String sequence = (leftseq.toString());
+		return new Sequence(Alphabet.DNA(), (new StringBuilder(sequence)).reverse().toString().toCharArray(), leftseq.getName());
+	}
+	public static Sequence compl(Sequence leftseq) {
+		String sequence = SequenceUtil.reverseComplement(leftseq.toString());
+		return new Sequence(Alphabet.DNA(), (new StringBuilder(sequence)).reverse().toString().toCharArray(), leftseq.getName());
+	}
+
 	public static Sequence revCompl(Sequence leftseq) {
 		String sequence = SequenceUtil.reverseComplement(leftseq.toString());
 		return new Sequence(Alphabet.DNA(), sequence.toCharArray(), leftseq.getName());
 	}
-
+	
 	public static int polyAlen(Sequence refSeq){
 		int seqlen = refSeq.length();
 		char[] last10bp = refSeq.subSequence(seqlen-10, seqlen).charSequence();

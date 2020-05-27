@@ -2,10 +2,11 @@ package npTranscript.run;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -19,6 +20,10 @@ import japsa.seq.SequenceOutputStream;
 import japsa.seq.SequenceReader;
 import japsa.util.CommandLine;
 import japsa.util.deploy.Deployable;
+import npTranscript.NW.AlignmentParameters;
+import npTranscript.NW.AlignmentResult;
+import npTranscript.NW.NeedlemanWunsch;
+import npTranscript.cluster.TranscriptUtils;
 
 @Deployable(scriptName = "npConsensus.run", scriptDesc = "Analysis of consensus")
 public class ConsensusMapper extends CommandLine {
@@ -33,7 +38,7 @@ public class ConsensusMapper extends CommandLine {
 		addString("fasta", null, "Name of consensus fasta file", true);
 		addString("reference", null, "Name of reference genome", true);
 		addInt("offset",100, "offset to add from breakpoints",false); // this included for earlier versions of npTranscript
-		addInt("extension",15, "number of bases to go either side of break point");
+		addInt("extension",10, "number of bases to go either side of break point");
 		addStdHelp();
 
 	}
@@ -69,7 +74,7 @@ public class ConsensusMapper extends CommandLine {
 			
 			}catch(Exception exc){
 				System.err.println("problem "+fasta[j]+" "+reference[i]);
-			//	exc.printStackTrace();
+				exc.printStackTrace();
 			}
 		}
 		}
@@ -205,10 +210,13 @@ public class ConsensusMapper extends CommandLine {
 		boolean delete_out2 = true;
 		OutputStreamWriter os3 = new OutputStreamWriter(new FileOutputStream(fasta_out2));
 	
+		boolean deleteBreaks = true;
 		File fasta_out3 = new File(outdir,fastanme+"."+extension+".breaks.fa");
 		
 		SequenceOutputStream os4 =  new SequenceOutputStream(new FileOutputStream(fasta_out3));
 		
+		File align_output = new File(outdir, fastanme+"."+extension+".aln");
+		PrintWriter align_s = new PrintWriter(new FileWriter(align_output));
 		//SequenceOutputStream os =new SequenceOutputStream(os1);
 		int step = 100;
 	//	int genome_index =0;
@@ -305,10 +313,12 @@ public class ConsensusMapper extends CommandLine {
 			
 			}
 			String identity =String.format("%5.3g", ident/totlen);
-		Sequence[] break_seq = getRefBreaks(breaks_ref, refSeq);
-		writeFasta(os4,break_seq);
+			int toadd = 0;
+			if(breaks_ref.length>2){
+				deleteBreaks = false;
+		 getRefBreaks(os4,align_s,breaks_ref, refSeq, nme,getString(breaks_ref,toadd));
+			}
 		//keep this as zero based coordinate
-		int toadd = 0;
 		  writeFasta(os1, sequ, readSeq.getName(),getString(breaks_ref,toadd)+";"+getString(breaks_reads,toadd)+";"+identity
 				 +" "+allgaps.toString().replaceAll("\\s+", "")+" "+allgaps2.toString().replaceAll("\\s+", "")+" "+descr[ref_index]);
 		  writeFasta(os2, sequ_refonly,readSeq.getName(),getString(breaks_ref,toadd)+";"+getString(breaks_reads, toadd)+";"+identity+" "+descr[ref_index]);
@@ -327,31 +337,60 @@ public class ConsensusMapper extends CommandLine {
 		os2.close();
 		os3.close();
 		os4.close();
+		align_s.close();
 		if(delete_out2){
 			fasta_out2.deleteOnExit();
 		}
+		if(deleteBreaks){
+		fasta_out3.deleteOnExit();
+		align_output.deleteOnExit();
+		}
 	}
 
-private static Sequence[] getRefBreaks(Integer[] breaks_ref, Sequence refSeq) {
+	private static void writeFasta(SequenceOutputStream sos, Sequence[] break_seq) throws IOException{
+		// TODO Auto-generated method stub
+	for(int i=0; i<break_seq.length; i++){
+		break_seq[i].writeFasta(sos);
+	}
+	}
+	
+	private static void procAlign(Sequence left, Sequence right, PrintWriter aligns, String nme){
+		AlignmentResult res = NeedlemanWunsch.computeNWAlignment(left.toString(), right.toString(),   new AlignmentParameters(2,1));
+		NeedlemanWunsch.printResult(aligns,res,nme);
+		/*SWGAlignment align1 = SWGAlignment.align(left, right);
+		double ratio = (double) align1.getIdentity()/(double)align1.getLength();
+		aligns.println(nme+" "+align1.getIdentity()+";"+align1.getLength()+";"+String.format("%5.3g", ratio).trim());
+		aligns.println(align1.getSequence1());
+		aligns.println(align1.getMarkupLine());
+		aligns.println(align1.getSequence2());*/
+	}
+	
+private static void getRefBreaks(SequenceOutputStream os4,PrintWriter aligns, Integer[] breaks_ref, Sequence refSeq, String nme, String break_str)  throws IOException{
 	int len = breaks_ref.length-2; //(int)  Math.round((double) breaks_ref.length-2.0/2.0);
-		Sequence[] res = new Sequence[len];
-		for(int i=0; i<len; i++){
-			int mid = breaks_ref[i+1];
-			res[i] = refSeq.subSequence(mid -extension, mid+extension);
-			res[i].setName(refSeq.getName()+"."+(mid)); //zero based for fasta file coords
-			
+		//Sequence[] res = new Sequence[len];
+		for(int i=0; i<len-1; i+=2){
+			int mid_left = breaks_ref[i+1];
+			int mid_right = breaks_ref[i+2];
+			Sequence left = refSeq.subSequence(mid_left -extension, mid_left+extension);
+			Sequence right = refSeq.subSequence(mid_right -extension, mid_right+extension);
+			procAlign(left, right, aligns,">"+nme+".original."+mid_left+"."+mid_right );
+			procAlign(left,TranscriptUtils.compl(right), aligns,">"+nme+".complement."+mid_left+"."+mid_right );
+			procAlign(left,TranscriptUtils.rev(right), aligns,">"+nme+".reverse."+mid_left+"."+mid_right );
+			procAlign(left, TranscriptUtils.revCompl(right), aligns,">"+nme+".revcomp."+mid_left+"."+mid_right );
+			left.setName(nme+"."+mid_left); //zero based for fasta file coords
+			right.setName(nme+"."+mid_right); //zero based for fasta file coords
+			String desc_left = refSeq.getName()+" "+mid_left+" L "+breaks_ref[i+1]+","+breaks_ref[i+2]+" "+break_str;
+			left.setDesc(desc_left);
+			String desc_right = refSeq.getName()+" "+mid_left+" R "+breaks_ref[i+1]+","+breaks_ref[i+2]+" "+break_str;
+			right.setDesc(desc_right);
+			left.writeFasta(os4);
+			right.writeFasta(os4);
 		}
-		return res;
 	}
 static boolean writeNumb = false;
-	public static int extension = 20;
+	public static int extension = 10;
 
-private static void writeFasta(SequenceOutputStream sos, Sequence[] break_seq) throws IOException{
-	// TODO Auto-generated method stub
-for(int i=0; i<break_seq.length; i++){
-	break_seq[i].writeFasta(sos);
-}
-}
+
 
 	public static void writeFasta(OutputStreamWriter os1, String[] sequ1,  String name, String desc) throws IOException{
 		boolean allnull = true;
