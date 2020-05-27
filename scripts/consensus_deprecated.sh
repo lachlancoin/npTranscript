@@ -16,7 +16,7 @@
 
 abpoa='/sw/abpoa/v1.0.1/abpoa'
 npTranscript=${HOME}/github/npTranscript
-reference="${npTranscript}/data/SARS-Cov2/wuhan_coronavirus_australia.fasta.gz"
+reference="${npTranscript}/data/SARS-Cov2/VIC01/wuhan_coronavirus_australia.fasta.gz"
 
 chrom=$SLURM_ARRAY_TASK_ID
 if [ ! $SLURM_ARRAY_TASK_ID ] ; then

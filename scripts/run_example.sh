@@ -6,8 +6,8 @@ bamdir="."
 bamfiles=$(ls ${bamdir} | grep '.bam' | xargs -I {} echo ${bamdir}/{})
 bamfiles1=$(echo $bamfiles | sed 's/ /:/g')
 
-reference="${npTranscript}/data/SARS-Cov2/wuhan_coronavirus_australia.fasta.gz"
-coord_file="${npTranscript}/data/SARS-Cov2/Coordinates.csv"
+reference="${npTranscript}/data/SARS-Cov2/VIC01/wuhan_coronavirus_australia.fasta.gz"
+coord_file="${npTranscript}/data/SARS-Cov2/VIC01/Coordinates.csv"
 
 dat=$(date +%Y%m%d%H%M%S)
 resdir="results_${dat}"

@@ -27,8 +27,8 @@ if [ $a -eq 1 ]; then
   opts1="--readList reads_in.txt" 
 fi
 
-reference="${npTranscript}/data/SARS-Cov2/wuhan_coronavirus_australia.fasta.gz"
-coord_file="${npTranscript}/data/SARS-Cov2/Coordinates.csv"
+reference="${npTranscript}/data/SARS-Cov2/VIC01/wuhan_coronavirus_australia.fasta.gz"
+coord_file="${npTranscript}/data/SARS-Cov2/VIC01/Coordinates.csv"
 #alias abpoa='/sw/abpoa/v1.0.1/abpoa'
 dat=$(date +%Y%m%d%H%M%S)
 echo $dat

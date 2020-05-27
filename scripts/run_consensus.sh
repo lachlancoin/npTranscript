@@ -3,7 +3,7 @@ todo=$(ls *.clusters.zip | xargs -I {} echo {} | rev | cut -f 3- -d . | rev)
 npTranscript=${HOME}/github/npTranscript
 reference=$1
 if [ ! $1 ]; then
- reference="${npTranscript}/data/SARS-Cov2/wuhan_coronavirus_australia.fasta.gz"
+ reference="${npTranscript}/data/SARS-Cov2/VIC01/wuhan_coronavirus_australia.fasta.gz"
 fi
 
 fa=$2
