@@ -12,7 +12,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=31000 # mb
 #SBATCH --time=100:00:00
-
+export JSA_MEM=8000m
 abpoa='/sw/abpoa/v1.0.1/abpoa'
 npTranscript=${HOME}/github/npTranscript
 
@@ -64,6 +64,10 @@ outfile="${outdir}/${ID1}.fasta"
 	unzip -p $zipfile $entry > $tmpfile
 	firstline=$(head -n 1 $tmpfile |  cut -f 2- -d ' ')
 	count=$(grep '^[>@]' $tmpfile | wc -l)
+
+#filter to improve consensus  ## sd_thresh tolerance min_seqs
+	bash ${npTranscript}/scripts/run_filter.sh   $tmpfile 1.0 5 1
+
 	${abpoa} $tmpfile | sed "s/Consensus_sequence/${entryname} ${firstline} ${count}/" >> $outfile
 	#rm -f $tmpfile
 #rm $todolist

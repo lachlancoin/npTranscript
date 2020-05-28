@@ -60,8 +60,11 @@ public class SequenceOutputStream1 {
 	
 	public static void main(String[] args){
 		try{
+			SequenceOutputStream1.se_thresh = Double.parseDouble(args[1]);
+			SequenceOutputStream1.tolerance = Integer.parseInt(args[2]);
+			int minseqs = Integer.parseInt(args[3]);
 			SequenceOutputStream1.keepOriginalName = true;
-			if(args.length==0 && false){
+			if(args[0].equals("*") || args[0].equals("all")){
 				File[] f = (new File(".")).listFiles(new FileFilter(){
 
 					@Override
@@ -71,17 +74,17 @@ public class SequenceOutputStream1 {
 					
 				});
 				for(int i=0 ; i<f.length; i++){
-					trim(f[i], 10);
+					trim(f[i], minseqs, true);
 				}
 			}else{
-				trim(new File(args[0]), 10);
+				trim(new File(args[0]),minseqs, true);
 			}
 			
 		}catch(Exception exc){
 			exc.printStackTrace();
 		}
 	}
-	 public static File trim(File target, int min_seqs) throws IOException {
+	 public static File trim(File target, int min_seqs, boolean filter) throws IOException {
 	//	this.so = null;
 		ArrayList<Sequence> genomes = SequenceReader.readAll(target.getAbsolutePath(), Alphabet.DNA());
 		if(!keepOriginalName){
@@ -92,6 +95,9 @@ public class SequenceOutputStream1 {
 		
 		if(genomes.size()<min_seqs) return null;
     	
+		if(!filter) return target;
+		
+		
     	Detail[] det = new Detail[genomes.size()];
 		
 		for(int i=0; i<genomes.size(); i++){
