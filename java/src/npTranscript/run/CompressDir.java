@@ -88,7 +88,7 @@ public class CompressDir {
 	    			if(!f[i].getName().startsWith("annot_")){
 	    				try{
 	    					
-	    				f[i] = SequenceOutputStream1.trim(f[i],min_seqs);
+	    				f[i] = SequenceOutputStream1.trim(f[i],min_seqs, false);
 	    				}catch(Exception exc){
 	    					System.err.println("problem with "+f[i]);
 	    					exc.printStackTrace();

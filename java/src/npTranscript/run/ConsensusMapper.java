@@ -38,7 +38,7 @@ public class ConsensusMapper extends CommandLine {
 		addString("fasta", null, "Name of consensus fasta file", true);
 		addString("reference", null, "Name of reference genome", true);
 		addInt("offset",100, "offset to add from breakpoints",false); // this included for earlier versions of npTranscript
-		addInt("extension",10, "number of bases to go either side of break point");
+		addString("extension","5:10:15:20:30", "number of bases to go either side of break point");
 		addStdHelp();
 
 	}
@@ -64,7 +64,11 @@ public class ConsensusMapper extends CommandLine {
 			}
 		}
 		String ref = cmdLine.getStringVal("reference");
-		ConsensusMapper.extension = cmdLine.getIntVal("extension");
+		String[] ext = cmdLine.getStringVal("extension").split(":");
+		ConsensusMapper.extension = new int[ext.length];
+		for(int k=0; k<extension.length; k++){
+			ConsensusMapper.extension[k] = Integer.parseInt(ext[k]);
+		}
 		String[] reference = ref.split(":");
 		int offset = cmdLine.getIntVal("offset");
 		for(int j=0; j<fasta.length; j++){
@@ -211,12 +215,17 @@ public class ConsensusMapper extends CommandLine {
 		OutputStreamWriter os3 = new OutputStreamWriter(new FileOutputStream(fasta_out2));
 	
 		boolean deleteBreaks = true;
-		File fasta_out3 = new File(outdir,fastanme+"."+extension+".breaks.fa");
-		
-		SequenceOutputStream os4 =  new SequenceOutputStream(new FileOutputStream(fasta_out3));
-		
-		File align_output = new File(outdir, fastanme+"."+extension+".aln");
-		PrintWriter align_s = new PrintWriter(new FileWriter(align_output));
+		File[] fasta_out3 = new File[extension.length];
+		File[] align_output = new File[extension.length];
+		SequenceOutputStream[] os4 =  new SequenceOutputStream[extension.length];
+		PrintWriter[] align_s = new PrintWriter[extension.length];
+		for(int k=0; k<os4.length; k++){
+			fasta_out3[k]= new File(outdir,fastanme+"."+extension[k]+".breaks.fa");
+			os4[k] =  new SequenceOutputStream(new FileOutputStream(fasta_out3[k]));
+			
+			align_output[k] = new File(outdir, fastanme+"."+extension[k]+".aln");
+			align_s[k] = new PrintWriter(new FileWriter(align_output[k]));
+		}
 		//SequenceOutputStream os =new SequenceOutputStream(os1);
 		int step = 100;
 	//	int genome_index =0;
@@ -316,7 +325,9 @@ public class ConsensusMapper extends CommandLine {
 			int toadd = 0;
 			if(breaks_ref.length>2){
 				deleteBreaks = false;
-		 getRefBreaks(os4,align_s,breaks_ref, refSeq, nme,getString(breaks_ref,toadd));
+				for(int k=0; k<os4.length; k++){
+		 getRefBreaks(os4[k],align_s[k],breaks_ref, refSeq, nme,getString(breaks_ref,toadd), extension[k]);
+				}
 			}
 		//keep this as zero based coordinate
 		  writeFasta(os1, sequ, readSeq.getName(),getString(breaks_ref,toadd)+";"+getString(breaks_reads,toadd)+";"+identity
@@ -336,14 +347,16 @@ public class ConsensusMapper extends CommandLine {
 		os1.close();
 		os2.close();
 		os3.close();
-		os4.close();
-		align_s.close();
 		if(delete_out2){
 			fasta_out2.deleteOnExit();
 		}
-		if(deleteBreaks){
-		fasta_out3.deleteOnExit();
-		align_output.deleteOnExit();
+		for(int k=0; k<os4.length; k++){
+			os4[k].close();
+			align_s[k].close();
+			if(deleteBreaks){
+				fasta_out3[k].deleteOnExit();
+				align_output[k].deleteOnExit();
+			}
 		}
 	}
 
@@ -365,7 +378,7 @@ public class ConsensusMapper extends CommandLine {
 		aligns.println(align1.getSequence2());*/
 	}
 	
-private static void getRefBreaks(SequenceOutputStream os4,PrintWriter aligns, Integer[] breaks_ref, Sequence refSeq, String nme, String break_str)  throws IOException{
+private static void getRefBreaks(SequenceOutputStream os4,PrintWriter aligns, Integer[] breaks_ref, Sequence refSeq, String nme, String break_str, int extension)  throws IOException{
 	int len = breaks_ref.length-2; //(int)  Math.round((double) breaks_ref.length-2.0/2.0);
 		//Sequence[] res = new Sequence[len];
 		for(int i=0; i<len-1; i+=2){
@@ -388,7 +401,7 @@ private static void getRefBreaks(SequenceOutputStream os4,PrintWriter aligns, In
 		}
 	}
 static boolean writeNumb = false;
-	public static int extension = 10;
+	public static int[] extension = new int[] {10};
 
 
 
