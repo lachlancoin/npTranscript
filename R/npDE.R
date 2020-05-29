@@ -24,6 +24,9 @@ if(length(args)>0){
 	prefix = "ENSC"; #for vervet monkey
 }
 
+control_names = "vero_24hpi_dRNA_merged_control.sorted"
+infected_names = "vero_i_24hpi_super_genome_primary.sorted"
+
 
 
 
@@ -93,12 +96,14 @@ target= list( chrom="character",
 
 
 infilesT = grep("transcripts.txt", dir(), v=T)
-transcripts = readTranscriptHostAll(infilesT, start_text = start_text,target = target,   filter = filter, combined_depth_thresh = 1)
+transcripts = readTranscriptHostAll(infilesT, start_text = start_text,target = target,   filter = filter, 
+                                    combined_depth_thresh = 1)
 attributes = attributes(transcripts)
 names(transcripts)[grep("count[0-9]",names(transcripts))] = sub("_leftover", "" ,attr(transcripts,"info"))
 geneID= as.character(unlist(lapply(strsplit(transcripts$ORFs,";"), function(v) v[1])))
 rightGene = as.character(unlist(lapply(strsplit(transcripts$ORFs,";"), function(v) v[length(v)])))
 transcripts = cbind(transcripts, geneID, rightGene)
+transcripts = .mergeRows(transcripts, sum_names= c(control_names, infected_names), colid="geneID")
 
 
 head(getlev(transcripts$chr))      
@@ -125,6 +130,8 @@ head(transcripts[ord,])
 DE1 = DEgenes(transcripts, control_names, infected_names,edgeR = F, reorder=F);
 DE1 = .transferAttributes(DE1, attributes)
 
+head(DE1[attr(DE1,"order"),])
+
 .write<-function(DE1, resdir){
   DE1[,1:9] = apply(DE1[,1:9], c(1,2), function(x) sub(' ' , '', sprintf("%5.3g",x)))
 write.table(DE1[attr(DE1,"order"),],file=paste(resdir,"results.csv",sep="/") , quote=F, row.names=F, sep="\t", col.names=T)
@@ -138,9 +145,6 @@ pdf(paste(resdir, "/qq.pdf",sep=""))
  .vis(DE1,i=2,min.p=1e-50)
 
 dev.off()
-
-.write(DE1,resdir)
-
 
 #this calculates pvalues for base-level error rates
 

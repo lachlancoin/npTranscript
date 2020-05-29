@@ -234,6 +234,9 @@ infected_inds[i] = which(names(df)==infected_names[i])
     output = output[orders,]
   }else{
     attr(output, "order") = orders
+    attr(output, "order1") = order(pvals1)
+    attr(output, "order2") = order(pvals2)
+    
   }
   #print('h')
   att = grep('class' ,grep('names', names(attributes(df)), inv=T, v = T),inv=T,v=T)
@@ -379,11 +382,31 @@ findGenesByChrom<-function(DE,chrom="MT", thresh = 1e-10,nme2="chrs", nme="FDR1"
   df
 }
 
+
+.mergeRows<-function(transcripts1,sum_names = c(),  colid='geneID'){
+  sum_names = unique(c(sum_names,"countTotal"));
+  ind = which(names(transcripts1) %in% colid)
+  ind_s = which(names(transcripts1) %in% sum_names)
+  levs = getlev(transcripts1[,ind])
+  
+  todo = as.character(lev[lev$cnts>1,]$lev)
+  if(length(todo)==0) return(transcripts1)
+  extract_inds = lapply(todo, function(x) which(transcripts1[,ind]==x))
+  torem = sort(unlist(extract_inds))
+  subt = transcripts1[unlist(lapply(extract_inds,function(x) x[1])),]
+  for(i in 1:length(extract_inds)){
+    subind = extract_inds[[i]]
+    subt[i,ind_s] =apply(transcripts[subind,ind_s,drop=F],2,sum)
+  }
+  rbind(transcripts1[-torem,,drop=F], subt)
+  
+}
+
 readTranscriptHostAll<-function(infilesT, 
                                 combined_depth_thresh = 100,
                                 start_text = "start", 
                                 filter  = NULL,
-                                target= list(count0="numeric", count1 = "numeric",chrom="character", 
+                                target= list(chrom="character", 
                                              leftGene="character", rightGene="character", start = "numeric", 
                                              end="numeric", ID="character", isoforms="numeric" ,error_ratio0 = "numeric",error_ratio1="numeric") ){
   chroms = unlist(lapply(infilesT, function(x) strsplit(x,"\\.")[[1]][[1]]))
@@ -568,6 +591,7 @@ target = c(target,extran)
   inf = sub('#','',inf)
   types = unlist(lapply(inf, function(x) rev(strsplit(x,"_")[[1]])[1]))
   header_inds = match(names(target),header)
+  print(target)
   colClasses = rep(NA, length(header));
   colClasses[header_inds] = target
   #colClass = cbind(rep("numeric", length(extra)), colClasses)

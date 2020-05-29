@@ -319,7 +319,7 @@ plotFAll<-function(lt1, range = c(20000,30000), exclude = "allreads"){
 
 
 getlev<-function(x1, todo = NULL){ 
-  x = if(is.vector(x1)) x1 else apply(x1, 1,paste, collapse=".")
+  x = if(is.null(dim(x1))) x1 else apply(x1, 1,paste, collapse=".")
   lev = levels(as.factor(as.character(x)))
   cnts = rep(0, length(lev))
   for(i in 1:length(lev)){
@@ -341,6 +341,7 @@ getlev<-function(x1, todo = NULL){
   
   matr
 }
+
 
 getSideCols<-function(rn, t, default = "#000000"){
   rown = as.numeric(rn)
