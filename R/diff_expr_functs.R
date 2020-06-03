@@ -223,8 +223,9 @@ infected_inds[i] = which(names(df)==infected_names[i])
   tpm_infected = (y/sum(y))*1e6
   probX1 = (x+0.5)/sum(x+.5)
   probY1 = (y+0.5)/sum(y+.5)
-  ratio1 = probX1/probY1
-  output =  data.frame(pvals1,pvals2,p.adj1, p.adj2, tpm_control, tpm_infected, ratio1,sum_control=x,sum_infected=y)
+  ratio1 = probY1/probX1
+  logFC = log(ratio1)/log(2)
+  output =  data.frame(pvals1,pvals2,p.adj1, p.adj2, tpm_control, tpm_infected, ratio1,logFC, sum_control=x,sum_infected=y)
   
   output = cbind(output, df[, -which(names(df) %in% remove)])
   orders =order(apply(cbind(pvals1, pvals2),1,min,na.rm=T))
@@ -387,7 +388,7 @@ findGenesByChrom<-function(DE,chrom="MT", thresh = 1e-10,nme2="chrs", nme="FDR1"
   sum_names = unique(c(sum_names,"countTotal"));
   ind = which(names(transcripts1) %in% colid)
   ind_s = which(names(transcripts1) %in% sum_names)
-  levs = getlev(transcripts1[,ind])
+  lev = getlev(transcripts1[,ind])
   
   todo = as.character(lev[lev$cnts>1,]$lev)
   if(length(todo)==0) return(transcripts1)
