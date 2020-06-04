@@ -179,13 +179,17 @@ chisqCombine<-function(pv,log=log){
   }
 }
 
-
+.write<-function(DE1, resdir){
+  DE1[,1:9] = apply(DE1[,1:9], c(1,2), function(x) sub(' ' , '', sprintf("%5.3g",x)))
+  write.table(DE1[attr(DE1,"order"),],file=paste(resdir,"results.csv",sep="/") , quote=F, row.names=F, sep="\t", col.names=T)
+}
 
 #which x is significiantly more or less than expected given y
 #if(lower.tail=T returns p(x<=y) else p(x>=y)
 ##ASSUMES MATCHED DATA BETWEEN CONTROL  AND INFECTED
-DEgenes<-function(df,control_names,infected_names, edgeR = F,  type="lt",reorder=F, binom=F, log=F){
- remove = c(control_names, infected_names, "countT", "ID","type_nme", "rightGene");
+DEgenes<-function(df,control_names,infected_names, edgeR = F,  type="lt", binom=F, log=F,
+                  remove=c(control_names, infected_names, "countT", "ID","type_nme", "ORFs")
+                  ){
   lower.tail = T
   control_inds = rep(NA, length(control_names))
  infected_inds = rep(NA, length(infected_names))
@@ -213,6 +217,8 @@ infected_inds[i] = which(names(df)==infected_names[i])
     pval2 = pvals1
 #    lessThan = qlf$coefficients[,2]<0
   }
+ pvals = apply(cbind(pvals1,pvals2),1,min, na.rm=T)
+ p.adj = p.adjust(pvals,method="BH")
  p.adj1 = p.adjust(pvals1, method="BH");
  p.adj2 = p.adjust(pvals2, method="BH");
  
@@ -225,20 +231,17 @@ infected_inds[i] = which(names(df)==infected_names[i])
   probY1 = (y+0.5)/sum(y+.5)
   ratio1 = probY1/probX1
   logFC = log(ratio1)/log(2)
-  output =  data.frame(pvals1,pvals2,p.adj1, p.adj2, tpm_control, tpm_infected, ratio1,logFC, sum_control=x,sum_infected=y)
+  output =  data.frame(pvals, p.adj, pvals1,pvals2,p.adj1, p.adj2, tpm_control, tpm_infected, ratio1,logFC, sum_control=x,sum_infected=y)
+  output= cbind(output, df[, -which(names(df) %in% remove)])
   
-  output = cbind(output, df[, -which(names(df) %in% remove)])
-  orders =order(apply(cbind(pvals1, pvals2),1,min,na.rm=T))
   
-  if(reorder){
-    
-    output = output[orders,]
-  }else{
-    attr(output, "order") = orders
+  
+ 
+    attr(output, "order") = order(pvals)
     attr(output, "order1") = order(pvals1)
     attr(output, "order2") = order(pvals2)
     
-  }
+  
   #print('h')
   att = grep('class' ,grep('names', names(attributes(df)), inv=T, v = T),inv=T,v=T)
   if(length(att)>0){
@@ -382,7 +385,27 @@ findGenesByChrom<-function(DE,chrom="MT", thresh = 1e-10,nme2="chrs", nme="FDR1"
   df = data.frame(control = a[,7],infected = b[,7],chrs = chrs, geneID = geneID)
   df
 }
+.processTranscripts<-function(transcript, prefix="ENS"){
+  geneID= as.character(unlist(lapply(strsplit(transcript$ORFs,";"), function(v) v[1])))
+  rightGene = as.character(unlist(lapply(strsplit(transcript$ORFs,";"), function(v) v[length(v)])))
+indsL =  grep(prefix,geneID,inv=T)
+indsR =  grep(prefix,rightGene)
+comb = which(indsL %in% indsR)
+if(length(comb)>0) geneID[comb] = rightGene[comb]
+  cbind(transcript, geneID)
+}
 
+.addAnnotation<-function(annotfile, transcripts, colid="geneID",nmes = c("ID" , "Name" , "Description","biotype")){
+  match_ind = which(names(transcripts)==colid)[1]
+  gfft = read.table("annotation.csv.gz", sep="\t", header=F, fill=T, quote='\"')
+  names(gfft) = nmes
+  
+  #gfft[,1] = gsub("transcript:", "", as.character(gfft[,1]))
+  gfft = gfft[match(as.character(transcripts[,match_ind]), as.character(gfft[,1])),]
+  gfft[,1] = transcripts$ID
+  transcripts = cbind(gfft,transcripts)
+  return(transcripts)
+}
 
 .mergeRows<-function(transcripts1,sum_names = c(),  colid='geneID'){
   sum_names = unique(c(sum_names,"countTotal"));
@@ -397,7 +420,7 @@ findGenesByChrom<-function(DE,chrom="MT", thresh = 1e-10,nme2="chrs", nme="FDR1"
   subt = transcripts1[unlist(lapply(extract_inds,function(x) x[1])),]
   for(i in 1:length(extract_inds)){
     subind = extract_inds[[i]]
-    subt[i,ind_s] =apply(transcripts[subind,ind_s,drop=F],2,sum)
+    subt[i,ind_s] =apply(transcripts1[subind,ind_s,drop=F],2,sum)
   }
   rbind(transcripts1[-torem,,drop=F], subt)
   
@@ -461,7 +484,17 @@ if(inherits(dfi,"try-error")) {
   dfs = dfs[ord]
   chroms = chroms[ord]
   chrom_names = chrom_names[ord]
-  lengs = lengs[inds][ord]
+  
+  attr(dfs,"info")=attr(dfs[[1]],"info")
+  attr(dfs,"chroms")=chroms
+  attr(dfs,"chrom_names")=chrom_names
+  
+  dfs
+}
+.combineTranscripts<-function(dfs, chrom=attr(df, "chroms"), chrom_names =attr(dfs, "chrom_names") ){
+  lengs = unlist(lapply(dfs,function(x) if(is.null(x)) NA else dim(x)[1]))
+  ncol = dim(dfs[[1]])[2]
+  #lengs = lengs[inds][ord]
   res = data.frame(matrix(nrow  =sum(lengs), ncol = ncol))
   names(res) = names(dfs[[1]])
   start=1;
@@ -469,6 +502,9 @@ if(inherits(dfi,"try-error")) {
   for(i in 1:length(dfs)){
    # print(i)
     lengi = dim(dfs[[i]])[1]
+    for(k in 1:ncol){
+      if(is.factor(dfs[[i]][,k])) dfs[[i]][,k] = as.character(dfs[[i]][,k])
+    }
     ranges[i,] = c(start, start+lengi-1,dfs[[i]]$chrs[1]);
     res[ranges[i,1]:ranges[i,2],] = dfs[[i]]
     start = start+lengi
@@ -481,13 +517,14 @@ if(inherits(dfi,"try-error")) {
   }
   attr(res,"chr_inds")=m1
   attr(res,"ranges") = ranges
-  attr(res,"info")=attr(dfs[[1]],"info")
-  attr(res,"chroms")=chroms
+  attr(res,"chroms") = chroms
+  attr(res,"chrom_names") = chrom_names
+  attr(res,"info") = attr(dfs,"info")
  # attr(res,"chroms")=chrom_
+  dimnames(res)[[1]] = res$ID
   
   res
 }
-
 
 
 readIsoformH5<-function(h5file,  transcripts_){
@@ -592,7 +629,7 @@ target = c(target,extran)
   inf = sub('#','',inf)
   types = unlist(lapply(inf, function(x) rev(strsplit(x,"_")[[1]])[1]))
   header_inds = match(names(target),header)
-  print(target)
+  #print(target)
   colClasses = rep(NA, length(header));
   colClasses[header_inds] = target
   #colClass = cbind(rep("numeric", length(extra)), colClasses)
@@ -622,6 +659,7 @@ indsk = countT>=combined_depth_thresh
   if(length(grep("#", inf))>0) inf = sub("#", "",inf)
   attr(transcripts,"types")=types
   attr(transcripts,"info")=inf
+  names(transcripts)[grep("count[0-9]",names(transcripts))] = inf
   transcripts
 }
 

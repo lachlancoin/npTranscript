@@ -15,26 +15,20 @@ if(install){
 
 args = commandArgs(trailingOnly=TRUE)
 if(length(args)>0){
-	control_names = unlist(strsplit(args[1],':'))
-	infected_names = unlist(strsplit(args[2],':'))
+	control_names = args[1] #unlist(strsplit(args[1],':'))
+	infected_names =args[2] # unlist(strsplit(args[2],':'))
 	prefix = args[3]
 }else{
-	control_names = "korean_monkey_control"
-	infected_names = "korean_monkey_infected"
+	control_names = "control"
+	infected_names = "infected"
 	prefix = "ENSC"; #for vervet monkey
 }
-
-control_names = "vero_24hpi_dRNA_merged_control.sorted"
-infected_names = "vero_i_24hpi_super_genome_primary.sorted"
-
-
-
 
 library(VGAM)
 #library(biomaRt)
 #library(edgeR)
 library(stats)
-library(rhdf5)
+#library(rhdf5)
 #read.gff(file, na.strings = c(".", "?"), GFF3 = TRUE)
 #library(seqinr)
 
@@ -69,8 +63,7 @@ source(.findFile(src, "diff_expr_functs.R"))
 
 files = dir()
 chroms = NULL
-control_inds = 1
-infected_inds = 2
+
 binsize = 1e5
 isVirus=  FALSE;
 start_text = "start"
@@ -96,53 +89,46 @@ target= list( chrom="character",
 
 
 infilesT = grep("transcripts.txt", dir(), v=T)
-transcripts = readTranscriptHostAll(infilesT, start_text = start_text,target = target,   filter = filter, 
+transcriptsl = readTranscriptHostAll(infilesT, start_text = start_text,target = target,   filter = filter, 
                                     combined_depth_thresh = 1)
+#
+filenames = attr(transcriptsl,"info")
+#names(transcripts)[grep("count[0-9]",names(transcripts))] = filenames
+control_names = grep(control_names,filenames,v=T)
+infected_names = grep(infected_names,filenames,v=T)
+print(paste("control",paste(control_names,collapse=" ")))
+print(paste("infected" , paste(infected_names, collapse=" ")))
+
+transcriptsl = lapply(transcriptsl, .processTranscripts)
+transcriptsl = lapply(transcriptsl, .mergeRows,sum_names= c(control_names, infected_names), colid="geneID" )
+transcripts=.combineTranscripts(transcriptsl)
 attributes = attributes(transcripts)
-names(transcripts)[grep("count[0-9]",names(transcripts))] = sub("_leftover", "" ,attr(transcripts,"info"))
-geneID= as.character(unlist(lapply(strsplit(transcripts$ORFs,";"), function(v) v[1])))
-rightGene = as.character(unlist(lapply(strsplit(transcripts$ORFs,";"), function(v) v[length(v)])))
-transcripts = cbind(transcripts, geneID, rightGene)
-transcripts = .mergeRows(transcripts, sum_names= c(control_names, infected_names), colid="geneID")
-
-
-head(getlev(transcripts$chr))      
-#head(getlev(transcripts[,names(transcripts) %in% c("chrs","start")]))                
-                                   
 info = attr(transcripts,'info')
 
-gfft = read.table("annotation.csv.gz", sep="\t", header=F, fill=T, quote='\"')
-#gfft[,1] = gsub("transcript:", "", as.character(gfft[,1]))
-gfft = gfft[match(transcripts$geneID, gfft[,1]),]
-gfft[,1] = transcripts$ID
-names(gfft)[1] = "ID"
-names(gfft)[2] = "Name"
-names(gfft)[3] = "Description"
-names(gfft)[4] = "biotype"
 
-transcripts = cbind(gfft,transcripts)
+transcripts=.addAnnotation("annotation.csv.gz", transcripts, colid="geneID", nmes = c("ID" , "Name" , "Description","biotype"))
+
 ord = order(transcripts$countT, decreasing=T)
 head(transcripts[ord,])
 
 
 ##find DE genes
 
-DE1 = DEgenes(transcripts, control_names, infected_names,edgeR = F, reorder=F);
+DE1 = DEgenes(transcripts, control_names, infected_names,edgeR = F);
+
 DE1 = .transferAttributes(DE1, attributes)
 
 head(DE1[attr(DE1,"order"),])
 
-.write<-function(DE1, resdir){
-  DE1[,1:9] = apply(DE1[,1:9], c(1,2), function(x) sub(' ' , '', sprintf("%5.3g",x)))
-write.table(DE1[attr(DE1,"order"),],file=paste(resdir,"results.csv",sep="/") , quote=F, row.names=F, sep="\t", col.names=T)
-}
+
 
 
 pdf(paste(resdir, "/qq.pdf",sep=""))
-.qqplot(DE1$pvals1, min.p= 1e-200,main="both")
+.qqplot(DE1$pvals, min.p= 1e-200,main="both")
+.qqplot(DE1$pvals1, min.p= 1e-200,main="infected_more")
 .qqplot(DE1$pvals2, min.p= 1e-200,main="infected less",add=T)
-.vis(DE1,i=1,min.p=1e-50)
- .vis(DE1,i=2,min.p=1e-50)
+#.vis(DE1,i=1,min.p=1e-50)
+# .vis(DE1,i=2,min.p=1e-50)
 
 dev.off()
 
