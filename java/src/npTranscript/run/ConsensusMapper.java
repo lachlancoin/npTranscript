@@ -387,9 +387,9 @@ private static void getRefBreaks(SequenceOutputStream os4,PrintWriter aligns, In
 			Sequence left = refSeq.subSequence(mid_left -extension, mid_left+extension);
 			Sequence right = refSeq.subSequence(mid_right -extension, mid_right+extension);
 			procAlign(left, right, aligns,">"+nme+".original."+mid_left+"."+mid_right );
-			procAlign(left,TranscriptUtils.compl(right), aligns,">"+nme+".complement."+mid_left+"."+mid_right );
-			procAlign(left,TranscriptUtils.rev(right), aligns,">"+nme+".reverse."+mid_left+"."+mid_right );
-			procAlign(left, TranscriptUtils.revCompl(right), aligns,">"+nme+".revcomp."+mid_left+"."+mid_right );
+			//procAlign(left,TranscriptUtils.compl(right), aligns,">"+nme+".complement."+mid_left+"."+mid_right );
+			//procAlign(left,TranscriptUtils.rev(right), aligns,">"+nme+".reverse."+mid_left+"."+mid_right );
+			//procAlign(left, TranscriptUtils.revCompl(right), aligns,">"+nme+".revcomp."+mid_left+"."+mid_right );
 			left.setName(nme+"."+mid_left); //zero based for fasta file coords
 			right.setName(nme+"."+mid_right); //zero based for fasta file coords
 			String desc_left = refSeq.getName()+" "+mid_left+" L "+breaks_ref[i+1]+","+breaks_ref[i+2]+" "+break_str;
