@@ -121,7 +121,8 @@ DE1 = .transferAttributes(DE1, attributes)
 head(DE1[attr(DE1,"order"),])
 
 
-
+.write(DE1, resdir)
+  
 
 pdf(paste(resdir, "/qq.pdf",sep=""))
 .qqplot(DE1$pvals, min.p= 1e-200,main="both")
