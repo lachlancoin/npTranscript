@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Stack;
+import java.util.regex.Pattern;
 import java.util.zip.ZipOutputStream;
 
 import japsa.seq.Alphabet;
@@ -64,21 +65,21 @@ public class SequenceOutputStream1 {
 			SequenceOutputStream1.tolerance = Integer.parseInt(args[2]);
 			int minseqs = Integer.parseInt(args[3]);
 			SequenceOutputStream1.keepOriginalName = true;
-			if(args[0].equals("*") || args[0].equals("all")){
+		//	Pattern p = Pattern.compile(args[0]);
+		
 				File[] f = (new File(".")).listFiles(new FileFilter(){
 
 					@Override
 					public boolean accept(File pathname) {
-						return pathname.getName().endsWith(".fa");
+						String nme = pathname.getName();
+						return nme.endsWith(".fa") && nme.indexOf(args[0])>=0;
 					}
 					
 				});
 				for(int i=0 ; i<f.length; i++){
 					trim(f[i], minseqs, true);
 				}
-			}else{
-				trim(new File(args[0]),minseqs, true);
-			}
+			
 			
 		}catch(Exception exc){
 			exc.printStackTrace();
@@ -95,13 +96,16 @@ public class SequenceOutputStream1 {
 		
 		if(genomes.size()<min_seqs) return null;
     	
-		if(!filter) return target;
+		//if(!filter) return target;
 		
 		
     	Detail[] det = new Detail[genomes.size()];
 		
 		for(int i=0; i<genomes.size(); i++){
 			String[] desc = genomes.get(i).getDesc().split("\\s+");
+			if(desc.length<2){
+				System.err.println("WARNING, NO HEADER INFORMATION IN THE READ "+genomes.get(i).getName()+" "+target);
+			}
 			String[] refbreaks = desc[1].split(",");
 			det[i] = new Detail(i);
 			int start = Integer.parseInt(refbreaks[0]);
@@ -163,6 +167,7 @@ public class SequenceOutputStream1 {
 		if(so.stack.size()>min_seqs){
 			so.printAll();
 		}else{
+			System.err.println(target.getName()+" did not meet minimum record count after trimming" + so.stack.size()+" "+min_seqs);
 			so.stack.clear();
 		}
 		so.close();

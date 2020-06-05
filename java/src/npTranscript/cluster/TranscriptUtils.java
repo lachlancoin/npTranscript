@@ -365,7 +365,9 @@ public class TranscriptUtils {
 
 	public static Sequence revCompl(Sequence leftseq) {
 		String sequence = SequenceUtil.reverseComplement(leftseq.toString());
-		return new Sequence(Alphabet.DNA(), sequence.toCharArray(), leftseq.getName());
+	   Sequence res = new Sequence(Alphabet.DNA(), sequence.toCharArray(), leftseq.getName());
+	  res.setDesc(leftseq.getDesc()+" rev");
+	   return res;
 	}
 	
 	public static int polyAlen(Sequence refSeq){

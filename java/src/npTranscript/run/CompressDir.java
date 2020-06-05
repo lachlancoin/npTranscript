@@ -33,6 +33,7 @@ public class CompressDir {
 		}
 	} */
 	
+	public static boolean doTrim = true;
 	
 	 FileOutputStream dest;
 	    CheckedOutputStream checksum;
@@ -85,7 +86,7 @@ public class CompressDir {
 	    	int min_seqs = (int) Math.floor((double)min_lines/2.0);
 	    	for(int i=0; i<f.length; i++){
 	    		if(!f[i].getName().startsWith(".")){
-	    			if(!f[i].getName().startsWith("annot_")){
+	    			if(!f[i].getName().startsWith("annot_") && doTrim){
 	    				try{
 	    					
 	    				f[i] = SequenceOutputStream1.trim(f[i],min_seqs, false);

@@ -1,7 +1,7 @@
 package npTranscript.run;
 
 public class Detail{
-	public Integer st,en,break_L, break_R, index;
+	public int st,en,break_L, break_R, index;
 	Detail(int index){
 		this.index = index;
 	}

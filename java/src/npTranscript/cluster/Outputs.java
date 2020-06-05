@@ -69,7 +69,7 @@ public class Outputs{
 	public static boolean keepAlignment = true;
 	public static boolean keepinputFasta = true;
 	public static boolean writePolyA = false;
-	public static int minClusterEntries = 10;
+	public static int minClusterEntries = 5;
 	
 		public File transcripts_file;
 		public File reads_file; 
