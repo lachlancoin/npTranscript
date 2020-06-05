@@ -1,6 +1,6 @@
 ##BREAKPOINT ANALYSIS
 breakPs = list()
-for(i in 1:length(infilesBr))  breakPs[[i]] = readBreakPoints(infilesBr[i], i, addOne = FALSE) 
+for(i in 1:length(infilesBr))  breakPs[[i]] = readBreakPoints(infilesBr[i], i, addOne = FALSE)
 
 if(length(breakPs)==length(type_nme)){
  names(breakPs) = type_nme[1:length(breakPs)] 

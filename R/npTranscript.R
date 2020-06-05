@@ -21,7 +21,7 @@ args = commandArgs(trailingOnly=TRUE)
 if(length(args)>0){
 data_src = args[1]  ## location of fasta file and Coordinates file
 }else{
-data_src = c("~/github/npTranscript/data/SARS-Cov2","~/github/npTranscript/data/229E_CoV" )
+data_src = c("~/github/npTranscript/data/SARS-Cov2/VIC01","~/github/npTranscript/data/229E_CoV" )
 }
 
 
@@ -111,50 +111,41 @@ leader_ind = c(leader_ind, leader_ind + nchar(leader)-1)
 
 
 transcripts = .readTranscripts(infilesT)
-transcripts_all = .splitTranscripts(transcripts, seqlen, nmes, splice=T)
+transcripts_all = .splitTranscripts(transcripts, seqlen, nmes, splice=F)
+transcripts_all_splice = .splitTranscripts(transcripts, seqlen, nmes, splice=T)
 
-names(transcripts_all)
-if(!is.null(attr(transcripts_all[[1]], "info"))){
 type_nme = attr(transcripts_all[[1]], "info")
-}
 
 #if(length(infilesAltT)>0){
 #isoforms = readIsoformH5(infilesAltT[[1]],  transcripts_all[[1]])
 #}
 count_df = grep('count[0-9]', names(transcripts_all[[1]]))
 transcript_counts = lapply(transcripts_all, function(transcripts)  apply(transcripts[,count_df, drop=F], 2,sum))
-total_reads  = apply(data.frame(transcript_counts),1,sum)ls
+total_reads  = apply(data.frame(transcript_counts),1,sum)
 names(total_reads) = type_nme
 #max_h = unlist(lapply(transcripts_all, function(transcripts)  max(transcripts[,grep('count[0-9]', names(transcripts)), drop=F])))
 #commented line above due to error (see github issue #3). max_h is created but not referred to.
-if(dim(transcripts_all[[1]])[1]>0){
-  maxpos = max(transcripts_all[[1]]$end)
-  minpos = min(transcripts_all[[1]]$start)
-}else{
-  maxpos = length(fasta[[1]])
-  minpos = 1
-	total_reads = c(1,1)
-}
-if(length(type_nme)==1){
-	tocompare = list(c(1,1))
-}else if(length(type_nme)==4){
-	tocompare = list(c(1,3), c(1,2),c(3,4))
-}else{
-	tocompare = list();
-	for(i in 2:length(type_nme)){
-		tocompare[[i-1]] = c(1,i)
-	}
-}
 
-print(tocompare)
-print(transcripts_all)
-ml1 = lapply(tocompare, .plotGeneExpr, transcripts_all, todo = 1:length(transcripts_all))
+maxmin_pos = unlist(lapply(transcripts_all, function(t) c(min(t$start),max(t$end))))
+minpos = min(maxmin_pos)
+maxpos = max(maxmin_pos)
+
+
+
+ml1 = lapply(.getCompareVec(type_nme), .plotGeneExpr, transcripts_all, todo = 1:length(transcripts_all))
+ml1_splice = lapply(.getCompareVec(type_nme), .plotGeneExpr, transcripts_all_splice, todo = 1:length(transcripts_all_splice))
 names(ml1) = unlist(lapply(tocompare, function(x)  paste(type_nme[x], collapse=".")))
+names(ml1_splice) = unlist(lapply(tocompare, function(x)  paste(type_nme[x], collapse=".")))
 
 for(i in 1:length(ml1)){
-	outfile1 = paste(resdir, "/gene_expr.", names(ml1)[i],".pdf", sep="");
+	outfile1 = paste(resdir, "/gene_expr_5_3.", names(ml1)[i],".pdf", sep="");
 	try(ggsave(outfile1, plot=ml1[[i]], width = 30, height = 30, units = "cm"))
 }
+for(i in 1:length(ml1_splice)){
+	outfile1 = paste(resdir, "/gene_expr_splice.", names(ml1_splice)[i],".pdf", sep="");
+	try(ggsave(outfile1, plot=ml1_splice[[i]], width = 30, height = 30, units = "cm"))
+}
+
 
 print("###READ LEVEL ANALYSIS")
 
@@ -169,6 +160,9 @@ print('##COVERAGE ANALYSIS')
 if(length(infilesT)==1 && length(infiles)==1){
 	HEATMAP = TRUE
 	COVERAGE = TRUE
+	transcripts_all1 = transcripts_all
+	source(.findFile(src, "coverage_analysis.R"))
+	transcripts_all1 = transcripts_all_splice
 	source(.findFile(src, "coverage_analysis.R"))
 }else{
 	print("no transcript files")
@@ -184,11 +178,3 @@ if(length(infilesBr)>=1 && length(infiles)>=1){
  	print("no break point files")
 }
 
-# a = read.table("summary1.txt", sep=";")
-# b = apply(t(data.frame(strsplit(as.character(a[,2]),','))),c(1,2), as.numeric)
-# a =  apply(t(data.frame(strsplit(as.character(a[,1]),','))),c(1,2), as.numeric)
- #c = cbind(a[,3:4], b[,3:4])
-#overl = apply(c,1,min(v[4] - v[1], v[2] -v[3])) 
-.overlap<-function(v){
-  
-}

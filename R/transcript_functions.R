@@ -498,7 +498,10 @@ getGeneBP<-function(t, genes, left, right, left_buffer = 10){
 
 
 readBreakPoints<-function(f, type, addOne = F){
-  aa = read.table(f, sep=",", skip=2)
+  aa = try(read.table(f, sep=",", skip=2))
+   if(inherits(aa,"try-error")) {
+  return(NULL)
+}
   nme  = read.table(f, sep=",",nrows = 2 )
   if(dim(nme)[2]<dim(aa)[2]) nme = cbind(c(NA, NA), nme)
   names(nme) = names(aa)
@@ -1459,9 +1462,24 @@ transcripts
 		transcripts_all[[4]] = (transcripts[which(transcripts$start>=100 & transcripts$end <= seqlen -100),, drop=F])
 		names(transcripts_all) = nmes
 	}
+num_clusters = lapply(transcripts_all, function(x) dim(x)[1])
+transcripts_all = transcripts_all[num_clusters>0]
 	transcripts_all
 }
 
+.getCompareVec<-function(type_nme){
+	if(length(type_nme)==1){
+		tocompare = list(c(1,1))
+	}else if(length(type_nme)==4){
+		tocompare = list(c(1,3), c(1,2),c(3,4))
+	}else{
+		tocompare = list();
+		for(i in 2:length(type_nme)){
+			tocompare[[i-1]] = c(1,i)
+		}
+	}
+	return(tocompare)
+}
 
 
 .sumByLevel<-function(reads, nme1=c(  "ORFs"), target="source", mincount = 0.1, limit = 20){

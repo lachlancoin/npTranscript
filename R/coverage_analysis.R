@@ -2,7 +2,7 @@
 ##TRANSCRIPT COVERAGE ANALYSIS
 min_t_count = 20
 maxt_ =10
-max_h = unlist(lapply(transcripts_all, function(transcripts)  max(transcripts[,grep('count[0-9]', names(transcripts)), drop=F])))
+max_h = unlist(lapply(transcripts_all1, function(transcripts)  max(transcripts[,grep('count[0-9]', names(transcripts)), drop=F])))
 
 
 sumT_all = matrix(nrow = length(infiles), ncol = length(type_nme))
@@ -16,16 +16,16 @@ header = h5read(h5file,"header")
 dinds = grep("depth", header)
 einds = grep("errors", header)
 
-for(ik in 1:length(transcripts_all)){
+for(ik in 1:length(transcripts_all1)){
   print(paste("ik",ik))
 
-  inds_ik = transcripts_all[[ik]]$countTotal>min_t_count
+  inds_ik = transcripts_all1[[ik]]$countTotal>min_t_count
   if(length(which(inds_ik))<1) next;
-  transcripts_ = transcripts_all[[ik]][inds_ik,,drop=F]
+  transcripts_ = transcripts_all1[[ik]][inds_ik,,drop=F]
   if(dim(transcripts_)[1]> maxt_) transcripts_ = transcripts_[1:maxt_,]
   pos1 =  c(0:10000, 20000:seqlen)
    clusters_ = readH5(h5file, header, transcripts_, pos =NULL, span = 0.01, cumul=F)
-nme1 = names(transcripts_all)[[ik]] #as.character(transcripts_$type[1])
+nme1 = names(transcripts_all1)[[ik]] #as.character(transcripts_$type[1])
 
   #.getRatios(clusters, dinds, einds)
   
