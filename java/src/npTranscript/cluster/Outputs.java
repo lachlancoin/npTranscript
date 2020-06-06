@@ -56,6 +56,7 @@ public class Outputs{
 			}
 		}
 		public void close() throws IOException {
+			
 			if(os!=null) this.os.close();
 			else fastq.close();
 			if(f.length()==0) f.deleteOnExit();
@@ -73,12 +74,12 @@ public class Outputs{
 	
 		public File transcripts_file;
 		public File reads_file; 
-		private final File outfile, outfile1, outfile2, outfile2_1, outfile4, outfile5, outfile6, outfile7, outfile10;
+		private final File outfile, outfile1, outfile2, outfile2_1, outfile4, outfile5, outfile6, outfile7, outfile10, outfile11;
 		//outfile9;
 		private final FOutp[] leftover_l, polyA;//, leftover_r, fusion_l, fusion_r;
 	
 	//	final int seqlen;
-		 PrintWriter transcriptsP,readClusters;
+		 PrintWriter transcriptsP,readClusters, annotP;
 		 IHDF5SimpleWriter clusterW = null;
 		 IHDF5SimpleWriter altT = null;
 		File resDir;
@@ -89,7 +90,7 @@ public class Outputs{
 			readClusters.close();
 			clusterW.close();
 			this.altT.close();
-		
+		this.annotP.close();
 			//this.clusters.close();
 			for(int i=0; i<clusters.length; i++){
 				//if(so[i]!=null) this.so[i].close();
@@ -106,17 +107,7 @@ public class Outputs{
 		boolean writeDirectToZip = false;
 		
 		int genome_index=0;
-		//final FOutp[] so;
-	//	int currentIndex=0;
 		
-		/*public void updateChromIndex(int currentIndex2) throws IOException{
-			this.genome_index = currentIndex2;
-			this.newReadCluster(currentIndex2);
-		}*/
-		/*private void newReadCluster(int genome_index) throws IOException{
-			 if(readClusters!=null) readClusters.close();
-			
-		}*/
 		public Outputs(File resDir,  String[] type_nmes, boolean overwrite, int currentIndex, boolean isoforms, boolean cluster_depth) throws IOException{
 			this.type_nmes = type_nmes;
 			this.genome_index= currentIndex;
@@ -133,6 +124,8 @@ public class Outputs{
 			 outfile6 = new File(resDir,genome_index+ ".tree.txt.gz");
 			 outfile7 = new File(resDir,genome_index+ ".dist.txt.gz");
 			 outfile10 = new File(resDir,genome_index+".isoforms.h5");
+			 
+			 outfile11 = new File(resDir, genome_index+".annot.txt.gz");
 		//	String prefix = readsF.getName().split("\\.")[0];
 			
 			 if(doMSA!=null && mergeSourceClusters){
@@ -205,7 +198,7 @@ public class Outputs{
 				for(int i=0; i<type_nmes.length; i++) nme_info.append(type_nmes[i]+"\t");
 				transcriptsP.println("#"+nme_info.toString());
 				transcriptsP.println(transcriptP_header);
-			
+				this.annotP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.outfile11))));
 			List<String> str = new ArrayList<String>();
 			str.add("subID"); //str.add("ẗype"); 
 			for(int j=0; j<num_sources; j++){

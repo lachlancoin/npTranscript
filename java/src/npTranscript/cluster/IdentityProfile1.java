@@ -200,8 +200,6 @@ public class IdentityProfile1 {
 		clusterID[1] = "NA";
 		}
 		
-	//	System.err.println(id);
-	//	String br_cluster_str = "";//sm==null ? "": coRefPositions.break_point_cluster+"\t";
 		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"+start_read+"\t"+end_read+"\t"
 		+type_nme+"\t"+chrom+"\t"
 		+startPos+"\t"+endPos+"\t"+coRefPositions.numBreaks()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
@@ -222,7 +220,8 @@ public class IdentityProfile1 {
 							break inner1;
 						}
 					}
-					if(include){
+					if(include){ // this means read covers ORF without break
+						annot.addCount(i,src_index, startPos<=TranscriptUtils.startThresh);
 						int start_ref = annot.start.get(i)-1; // need to put back in zero coords
 						int end_ref = annot.end.get(i)-1;// need to put back in zero coords
 						int start_read1 =  sam.getReadPositionAtReferencePosition(start_ref, true);
@@ -230,11 +229,6 @@ public class IdentityProfile1 {
 						double diff = end_ref - start_ref;
 						double diff1 = end_read1 - start_read1;
 						if(diff1>0 && diff1> 0.8 *diff){
-							//int end_ref = sam.getReferencePositionAtReadPosition(end_read);
-							//System.err.println(start_read1+","+end_read1+","+readSeq.length());
-							//if(end_read1<start_read1){
-							//	throw new RuntimeException("!!");
-							//}
 							Sequence readSeq1 = readSeq.subSequence(start_read1, end_read1);
 							String baseQ1 = baseQ.length()<=1 ? baseQ : baseQ.substring(start_read1, end_read1);
 							readSeq1.setDesc(chrom_index+" "+start_ref+","+end_ref+" "+start_read1+","+end_read1+" "+(end_read1-start_read1));
@@ -243,7 +237,6 @@ public class IdentityProfile1 {
 					}
 				}
 			}
-		//	int end1 = endPos;
 		}
 		
 		if(Outputs.doMSA!=null && Outputs.doMSA.contains(type_nme) && includeInConsensus) {

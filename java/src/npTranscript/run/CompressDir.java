@@ -33,7 +33,7 @@ public class CompressDir {
 		}
 	} */
 	
-	public static boolean doTrim = true;
+	public static boolean doTrim = false;
 	
 	 FileOutputStream dest;
 	    CheckedOutputStream checksum;

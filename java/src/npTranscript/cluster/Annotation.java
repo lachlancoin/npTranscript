@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -19,7 +20,7 @@ public class Annotation{
 	//	List<Integer> breakSt =  new ArrayList<Integer>();
 		//List<Integer> breakEnd =  new ArrayList<Integer>();
 		 final int seqlen;
-		private int[][] orfs; 
+
 		//Name,Type,Minimum,Maximum,Length,Direction,gene
 	//	5'UTR,5'UTR,1,265,265,forward,none
 
@@ -28,6 +29,26 @@ public class Annotation{
 		public static int correctionDistLeft = 10000;
 		public static int correctionDistRight = 10000;	
 	
+		
+		public void print(PrintWriter pw){
+			int len = spliced_count.length;
+			pw.print("Gene\tStart\tEnd");
+			for(int j=0; j<len; j++){
+				pw.print("\tSpliced_"+j);
+				pw.print("\tUnspliced_"+j);
+			}
+			pw.println();
+			for(int i=0; i<this.start.size(); i++){
+				pw.print(this.genes.get(i)+"\t"+start.get(i)+"\t"+end.get(i));
+				for(int j=0; j<len; j++){
+					pw.print("\t"+this.spliced_count[j][i]);
+					pw.print("\t"+this.unspliced_count[j][i]);
+				}
+				pw.println();
+			}
+			pw.flush();
+		}
+		
 		public String nextDownstream(int rightBreak, int chrom_index){
 			if(rightBreak<0) return null;
 			for(int i=0; i<start.size(); i++){
@@ -86,7 +107,7 @@ public class Annotation{
 		this.seqlen = seqlen;
 		this.chrom = chrom;
 	}
-	public	Annotation(File f,String chrom, int seqlen) throws IOException{
+	public	Annotation(File f,String chrom, int seqlen, int source_count) throws IOException{
 		this(chrom, seqlen);
 		BufferedReader br = new BufferedReader(new FileReader(f)) ;
 			List<String> header = Arrays.asList(br.readLine().split(","));
@@ -110,23 +131,26 @@ public class Annotation{
 			
 			}
 			br.close();
-			mkOrfs();
+			mkOrfs(source_count);
 			
 		}
 	
 	String chrom;
-	 void mkOrfs() {
+	 void mkOrfs(int source_count) {
 		orfs = new int[start.size()][];
 		overlap = new double[start.size()];
 		orf_len = new int[start.size()];
-		
+		this.unspliced_count = new int[source_count][start.size()];
+		this.spliced_count = new int[source_count][start.size()];
 		for(int i=0; i<orf_len.length; i++) {
 			orf_len[i] = end.get(i) - start.get(i)+1;
 			orfs[i] = new int[] {start.get(i),end.get(i)};
 		}
 		
 	}
-
+		private int[][] orfs; 
+		public int[][] unspliced_count;
+		public int[][] spliced_count;
 
 	public  double[] overlap;
 	public  int[] orf_len;
@@ -144,5 +168,12 @@ public class Annotation{
 
 		public boolean isLeader(int prev_pos) {
 			return prev_pos < this.start.get(1)-tolerance;
+		}
+
+	
+		public void addCount(int i, int source_index, boolean spliced) {
+			if(spliced) spliced_count[source_index][i]+=1;
+			else unspliced_count[source_index][i]+=1;
+			
 		}
 	}

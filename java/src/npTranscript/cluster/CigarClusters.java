@@ -187,11 +187,12 @@ public class CigarClusters {
 			Outputs o, String chrom, int chrom_index
 			) throws IOException{
 		//o.readClusters.close();
+		this.annot.print(o.annotP);
 		for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();) {
 			CigarCluster cc = it.next();
 			this.process1(cc, o, chrom, chrom_index);
 		}
-		System.err.println("closing transcripts pw");
+		//System.err.println("closing transcripts pw");
 	 //  o.transcriptsP.close();
       
 		for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();) {

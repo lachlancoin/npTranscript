@@ -17,7 +17,7 @@ import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
 
 public class SequenceOutputStream1 {
-	public static boolean keepOriginalName  = false;
+	//public static boolean keepOriginalName  = false;
 	public static double se_thresh = 1.0;
 	public static int tolerance = 5;
 	
@@ -64,10 +64,11 @@ public class SequenceOutputStream1 {
 			SequenceOutputStream1.se_thresh = Double.parseDouble(args[1]);
 			SequenceOutputStream1.tolerance = Integer.parseInt(args[2]);
 			int minseqs = Integer.parseInt(args[3]);
-			SequenceOutputStream1.keepOriginalName = true;
+		//	SequenceOutputStream1.keepOriginalName = true;
 		//	Pattern p = Pattern.compile(args[0]);
-		
-				File[] f = (new File(".")).listFiles(new FileFilter(){
+			File[] f = new File[] {new File(args[0])};
+			if(!f[0].exists()){
+				 f = (new File(".")).listFiles(new FileFilter(){
 
 					@Override
 					public boolean accept(File pathname) {
@@ -76,6 +77,8 @@ public class SequenceOutputStream1 {
 					}
 					
 				});
+				
+			}
 				for(int i=0 ; i<f.length; i++){
 					trim(f[i], minseqs, true);
 				}
@@ -88,15 +91,20 @@ public class SequenceOutputStream1 {
 	 public static File trim(File target, int min_seqs, boolean filter) throws IOException {
 	//	this.so = null;
 		ArrayList<Sequence> genomes = SequenceReader.readAll(target.getAbsolutePath(), Alphabet.DNA());
-		if(!keepOriginalName){
+		if(genomes.size()<min_seqs) {
+			target.deleteOnExit();
+			return null;
+		}
+		if(!filter) return target;
+
+	/*	if(!keepOriginalName){
 			target.deleteOnExit();
 			target = new File(target.getParentFile(),genomes.size()+"_"+target.getName());
-		}
+		}*/
     
 		
-		if(genomes.size()<min_seqs) return null;
+		
     	
-		//if(!filter) return target;
 		
 		
     	Detail[] det = new Detail[genomes.size()];
@@ -167,7 +175,7 @@ public class SequenceOutputStream1 {
 		if(so.stack.size()>min_seqs){
 			so.printAll();
 		}else{
-			System.err.println(target.getName()+" did not meet minimum record count after trimming" + so.stack.size()+" "+min_seqs);
+			System.err.println(target.getName()+" did not meet minimum record count after trimming " + so.stack.size()+" < "+min_seqs);
 			so.stack.clear();
 		}
 		so.close();

@@ -447,9 +447,7 @@ public static boolean combineOutput = false;
 			
 			Sequence chr = genomes.get(currentIndex);
 			int primelen = 500;//chr.length();
-		//	Sequence chr3prime = chr.subSequence(chr.length()-primelen, chr.length());
 			Sequence chr5prime = TranscriptUtils.coronavirus ? chr.subSequence(0	, Math.min( primelen, chr.length())) : null;
-			//int polyAlen = TranscriptUtils.coronavirus ? TranscriptUtils.polyAlen(chr) : 0;
 			Sequence chr3prime = TranscriptUtils.coronavirus ? chr.subSequence(Math.max(0, chr.length()-primelen), chr.length()) : null;
 
 			Set<String> doneChr = new HashSet<String>();
@@ -566,7 +564,7 @@ public static boolean combineOutput = false;
 									
 								}
 							}else{
-								annot = annot_file == null ? new EmptyAnnotation(chr.getName(), chr.getDesc(), seqlen, annotation_pw) :  new Annotation(new File(annot_file), currentIndex+"", seqlen);
+								annot = annot_file == null ? new EmptyAnnotation(chr.getName(), chr.getDesc(), seqlen, annotation_pw) :  new Annotation(new File(annot_file), currentIndex+"", seqlen, len);
 							}
 						//	pw.close();
 						if(!combineOutput)	outp = new Outputs(resDir,  in_nmes, overwrite, currentIndex, true, true); 
