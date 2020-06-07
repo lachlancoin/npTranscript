@@ -34,8 +34,8 @@ public class Annotation{
 			int len = spliced_count.length;
 			pw.print("Gene\tStart\tEnd");
 			for(int j=0; j<len; j++){
-				pw.print("\tSpliced_"+j);
-				pw.print("\tUnspliced_"+j);
+				pw.print("\tSpliced_5_"+j);
+				pw.print("\tUnspliced_5_"+j);
 			}
 			pw.println();
 			for(int i=0; i<this.start.size(); i++){

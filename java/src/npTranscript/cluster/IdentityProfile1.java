@@ -205,12 +205,17 @@ public class IdentityProfile1 {
 		+startPos+"\t"+endPos+"\t"+coRefPositions.numBreaks()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
 		+coRefPositions.getError(src_index)+"\t"+secondKeySt+"\t"+strand+"\t"+breakSt;
 		this.o.printRead(str);
-		if(Outputs.doMSA!=null && (seqlen - endPos)<100 && includeInConsensus){
+		boolean writeMSA = Outputs.doMSA!=null && includeInConsensus;
+		if(includeInConsensus){
 			int st1 = startPos; //position>0 ? position : startPos; // start after break
 			inner: for(int i=annot.start.size()-1; i>=0; i--){
-			//	String gene = annot.genes.get(i);
 				if(st1 -10> annot.start.get(i)) break inner;
-				if(endPos > annot.end.get(i)){
+				if(endPos > annot.start.get(i)+100){
+					annot.addCount(i,src_index, startPos<=TranscriptUtils.startThresh);
+				}else{
+					//System.err.println(annot.end.get(i)+ " "+endPos);
+				}
+				if(writeMSA && endPos > annot.end.get(i)){
 					boolean include = false;
 					inner1: for(int k=0; k<breaks.size(); k+=2){
 						int st = breaks.get(k);
@@ -221,7 +226,7 @@ public class IdentityProfile1 {
 						}
 					}
 					if(include){ // this means read covers ORF without break
-						annot.addCount(i,src_index, startPos<=TranscriptUtils.startThresh);
+					//	annot.addCount(i,src_index, startPos<=TranscriptUtils.startThresh);
 						int start_ref = annot.start.get(i)-1; // need to put back in zero coords
 						int end_ref = annot.end.get(i)-1;// need to put back in zero coords
 						int start_read1 =  sam.getReadPositionAtReferencePosition(start_ref, true);
