@@ -201,8 +201,9 @@ infected_inds[i] = which(names(df)==infected_names[i])
     pvalsM1 = matrix(NA,nrow = dim(df)[1], ncol = length(control_inds))
     pvalsM2 = matrix(NA,nrow = dim(df)[1], ncol = length(control_inds))
     for(i in 1:length(control_inds)){
-        x = df[,control_inds]
-        y = df[,infected_inds]
+      print(i)
+        x = df[,control_inds[i]]
+        y = df[,infected_inds[i]]
         pvalsM1[,i] = betaBinomialP(x,y, binom=binom, lower.tail=lower.tail,log=log)
         pvalsM2[,i] = betaBinomialP(y,x, binom=binom, lower.tail=lower.tail,log=log)
         

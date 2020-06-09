@@ -14,15 +14,12 @@ if(install){
 }
 
 args = commandArgs(trailingOnly=TRUE)
-if(length(args)>0){
-	control_names = args[1] #unlist(strsplit(args[1],':'))
-	infected_names =args[2] # unlist(strsplit(args[2],':'))
-	prefix = args[3]
-}else{
-	control_names = "control"
-	infected_names = "infected"
-	prefix = "ENSC"; #for vervet monkey
+if(length(args)==0){
+  args = c("control","infected","ENSC")
 }
+	control_names = unlist(strsplit(args[1],':'))
+	infected_names =unlist(strsplit(args[2],':'))
+	prefix = args[3]
 
 library(VGAM)
 #library(biomaRt)
@@ -94,8 +91,8 @@ transcriptsl = readTranscriptHostAll(infilesT, start_text = start_text,target = 
 #
 filenames = attr(transcriptsl,"info")
 #names(transcripts)[grep("count[0-9]",names(transcripts))] = filenames
-control_names = grep(control_names,filenames,v=T)
-infected_names = grep(infected_names,filenames,v=T)
+control_names = unlist(lapply(control_names, grep, filenames, v=T));#  grep(control_names,filenames,v=T)
+infected_names = unlist(lapply(infected_names, grep, filenames, v=T))
 print(paste("control",paste(control_names,collapse=" ")))
 print(paste("infected" , paste(infected_names, collapse=" ")))
 
