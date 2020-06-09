@@ -1,13 +1,13 @@
 # this is run in the results director from npTranscript
 npTranscript=${HOME}/github/npTranscript
-reference=$1
+reference=$2
 thresh=20
-if [ ! $1 ]; then
+if [ ! $2 ]; then
  reference="${npTranscript}/data/SARS-Cov2/VIC01/wuhan_coronavirus_australia.fasta.gz:${npTranscript}/data/SARS-Cov2/wuhan/wuhan_coronavirus.fasta.gz"
 fi
 
-fa=$2
-if [ ! $2 ]; then
+fa=$1
+if [ ! $1 ]; then
  fa="clust"
 fi
 
