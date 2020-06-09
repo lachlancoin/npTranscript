@@ -132,9 +132,9 @@ minpos = min(maxmin_pos)
 maxpos = max(maxmin_pos)
 
 
-
+tocompare = .getCompareVec(type_nme)
 ml1 = lapply(.getCompareVec(type_nme), .plotGeneExpr, transcripts_all, todo = 1:length(transcripts_all))
-ml1_splice = lapply(.getCompareVec(type_nme), .plotGeneExpr, transcripts_all_splice, todo = 1:length(transcripts_all_splice))
+ml1_splice = lapply(tocompare, .plotGeneExpr, transcripts_all_splice, todo = 1:length(transcripts_all_splice))
 names(ml1) = unlist(lapply(tocompare, function(x)  paste(type_nme[x], collapse=".")))
 names(ml1_splice) = unlist(lapply(tocompare, function(x)  paste(type_nme[x], collapse=".")))
 
