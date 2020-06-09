@@ -180,11 +180,11 @@ try(ggsave(outfile1, plot=ggp, width = 30, height = 30, units = "cm"))
 }
 print("###READ LEVEL ANALYSIS")
 
-if(length(infilesReads)>0){
-	source(.findFile(src, "read_analysis.R"))
-}else{
-	print("no reads file")
-}
+#if(length(infilesReads)>0){
+#	source(.findFile(src, "read_analysis.R"))
+#}else{
+#	print("no reads file")
+#}
 #plotHist=T
 #sourcePath(src, "read_java_outputs.R")
 print('##COVERAGE ANALYSIS')
