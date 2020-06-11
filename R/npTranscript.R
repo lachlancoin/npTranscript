@@ -9,8 +9,9 @@ if(INSTALL){
 	BiocManager::install("RColorBrewer")
 	BiocManager::install("gplots")
 	BiocManager::install("seqinr")
-
+	BiocManager::install("binom")
 }
+library(binom)
 library(ggplot2)
 library(gridExtra)
 library(RColorBrewer)
@@ -148,9 +149,9 @@ for(i in 1:length(ml1_splice)){
 }
 
 if(length(infilesAnnot)>0){
-  annot0 = .readAnnotFile(.findFile(data_src, "0.annot.tsv"),plot=F, type_nme=c("Cell","Virion"))
+  annot0 = .readAnnotFile(.findFile(data_src, "0.annot.tsv"),plot=T, type_nme=c("Cell","Virion"), showEB=T,conf.level=0.95)
  
-	annots = .readAnnotFile(infilesAnnot,plot=T, type_nme=NULL, annot0 = annot0)
+	annots = .readAnnotFile(infilesAnnot,plot=T, type_nme=NULL, annot0 = annot0,conf.level=0.95,showEB=F)
 
   outfile1 = paste(resdir, "/splice_vs_unspliced.pdf", sep="");
   try(ggsave(outfile1, plot=annots$ggp, width = 30, height = 30, units = "cm"))
