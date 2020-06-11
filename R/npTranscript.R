@@ -148,35 +148,12 @@ for(i in 1:length(ml1_splice)){
 }
 
 if(length(infilesAnnot)>0){
-	annot = read.table(infilesAnnot[1], head=T)
-	spi  = grep("Spliced", names(annot))
-	uspi = grep("Unspliced", names(annot))
- 	ratio = data.frame(matrix(nrow = dim(annot)[1], ncol = length(spi)))
-	ratio1 = data.frame(matrix(nrow = dim(annot)[1]*length(spi), ncol = 4))
-	names(ratio1) = c("ORF", "Start", "Ratio", "type")
-	offset = 0
-	for(i in 1:length(spi)){
-		ratio[,i] = annot[,spi[i]]/(annot[,spi[i]]+ annot[,uspi[i]]) 
-		ranges = offset + 1:length(annot$Gene)
-		ratio1[ranges,1] = as.character(annot$Gene)
-		ratio1[ranges,2] = as.numeric(as.character(annot$Start))
-		ratio1[ranges,3] = ratio[,i]
-		ratio1[ranges,4] = rep(type_nme[i], length(ranges))
-		offset = offset + length(ranges)
-	}
-	names(ratio) =paste("Ratio", type_nme, sep="_")
-	annot = cbind(annot, ratio)
-	ORF="ORF"
-	ord="Start"
-	x1 = paste("reorder(", ORF, ",", ord,")", sep="") 
-	ggp<-ggplot(ratio1, aes_string(x=x1, y="Ratio", fill = "type", colour = "type")) +geom_bar(stat="identity", position = "dodge")
-	ggp<-ggp+ggtitle("Percentage of ORF covering reads which are spliced to 5'")
-	ggp
-outfile1 = paste(resdir, "/splice_vs_unspliced.pdf", sep="");
-try(ggsave(outfile1, plot=ggp, width = 30, height = 30, units = "cm"))
+  annot0 = .readAnnotFile(.findFile(data_src, "0.annot.tsv"),plot=F, type_nme=c("Cell","Virion"))
+ 
+	annots = .readAnnotFile(infilesAnnot,plot=T, type_nme=NULL, annot0 = annot0)
 
-
-
+  outfile1 = paste(resdir, "/splice_vs_unspliced.pdf", sep="");
+  try(ggsave(outfile1, plot=annots$ggp, width = 30, height = 30, units = "cm"))
 }
 print("###READ LEVEL ANALYSIS")
 

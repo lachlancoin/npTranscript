@@ -14,6 +14,61 @@ getKmer<-function(base, pos,v = c(-1,0,1)){
   apply(res,1,paste, collapse="")
 }
 
+.readAnnotFile<-function(fi, type_nme=NULL, plot=T, annot0 = NULL){
+  annot = read.table(fi, head=T)
+  spi  = grep("Spliced", names(annot))
+  uspi = grep("Unspliced", names(annot))
+  ratio = data.frame(matrix(nrow = dim(annot)[1], ncol = length(spi)))
+  mixt = data.frame(matrix(nrow = dim(annot)[1], ncol = length(spi)))
+  
+  ratio1 = data.frame(matrix(nrow = dim(annot)[1]*length(spi), ncol = 5))
+  
+  names(ratio1) = c("ORF", "Start", "Ratio", "type","Cellular_proportion")
+  offset = 0
+  if(is.null(type_nme)) type_nme = 1:length(spi)
+ 
+  for(i in 1:length(spi)){
+    ratio[,i] = annot[,spi[i]]/(annot[,spi[i]]+ annot[,uspi[i]]) 
+    if(!is.null(annot0)){
+      a = annot0$annot$Ratio_Cell
+      b =   annot0$annot$Ratio_Virion
+      v = ratio[,i]
+      mixt[,i] = (v-b)/(a-b)
+    }
+    ranges = offset + 1:length(annot$Gene)
+    ratio1[ranges,1] = as.character(annot$Gene)
+    ratio1[ranges,2] = as.numeric(as.character(annot$Start))
+    ratio1[ranges,3] = ratio[,i]
+    ratio1[ranges,4] = rep(type_nme[i], length(ranges))
+    ratio1[ranges,5] = mixt[,i]
+    offset = offset + length(ranges)
+  }
+  names(ratio) =paste("Ratio", type_nme, sep="_")
+  names(mixt) =paste("Cellular_proportion", type_nme, sep="_")
+  
+  annot = cbind(annot, ratio)
+  if(!is.null(annot0)){
+    cellular_ratio = annot0$ratio1[annot0$ratio1$type=="Cell",,drop=F]
+    virion_ratio = annot0$ratio1[annot0$ratio1$type=="Virion",,drop=F]
+    ratio1 = rbind(cellular_ratio, ratio1, virion_ratio)
+    annot = cbind(annot,mixt)
+  }
+  ggp= NULL
+  if(plot){
+    ORF="ORF"
+    ord="Start"
+    x1 = paste("reorder(", ORF, ",", ord,")", sep="") 
+    ggp<-ggplot(ratio1)
+    ggp<-ggp+ geom_bar(aes_string(x=x1, y="Ratio", fill = "type", colour = "type"),stat="identity", position = "dodge")
+   
+    if(!is.null(annot0)){
+    ggp<-ggp +  geom_point(aes_string(x=x1, y="Cellular_proportion"),stat="identity")
+    }
+     ggp<-ggp+ggtitle("Percentage of ORF covering reads which are spliced to 5'")
+    #ggp
+  }
+  list(annot= annot, ratio1 = ratio1,ggp = ggp)
+}
 
 writeFasta<-function(kmer10, file){
   write(">seq1", file)
