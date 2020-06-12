@@ -560,11 +560,12 @@ public static boolean combineOutput = false;
 									}
 								}else{
 									
-									annot = new GFFAnnotation(annot1, seqlen, annotation_pw);
+									annot = new GFFAnnotation(annot1, seqlen, annotation_pw, len);
 									
 								}
 							}else{
-								annot = annot_file == null ? new EmptyAnnotation(chr.getName(), chr.getDesc(), seqlen, annotation_pw) :  new Annotation(new File(annot_file), currentIndex+"", seqlen, len);
+								annot = annot_file == null ? new EmptyAnnotation(chr.getName(), chr.getDesc(), seqlen, annotation_pw) : 
+									new Annotation(new File(annot_file), currentIndex+"", seqlen, len);
 							}
 						//	pw.close();
 						if(!combineOutput)	outp = new Outputs(resDir,  in_nmes, overwrite, currentIndex, true, true); 
