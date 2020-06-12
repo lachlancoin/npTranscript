@@ -14,6 +14,71 @@ getKmer<-function(base, pos,v = c(-1,0,1)){
   apply(res,1,paste, collapse="")
 }
 
+.readAnnotFile<-function(fi, type_nme=NULL, plot=T, annot0 = NULL, conf.level=0.68, showEB = F){
+  annot = read.table(fi, head=T)
+  spi  = grep("Spliced", names(annot))
+  uspi = grep("Unspliced", names(annot))
+  ratio = data.frame(matrix(nrow = dim(annot)[1], ncol = length(spi)*3))
+  mixt = data.frame(matrix(nrow = dim(annot)[1], ncol = length(spi)*3))
+  
+ nme_r = c("ORF", "Start", "Ratio","lower","upper", "type","proportion","prop_lower","prop_upper")
+   ratio1 = data.frame(matrix(nrow = dim(annot)[1]*length(spi), ncol = length(nme_r)))
+  
+  names(ratio1) = nme_r
+  offset = 0
+  if(is.null(type_nme)) type_nme = 1:length(spi)
+  nme = c()
+  for(i in 1:length(spi)){
+    confints =   binom.confint(annot[,spi[i]],(annot[,spi[i]]+ annot[,uspi[i]]) ,method="logit",conf.level=conf.level)
+    nme = c(nme,paste(c("mean","lower","upper"), type_nme[i],sep="_"))
+   # print(nme)
+    indsi = ((i-1)*3+1):((i)*3)
+    ratio[,indsi ]= confints[,4:6]
+  #confints=  ratio[,i] = annot[,spi[i]]/(annot[,spi[i]]+ annot[,uspi[i]]) 
+    if(!is.null(annot0)){
+      a = annot0$annot$mean_Cell
+      b =   annot0$annot$mean_Virion
+    
+      mixt[,indsi] = apply(confints[,4:6],2,function(v) (v-b)/(a-b))
+      mixt[,indsi] =  apply(mixt[,indsi],c(1,2),function(x) min(max(x,0),1))
+    }
+    ranges = offset + 1:length(annot$Gene)
+    ratio1[ranges,1] = as.character(annot$Gene)
+    ratio1[ranges,2] = as.numeric(as.character(annot$Start))
+    ratio1[ranges,3:5] = confints[,4:6]
+    ratio1[ranges,6] = rep(type_nme[i], length(ranges))
+    ratio1[ranges,7:9] = mixt[,indsi]
+    offset = offset + length(ranges)
+  }
+  names(ratio) =nme
+  names(mixt) =paste(nme,"prop")
+  
+  annot = cbind(annot, ratio)
+  if(!is.null(annot0)){
+    #cellular_ratio = annot0$ratio1[annot0$ratio1$type=="Cell",,drop=F]
+    #virion_ratio = annot0$ratio1[annot0$ratio1$type=="Virion",,drop=F]
+    ratio1 = rbind(annot0$ratio1, ratio1)
+    annot = cbind(annot,mixt)
+  }
+  ggp= NULL
+  if(plot){
+    ORF="ORF"
+    ord="Start"
+    x1 = paste("reorder(", ORF, ",", ord,")", sep="") 
+    ggp<-ggplot(ratio1)
+    ggp<-ggp+ geom_bar(aes_string(x=x1, y="Ratio", fill = "type", colour = "type"),stat="identity", position = "dodge")
+    if(showEB) ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="lower", ymax="upper"), width=.2)#, position="dodge")
+   ggp<-ggp+scale_y_continuous(limits = c(0,1))
+    if(!is.null(annot0)){
+    ggp<-ggp +  geom_point(aes_string(x=x1, y="proportion"),stat="identity")
+    ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="prop_lower", ymax="prop_upper"), width=.2, position="dodge")
+    ggp<-ggp+ scale_y_continuous(limits = c(0,1), sec.axis =sec_axis(~ . ))
+    }
+     ggp<-ggp+ggtitle("Percentage of ORF covering reads which are spliced to 5'")
+    #ggp
+  }
+  list(annot= annot, ratio1 = ratio1,ggp = ggp)
+}
 
 writeFasta<-function(kmer10, file){
   write(">seq1", file)

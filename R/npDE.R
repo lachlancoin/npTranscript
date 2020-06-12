@@ -14,15 +14,16 @@ if(install){
 }
 
 args = commandArgs(trailingOnly=TRUE)
-if(length(args)>0){
-	control_names = args[1] #unlist(strsplit(args[1],':'))
-	infected_names =args[2] # unlist(strsplit(args[2],':'))
-	prefix = args[3]
-}else{
-	control_names = "control"
-	infected_names = "infected"
-	prefix = "ENSC"; #for vervet monkey
+if(length(args)==0){
+  args = c("control","infected","ENSC", "T", "betabinom")
 }
+	control_names = unlist(strsplit(args[1],':'))
+	infected_names =unlist(strsplit(args[2],':'))
+	prefix = args[3]
+	filterByPrefix = args[4]
+	analysis=args[5]
+	edgeR = FALSE;
+	if(analysis=="edgeR") edgeR = T
 
 library(VGAM)
 #library(biomaRt)
@@ -50,6 +51,7 @@ dir.create(resdir);
     } 
   }
 }
+
 
 src = c( "../../R" , "~/github/npTranscript/R" )
 source(.findFile(src, "transcript_functions.R"))
@@ -92,10 +94,11 @@ infilesT = grep("transcripts.txt", dir(), v=T)
 transcriptsl = readTranscriptHostAll(infilesT, start_text = start_text,target = target,   filter = filter, 
                                     combined_depth_thresh = 1)
 #
+
 filenames = attr(transcriptsl,"info")
 #names(transcripts)[grep("count[0-9]",names(transcripts))] = filenames
-control_names = grep(control_names,filenames,v=T)
-infected_names = grep(infected_names,filenames,v=T)
+control_names = unlist(lapply(control_names, grep, filenames, v=T));#  grep(control_names,filenames,v=T)
+infected_names = unlist(lapply(infected_names, grep, filenames, v=T))
 print(paste("control",paste(control_names,collapse=" ")))
 print(paste("infected" , paste(infected_names, collapse=" ")))
 
@@ -108,13 +111,18 @@ info = attr(transcripts,'info')
 
 transcripts=.addAnnotation("annotation.csv.gz", transcripts, colid="geneID", nmes = c("ID" , "Name" , "Description","biotype"))
 
+if(filterByPrefix=="T"){
+  transcripts = transcripts[grep(prefix,transcripts$geneID),,drop=F]
+  
+}
+
 ord = order(transcripts$countT, decreasing=T)
 head(transcripts[ord,])
 
 
 ##find DE genes
 
-DE1 = DEgenes(transcripts, control_names, infected_names,edgeR = F);
+DE1 = DEgenes(transcripts, control_names, infected_names,edgeR = edgeR);
 
 DE1 = .transferAttributes(DE1, attributes)
 
@@ -144,5 +152,5 @@ print("####DEPTH ANALYSIS #### ")
 dataset="csabaeus_gene_ensembl"
  mirror = "uswest"
 print("####BIOMART ANALYISIS #### ")
-#source(.findFile(src, "biomar_analysis.R"))
+#source(.findFile(src, "biomart_analysis.R"))
 

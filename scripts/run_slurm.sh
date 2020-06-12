@@ -41,4 +41,4 @@ bash ${npTranscript}/scripts/run.sh --bamFile=${bamfiles1}   --reference=${refer
 cd ${resdir}
 #bash ${npTranscript}/scripts/consensus.sh 0
 echo "now running R script"
-#Rscript ~/github/npTranscript/R/npTranscript.R  ~/github/npTranscript/data/SARS-Cov2
+#Rscript ~/github/npTranscript/R/npTranscript.R  ~/github/npTranscript/data/SARS-Cov2/VIC01
