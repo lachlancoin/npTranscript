@@ -152,7 +152,9 @@ if(length(infilesAnnot)>0){
   annot0 = .readAnnotFile(.findFile(data_src, "0.annot.tsv"),plot=T, type_nme=c("Cell","Virion"), showEB=T,conf.level=0.95)
  
 	annots = .readAnnotFile(infilesAnnot,plot=T, type_nme=NULL, annot0 = annot0,conf.level=0.95,showEB=F)
-
+	double_inds = unlist(lapply(annots$annot[1,], typeof))=="double"
+	annots$annot[,double_inds] = apply(annots$annot[,double_inds,drop=F],c(1,2), function(x)  gsub(' ','',sprintf("%5.3g",x)))
+write.table(annots$annot,file=paste(resdir,"cellular_proportions.txt",sep="/"),sep=",",quote=F,col.names=T, row.names=F)
   outfile1 = paste(resdir, "/splice_vs_unspliced.pdf", sep="");
   try(ggsave(outfile1, plot=annots$ggp, width = 30, height = 30, units = "cm"))
 }
