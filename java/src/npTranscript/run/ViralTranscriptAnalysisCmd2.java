@@ -36,21 +36,26 @@ package npTranscript.run;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileFilter;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 import htsjdk.samtools.SAMRecord;
@@ -91,9 +96,9 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		private final boolean[] returned;
 		private final int[] cnts ;
 		int max;
-		Set<String>[] readList ;
+		Collection<String>[] readList ;
 		Set<Integer> chrs;
-		private CombinedIterator(SAMRecordIterator[] samIters, int max, Set<String>[]readList, Set<Integer> chrs) {
+		private CombinedIterator(SAMRecordIterator[] samIters, int max, Collection<String>[]readList, Set<Integer> chrs) {
 			this.samIters = samIters;
 			this.readList = readList;
 			currentVals = new SAMRecord[samIters.length];
@@ -386,9 +391,37 @@ public static boolean combineOutput = false;
 				
 			});
 		}
-		Set<String>[] reads= null;
+		Collection<String>[] reads= null;
 		if(readList.length>0 && readList[0].length()>0){
-		 reads= new Set[readList.length];
+		 if( readList[0].indexOf("readToCluster.txt.gz")>=0){
+			 Map<String, Collection<String>> map = new HashMap<String, Collection<String>>();
+			 for(int i=0; i<readList.length; i++){
+			 BufferedReader br = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(new File(readList[i])))));
+				String st = br.readLine();
+				List<String> head = Arrays.asList(st.split("\\t"));
+				int readind = head.indexOf("readID");
+				int orfind = head.indexOf("ORFs");
+				while((st = br.readLine())!=null){
+					String[] str  = st.split("\\t+");
+					String readId = str[readind];
+					String orfID = str[orfind];
+					Collection<String> l= map.get(orfID) ;
+					if(l==null) {
+						map.put(orfID, new HashSet<String>());
+						l= map.get(orfID) ;
+					}
+					l.add(readId);
+				}
+				br.close();
+			 }
+			readList = map.keySet().toArray(new String[0]);
+			reads = new Collection[readList.length];
+			for(int i=0; i<reads.length; i++){
+				 reads[i]= map.get(readList[i]);
+			}
+		 }else{
+			
+		 reads= new Collection[readList.length];
 		 for(int i=0; i<reads.length; i++){
 			reads[i] = new HashSet<String>();
 			BufferedReader br = new BufferedReader(new FileReader(new File(readList[i])));
@@ -399,6 +432,7 @@ public static boolean combineOutput = false;
 				reads[i].add(st_);
 			}
 			br.close();
+		 }
 		 }
 		}
 		
@@ -589,7 +623,7 @@ public static boolean combineOutput = false;
 					}
 				
 					try{
-						String pool = readList==null || poolID<0 ? "" : readList[poolID].split("\\.")[0]+";";
+						String pool = readList==null || poolID<0 ? "" : (readList[poolID].split("\\.")[0]+";");
 						TranscriptUtils.identity1(chr, chr5prime,chr3prime, readSeq, sam, profile, source_index, cluster_reads, chr.length(), pool);
 					}catch(NumberFormatException exc){
 						System.err.println(readSeq.getName());
