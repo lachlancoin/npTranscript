@@ -88,7 +88,7 @@ public class IdentityProfile1 {
 	public String processRefPositions(SAMRecord sam, String id, boolean cluster_reads, Sequence refSeq, int src_index , Sequence readSeq, String baseQ, 
 			int start_read, int end_read, char strand, SWGAlignment align5prime, SWGAlignment align3prime,
 			SWGAlignment align3primeRev,
-			int offset_3prime, int polyAlen
+			int offset_3prime, int polyAlen, String pool
 			) throws IOException, NumberFormatException{
 		startPos = sam.getAlignmentStart()+1; // transfer to one based
 		endPos = sam.getAlignmentEnd()+1;
@@ -148,6 +148,7 @@ public class IdentityProfile1 {
 		}
 		//String roundStartP = annotByBreakPosition ? TranscriptUtils.round(startPos, CigarHash2.round)+"" : 	"";
 		StringBuffer secondKey =new StringBuffer();
+		secondKey.append(pool);
 		//String upstream, upstream2, downstream, downstream2;
 		int maxg = 0;
 		int maxg_ind = -1;
