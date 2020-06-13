@@ -1,0 +1,9 @@
+Name,Type,Minimum,Maximum,Length,Direction,gene
+5ETS,5'ETS,1,3656,3656,forward,5ETS
+18S,gene,3657,5527,1871,forward,18S
+ITS1,ITS,5528,6622,1095,forward,ITS1
+5.8S,gene,6623,6779,157,forward,5.8S
+ITS2,ITS,6780,7934,1155,forward,ITS2
+28S,gene,7935,12969,5035,forward,28S
+3ETS,3'ETS,12970,13314,345,forward,3ETS
+repeat_region,repeat_region,13315,42999,29685,forward,repeat_region
