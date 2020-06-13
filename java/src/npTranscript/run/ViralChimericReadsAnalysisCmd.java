@@ -754,7 +754,7 @@ public class ViralChimericReadsAnalysisCmd extends CommandLine {
 			}
 		} 
 		double max = seqstr.length() * 0.8D;
-		return !(b[0] < max && b[1] < max && b[2] < max);
+		return b[0] >= max || b[1] >= max || b[2] >= max;
 	}
 
 	private static String getFlankSequence(String sequence, int p, int flank) {

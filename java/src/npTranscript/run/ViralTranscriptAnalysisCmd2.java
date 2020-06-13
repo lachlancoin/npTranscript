@@ -402,7 +402,7 @@ public static boolean combineOutput = false;
 				int readind = head.indexOf("readID");
 				int orfind = head.indexOf("ORFs");
 				while((st = br.readLine())!=null){
-					String[] str  = st.split("\\t+");
+					String[] str  = st.split("\\t");
 					String readId = str[readind];
 					String orfID = str[orfind];
 					Collection<String> l= map.get(orfID) ;
