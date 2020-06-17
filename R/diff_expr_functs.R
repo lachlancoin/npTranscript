@@ -215,7 +215,7 @@ infected_inds[i] = which(names(df)==infected_names[i])
   }else{
     qlf = DE_egdeR(df, control_inds, infected_inds)
     pvals1 = qlf$table$P
-    pval2 = pvals1
+    pvals2 = pvals1
 #    lessThan = qlf$coefficients[,2]<0
   }
  pvals = apply(cbind(pvals1,pvals2),1,min, na.rm=T)
