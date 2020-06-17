@@ -46,7 +46,7 @@ raw_dir="$4"_fast5
 mkdir $raw_dir
 
 python3 ~/TEST_squiggle/SquiggleKit/fast5_fetcher_multi.py -q $cat_readfile  \
--s $(dirname $3)/sequencing_summary.txt -o $raw_dir -m $1
+-s $(dirname $3)/sequencing_summary* -o $raw_dir -m $1
 
 echo 'tombo preprocess'
 tombo preprocess annotate_raw_with_fastqs --overwrite --fast5-basedir $raw_dir --fastq-filenames $cat_readfile
