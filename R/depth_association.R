@@ -17,11 +17,11 @@ sigChr2 = findSigChrom(depth1, thresh=1e-3, go_thresh=1e-3, nme="pv2", nme2="gen
    hist(depth[depth$pv1<1e-3,]$base) ## this is up in controls
    hist(depth[depth$pv2<1e-3,]$base) ## this is up in cases
    
-   d1 = data.frame(depth[,which(names(depth) %in% c("pos","pv1"))],type=rep(1,dim(depth)[1]))
-   d2 = data.frame(depth[,which(names(depth) %in% c("pos","pv2"))],type=rep(2,dim(depth)[1]))
+   d1 = data.frame(depth[,which(names(depth) %in% c("pos","pv1"))],type=rep("1",dim(depth)[1]))
+   d2 = data.frame(depth[,which(names(depth) %in% c("pos","pv2"))],type=rep("2",dim(depth)[1]))
    names(d1)[2] = "pv"; names(d2)[2] = "pv"
-   ggp<-ggplot(rbind(d1,d2),aes(x=pos, y=pv1,fill=type))+geom_point() + theme_bw()+ggtitle("pv")+scale_y_continuous(trans='log10')
-   
+   ggp<-ggplot(rbind(d1,d2),aes(x=pos, y=pv,fill=type, color=type))+geom_point() + theme_bw()+ggtitle("pv")+scale_y_continuous(trans='log10')
+   ggp
   .vis(depth,i=1,min.p=1e-20)
   .vis(depth,i=2,min.p=1e-20)
   dev.off()

@@ -15,13 +15,13 @@ if(install){
 
 args = commandArgs(trailingOnly=TRUE)
 if(length(args)==0){
-  args = c("control","infected","ENSC", "T", "betabinom")
+  args = c("control","infected", "betabinom")
 }
 	control_names = unlist(strsplit(args[1],':'))
 	infected_names =unlist(strsplit(args[2],':'))
-	prefix = args[3]
-	filterByPrefix = args[4]
-	analysis=args[5]
+#	prefix = args[3]
+#	filterByPrefix = args[4]
+	analysis=args[3]
 	edgeR = FALSE;
 	if(analysis=="edgeR") edgeR = T
 
@@ -113,10 +113,15 @@ transcripts=.addAnnotation("annotation.csv.gz", transcripts, colid="geneID", nme
 
 #if(filterByPrefix=="T"){
   pos = lapply(transcripts$geneID, function(x) strsplit(x,"\\.")[[1]])
-  lens = lapply(pos,length)
-  indsK = lens!=2
-  transcripts_removed=transcripts[!indsK,,drop=F]
-  transcripts = transcripts[indsK,,drop=F]
+  lens = (lapply(pos,length))
+  indsK = lens!=2 
+  indsK1 = which(lens==2)
+  ##keep those things which dont have 2 elements sepearated by . or which do and are not numeric
+  tokeep = c(which(indsK),indsK1[(is.na(lapply(pos[indsK1],function(x) min(as.numeric(x)))))])
+  transcripts_removed=transcripts[-tokeep,,drop=F]
+  if(length(torem)>0){
+    transcripts = transcripts[tokeep,,drop=F]
+  }
   
 #}
 
