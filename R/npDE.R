@@ -118,9 +118,11 @@ transcripts=.addAnnotation("annotation.csv.gz", transcripts, colid="geneID", nme
   indsK1 = which(lens==2)
   ##keep those things which dont have 2 elements sepearated by . or which do and are not numeric
   tokeep = c(which(indsK),indsK1[(is.na(lapply(pos[indsK1],function(x) min(as.numeric(x)))))])
-  transcripts_removed=transcripts[-tokeep,,drop=F]
-  if(length(torem)>0){
-    transcripts = transcripts[tokeep,,drop=F]
+  transcripts = transcripts[tokeep,,drop=F]
+  if(length(tokeep)>0){
+    transcripts_removed=transcripts[-tokeep,,drop=F]
+  }else{
+    transcripts_removed=transcripts[c(),,drop=F]
   }
   
 #}
