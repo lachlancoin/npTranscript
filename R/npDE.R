@@ -15,13 +15,13 @@ if(install){
 
 args = commandArgs(trailingOnly=TRUE)
 if(length(args)==0){
-  args = c("control","infected","ENSC", "T", "betabinom")
+  args = c("control","infected", "betabinom")
 }
 	control_names = unlist(strsplit(args[1],':'))
 	infected_names =unlist(strsplit(args[2],':'))
-	prefix = args[3]
-	filterByPrefix = args[4]
-	analysis=args[5]
+#	prefix = args[3]
+#	filterByPrefix = args[4]
+	analysis=args[3]
 	edgeR = FALSE;
 	if(analysis=="edgeR") edgeR = T
 
