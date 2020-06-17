@@ -111,10 +111,14 @@ info = attr(transcripts,'info')
 
 transcripts=.addAnnotation("annotation.csv.gz", transcripts, colid="geneID", nmes = c("ID" , "Name" , "Description","biotype"))
 
-if(filterByPrefix=="T"){
-  transcripts = transcripts[grep(prefix,transcripts$geneID),,drop=F]
+#if(filterByPrefix=="T"){
+  pos = lapply(transcripts$geneID, function(x) strsplit(x,"\\.")[[1]])
+  lens = lapply(pos,length)
+  indsK = lens!=2
+  transcripts_removed=transcripts[!indsK,,drop=F]
+  transcripts = transcripts[indsK,,drop=F]
   
-}
+#}
 
 ord = order(transcripts$countT, decreasing=T)
 head(transcripts[ord,])
@@ -123,19 +127,30 @@ head(transcripts[ord,])
 ##find DE genes
 
 DE1 = DEgenes(transcripts, control_names, infected_names,edgeR = edgeR);
-
 DE1 = .transferAttributes(DE1, attributes)
-
 head(DE1[attr(DE1,"order"),])
+.write(DE1 ,resdir,"results.csv")
 
 
-.write(DE1, resdir)
+DE1_removed = DEgenes(transcripts_removed, control_names, infected_names,edgeR = edgeR);
+DE1_removed = .transferAttributes(DE1_removed, attributes)
+head(DE1_removed[attr(DE1,"order"),])
+.write(DE1_removed, resdir,"results_removed.csv")
   
 
 pdf(paste(resdir, "/qq.pdf",sep=""))
 .qqplot(DE1$pvals, min.p= 1e-200,main="both")
 .qqplot(DE1$pvals1, min.p= 1e-200,main="infected_more")
 .qqplot(DE1$pvals2, min.p= 1e-200,main="infected less",add=T)
+#.vis(DE1,i=1,min.p=1e-50)
+# .vis(DE1,i=2,min.p=1e-50)
+
+dev.off()
+
+pdf(paste(resdir, "/qq_removed.pdf",sep=""))
+.qqplot(DE1_removed$pvals, min.p= 1e-200,main="both")
+.qqplot(DE1_removed$pvals1, min.p= 1e-200,main="infected_more")
+.qqplot(DE1_removed$pvals2, min.p= 1e-200,main="infected less",add=T)
 #.vis(DE1,i=1,min.p=1e-50)
 # .vis(DE1,i=2,min.p=1e-50)
 

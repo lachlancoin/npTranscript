@@ -179,9 +179,9 @@ chisqCombine<-function(pv,log=log){
   }
 }
 
-.write<-function(DE1, resdir){
+.write<-function(DE1, resdir, filename="results.csv"){
   DE1[,1:9] = apply(DE1[,1:9], c(1,2), function(x) sub(' ' , '', sprintf("%5.3g",x)))
-  write.table(DE1[attr(DE1,"order"),],file=paste(resdir,"results.csv",sep="/") , quote=F, row.names=F, sep="\t", col.names=T)
+  write.table(DE1[attr(DE1,"order"),],file=paste(resdir,filename,sep="/") , quote=F, row.names=F, sep="\t", col.names=T)
 }
 
 #which x is significiantly more or less than expected given y
