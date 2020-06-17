@@ -36,21 +36,26 @@ package npTranscript.run;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileFilter;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 import htsjdk.samtools.SAMRecord;
@@ -82,6 +87,7 @@ import npTranscript.cluster.TranscriptUtils;
 @Deployable(scriptName = "npTranscript.run", scriptDesc = "Analysis of coronavirus sequence data")
 public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 	static String src_tag = "SC";
+	static String pool_tag = "PT";
 private static final class CombinedIterator implements Iterator<SAMRecord> {
 		private final SAMRecordIterator[] samIters;
 		int current_sam_index =0;
@@ -90,9 +96,9 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		private final boolean[] returned;
 		private final int[] cnts ;
 		int max;
-		Set<String> readList ;
+		Collection<String>[] readList ;
 		Set<Integer> chrs;
-		private CombinedIterator(SAMRecordIterator[] samIters, int max, Set<String>readList, Set<Integer> chrs) {
+		private CombinedIterator(SAMRecordIterator[] samIters, int max, Collection<String>[]readList, Set<Integer> chrs) {
 			this.samIters = samIters;
 			this.readList = readList;
 			currentVals = new SAMRecord[samIters.length];
@@ -109,7 +115,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			}
 			return false;
 		}
-
+		int pool_ind=-1;
 		private SAMRecord next(int i){
 			SAMRecord sr;
 			if(currentVals[i]!=null && !returned[i]){
@@ -128,11 +134,21 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 					{
 						sr  = samIters[i].next();
 						if(sr==null) break inner;
-						if(readList!=null && readList.contains(sr.getReadName())) break inner;
+						pool_ind =-1;
+						if(readList!=null){
+							inner1: for(int i2=0; i2<readList.length; i2++){
+								if(readList[i2].contains(sr.getReadName())){
+									pool_ind = i2;
+									break inner1;
+								}
+							}
+						}
+						if(readList!=null && pool_ind>=0) break inner;
 						if(readList==null &&  chrs!=null && chrs.contains(sr.getReferenceIndex())) break inner;
 						if(readList==null  && chrs==null) break inner;
 					}
 					if(sr!=null) {
+						sr.setAttribute(pool_tag, pool_ind);
 						sr.setAttribute(src_tag, i);
 					}
 					currentVals[i] = sr;
@@ -188,7 +204,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		addString("bamFile", null, "Name of bam file", true);
 		addString("reference", null, "Name of reference genome", true);
 		addString("annotation", null, "ORF annotation file or GFF file", false);
-		addString("readList", null, "List of reads", false);
+		addString("readList", "", "List of reads", false);
 		String all_types = "gene:ncRNA_gene:pseudogene:miRNA";			
 			addString("type", all_types, "Type of annotation (only included if annotation is GFF file", false);
 		addString("chroms", "all", "Restrict to these chroms, colon delimited", false);
@@ -248,7 +264,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		int breakThresh = cmdLine.getIntVal("breakThresh");
 		String pattern = cmdLine.getStringVal("pattern");
 		String annotFile = cmdLine.getStringVal("annotation");
-		String readList = cmdLine.getStringVal("readList");
+		String[] readList = cmdLine.getStringVal("readList").split(":");
 		//String genesToInclude = cmdLine.getStringVal("genesToInclude");
 		String  annotationType = cmdLine.getStringVal("type");
 		boolean overwrite  = cmdLine.getBooleanVal("overwrite");
@@ -347,7 +363,7 @@ public static boolean combineOutput = false;
 	/**
 	 * Error analysis of a bam file. Assume it has been sorted
 	 */
-	static void errorAnalysis(String bamFiles, String refFile, String annot_file, String readList,    String annotationType, String resdir, String pattern, int qual, int round, 
+	static void errorAnalysis(String bamFiles, String refFile, String annot_file, String[] readList,    String annotationType, String resdir, String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads,  boolean sorted,
 			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,Map<String, JapsaAnnotation> anno, Set<String>chrToInclude, boolean overwrite,
 			int writeIsoformDepthThresh, int writeCoverageDepthThresh) throws IOException {
@@ -375,19 +391,50 @@ public static boolean combineOutput = false;
 				
 			});
 		}
-		Set<String> reads = null;
-		if(readList!=null){
-			reads = new HashSet<String>();
-			BufferedReader br = new BufferedReader(new FileReader(new File(readList)));
+		Collection<String>[] reads= null;
+		if(readList.length>0 && readList[0].length()>0){
+		 if( readList[0].indexOf("readToCluster.txt.gz")>=0){
+			 Map<String, Collection<String>> map = new HashMap<String, Collection<String>>();
+			 for(int i=0; i<readList.length; i++){
+			 BufferedReader br = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(new File(readList[i])))));
+				String st = br.readLine();
+				List<String> head = Arrays.asList(st.split("\\t"));
+				int readind = head.indexOf("readID");
+				int orfind = head.indexOf("ORFs");
+				while((st = br.readLine())!=null){
+					String[] str  = st.split("\\t");
+					String readId = str[readind];
+					String orfID = str[orfind];
+					Collection<String> l= map.get(orfID) ;
+					if(l==null) {
+						map.put(orfID, new HashSet<String>());
+						l= map.get(orfID) ;
+					}
+					l.add(readId);
+				}
+				br.close();
+			 }
+			readList = map.keySet().toArray(new String[0]);
+			reads = new Collection[readList.length];
+			for(int i=0; i<reads.length; i++){
+				 reads[i]= map.get(readList[i]);
+			}
+		 }else{
+			
+		 reads= new Collection[readList.length];
+		 for(int i=0; i<reads.length; i++){
+			reads[i] = new HashSet<String>();
+			BufferedReader br = new BufferedReader(new FileReader(new File(readList[i])));
 			String st;
 			while((st = br.readLine())!=null){
 				String st_ = st.split("\\s+")[0];
 				System.err.println(st_);
-				reads.add(st_);
+				reads[i].add(st_);
 			}
 			br.close();
+		 }
+		 }
 		}
-		
 		
 		TranscriptUtils.break_thresh = break_thresh;
 		int len = bamFiles_.length;
@@ -470,9 +517,11 @@ public static boolean combineOutput = false;
 				
 				if(sam==null) break outer;
 				int source_index = (Integer) sam.getAttribute(src_tag);
+				int poolID = (Integer)  sam.getAttribute(pool_tag);
 				if (pattern != null && (!sam.getReadName().contains(pattern)))
 					continue;
 				Sequence readSeq = new Sequence(Alphabet.DNA(), sam.getReadString(), sam.getReadName());
+				//String poolID = readSeq.get
 				if (readSeq.length() <= 1) {
 					//LOG.warn(sam.getReadName() +" ignored");
 					
@@ -560,11 +609,12 @@ public static boolean combineOutput = false;
 									}
 								}else{
 									
-									annot = new GFFAnnotation(annot1, seqlen, annotation_pw);
+									annot = new GFFAnnotation(annot1, seqlen, annotation_pw, len);
 									
 								}
 							}else{
-								annot = annot_file == null ? new EmptyAnnotation(chr.getName(), chr.getDesc(), seqlen, annotation_pw) :  new Annotation(new File(annot_file), currentIndex+"", seqlen, len);
+								annot = annot_file == null ? new EmptyAnnotation(chr.getName(), chr.getDesc(), seqlen, annotation_pw) : 
+									new Annotation(new File(annot_file), currentIndex+"", seqlen, len);
 							}
 						//	pw.close();
 						if(!combineOutput)	outp = new Outputs(resDir,  in_nmes, overwrite, currentIndex, true, true); 
@@ -573,7 +623,8 @@ public static boolean combineOutput = false;
 					}
 				
 					try{
-						TranscriptUtils.identity1(chr, chr5prime,chr3prime, readSeq, sam, profile, source_index, cluster_reads, chr.length());
+						String pool = readList==null || poolID<0 ? "" : (readList[poolID].split("\\.")[0]+";");
+						TranscriptUtils.identity1(chr, chr5prime,chr3prime, readSeq, sam, profile, source_index, cluster_reads, chr.length(), pool);
 					}catch(NumberFormatException exc){
 						System.err.println(readSeq.getName());
 						exc.printStackTrace();

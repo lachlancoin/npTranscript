@@ -90,7 +90,7 @@ public class TranscriptUtils {
 	 * @return
 	 */
 	public static void identity1(Sequence refSeq, Sequence fivePrimeRefSeq, Sequence threePrimeRefSeq,   Sequence readSeq, SAMRecord sam, IdentityProfile1 profile, 
-			int source_index, boolean cluster_reads, int seqlen) throws NumberFormatException{
+			int source_index, boolean cluster_reads, int seqlen, String poolID) throws NumberFormatException{
 		int readPos = 0;// start from 0
 		//Outputs output = profile.o;
 		int refPos = sam.getAlignmentStart() - 1;// convert to 0-based index
@@ -257,7 +257,7 @@ public class TranscriptUtils {
 			}
 			 
 			String secondKey= profile.processRefPositions(sam, id, cluster_reads, 
-					refSeq, source_index, readSeq,baseQ, st_r, end_r, strand, align_5prime, align_3prime,align_3primeRev, offset_3prime, polyAlen);
+					refSeq, source_index, readSeq,baseQ, st_r, end_r, strand, align_5prime, align_3prime,align_3primeRev, offset_3prime, polyAlen, poolID);
 			//String ID = profile.clusterID
 			diff_r = readSeq.length() - profile.readEn;
 			seq11[0]=  profile.readSt; seq11[1] = profile.readEn; 

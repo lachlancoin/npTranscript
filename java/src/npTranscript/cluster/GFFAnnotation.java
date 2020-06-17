@@ -74,7 +74,7 @@ public class GFFAnnotation extends Annotation{
 	
 
 	
-	public	GFFAnnotation(JapsaAnnotation annot, int seqlen, PrintWriter pw) throws IOException{
+	public	GFFAnnotation(JapsaAnnotation annot, int seqlen, PrintWriter pw, int source_count) throws IOException{
 		super(annot.getAnnotationID(), seqlen);
 		String name = "Name";
 		String description="description";
@@ -119,7 +119,7 @@ public class GFFAnnotation extends Annotation{
 			
 		}
 		
-		super.mkOrfs();
+		super.mkOrfs(source_count);
 	}
 	public GFFAnnotation(String chrom, int seqlen) {
 		// TODO Auto-generated constructor stub
