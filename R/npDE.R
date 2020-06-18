@@ -19,18 +19,14 @@ if(length(args)==0){
 }
 	control_names = unlist(strsplit(args[1],':'))
 	infected_names =unlist(strsplit(args[2],':'))
-#	prefix = args[3]
-#	filterByPrefix = args[4]
 	analysis=args[3]
 	edgeR = FALSE;
 	if(analysis=="edgeR") edgeR = T
 
 library(VGAM)
-#library(biomaRt)
-#library(edgeR)
+library(edgeR)
 library(stats)
-#library(rhdf5)
-#read.gff(file, na.strings = c(".", "?"), GFF3 = TRUE)
+
 #library(seqinr)
 
 resdir = "results"
@@ -93,86 +89,28 @@ target= list( chrom="character",
 infilesT = grep("transcripts.txt", dir(), v=T)
 transcriptsl = readTranscriptHostAll(infilesT, start_text = start_text,target = target,   filter = filter, 
                                     combined_depth_thresh = 1)
-#
-
+attributes = attributes(transcriptsl)
 filenames = attr(transcriptsl,"info")
-#names(transcripts)[grep("count[0-9]",names(transcripts))] = filenames
 control_names = unlist(lapply(control_names, grep, filenames, v=T));#  grep(control_names,filenames,v=T)
 infected_names = unlist(lapply(infected_names, grep, filenames, v=T))
 print(paste("control",paste(control_names,collapse=" ")))
 print(paste("infected" , paste(infected_names, collapse=" ")))
 
 transcriptsl = lapply(transcriptsl, .processTranscripts)
-transcriptsl = lapply(transcriptsl, .mergeRows,sum_names= c(control_names, infected_names), colid="geneID" )
-transcripts=.combineTranscripts(transcriptsl)
-attributes = attributes(transcripts)
-info = attr(transcripts,'info')
-
-
-transcripts=.addAnnotation("annotation.csv.gz", transcripts, colid="geneID", nmes = c("ID" , "Name" , "Description","biotype"))
-
-#if(filterByPrefix=="T"){
-  pos = lapply(transcripts$geneID, function(x) strsplit(x,"\\.")[[1]])
-  lens = (lapply(pos,length))
-  indsK = lens!=2 
-  indsK1 = which(lens==2)
-  ##keep those things which dont have 2 elements sepearated by . or which do and are not numeric
-  tokeep = c(which(indsK),indsK1[(is.na(lapply(pos[indsK1],function(x) min(as.numeric(x)))))])
-  transcripts = transcripts[tokeep,,drop=F]
-  if(length(tokeep)>0){
-    transcripts_removed=transcripts[-tokeep,,drop=F]
-  }else{
-    transcripts_removed=transcripts[c(),,drop=F]
-  }
-  
-#}
-
-ord = order(transcripts$countT, decreasing=T)
-head(transcripts[ord,])
-
-
-##find DE genes
-
-DE1 = DEgenes(transcripts, control_names, infected_names,edgeR = edgeR);
-DE1 = .transferAttributes(DE1, attributes)
-head(DE1[attr(DE1,"order"),])
-.write(DE1 ,resdir,"results.csv")
-
-
-DE1_removed = DEgenes(transcripts_removed, control_names, infected_names,edgeR = edgeR);
-DE1_removed = .transferAttributes(DE1_removed, attributes)
-head(DE1_removed[attr(DE1,"order"),])
-.write(DE1_removed, resdir,"results_removed.csv")
-  
+filtered = .filter(transcriptsl)
 
 pdf(paste(resdir, "/qq.pdf",sep=""))
-.qqplot(DE1$pvals, min.p= 1e-200,main="both")
-.qqplot(DE1$pvals1, min.p= 1e-200,main="infected_more")
-.qqplot(DE1$pvals2, min.p= 1e-200,main="infected less",add=T)
-#.vis(DE1,i=1,min.p=1e-50)
-# .vis(DE1,i=2,min.p=1e-50)
-
-dev.off()
-
-pdf(paste(resdir, "/qq_removed.pdf",sep=""))
-.qqplot(DE1_removed$pvals, min.p= 1e-200,main="both")
-.qqplot(DE1_removed$pvals1, min.p= 1e-200,main="infected_more")
-.qqplot(DE1_removed$pvals2, min.p= 1e-200,main="infected less",add=T)
-#.vis(DE1,i=1,min.p=1e-50)
-# .vis(DE1,i=2,min.p=1e-50)
-
+.process(filtered$keep,attributes, resdir, control_names, infected_names, outp= "results.csv", type="keep")
+.process(filtered$remove,attributes, resdir, control_names, infected_names, outp= "results_removed.csv", type="keep")
 dev.off()
 
 #this calculates pvalues for base-level error rates
 
 print("####DEPTH ANALYSIS #### ")
+##library(rhdf5)
 #source(.findFile(src, "depth_association.R"))
 
 
 
-###BIOMART ANALYSIS
-dataset="csabaeus_gene_ensembl"
- mirror = "uswest"
-print("####BIOMART ANALYISIS #### ")
-#source(.findFile(src, "biomart_analysis.R"))
+
 

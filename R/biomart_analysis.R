@@ -1,5 +1,12 @@
 library(biomaRt)
-
+###BIOMART ANALYSIS
+dataset="csabaeus_gene_ensembl"
+mirror = "uswest"
+print("####BIOMART ANALYISIS #### ")
+#source(.findFile(src, "biomart_analysis.R"))
+infile=  "results.csv"
+resdir = "results"
+DE1 = read.table(paste(resdir,infile,sep="/"),sep="\t")
 
 
 if(!is.null(dataset)){

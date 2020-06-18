@@ -256,6 +256,28 @@ infected_inds[i] = which(names(df)==infected_names[i])
 #  output[orders[,1],,drop=F]
 }
 
+.filter<-function(transcriptsl){
+  transcripts_l_keep = list()
+  transcripts_l_remove = list()
+  
+  for(i in 1:length(transcriptsl)){
+    transcripts = transcriptsl[[i]]
+    pos = lapply(as.character(transcripts$geneID), function(x) strsplit(x,"\\.")[[1]])
+    lens = (lapply(pos,length))
+    indsK = lens!=2 
+    indsK1 = which(lens==2)
+    ##keep those things which dont have 2 elements sepearated by . or which do and are not numeric
+    tokeep = c(which(indsK),indsK1[(is.na(lapply(pos[indsK1],function(x) min(as.numeric(x)))))])
+    transcripts_l_keep[[i]] = transcripts[tokeep,,drop=F]
+    if(length(tokeep)>0){
+      transcripts_l_remove[[i]]=transcripts[-tokeep,,drop=F]
+    }else{
+      transcripts_l_remove[[i]]=transcripts[c(),,drop=F]
+    }
+  }
+  list(keep = transcripts_l_keep, remove= transcripts_l_remove)
+}
+
 .transferAttributes<-function(output, attributes){
  att = grep('class' ,grep('names', names(attributes), inv=T, v = T),inv=T,v=T)
  attributes1 = attributes[which(names(attributes) %in% att)]
@@ -409,6 +431,7 @@ if(length(comb)>0) geneID[comb] = rightGene[comb]
 }
 
 .mergeRows<-function(transcripts1,sum_names = c(),  colid='geneID'){
+  if(dim(transcripts1)[[1]]==0) return(NULL)
   sum_names = unique(c(sum_names,"countTotal"));
   ind = which(names(transcripts1) %in% colid)
   ind_s = which(names(transcripts1) %in% sum_names)
@@ -492,8 +515,12 @@ if(inherits(dfi,"try-error")) {
   
   dfs
 }
-.combineTranscripts<-function(dfs, chrom=attr(df, "chroms"), chrom_names =attr(dfs, "chrom_names") ){
-  lengs = unlist(lapply(dfs,function(x) if(is.null(x)) NA else dim(x)[1]))
+.combineTranscripts<-function(dfs, attributes
+                              ){
+                chroms=attributes[[which(names(attributes)=="chroms")]]
+                chrom_names=attributes[[which(names(attributes)=="chrom_names")]]
+                
+  lengs = unlist(lapply(dfs,function(x) if(is.null(x)) 0 else dim(x)[1]))
   ncol = dim(dfs[[1]])[2]
   #lengs = lengs[inds][ord]
   res = data.frame(matrix(nrow  =sum(lengs), ncol = ncol))
@@ -501,13 +528,13 @@ if(inherits(dfi,"try-error")) {
   start=1;
   ranges = matrix(nrow = length(dfs), ncol=3)
   for(i in 1:length(dfs)){
-   # print(i)
-    lengi = dim(dfs[[i]])[1]
+  #  print(i)
+    lengi =lengs[i]
     for(k in 1:ncol){
       if(is.factor(dfs[[i]][,k])) dfs[[i]][,k] = as.character(dfs[[i]][,k])
     }
-    ranges[i,] = c(start, start+lengi-1,dfs[[i]]$chrs[1]);
-    res[ranges[i,1]:ranges[i,2],] = dfs[[i]]
+    ranges[i,] = c(start, start+lengi-1,chrom_names[i]);
+    if(lengi>0) res[ranges[i,1]:ranges[i,2],] = dfs[[i]]
     start = start+lengi
   }
   names(chroms) = chrom_names
@@ -526,6 +553,25 @@ if(inherits(dfi,"try-error")) {
   
   res
 }
+
+
+.process<-function(transcriptsl, attributes, resdir, control_names, infected_names, outp = "results.csv", type=""){
+  transcriptsl = lapply(transcriptsl, .mergeRows,sum_names= c(control_names, infected_names), colid="geneID" )
+  transcripts=.combineTranscripts(transcriptsl, attributes)
+  # 
+  info = attr(transcripts,'info')
+  transcripts=.addAnnotation("annotation.csv.gz", transcripts, colid="geneID", nmes = c("ID" , "Name" , "Description","biotype"))
+  DE1 = DEgenes(transcripts, control_names, infected_names,edgeR = edgeR);
+  DE1 = .transferAttributes(DE1, attributes)
+  .write(DE1 ,resdir,outp)
+  .qqplot(DE1$pvals, min.p= 1e-200,main=paste(type,"both"))
+  .qqplot(DE1$pvals1, min.p= 1e-200,main=paste(type,"infected_more"))
+  .qqplot(DE1$pvals2, min.p= 1e-200,main=paste(type,"infected less"),add=T)
+  #.vis(DE1,i=1,min.p=1e-50)
+  # .vis(DE1,i=2,min.p=1e-50)
+  invisible(list(DE1=DE1, transcripts=transcripts))
+}
+
 
 
 readIsoformH5<-function(h5file,  transcripts_){
