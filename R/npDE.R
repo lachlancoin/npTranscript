@@ -15,11 +15,12 @@ if(install){
 
 args = commandArgs(trailingOnly=TRUE)
 if(length(args)==0){
-  args = c("control","infected", "betabinom")
+  args = c("control","infected", "betabinom","none")
 }
 	control_names = unlist(strsplit(args[1],':'))
 	infected_names =unlist(strsplit(args[2],':'))
 	analysis=args[3]
+	exclude_nme = args[4]
 	edgeR = FALSE;
 	if(analysis=="edgeR") edgeR = T
 
@@ -52,12 +53,6 @@ dir.create(resdir);
 src = c( "../../R" , "~/github/npTranscript/R" )
 source(.findFile(src, "transcript_functions.R"))
 source(.findFile(src, "diff_expr_functs.R"))
-
-
-
-
-
-
 
 files = dir()
 chroms = NULL
@@ -93,6 +88,10 @@ attributes = attributes(transcriptsl)
 filenames = attr(transcriptsl,"info")
 control_names = unlist(lapply(control_names, grep, filenames, v=T));#  grep(control_names,filenames,v=T)
 infected_names = unlist(lapply(infected_names, grep, filenames, v=T))
+control_names = grep(exclude_nme, control_names, inv=T,v=T)
+infected_names = grep(exclude_nme, infected_names, inv=T,v=T)
+
+
 print(paste("control",paste(control_names,collapse=" ")))
 print(paste("infected" , paste(infected_names, collapse=" ")))
 
