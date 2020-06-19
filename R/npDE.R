@@ -15,12 +15,22 @@ if(install){
 
 args = commandArgs(trailingOnly=TRUE)
 if(length(args)==0){
-  args = c("control","infected", "betabinom","none")
+  args = c("control=control","infected=infected", "betabinom","none")
 }
-	control_names = unlist(strsplit(args[1],':'))
-	infected_names =unlist(strsplit(args[2],':'))
+
+  control_names = unlist(strsplit(args[1],':'))
+  infected_names = unlist(strsplit(args[2],':'))
+  type_names = c("control","infected")
+  if(length(control_names[1])==1) type_names[1] = control_names[1]
+  if(length(infected_names[1])==1) type_names[2] = infected_names[1]
+  
+  type_names = c(control_names[1], infected_names[1])
+
+	control_names = unlist(strsplit(control_names1[2],':'))
+	infected_names =unlist(strsplit(infected_names1[2],':'))
 	analysis=args[3]
-	exclude_nme = args[4]
+	
+	exclude_nme = if(length(args)<4) "do_not_include"  else args[4]
 	edgeR = FALSE;
 	if(analysis=="edgeR") edgeR = T
 
@@ -92,15 +102,15 @@ control_names = grep(exclude_nme, control_names, inv=T,v=T)
 infected_names = grep(exclude_nme, infected_names, inv=T,v=T)
 
 
-print(paste("control",paste(control_names,collapse=" ")))
-print(paste("infected" , paste(infected_names, collapse=" ")))
+print(paste(type_names[1],paste(control_names,collapse=" ")))
+print(paste(type_names[2] , paste(infected_names, collapse=" ")))
 
 transcriptsl = lapply(transcriptsl, .processTranscripts)
 filtered = .filter(transcriptsl)
 
 pdf(paste(resdir, "/qq.pdf",sep=""))
-.process(filtered$keep,attributes, resdir, control_names, infected_names, outp= "results.csv", type="keep")
-.process(filtered$remove,attributes, resdir, control_names, infected_names, outp= "results_removed.csv", type="keep")
+.process(filtered$keep,attributes, resdir, control_names, infected_names, type_names= type_names, outp= "results.csv", type="keep")
+.process(filtered$remove,attributes, resdir, control_names, infected_names, type_names = type_names, outp= "results_removed.csv", type="keep")
 dev.off()
 
 #this calculates pvalues for base-level error rates
