@@ -81,7 +81,7 @@ public class TranscriptUtils {
 	public static Sequence polyA = new Sequence(Alphabet.DNA(), "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".toCharArray(), "polyA");
 	public  static boolean tryComplementOnExtra = false;
 	public static boolean reAlignExtra = false;
-	public static boolean findPolyA = false;
+	//public static boolean findPolyA = false;
 	/**
 	 * Get the identity between a read sequence from a sam and a reference sequence
 	 * 
@@ -217,7 +217,7 @@ public class TranscriptUtils {
 				 offset_3prime = refSeq.length()-threePrimeRefSeq.length();
 			}
 			Sequence leftseq = null;  Sequence rightseq = null;
-			if(st_r> 20 && TranscriptUtils.findPolyA){
+			if(st_r> extra_threshold && Outputs.writePolyA){
 				leftseq = readSeq.subSequence(0,st_r);
 				SWGAlignment polyAlign =  SWGAlignment.align(leftseq, polyA);
 				if(polyAlign.getIdentity() > 0.9 * polyAlign.getLength()  && polyAlign.getLength()>15){
@@ -237,7 +237,7 @@ public class TranscriptUtils {
 				}
 
 			}
-			if(readSeq.length() -  end_r >20 && TranscriptUtils.findPolyA){
+			if(readSeq.length() -  end_r >extra_threshold && Outputs.writePolyA){
 				rightseq = readSeq.subSequence(end_r+1, readSeq.length());
 				SWGAlignment polyAlign =  SWGAlignment.align(rightseq, polyA);
 				if(polyAlign.getIdentity() > 0.9 * polyAlign.getLength()  && polyAlign.getLength()>10 ){
