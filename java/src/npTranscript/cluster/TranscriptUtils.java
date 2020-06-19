@@ -13,6 +13,9 @@ import japsa.seq.Sequence;
 
 public class TranscriptUtils {
 	
+	public static double qual_thresh = 20.0D;
+
+	
 	public static int break_thresh = 1000;
 	public static int endThresh = 100;
 	public static int startThresh = 100;
@@ -78,10 +81,12 @@ public class TranscriptUtils {
 	public  static boolean checkNegStrand = false;
 	
 	
+	
+	
 	public static Sequence polyA = new Sequence(Alphabet.DNA(), "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".toCharArray(), "polyA");
 	public  static boolean tryComplementOnExtra = false;
 	public static boolean reAlignExtra = false;
-	public static boolean findPolyA = false;
+	//public static boolean findPolyA = false;
 	/**
 	 * Get the identity between a read sequence from a sam and a reference sequence
 	 * 
@@ -196,6 +201,7 @@ public class TranscriptUtils {
 			
 			
 			String baseQ = sam.getBaseQualityString();
+			byte[]phredQs = sam.getBaseQualities();
 			char strand = sam.getReadNegativeStrandFlag() ? '-': '+';
 			SWGAlignment align_5prime = null;
 			SWGAlignment align_3prime = null;
@@ -217,8 +223,13 @@ public class TranscriptUtils {
 				 offset_3prime = refSeq.length()-threePrimeRefSeq.length();
 			}
 			Sequence leftseq = null;  Sequence rightseq = null;
-			if(st_r> 20 && TranscriptUtils.findPolyA){
+		 double phredQL = st_r < 20 ? 0 : npTranscript.run.ViralChimericReadsAnalysisCmd.median(phredQs, 0,st_r);
+		// double phredQ = npTranscript.run.ViralChimericReadsAnalysisCmd.median(phredQs, st_r, end_r - st_r);
+		 double phredQR = diff_r <20 ? 0 : npTranscript.run.ViralChimericReadsAnalysisCmd.median(phredQs,  end_r , diff_r);
+		 //System.err.println(phredQL+" "+phredQ+" "+phredQR);
+			if(st_r> extra_threshold && Outputs.writePolyA && phredQL >= qual_thresh){
 				leftseq = readSeq.subSequence(0,st_r);
+				
 				SWGAlignment polyAlign =  SWGAlignment.align(leftseq, polyA);
 				if(polyAlign.getIdentity() > 0.9 * polyAlign.getLength()  && polyAlign.getLength()>15){
 					int st = polyAlign.getStart1();
@@ -237,7 +248,7 @@ public class TranscriptUtils {
 				}
 
 			}
-			if(readSeq.length() -  end_r >20 && TranscriptUtils.findPolyA){
+			if(readSeq.length() -  end_r >extra_threshold && Outputs.writePolyA && phredQR >= qual_thresh){
 				rightseq = readSeq.subSequence(end_r+1, readSeq.length());
 				SWGAlignment polyAlign =  SWGAlignment.align(rightseq, polyA);
 				if(polyAlign.getIdentity() > 0.9 * polyAlign.getLength()  && polyAlign.getLength()>10 ){
@@ -264,10 +275,12 @@ public class TranscriptUtils {
 			seq11[2] = profile.startPos; seq11[3] = profile.endPos;
 			
 		//	System.err.println(refSeq.length());
-			if( (profile.startPos>extra_threshold || profile.endPos <(refSeq.length()-extra_threshold))){
+			//check read not mapping to start or end of reference (?)
+			if( (st_r>extra_threshold || end_r>extra_threshold)){
 			//String desc = ";start="+sam.getAlignmentStart()+";end="+sam.getAlignmentEnd()+";full_length="+readSeq.length()+";strand="+strand;
-			
-			if(st_r >extra_threshold  && st_r > diff_r &&  leftseq!=null ){
+				
+			if(st_r >extra_threshold  && st_r > diff_r  && phredQL >= qual_thresh){
+				if(leftseq==null) leftseq = readSeq.subSequence(0,st_r);
 				//if(leftseq==null) leftseq = readSeq.subSequence(0, st_r);
 				String baseQL = baseQ.equals("*") ?  baseQ : baseQ.substring(0, st_r);
 
@@ -304,7 +317,8 @@ public class TranscriptUtils {
 				profile.o.writeLeft(leftseq,baseQL,sam.getReadNegativeStrandFlag(), source_index);// (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)leftseq1.length());
 				
 			}
-			if(diff_r >extra_threshold && diff_r> st_r &&  rightseq!=null){
+			if(diff_r >extra_threshold && diff_r> st_r &&  phredQR >= qual_thresh){
+				if(rightseq==null)			rightseq = readSeq.subSequence(end_r+1, readSeq.length());
 			//	Sequence rightseq = readSeq.subSequence(end_r, readSeq.length());
 			///	Sequence spanning1 = refSeq.subSequence(Math.max(0, sam.getAlignmentEnd()-10),sam.getAlignmentEnd());
 			//	Sequence spanning2 = refSeq.subSequence(sam.getAlignmentEnd(),Math.min(refSeq.length(), sam.getAlignmentEnd()+10));

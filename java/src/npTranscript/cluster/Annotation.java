@@ -176,4 +176,11 @@ public class Annotation{
 			else unspliced_count[source_index][i]+=1;
 			
 		}
+		public String getTypeNme(int start, int end) {
+			if(start <=TranscriptUtils.startThresh) return end >= seqlen -TranscriptUtils.endThresh ? nmes[0] : nmes[1];
+			else return end >= seqlen -TranscriptUtils.endThresh ? nmes[2] : nmes[3];
+			//return null;
+		}
+
+		static String[] nmes = new String[] {"5_3", "5_no3", "no5_3", "no5_no3"};
 	}

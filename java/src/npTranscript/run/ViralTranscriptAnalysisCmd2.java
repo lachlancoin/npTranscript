@@ -221,6 +221,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		addInt("coverageDepthThresh", 100, "Threshhold for writing base level depth information to h5 file");
 		addInt("isoformDepthThresh", 10, "Threshhold for printing out all isoforms");
 		addDouble("msaDepthThresh", 10, "Threshhold for running MSA per subcluster");
+		addDouble("qualThresh", 20, "Quality thresh for leftover seqs");
 		addString("doMSA", "false" , "Options: 5_3 or all ");
 		//addString("aligner", "kalign" , "Options: kalign3, poa, spoa, abpoa");
 		addInt("startThresh", 100, "Threshold for having 5'");
@@ -232,7 +233,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		addBoolean("keepAlignment", false, "whether to keep alignment for MSA");
 		addBoolean("attempt5rescue", true, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
 		addBoolean("attempt3rescue", true, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
-		addBoolean("writePolyA", true, "whether write reads with polyA in middle");
+		addBoolean("writePolyA", false, "whether write reads with polyA in middle");
 		addBoolean("coronavirus", true, "whether to run in coronavirus mode (necessary to do breakpoint analysis, but takes more memory)");
 		addStdHelp();
 	}
@@ -271,6 +272,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		int startThresh = cmdLine.getIntVal("startThresh");
 		int endThresh = cmdLine.getIntVal("endThresh");
 		int maxReads = cmdLine.getIntVal("maxReads");
+		TranscriptUtils.qual_thresh = cmdLine.getDoubleVal("qualThresh");
 	ViralTranscriptAnalysisCmd2.combineOutput = cmdLine.getBooleanVal("combineOutput");
 		int isoformDepthThresh  = cmdLine.getIntVal("isoformDepthThresh");
 		int coverageDepthThresh = cmdLine.getIntVal("coverageDepthThresh");
@@ -302,7 +304,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 	//	ErrorCorrection.msa = msa;
 		Outputs.writePolyA = cmdLine.getBooleanVal("writePolyA");
 		if(coronavirus){
-			TranscriptUtils.findPolyA = true;
+		//	
 			System.err.println("running in coronavirus mode");
 			calcBreaks  = true; 
 			filterBy5_3 = true;
@@ -315,7 +317,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		
 		}else{
 		//	TranscriptUtils.reAlignExtra = false;
-			TranscriptUtils.findPolyA = false;
+		//	TranscriptUtils.findPolyA = false;
 			TranscriptUtils.coronavirus = false;
 			TranscriptUtils.extra_threshold1 = 1000000;
 			//Outputs.writeUnSplicedFastq = false;
