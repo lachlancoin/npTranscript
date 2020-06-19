@@ -407,12 +407,8 @@ public class CigarCluster  {
 			}
 			return br;
 		}
-		static String[] nmes = new String[] {"5_3", "5_no3", "no5_3", "no5_no3"};
-		public String getTypeNme(int seqlen) {
-			if(start <=TranscriptUtils.startThresh) return end >= seqlen -TranscriptUtils.endThresh ? nmes[0] : nmes[1];
-			else return end >= seqlen -TranscriptUtils.endThresh ? nmes[2] : nmes[3];
-			//return null;
-		}
+	
+		
 
 		public int numBreaks() {
 			return (int)Math.round(((double)this.breaks.size()-2.0)/2.0);

@@ -55,6 +55,26 @@ public class GFFAnnotation extends Annotation{
 		}
 		return chrom_index+"."+TranscriptUtils.round(leftBreak,CigarHash2.round);
 	}
+	private int nextUpstreamIndex(int leftBreak){
+		if(leftBreak<0) return -1;
+		for(int i=start.size()-1; i>=0 ;i--){
+			if(leftBreak + tolerance >= start.get(i) && leftBreak-tolerance<=end.get(i)){// && leftBreak-tolerance<end.get(i)){
+				return i;
+			}
+		}
+		return -1;
+	}
+	
+	private int nextDownstreamIndex(int rightBreak){
+		if(rightBreak<0) return -1;
+		for(int i=0; i<end.size(); i++){
+			if(rightBreak -tolerance <= end.get(i) && rightBreak+tolerance>=start.get(i) ){//&& rightBreak < end.get(i)){
+				return i;
+			}
+		}
+		return   -1;
+		
+	}
 	
 	@Override
 	 int updateRight( int st, int refEnd){
@@ -71,8 +91,15 @@ public class GFFAnnotation extends Annotation{
 	    	}
 	    	return st;
 	    }
-	
-
+	@Override
+	public String getTypeNme(int start_, int end_) {
+		int iend = nextDownstreamIndex(end_);
+		int istart = nextUpstreamIndex(start_);
+		String left = istart<0 ? "NA" : (start_<= this.start.get(istart)+ TranscriptUtils.startThresh ? "5" : "no_5");
+		String right = iend<0 ? "NA" : (end_>= this.end.get(iend)- TranscriptUtils.endThresh ? "3" : "no_3");
+		return left+"_"+right;
+		//return null;
+	}
 	
 	public	GFFAnnotation(JapsaAnnotation annot, int seqlen, PrintWriter pw, int source_count) throws IOException{
 		super(annot.getAnnotationID(), seqlen);

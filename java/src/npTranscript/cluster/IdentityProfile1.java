@@ -188,7 +188,7 @@ public class IdentityProfile1 {
 		
 		
 		
-		String type_nme = coRefPositions.getTypeNme(seqlen);
+		String type_nme = annot.getTypeNme( startPos, endPos); //coRefPositions.getTypeNme(seqlen);
 		String breakSt = coRefPositions.breaks.toString();
 		//coRefPositions.breaks.adjustBreaks(annot);
 		// need to group by start position if we annotating by break pos,e.g. so 5'mapping reads map together

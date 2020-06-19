@@ -221,6 +221,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		addInt("coverageDepthThresh", 100, "Threshhold for writing base level depth information to h5 file");
 		addInt("isoformDepthThresh", 10, "Threshhold for printing out all isoforms");
 		addDouble("msaDepthThresh", 10, "Threshhold for running MSA per subcluster");
+		addDouble("qualThresh", 20, "Quality thresh for leftover seqs");
 		addString("doMSA", "false" , "Options: 5_3 or all ");
 		//addString("aligner", "kalign" , "Options: kalign3, poa, spoa, abpoa");
 		addInt("startThresh", 100, "Threshold for having 5'");
@@ -271,6 +272,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		int startThresh = cmdLine.getIntVal("startThresh");
 		int endThresh = cmdLine.getIntVal("endThresh");
 		int maxReads = cmdLine.getIntVal("maxReads");
+		TranscriptUtils.qual_thresh = cmdLine.getDoubleVal("qualThresh");
 	ViralTranscriptAnalysisCmd2.combineOutput = cmdLine.getBooleanVal("combineOutput");
 		int isoformDepthThresh  = cmdLine.getIntVal("isoformDepthThresh");
 		int coverageDepthThresh = cmdLine.getIntVal("coverageDepthThresh");
