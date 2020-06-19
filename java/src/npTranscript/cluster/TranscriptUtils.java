@@ -264,10 +264,12 @@ public class TranscriptUtils {
 			seq11[2] = profile.startPos; seq11[3] = profile.endPos;
 			
 		//	System.err.println(refSeq.length());
-			if( (profile.startPos>extra_threshold || profile.endPos <(refSeq.length()-extra_threshold))){
+			//check read not mapping to start or end of reference (?)
+			if( (st_r>extra_threshold || end_r>extra_threshold)){
 			//String desc = ";start="+sam.getAlignmentStart()+";end="+sam.getAlignmentEnd()+";full_length="+readSeq.length()+";strand="+strand;
-			
-			if(st_r >extra_threshold  && st_r > diff_r &&  leftseq!=null ){
+				
+			if(st_r >extra_threshold  && st_r > diff_r ){
+				if(leftseq==null) leftseq = readSeq.subSequence(0,st_r);
 				//if(leftseq==null) leftseq = readSeq.subSequence(0, st_r);
 				String baseQL = baseQ.equals("*") ?  baseQ : baseQ.substring(0, st_r);
 
@@ -304,7 +306,8 @@ public class TranscriptUtils {
 				profile.o.writeLeft(leftseq,baseQL,sam.getReadNegativeStrandFlag(), source_index);// (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)leftseq1.length());
 				
 			}
-			if(diff_r >extra_threshold && diff_r> st_r &&  rightseq!=null){
+			if(diff_r >extra_threshold && diff_r> st_r ){
+				if(rightseq==null)			rightseq = readSeq.subSequence(end_r+1, readSeq.length());
 			//	Sequence rightseq = readSeq.subSequence(end_r, readSeq.length());
 			///	Sequence spanning1 = refSeq.subSequence(Math.max(0, sam.getAlignmentEnd()-10),sam.getAlignmentEnd());
 			//	Sequence spanning2 = refSeq.subSequence(sam.getAlignmentEnd(),Math.min(refSeq.length(), sam.getAlignmentEnd()+10));
