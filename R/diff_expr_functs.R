@@ -561,7 +561,10 @@ if(inherits(dfi,"try-error")) {
   # 
   info = attr(transcripts,'info')
   transcripts=.addAnnotation("annotation.csv.gz", transcripts, colid="geneID", nmes = c("ID" , "Name" , "Description","biotype"))
-  DE1 = DEgenes(transcripts, control_names, infected_names,edgeR = edgeR);
+ print(head(transcripts[1,]))
+ print(control_names)
+ print(infected_names)
+   DE1 = try(DEgenes(transcripts, control_names, infected_names,edgeR = edgeR));
   DE1 = .transferAttributes(DE1, attributes)
   .write(DE1 ,resdir,outp)
   .qqplot(DE1$pvals, min.p= 1e-200,main=paste(type,"both"))
