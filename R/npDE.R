@@ -26,8 +26,6 @@ if(length(args)==0){
   
   type_names = c(control_names[1], infected_names[1])
 
-	control_names = unlist(strsplit(control_names1[2],':'))
-	infected_names =unlist(strsplit(infected_names1[2],':'))
 	analysis=args[3]
 	
 	exclude_nme = if(length(args)<4) "do_not_include"  else args[4]
