@@ -202,8 +202,8 @@ public class GFFAnnotation extends Annotation{
 			pw.println(str);
 			//System.err.println(str);
 			this.genes.add(genenme.length()>0 ? genenme : ID);
-			biotypes.putIfAbsent(biotype, biotype);
-			this.type.add(biotypes.get(biotype));
+			biotypes.putIfAbsent(biot, biot);
+			this.type.add(biotypes.get(biot));
 		}
 		
 		super.mkOrfs(source_count);
