@@ -194,7 +194,7 @@ public class GFFAnnotation extends Annotation{
 			String str = ID+"\t"+genenme+"\t"+descr+"\t"+biot;
 			pw.println(str);
 			//System.err.println(str);
-			this.genes.add(ID);
+			this.genes.add(genenme.length()>0 ? genenme : ID);
 			
 		}
 		
