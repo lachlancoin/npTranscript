@@ -130,7 +130,7 @@ public class GFFAnnotation extends Annotation{
 			}
 			return sb.toString();
 		}
-		return "-";
+		return ".";
 		
 	}
 	

@@ -197,7 +197,7 @@ public class Annotation{
 
 		public String getSpan(int startPos, int endPos, boolean forward, Collection<Integer> span) {
 			// TODO Auto-generated method stub
-			return "-";
+			return ".";
 		}
 
 		public String getString(Collection<Integer> span) {
