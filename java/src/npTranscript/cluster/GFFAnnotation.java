@@ -4,8 +4,10 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -14,7 +16,7 @@ import japsa.seq.JapsaFeature;
 
 public class GFFAnnotation extends Annotation{
 
-	
+	 List<String> type = new ArrayList<String>();
 	
 	/* type is gene
 	 * 
@@ -123,9 +125,12 @@ public class GFFAnnotation extends Annotation{
 		if(istart>=0 && iend>=0 && istart <= iend){
 			StringBuffer sb = new StringBuffer();
 			for(int i=istart; i<=iend ; i++){
+				
+				if(span_only.size()==0|| span_only.contains(this.type.get(i))){
 				l.add(i);
 				sb.append(this.genes.get(i));
 				if(i<iend)sb.append(';');
+				}
 				
 			}
 			return sb.toString();
@@ -133,6 +138,7 @@ public class GFFAnnotation extends Annotation{
 		return ".";
 		
 	}
+	 public static List<String> span_only = Arrays.asList("protein_coding".split(":"));
 	
 	@Override
 	public String getTypeNme(int start_, int end_, boolean forward) {
@@ -163,6 +169,7 @@ public class GFFAnnotation extends Annotation{
 		String biot;
 	//	pw.println("ID\tName\tdescription\tbiotype");
 		System.err.println("num features" +annot.numFeatures());
+		Map<String, String> biotypes = new HashMap<String,String>();
 		for(int i=0; i<annot.numFeatures(); i++){
 			JapsaFeature f = annot.getFeature(i);
 			this.start.add(f.getStart());
@@ -195,7 +202,8 @@ public class GFFAnnotation extends Annotation{
 			pw.println(str);
 			//System.err.println(str);
 			this.genes.add(genenme.length()>0 ? genenme : ID);
-			
+			biotypes.putIfAbsent(biotype, biotype);
+			this.type.add(biotypes.get(biotype));
 		}
 		
 		super.mkOrfs(source_count);

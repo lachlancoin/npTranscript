@@ -20,6 +20,10 @@ public class Annotation{
 		 List<Integer> start = new ArrayList<Integer>();
 		 List<Integer> end = new ArrayList<Integer>();
 		 List<Boolean> strand = new ArrayList<Boolean>();
+		
+		 
+		
+		 
 	//	List<Integer> breakSt =  new ArrayList<Integer>();
 		//List<Integer> breakEnd =  new ArrayList<Integer>();
 		 final int seqlen;
