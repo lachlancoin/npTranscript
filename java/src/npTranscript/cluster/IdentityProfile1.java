@@ -84,6 +84,8 @@ public class IdentityProfile1 {
 	public int startPos, endPos;
 	public int readSt, readEn; 
 	
+	
+	
 	public String[] clusterID = new String[2];
 	public String processRefPositions(SAMRecord sam, String id, boolean cluster_reads, Sequence refSeq, int src_index , Sequence readSeq, String baseQ, 
 			int start_read, int end_read, char strand, SWGAlignment align5prime, SWGAlignment align3prime,
@@ -93,7 +95,8 @@ public class IdentityProfile1 {
 		startPos = sam.getAlignmentStart()+1; // transfer to one based
 		endPos = sam.getAlignmentEnd()+1;
 		readSt = start_read; readEn = end_read;
-		boolean hasSplice = false;
+		boolean forward = !sam.getReadNegativeStrandFlag();
+		//boolean hasSplice = false;
 		int  readLength = readSeq.length();
 		Annotation annot = this.all_clusters.annot;
 
@@ -107,6 +110,7 @@ public class IdentityProfile1 {
 		
 		coRefPositions.end = endPos;
 		coRefPositions.start = startPos;
+		coRefPositions.forward = forward;
 		breaks.add(coRefPositions.end);
 		boolean includeInConsensus = true;
 		if( align5prime!=null ){
@@ -148,6 +152,7 @@ public class IdentityProfile1 {
 		}
 		//String roundStartP = annotByBreakPosition ? TranscriptUtils.round(startPos, CigarHash2.round)+"" : 	"";
 		StringBuffer secondKey =new StringBuffer();
+		
 		secondKey.append(pool);
 		//String upstream, upstream2, downstream, downstream2;
 		int maxg = 0;
@@ -155,14 +160,14 @@ public class IdentityProfile1 {
 		int maxg2=0;
 		int maxg_ind2 =-1; 
 		boolean hasLeaderBreak = TranscriptUtils.coronavirus? (breaks.size()>1 &&  annot.isLeader(breaks.get(1))) : false;
-		secondKey.append(annot.nextUpstream(startPos,chrom_index)+";");
+		secondKey.append(annot.nextUpstream(startPos,chrom_index, forward)+";");
 		if(annotByBreakPosition){
 			
 			for(int i=1; i<breaks.size()-1; i+=2){
 				int gap = breaks.get(i+1)-breaks.get(i);
-				String upst = annot.nextUpstream(breaks.get(i), chrom_index);
+				String upst = annot.nextUpstream(breaks.get(i), chrom_index,forward);
 				secondKey.append(upst+",");
-				secondKey.append(annot.nextDownstream(breaks.get(i+1), chrom_index)+";");
+				secondKey.append(annot.nextDownstream(breaks.get(i+1), chrom_index,forward)+";");
 				if(gap > TranscriptUtils.break_thresh){
 					if(annot.isLeader(breaks.get(i))){
 						this.addBreakPoint(source_index, 0, breaks.get(i), breaks.get(i+1));
@@ -184,11 +189,14 @@ public class IdentityProfile1 {
 				}
 			}
 		}
-		secondKey.append(annot.nextDownstream(breaks.get(breaks.size()-1), chrom_index));
+		secondKey.append(annot.nextDownstream(breaks.get(breaks.size()-1), chrom_index, forward));
 		
+		if(Annotation.enforceStrand){
+			secondKey.append(forward ? '+' : '-');
+		}
 		
-		
-		String type_nme = annot.getTypeNme( startPos, endPos); //coRefPositions.getTypeNme(seqlen);
+		String type_nme = annot.getTypeNme( startPos, endPos, forward); //coRefPositions.getTypeNme(seqlen);
+		String span_str = annot.getSpan(startPos, endPos, forward,  coRefPositions.span);
 		String breakSt = coRefPositions.breaks.toString();
 		//coRefPositions.breaks.adjustBreaks(annot);
 		// need to group by start position if we annotating by break pos,e.g. so 5'mapping reads map together
@@ -204,7 +212,7 @@ public class IdentityProfile1 {
 		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"+start_read+"\t"+end_read+"\t"
 		+type_nme+"\t"+chrom+"\t"
 		+startPos+"\t"+endPos+"\t"+coRefPositions.numBreaks()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
-		+coRefPositions.getError(src_index)+"\t"+secondKeySt+"\t"+strand+"\t"+breakSt;
+		+coRefPositions.getError(src_index)+"\t"+secondKeySt+"\t"+strand+"\t"+breakSt+"\t"+span_str;
 		this.o.printRead(str);
 		boolean writeMSA = Outputs.doMSA!=null && includeInConsensus;
 		if(includeInConsensus){

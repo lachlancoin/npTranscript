@@ -148,7 +148,7 @@ public class CigarClusters {
 		}
 		
 	}
-	public void process1(CigarCluster cc,   Outputs o,String chrom,int chrom_index){
+	public void process1(CigarCluster cc,   Outputs o,String chrom,int chrom_index, boolean forward){
 		String read_count = TranscriptUtils.getString(cc.readCount);
 	/*	int startPos, endPos, startPos2, endPos2;
 		if(!IdentityProfile1.annotByBreakPosition ){
@@ -172,10 +172,11 @@ public class CigarClusters {
 		boolean hasLeaderBreak = TranscriptUtils.coronavirus  ? (cc.breaks.size()>1 &&  annot.isLeader(cc.breaks.get(1)*CigarHash2.round)) : false;
 
 		o.printTranscript(
-			cc.id()+"\t"+chrom+"\t"+cc.start+"\t"+cc.end+"\t"+annot.getTypeNme(cc.start, cc.end)+"\t"+
+			cc.id()+"\t"+chrom+"\t"+cc.start+"\t"+cc.end+"\t"+annot.getTypeNme(cc.start, cc.end, forward)+"\t"+
 		//cc.breaks.toString()+"\t"+cc.breaks.hashCode()+"\t"+
 	//	cc.breakSt+"\t"+cc.breakEnd+"\t"+cc.breakSt2+"\t"+cc.breakEnd2+"\t"+
-		cc.all_breaks.size()+"\t"+cc.numBreaks()+"\t"+(hasLeaderBreak? 1: 0)+"\t"+cc.breaks_hash.secondKey+"\t"+
+		cc.all_breaks.size()+"\t"+cc.numBreaks()+"\t"+(hasLeaderBreak? 1: 0)+"\t"+cc.breaks_hash.secondKey+"\t"+annot.getString(cc.span)+"\t"+
+	
 	//	upstream+"\t"+downstream+"\t"+
 	//	upstream2+"\t"+downstream2+"\t"+
 		cc.totLen+"\t"+cc.readCountSum()+"\t"+read_count
@@ -187,10 +188,10 @@ public class CigarClusters {
 			Outputs o, String chrom, int chrom_index
 			) throws IOException{
 		//o.readClusters.close();
-		this.annot.print(o.annotP);
+		if(TranscriptUtils.writeAnnotP) this.annot.print(o.annotP);
 		for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();) {
 			CigarCluster cc = it.next();
-			this.process1(cc, o, chrom, chrom_index);
+			this.process1(cc, o, chrom, chrom_index, cc.forward);
 		}
 		//System.err.println("closing transcripts pw");
 	 //  o.transcriptsP.close();

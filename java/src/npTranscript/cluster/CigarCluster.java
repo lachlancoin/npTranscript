@@ -2,7 +2,9 @@ package npTranscript.cluster;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +25,7 @@ public class CigarCluster  {
 		int breakEnd = -1;
 		int breakSt2 = -1;
 		int breakEnd2 = -1;
+		 Boolean forward = null;
 		
 		private final String id;
 		
@@ -98,6 +101,8 @@ public class CigarCluster  {
 		
 		public CigarCluster(String id,  int num_sources, CigarCluster c1, int source_index) throws NumberFormatException{
 			this(id, num_sources);
+			this.span.addAll(c1.span);
+			this.forward = c1.forward;
 			this.breakSt = c1.breakSt;
 			this.breakEnd = c1.breakEnd;
 			this.breakSt2 = c1.breakSt2;
@@ -126,6 +131,8 @@ public class CigarCluster  {
 		final private SparseVector[] maps, errors;
 		public void clear(int source_index) {
 			map.clear();
+			span.clear();
+			this.forward = null;
 			this.breakSt=-1;
 			this.breakEnd = -1;
 			this.breakSt2=-1;
@@ -311,6 +318,7 @@ public class CigarCluster  {
 		private int readCountSum;
 		//int numPos =-1;
 		int totLen = -1;
+		public Collection<Integer> span = new HashSet<Integer>();
 		
 		
 		/** if its going to be less than thresh we return zero */
@@ -375,7 +383,7 @@ public class CigarCluster  {
 			if(breakSt2<0 || (c1.breakSt2>=0 & c1.breakSt2 > breakSt2)) breakSt2 = c1.breakSt2;
 			if(breakEnd2<0 || (c1.breakEnd2>=0 &  c1.breakEnd2 < breakEnd2)) breakEnd2 = c1.breakEnd2;
 			//int subID;
-			
+			this.span.addAll(c1.span);
 			if(c1.all_breaks!=null){
 				/*for(Iterator<CigarHash2> it = c1.all_breaks.keySet().iterator() ; it.hasNext();){
 					CigarHash2 nxt = it.next();

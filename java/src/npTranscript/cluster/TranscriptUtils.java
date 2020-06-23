@@ -203,6 +203,7 @@ public class TranscriptUtils {
 			String baseQ = sam.getBaseQualityString();
 			byte[]phredQs = sam.getBaseQualities();
 			char strand = sam.getReadNegativeStrandFlag() ? '-': '+';
+			boolean forward = !sam.getReadNegativeStrandFlag();
 			SWGAlignment align_5prime = null;
 			SWGAlignment align_3prime = null;
 			SWGAlignment align_3primeRev = null;
@@ -227,7 +228,7 @@ public class TranscriptUtils {
 		// double phredQ = npTranscript.run.ViralChimericReadsAnalysisCmd.median(phredQs, st_r, end_r - st_r);
 		 double phredQR = diff_r <20 ? 0 : npTranscript.run.ViralChimericReadsAnalysisCmd.median(phredQs,  end_r , diff_r);
 		 //System.err.println(phredQL+" "+phredQ+" "+phredQR);
-			if(st_r> extra_threshold && Outputs.writePolyA && phredQL >= qual_thresh){
+			if(st_r> extra_threshold && Outputs.writePolyA && !Double.isNaN(phredQL) && phredQL >= qual_thresh){
 				leftseq = readSeq.subSequence(0,st_r);
 				
 				SWGAlignment polyAlign =  SWGAlignment.align(leftseq, polyA);
@@ -248,7 +249,7 @@ public class TranscriptUtils {
 				}
 
 			}
-			if(readSeq.length() -  end_r >extra_threshold && Outputs.writePolyA && phredQR >= qual_thresh){
+			if(readSeq.length() -  end_r >extra_threshold && Outputs.writePolyA &&  !Double.isNaN(phredQR) && phredQR >= qual_thresh){
 				rightseq = readSeq.subSequence(end_r+1, readSeq.length());
 				SWGAlignment polyAlign =  SWGAlignment.align(rightseq, polyA);
 				if(polyAlign.getIdentity() > 0.9 * polyAlign.getLength()  && polyAlign.getLength()>10 ){
@@ -279,7 +280,7 @@ public class TranscriptUtils {
 			if( (st_r>extra_threshold || end_r>extra_threshold)){
 			//String desc = ";start="+sam.getAlignmentStart()+";end="+sam.getAlignmentEnd()+";full_length="+readSeq.length()+";strand="+strand;
 				
-			if(st_r >extra_threshold  && st_r > diff_r  && phredQL >= qual_thresh){
+			if(st_r >extra_threshold  && st_r > diff_r  && !Double.isNaN(phredQL) && phredQL >= qual_thresh){
 				if(leftseq==null) leftseq = readSeq.subSequence(0,st_r);
 				//if(leftseq==null) leftseq = readSeq.subSequence(0, st_r);
 				String baseQL = baseQ.equals("*") ?  baseQ : baseQ.substring(0, st_r);
@@ -299,12 +300,12 @@ public class TranscriptUtils {
 							refSeq.subSequence(profile.startPos - 10000, profile.endPos+1000);
 				align_5prime = SWGAlignment.align(leftseq, refSeq1);
 				 TranscriptUtils.getStartEnd(align_5prime, seq1, seq2, 0, 0, sam.getReadNegativeStrandFlag());
-				String secondKey1 =  profile.all_clusters.annot.nextUpstream(seq1[2], profile.chrom_index)+";"+profile.all_clusters.annot.nextDownstream(seq1[3], profile.chrom_index);
+				String secondKey1 =  profile.all_clusters.annot.nextUpstream(seq1[2], profile.chrom_index, forward)+";"+profile.all_clusters.annot.nextDownstream(seq1[3], profile.chrom_index,forward);
 				desc.append(" "+String.format("%5.3g",(double)seq2[1]/(double) seq2[0]).trim()+" "+secondKey1+" "+getString(seq1)+";"+getString(seq2));
 				if(tryComplementOnExtra){
 					align_5prime = SWGAlignment.align(TranscriptUtils.revCompl(leftseq), refSeq);
 					 TranscriptUtils.getStartEnd(align_5prime, seq1, seq2, 0, 0, !sam.getReadNegativeStrandFlag());
-						 secondKey1 =  profile.all_clusters.annot.nextUpstream(seq1[2], profile.chrom_index)+";"+profile.all_clusters.annot.nextDownstream(seq1[3], profile.chrom_index);
+						 secondKey1 =  profile.all_clusters.annot.nextUpstream(seq1[2], profile.chrom_index,forward)+";"+profile.all_clusters.annot.nextDownstream(seq1[3], profile.chrom_index,forward);
 
 					 desc.append(" "+secondKey1+" "+String.format("%5.3g",(double)seq2[1]/(double) seq2[0]).trim()+" "+getString(seq1)+";"+getString(seq2));
 						
@@ -317,7 +318,7 @@ public class TranscriptUtils {
 				profile.o.writeLeft(leftseq,baseQL,sam.getReadNegativeStrandFlag(), source_index);// (double) Math.max(mtch_3, mtch_5)> 0.7 * (double)leftseq1.length());
 				
 			}
-			if(diff_r >extra_threshold && diff_r> st_r &&  phredQR >= qual_thresh){
+			if(diff_r >extra_threshold && diff_r> st_r && !Double.isNaN(phredQR) && phredQR >= qual_thresh){
 				if(rightseq==null)			rightseq = readSeq.subSequence(end_r+1, readSeq.length());
 			//	Sequence rightseq = readSeq.subSequence(end_r, readSeq.length());
 			///	Sequence spanning1 = refSeq.subSequence(Math.max(0, sam.getAlignmentEnd()-10),sam.getAlignmentEnd());
@@ -341,13 +342,13 @@ public class TranscriptUtils {
 				 align_3prime = SWGAlignment.align(rightseq, refSeq1);
 					
 				 TranscriptUtils.getStartEnd(align_3prime, seq1, seq2, end_r, 0, sam.getReadNegativeStrandFlag());
-					String secondKey1 =  profile.all_clusters.annot.nextUpstream(seq1[2], profile.chrom_index)+";"+profile.all_clusters.annot.nextDownstream(seq1[3], profile.chrom_index);
+					String secondKey1 =  profile.all_clusters.annot.nextUpstream(seq1[2], profile.chrom_index,forward)+";"+profile.all_clusters.annot.nextDownstream(seq1[3], profile.chrom_index,forward);
 
 				 desc.append(" "+String.format("%5.3g",(double)seq2[1]/(double) seq2[0]).trim()+" "+secondKey1+" "+getString(seq1)+";"+getString(seq2));
 				 if(tryComplementOnExtra){
 						align_3prime = SWGAlignment.align(TranscriptUtils.revCompl(rightseq), refSeq);
 						 TranscriptUtils.getStartEnd(align_3prime, seq1, seq2, end_r, 0, !sam.getReadNegativeStrandFlag());
-							 secondKey1 =  profile.all_clusters.annot.nextUpstream(seq1[2], profile.chrom_index)+";"+profile.all_clusters.annot.nextDownstream(seq1[3], profile.chrom_index);
+							 secondKey1 =  profile.all_clusters.annot.nextUpstream(seq1[2], profile.chrom_index,forward)+";"+profile.all_clusters.annot.nextDownstream(seq1[3], profile.chrom_index,forward);
 
 						 desc.append(" "+secondKey1+" "+String.format("%5.3g",(double)seq2[1]/(double) seq2[0]).trim()+" "+getString(seq1)+";"+getString(seq2));
 							
@@ -418,6 +419,9 @@ public class TranscriptUtils {
 	static Integer[] seq2 = new  Integer[2];
 	static Integer[] seq11 = new Integer[4];
 	static Integer[] seq21 = new  Integer[2];
+
+
+	public static boolean writeAnnotP = true;
 	
 	 static  void getStartEnd(SWGAlignment align, Integer[] seq1, Integer[] seq2,  int offset1, int offset2,  boolean negStrand1) {
 		int len1 = align.getOriginalSequence1().length();

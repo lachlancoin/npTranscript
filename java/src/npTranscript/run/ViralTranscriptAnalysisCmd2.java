@@ -209,6 +209,8 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			addString("type", all_types, "Type of annotation (only included if annotation is GFF file", false);
 		addString("chroms", "all", "Restrict to these chroms, colon delimited", false);
 		addString("resdir", "results"+System.currentTimeMillis(), "results directory");
+		addString("GFF_features", "Name:description:ID:biotype", "GFF feature names");
+		addBoolean("RNA", false, "If is direct RNA");
 		addInt("maxReads", Integer.MAX_VALUE, "ORF annotation file");
 		addInt("minClusterEntries",10,"threshold for consensus");
 		addBoolean("tryComplementOnExtra", false, "look for negative strand matches on left over seqs");
@@ -272,6 +274,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		int startThresh = cmdLine.getIntVal("startThresh");
 		int endThresh = cmdLine.getIntVal("endThresh");
 		int maxReads = cmdLine.getIntVal("maxReads");
+		Annotation.enforceStrand = cmdLine.getBooleanVal("RNA");
 		TranscriptUtils.qual_thresh = cmdLine.getDoubleVal("qualThresh");
 	ViralTranscriptAnalysisCmd2.combineOutput = cmdLine.getBooleanVal("combineOutput");
 		int isoformDepthThresh  = cmdLine.getIntVal("isoformDepthThresh");
@@ -282,6 +285,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		TranscriptUtils.reAlignExtra = cmdLine.getBooleanVal("reAlignExtra");
 		TranscriptUtils.attempt5rescue = cmdLine.getBooleanVal("attempt5rescue");
 		TranscriptUtils.attempt3rescue = cmdLine.getBooleanVal("attempt3rescue");
+		GFFAnnotation.setGFFFeatureNames(cmdLine.getStringVal("GFF_features").split(":"));
 		boolean sorted = true;
 		boolean coronavirus = cmdLine.getBooleanVal("coronavirus");
 		String[] msaOpts = cmdLine.getStringVal("doMSA").split(":"); //e.g 5_3:sep or all:sep
@@ -313,6 +317,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			TranscriptUtils.coronavirus = true;
 			TranscriptUtils.extra_threshold1 =50;
 			annotByBreakPosition = true;
+			TranscriptUtils.writeAnnotP = true;
 			CigarHash2.subclusterBasedOnStEnd = false;
 		
 		}else{
@@ -322,6 +327,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 			TranscriptUtils.extra_threshold1 = 1000000;
 			//Outputs.writeUnSplicedFastq = false;
 			TranscriptUtils.checkAlign = false;
+			TranscriptUtils.writeAnnotP = false;
 			System.err.println("running in host mode");
 			CigarHash2.subclusterBasedOnStEnd = false;
 			calcBreaks = false;
@@ -602,6 +608,8 @@ public static boolean combineOutput = false;
 							
 							if(gff){
 								JapsaAnnotation annot1 = anno.get(chr.getName());
+								if(annot1==null) annot1 = anno.get("chr"+chr.getName());
+								if(annot1==null) annot1 = anno.get(chr.getName().replaceAll("chr", ""));
 								if(annot1==null){
 									try{
 										annot = new EmptyAnnotation(chr.getName(), chr.getDesc(), seqlen, annotation_pw);

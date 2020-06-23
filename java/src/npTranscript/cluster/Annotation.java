@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 /**
  * @author Lachlan Coin
@@ -17,6 +19,7 @@ public class Annotation{
 		List<String> genes= new ArrayList<String>();
 		 List<Integer> start = new ArrayList<Integer>();
 		 List<Integer> end = new ArrayList<Integer>();
+		 List<Boolean> strand = new ArrayList<Boolean>();
 	//	List<Integer> breakSt =  new ArrayList<Integer>();
 		//List<Integer> breakEnd =  new ArrayList<Integer>();
 		 final int seqlen;
@@ -28,7 +31,7 @@ public class Annotation{
 		public static int tolerance = 10;
 		public static int correctionDistLeft = 10000;
 		public static int correctionDistRight = 10000;	
-	
+		public static boolean enforceStrand = true;
 		
 		public void print(PrintWriter pw){
 			int len = spliced_count.length;
@@ -49,24 +52,28 @@ public class Annotation{
 			pw.flush();
 		}
 		
-		public String nextDownstream(int rightBreak, int chrom_index){
+		public String nextDownstream(int rightBreak, int chrom_index, boolean forward){
 			if(rightBreak<0) return null;
 			for(int i=0; i<start.size(); i++){
-				if(rightBreak -tolerance <= start.get(i) ){//&& rightBreak < end.get(i)){
-					return genes.get(i);
+				if(!enforceStrand || forward==this.strand.get(i)){
+					if(rightBreak -tolerance <= start.get(i) ){//&& rightBreak < end.get(i)){
+						return genes.get(i);
+					}
 				}
 			}
-			return "end"+(chrom_index>0 ? "."+chrom_index : "");
+			return "end"+(chrom_index>0 ? "."+chrom_index : "");//+ (enforceStrand ? (forward ? "+" : "-") : "");
 		}
 		
-		public String nextUpstream(int leftBreak, int chrom_index){
+		public String nextUpstream(int leftBreak, int chrom_index, boolean forward){
 			if(leftBreak<0) return  "null";
 			for(int i=start.size()-1; i>=0 ;i--){
+				if(!enforceStrand || forward==this.strand.get(i)){
 				if(leftBreak >= start.get(i)){// && leftBreak-tolerance<end.get(i)){
 					return genes.get(i);
 				}
+				}
 			}
-			return "st"+(chrom_index>0 ? "."+chrom_index : "");
+			return "st"+(chrom_index>0 ? "."+chrom_index : "");//+(enforceStrand ? (forward ? "+" : "-") : "");
 		}
 	
     int updateLeft(int en, int refStart){
@@ -107,6 +114,7 @@ public class Annotation{
 		this.seqlen = seqlen;
 		this.chrom = chrom;
 	}
+	
 	public	Annotation(File f,String chrom, int seqlen, int source_count) throws IOException{
 		this(chrom, seqlen);
 		BufferedReader br = new BufferedReader(new FileReader(f)) ;
@@ -114,6 +122,7 @@ public class Annotation{
 			int gene_ind = header.indexOf("gene");
 			int start_ind = header.indexOf("Minimum");
 			int end_ind = header.indexOf("Maximum");
+			int direction_ind = header.indexOf("Direction");
 			String str = "";
 			for(int i=0; (str=br.readLine())!=null; i++){
 				String[] line = str.split(",");
@@ -123,6 +132,7 @@ public class Annotation{
 					int en = Integer.parseInt(line[end_ind]);
 					start.add(st);
 					end.add(en);
+					strand.add(line[direction_ind].equals("forward"));
 				//	if(i>0){
 				//		this.breakSt.add(break_start);
 				//		this.breakEnd.add(st);
@@ -176,11 +186,27 @@ public class Annotation{
 			else unspliced_count[source_index][i]+=1;
 			
 		}
-		public String getTypeNme(int start, int end) {
+		public String getTypeNme(int start, int end, boolean forward) {
 			if(start <=TranscriptUtils.startThresh) return end >= seqlen -TranscriptUtils.endThresh ? nmes[0] : nmes[1];
 			else return end >= seqlen -TranscriptUtils.endThresh ? nmes[2] : nmes[3];
 			//return null;
 		}
 
 		static String[] nmes = new String[] {"5_3", "5_no3", "no5_3", "no5_no3"};
+
+
+		public String getSpan(int startPos, int endPos, boolean forward, Collection<Integer> span) {
+			// TODO Auto-generated method stub
+			return "-";
+		}
+
+		public String getString(Collection<Integer> span) {
+			if(span.size()==0) return "-";
+			StringBuffer sb = new StringBuffer();
+			for(Iterator<Integer> it = span.iterator(); it.hasNext();){
+				sb.append(this.genes.get(it.next()));
+				if(it.hasNext())sb.append(";");
+			}
+			return sb.toString();
+		}
 	}

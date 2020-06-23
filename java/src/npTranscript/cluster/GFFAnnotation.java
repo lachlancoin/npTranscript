@@ -4,6 +4,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -34,42 +35,50 @@ public class GFFAnnotation extends Annotation{
 		return m;
 	}
 	@Override
-	public String nextDownstream(int rightBreak, int chrom_index){
+	public String nextDownstream(int rightBreak, int chrom_index, boolean forward){
 		if(rightBreak<0) return null;
 		for(int i=0; i<end.size(); i++){
+			if(!enforceStrand || forward==this.strand.get(i)){
 			if(rightBreak -tolerance <= end.get(i) && rightBreak+tolerance>=start.get(i) ){//&& rightBreak < end.get(i)){
 				return genes.get(i);
 			}
+			}
 		}
-		return   chrom_index+"."+TranscriptUtils.round(rightBreak,CigarHash2.round);
+		return   chrom_index+"."+TranscriptUtils.round(rightBreak,CigarHash2.round);//+(enforceStrand ? (forward ? "+" : "-") : "");
 		
 	}
 	
 	@Override
-	public String nextUpstream(int leftBreak, int chrom_index){
+	public String nextUpstream(int leftBreak, int chrom_index, boolean forward){
 		if(leftBreak<0) return null;
 		for(int i=start.size()-1; i>=0 ;i--){
+			if(!enforceStrand || forward==this.strand.get(i)){
 			if(leftBreak + tolerance >= start.get(i) && leftBreak-tolerance<=end.get(i)){// && leftBreak-tolerance<end.get(i)){
 				return genes.get(i);
 			}
+			}
 		}
-		return chrom_index+"."+TranscriptUtils.round(leftBreak,CigarHash2.round);
+		return chrom_index+"."+TranscriptUtils.round(leftBreak,CigarHash2.round);//+(enforceStrand ? (forward ? "+" : "-") : "");
 	}
-	private int nextUpstreamIndex(int leftBreak){
+	private int nextUpstreamIndex(int leftBreak, boolean forward){
 		if(leftBreak<0) return -1;
 		for(int i=start.size()-1; i>=0 ;i--){
+			if(!enforceStrand || forward==this.strand.get(i)){
 			if(leftBreak + tolerance >= start.get(i) && leftBreak-tolerance<=end.get(i)){// && leftBreak-tolerance<end.get(i)){
 				return i;
+			}
 			}
 		}
 		return -1;
 	}
 	
-	private int nextDownstreamIndex(int rightBreak){
+	private int nextDownstreamIndex(int rightBreak, boolean forward){
 		if(rightBreak<0) return -1;
 		for(int i=0; i<end.size(); i++){
+			if(!enforceStrand || forward==this.strand.get(i)){
 			if(rightBreak -tolerance <= end.get(i) && rightBreak+tolerance>=start.get(i) ){//&& rightBreak < end.get(i)){
 				return i;
+			}
 			}
 		}
 		return   -1;
@@ -92,23 +101,65 @@ public class GFFAnnotation extends Annotation{
 	    	return st;
 	    }
 	@Override
-	public String getTypeNme(int start_, int end_) {
-		int iend = nextDownstreamIndex(end_);
-		int istart = nextUpstreamIndex(start_);
-		String left = istart<0 ? "NA" : (start_<= this.start.get(istart)+ TranscriptUtils.startThresh ? "5" : "no_5");
-		String right = iend<0 ? "NA" : (end_>= this.end.get(iend)- TranscriptUtils.endThresh ? "3" : "no_3");
+	public String  getSpan(int start_, int end_,boolean forward,  Collection<Integer> l){
+		int istart =-1;
+		int iend = -1;
+		for(int i=0; i<this.genes.size(); i++){
+			if(!enforceStrand || forward==this.strand.get(i)){
+			if(this.end.get(i)> start_){
+				istart = i;
+				break;
+			}
+			}
+		}
+		for(int i=this.genes.size()-1;i>=0; i--){
+			if(!enforceStrand || forward==this.strand.get(i)){
+			if(this.start.get(i)< end_){
+				iend= i;
+				break;
+			}
+			}
+		}
+		if(istart>=0 && iend>=0 && istart <= iend){
+			StringBuffer sb = new StringBuffer();
+			for(int i=istart; i<=iend ; i++){
+				l.add(i);
+				sb.append(this.genes.get(i));
+				if(i<iend)sb.append(';');
+				
+			}
+			return sb.toString();
+		}
+		return "-";
+		
+	}
+	
+	@Override
+	public String getTypeNme(int start_, int end_, boolean forward) {
+		int iend = nextDownstreamIndex(end_, forward);
+		int istart = nextUpstreamIndex(start_, forward);
+		String left = istart<0 ? "NA" : (start_<= this.start.get(istart)+ TranscriptUtils.startThresh ? "5" : "no5");
+		String right = iend<0 ? "NA" : (end_>= this.end.get(iend)- TranscriptUtils.endThresh ? "3" : "no3");
 		return left+"_"+right;
 		//return null;
 	}
-	
+	public static void setGFFFeatureNames(String[] str){
+		
+		name = str[0];
+		description = str[1];
+		id = str[2];
+		biotype = str[3];
+	}
+	public static String name = "Name";
+	public static String description="description";
+	public static String id = "ID";
+	public static String biotype = "biotype";
 	public	GFFAnnotation(JapsaAnnotation annot, int seqlen, PrintWriter pw, int source_count) throws IOException{
 		super(annot.getAnnotationID(), seqlen);
-		String name = "Name";
-		String description="description";
-		String id = "ID";
+	
 		String genenme = "";
 		String descr="";
-		String biotype = "biotype";
+		
 		String biot;
 	//	pw.println("ID\tName\tdescription\tbiotype");
 		System.err.println("num features" +annot.numFeatures());
@@ -116,6 +167,7 @@ public class GFFAnnotation extends Annotation{
 			JapsaFeature f = annot.getFeature(i);
 			this.start.add(f.getStart());
 			this.end.add(f.getEnd());
+			this.strand.add(f.getStrand()=='+');
 			//System.err.println(f.getDesc());
 			String[] desc = f.getDesc().split(";");
 			 genenme = "";

@@ -883,6 +883,7 @@ public class ViralChimericReadsAnalysisCmd extends CommandLine {
 	}
 
 	public static double median(byte[] nums, int startPos, int len) {
+		if(nums.length==0) return Double.NaN;
 		// TODO Auto-generated method stub
 		return percentile(nums, startPos, len, 0.5D);
 	}

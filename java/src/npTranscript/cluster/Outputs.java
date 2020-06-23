@@ -166,7 +166,7 @@ public class Outputs{
 			 //upstream        downstream      strand  breaks
 
 			 String header = 
- "readID\tclusterId\tsubID\tsource\tlength\tstart_read\tend_read\ttype_nme\tchrom\tstartPos\tendPos\tnum_breaks\tleader_break\terrorRatio\tORFs\tstrand\tbreaks";
+ "readID\tclusterId\tsubID\tsource\tlength\tstart_read\tend_read\ttype_nme\tchrom\tstartPos\tendPos\tnum_breaks\tleader_break\terrorRatio\tORFs\tstrand\tbreaks\tspan";
 			 readClusters.println(header); //\tbreakStart\tbreakEnd\tbreakStart2\tbreakEnd2\tstrand\tbreaks");
 		
 			 transcripts_file = new File(resDir,genome_index+ ".transcripts.txt.gz");
@@ -190,7 +190,7 @@ public class Outputs{
 //							+"\t"+cc.getTotDepthSt(true)+"\t"+cc.getTotDepthSt(false)+"\t"+cc.getErrorRatioSt());
 			 
 			 transcriptsP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(transcripts_file))));
-				String transcriptP_header = "ID\tchrom\tstart\tend\ttype_nme\tisoforms\tnum_breaks\tleader_break\tORFs"
+				String transcriptP_header = "ID\tchrom\tstart\tend\ttype_nme\tisoforms\tnum_breaks\tleader_break\tORFs\tspan"
 					+"\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true)
 				+"\t"+TranscriptUtils.getString("depth", num_sources, true)+"\t"+TranscriptUtils.getString("errors", num_sources, true)
 				+"\t"+TranscriptUtils.getString("error_ratio", num_sources, true);
