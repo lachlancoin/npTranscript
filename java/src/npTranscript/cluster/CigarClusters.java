@@ -176,7 +176,7 @@ public class CigarClusters {
 		//cc.breaks.toString()+"\t"+cc.breaks.hashCode()+"\t"+
 	//	cc.breakSt+"\t"+cc.breakEnd+"\t"+cc.breakSt2+"\t"+cc.breakEnd2+"\t"+
 		cc.all_breaks.size()+"\t"+cc.numBreaks()+"\t"+(hasLeaderBreak? 1: 0)+"\t"+cc.breaks_hash.secondKey+"\t"+annot.getString(cc.span)+"\t"+
-	
+	cc.span.size()+"\t"+
 	//	upstream+"\t"+downstream+"\t"+
 	//	upstream2+"\t"+downstream2+"\t"+
 		cc.totLen+"\t"+cc.readCountSum()+"\t"+read_count
