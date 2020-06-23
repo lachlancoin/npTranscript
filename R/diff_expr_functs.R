@@ -555,13 +555,21 @@ if(inherits(dfi,"try-error")) {
 }
 
 
-.process<-function(transcriptsl, attributes, resdir, control_names, infected_names, outp = "results.csv", type=""){
+.process<-function(transcriptsl, attributes, resdir, control_names, infected_names,type_names=c("control","infected"), outp = "results.csv", type=""){
   transcriptsl = lapply(transcriptsl, .mergeRows,sum_names= c(control_names, infected_names), colid="geneID" )
   transcripts=.combineTranscripts(transcriptsl, attributes)
   # 
   info = attr(transcripts,'info')
   transcripts=.addAnnotation("annotation.csv.gz", transcripts, colid="geneID", nmes = c("ID" , "Name" , "Description","biotype"))
-  DE1 = DEgenes(transcripts, control_names, infected_names,edgeR = edgeR);
+ print(head(transcripts[1,]))
+ print(control_names)
+ print(infected_names)
+   DE1 = try(DEgenes(transcripts, control_names, infected_names,edgeR = edgeR));
+   nme = names(DE1)
+   nme = sub("control",type_names[1], nme)
+   nme = sub("infected",type_names[2], nme)
+   names(DE1 ) = nme
+   
   DE1 = .transferAttributes(DE1, attributes)
   .write(DE1 ,resdir,outp)
   .qqplot(DE1$pvals, min.p= 1e-200,main=paste(type,"both"))
