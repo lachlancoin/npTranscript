@@ -512,7 +512,7 @@ public static boolean combineOutput = false;
 
 			int numNotAligned = 0;
 			int prev_src_index =-1;
-			
+			int numSecondary =0;
 			outer: for (; samIter.hasNext() ; ) {
 				SAMRecord sam= null;
 				try{
@@ -538,7 +538,10 @@ public static boolean combineOutput = false;
 				}
 
 				numReads++;
-
+				if(sam.isSecondaryOrSupplementary()) {
+					numSecondary++;
+					continue;
+				}
 				if (sam.getReadUnmappedFlag()) {
 					numNotAligned++;
 					continue;
