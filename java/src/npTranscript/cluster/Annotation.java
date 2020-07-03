@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.SortedSet;
 /**
  * @author Lachlan Coin
  *
@@ -199,16 +200,18 @@ public class Annotation{
 		static String[] nmes = new String[] {"5_3", "5_no3", "no5_3", "no5_no3"};
 
 
-		public String getSpan(int startPos, int endPos, boolean forward, Collection<Integer> span) {
+		public String getSpan(List<Integer>breaks, boolean forward, Collection<Integer> span, SortedSet<String> parents) {
 			// TODO Auto-generated method stub
 			return ".";
 		}
 
-		public String getString(Collection<Integer> span) {
+		public String getString(Collection<Integer> span, SortedSet<String> geneNmes) {
 			if(span.size()==0) return "-";
 			StringBuffer sb = new StringBuffer();
 			for(Iterator<Integer> it = span.iterator(); it.hasNext();){
-				sb.append(this.genes.get(it.next()));
+				String gene = this.genes.get(it.next());
+				geneNmes.add(gene);
+				sb.append(gene);
 				if(it.hasNext())sb.append(";");
 			}
 			return sb.toString();

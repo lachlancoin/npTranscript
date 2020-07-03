@@ -7,9 +7,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import japsa.seq.JapsaAnnotation;
 import japsa.seq.JapsaFeature;
@@ -74,6 +77,24 @@ public class GFFAnnotation extends Annotation{
 		return -1;
 	}
 	
+	@Override
+	public String getString(Collection<Integer> span,SortedSet<String> obj) {
+		if(span.size()==0) return "-";
+		
+		for(Iterator<Integer> it = span.iterator(); it.hasNext();){
+			int ii = it.next();
+			String paren =this.parents.get(ii); 
+			obj.add(paren==null ? this.genes.get(ii) : paren);
+			
+		}
+		StringBuffer sb = new StringBuffer();
+		for(Iterator<String> it = obj.iterator(); it.hasNext();){
+			sb.append(it.next());
+			if(it.hasNext())sb.append(";");
+		}
+		return sb.toString();
+	}
+	
 	private int nextDownstreamIndex(int rightBreak, boolean forward){
 		if(rightBreak<0) return -1;
 		for(int i=0; i<end.size(); i++){
@@ -102,43 +123,57 @@ public class GFFAnnotation extends Annotation{
 	    	}
 	    	return st;
 	    }
+	static int tolerance =10;
+	
 	@Override
-	public String  getSpan(int start_, int end_,boolean forward,  Collection<Integer> l){
+	public String  getSpan(List<Integer> breaks,boolean forward,  Collection<Integer> l, SortedSet<String> geneNames){
 		int istart =-1;
 		int iend = -1;
+		int start_ = breaks.get(0);
+		int end_ =breaks.get(breaks.size()-1);
+		
 		for(int i=0; i<this.genes.size(); i++){
 			if(!enforceStrand || forward==this.strand.get(i)){
-			if(this.end.get(i)> start_){
-				istart = i;
-				break;
-			}
+				if(this.end.get(i)> start_){
+					istart = i;
+					break;
+				}
 			}
 		}
 		for(int i=this.genes.size()-1;i>=0; i--){
 			if(!enforceStrand || forward==this.strand.get(i)){
-			if(this.start.get(i)< end_){
-				iend= i;
-				break;
-			}
+				if(this.start.get(i)< end_){
+					iend= i;
+					break;
+				}
 			}
 		}
 		if(istart>=0 && iend>=0 && istart <= iend){
-			StringBuffer sb = new StringBuffer();
+			//
 			for(int i=istart; i<=iend ; i++){
-				
 				if(span_only.size()==0|| span_only.contains(this.type.get(i))){
-				l.add(i);
-				sb.append(this.genes.get(i));
-				if(i<iend)sb.append(';');
+					for(int j=0; j<breaks.size(); j++){
+						int pos = breaks.get(j);
+						if(start.get(i)<=pos+tolerance && end.get(i)>=pos - tolerance){
+							l.add(i);
+							String paren = this.parents.get(i);
+							geneNames.add(paren==null ? paren : this.genes.get(i));
+						}	
+					}
 				}
-				
+			}
+			StringBuffer sb = new StringBuffer();
+			Iterator<String> it = geneNames.iterator();
+			while(it.hasNext()){
+				sb.append(it.next());
+				if(it.hasNext()) sb.append(";");
 			}
 			return sb.toString();
 		}
 		return ".";
 		
 	}
-	 public static List<String> span_only = Arrays.asList("protein_coding".split(":"));
+	 public static List<String> span_only = Arrays.asList("exon".split(":"));
 	
 	@Override
 	public String getTypeNme(int start_, int end_, boolean forward) {
@@ -155,23 +190,28 @@ public class GFFAnnotation extends Annotation{
 		description = str[1];
 		id = str[2];
 		biotype = str[3];
+		parent = str[4];
 	}
+	List<String> parents = new ArrayList<String>();
 	public static String name = "Name";
 	public static String description="description";
 	public static String id = "ID";
 	public static String biotype = "biotype";
+	public static String parent = "Parent";
+	static String emptyString = "";
 	public	GFFAnnotation(JapsaAnnotation annot, int seqlen, PrintWriter pw, int source_count) throws IOException{
 		super(annot.getAnnotationID(), seqlen);
 	
 		String genenme = "";
 		String descr="";
 		
-		String biot;
+		//biot;
 	//	pw.println("ID\tName\tdescription\tbiotype");
 		System.err.println("num features" +annot.numFeatures());
 		Map<String, String> biotypes = new HashMap<String,String>();
 		for(int i=0; i<annot.numFeatures(); i++){
 			JapsaFeature f = annot.getFeature(i);
+			String type = f.getType();
 			this.start.add(f.getStart());
 			this.end.add(f.getEnd());
 			this.strand.add(f.getStrand()=='+');
@@ -179,7 +219,8 @@ public class GFFAnnotation extends Annotation{
 			String[] desc = f.getDesc().split(";");
 			 genenme = "";
 			 descr = "";
-			 biot="";
+			 String  biot=null;
+			 String paren=null;
 			String ID = null;
 			for(int j=0; j<desc.length; j++){
 				String[] descj = desc[j].split("=");
@@ -190,7 +231,11 @@ public class GFFAnnotation extends Annotation{
 				
 			}else if(descj[0].equals(biotype)){
 				biot = descj[1];
+			}else if(descj[0].equals(parent)){
+				paren = descj[1];
+				paren = paren.replace("transcript:", "");
 			}
+				
 				if(descj[0].equals(id)){
 					ID = descj[1].replace("gene:", ""); //.replace("CDS:", "").
 				}
@@ -202,8 +247,9 @@ public class GFFAnnotation extends Annotation{
 			pw.println(str);
 			//System.err.println(str);
 			this.genes.add(genenme.length()>0 ? genenme : ID);
-			biotypes.putIfAbsent(biot, biot);
-			this.type.add(biotypes.get(biot));
+			biotypes.putIfAbsent(type, type);
+			this.type.add(biotypes.get(type));
+			this.parents.add(paren);
 		}
 		
 		super.mkOrfs(source_count);

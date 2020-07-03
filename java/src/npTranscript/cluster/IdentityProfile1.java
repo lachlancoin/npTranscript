@@ -3,9 +3,10 @@ package npTranscript.cluster;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import org.apache.commons.math3.linear.OpenMapRealMatrix;
 import org.apache.commons.math3.linear.SparseRealMatrix;
@@ -84,7 +85,7 @@ public class IdentityProfile1 {
 	public int startPos, endPos;
 	public int readSt, readEn; 
 	
-	
+	SortedSet<String> geneNames = new TreeSet<String>();
 	
 	public String[] clusterID = new String[2];
 	public String processRefPositions(SAMRecord sam, String id, boolean cluster_reads, Sequence refSeq, int src_index , Sequence readSeq, String baseQ, 
@@ -196,7 +197,8 @@ public class IdentityProfile1 {
 		}
 		
 		String type_nme = annot.getTypeNme( startPos, endPos, forward); //coRefPositions.getTypeNme(seqlen);
-		String span_str = annot.getSpan(startPos, endPos, forward,  coRefPositions.span);
+		geneNames.clear();
+		String span_str = annot.getSpan(coRefPositions.breaks, forward,  coRefPositions.span, geneNames);
 		String breakSt = coRefPositions.breaks.toString();
 		//coRefPositions.breaks.adjustBreaks(annot);
 		// need to group by start position if we annotating by break pos,e.g. so 5'mapping reads map together
@@ -351,7 +353,7 @@ public class IdentityProfile1 {
 	public final Outputs o;
 	
 	public void getConsensus() throws IOException {
-			this.all_clusters.getConsensus( o, this.chrom, this.chrom_index);
+			this.all_clusters.getConsensus( o, this.chrom, this.chrom_index, this.geneNames);
 	}	
 
 

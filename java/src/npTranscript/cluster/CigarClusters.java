@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import japsa.seq.Sequence;
 
@@ -148,7 +150,7 @@ public class CigarClusters {
 		}
 		
 	}
-	public void process1(CigarCluster cc,   Outputs o,String chrom,int chrom_index, boolean forward){
+	public void process1(CigarCluster cc,   Outputs o,String chrom,int chrom_index, boolean forward,SortedSet<String> geneNames ){
 		String read_count = TranscriptUtils.getString(cc.readCount);
 	/*	int startPos, endPos, startPos2, endPos2;
 		if(!IdentityProfile1.annotByBreakPosition ){
@@ -170,13 +172,14 @@ public class CigarClusters {
 	//	if(upstream==null) upstream =  chrom_index+"."+TranscriptUtils.round(startPos, CigarHash2.round)+"";
 	//	if(downstream==null) downstream = chrom_index+"."+ TranscriptUtils.round(endPos, CigarHash2.round)+"";
 		boolean hasLeaderBreak = TranscriptUtils.coronavirus  ? (cc.breaks.size()>1 &&  annot.isLeader(cc.breaks.get(1)*CigarHash2.round)) : false;
-
+		geneNames.clear();
+		String geneNme = annot.getString(cc.span, geneNames);
 		o.printTranscript(
 			cc.id()+"\t"+chrom+"\t"+cc.start+"\t"+cc.end+"\t"+annot.getTypeNme(cc.start, cc.end, forward)+"\t"+
 		//cc.breaks.toString()+"\t"+cc.breaks.hashCode()+"\t"+
 	//	cc.breakSt+"\t"+cc.breakEnd+"\t"+cc.breakSt2+"\t"+cc.breakEnd2+"\t"+
-		cc.all_breaks.size()+"\t"+cc.numBreaks()+"\t"+(hasLeaderBreak? 1: 0)+"\t"+cc.breaks_hash.secondKey+"\t"+annot.getString(cc.span)+"\t"+
-	cc.span.size()+"\t"+
+		cc.all_breaks.size()+"\t"+cc.numBreaks()+"\t"+(hasLeaderBreak? 1: 0)+"\t"+cc.breaks_hash.secondKey+"\t"+geneNme+"\t"+
+	geneNames.size()+"\t"+
 	//	upstream+"\t"+downstream+"\t"+
 	//	upstream2+"\t"+downstream2+"\t"+
 		cc.totLen+"\t"+cc.readCountSum()+"\t"+read_count
@@ -185,13 +188,13 @@ public class CigarClusters {
 	}
 	
 	public void getConsensus(  
-			Outputs o, String chrom, int chrom_index
+			Outputs o, String chrom, int chrom_index,SortedSet<String> geneNames
 			) throws IOException{
 		//o.readClusters.close();
 		if(TranscriptUtils.writeAnnotP) this.annot.print(o.annotP);
 		for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();) {
 			CigarCluster cc = it.next();
-			this.process1(cc, o, chrom, chrom_index, cc.forward);
+			this.process1(cc, o, chrom, chrom_index, cc.forward, geneNames);
 		}
 		//System.err.println("closing transcripts pw");
 	 //  o.transcriptsP.close();

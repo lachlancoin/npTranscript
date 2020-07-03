@@ -195,7 +195,16 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 
 //	private static final Logger LOG = LoggerFactory.getLogger(HTSErrorAnalysisCmd.class);
 
-	
+public static String getAnnotationsToInclude(String annotationType, boolean useExons){
+	if(annotationType!=null) return annotationType;//.split(":");
+	 if(!useExons) {
+		 return  "gene:ncRNA:pseudogene:miRNA";	
+	 }
+	 else{
+		 return "exon:ncRNA:miRNA";
+	 }
+		
+}
 	public ViralTranscriptAnalysisCmd2() {
 		super();
 		Deployable annotation = getClass().getAnnotation(Deployable.class);
@@ -204,12 +213,13 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		addString("bamFile", null, "Name of bam file", true);
 		addString("reference", null, "Name of reference genome", true);
 		addString("annotation", null, "ORF annotation file or GFF file", false);
+		addBoolean("useExons", true, "wehether to use exons");
 		addString("readList", "", "List of reads", false);
-		String all_types = "gene:ncRNA_gene:pseudogene:miRNA";			
-			addString("type", all_types, "Type of annotation (only included if annotation is GFF file", false);
+		
+			addString("annotType", null, "Type of annotation (only included if annotation is GFF file", false);
 		addString("chroms", "all", "Restrict to these chroms, colon delimited", false);
 		addString("resdir", "results"+System.currentTimeMillis(), "results directory");
-		addString("GFF_features", "Name:description:ID:biotype", "GFF feature names");
+		addString("GFF_features", "Name:description:ID:biotype:Parent", "GFF feature names");
 		addBoolean("RNA", false, "If is direct RNA");
 		addInt("maxReads", Integer.MAX_VALUE, "ORF annotation file");
 		addInt("minClusterEntries",10,"threshold for consensus");
@@ -269,7 +279,7 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		String annotFile = cmdLine.getStringVal("annotation");
 		String[] readList = cmdLine.getStringVal("readList").split(":");
 		//String genesToInclude = cmdLine.getStringVal("genesToInclude");
-		String  annotationType = cmdLine.getStringVal("type");
+		String  annotationType = getAnnotationsToInclude(cmdLine.getStringVal("annotType"), cmdLine.getBooleanVal("useExons"));
 		boolean overwrite  = cmdLine.getBooleanVal("overwrite");
 		int startThresh = cmdLine.getIntVal("startThresh");
 		int endThresh = cmdLine.getIntVal("endThresh");
@@ -352,7 +362,8 @@ private static final class CombinedIterator implements Iterator<SAMRecord> {
 		Map<String, JapsaAnnotation> anno  = null;
 		//boolean SARS = !gff;
 		if(gff){
-			String  annotationType = cmdLine.getStringVal("type");
+			String  annotationType = getAnnotationsToInclude(cmdLine.getStringVal("annotType"), cmdLine.getBooleanVal("useExons"));
+
 			System.err.println("reading annotation");
 			 anno =  GFFAnnotation.readAnno(annot_file, annotationType, chrs);
 			// GFFAnnotation.read

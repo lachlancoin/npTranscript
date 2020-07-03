@@ -4,9 +4,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
 
 import japsa.seq.Sequence;
 
@@ -318,7 +318,7 @@ public class CigarCluster  {
 		private int readCountSum;
 		//int numPos =-1;
 		int totLen = -1;
-		public Collection<Integer> span = new HashSet<Integer>();
+		public Collection<Integer> span = new TreeSet<Integer>();
 		
 		
 		/** if its going to be less than thresh we return zero */
