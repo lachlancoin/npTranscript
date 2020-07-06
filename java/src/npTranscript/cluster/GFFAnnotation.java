@@ -173,7 +173,7 @@ public class GFFAnnotation extends Annotation{
 		return ".";
 		
 	}
-	 public static List<String> span_only = Arrays.asList("exon".split(":"));
+	 public static List<String> span_only = Arrays.asList("protein_coding".split(":"));
 	
 	@Override
 	public String getTypeNme(int start_, int end_, boolean forward) {
@@ -247,6 +247,7 @@ public class GFFAnnotation extends Annotation{
 			pw.println(str);
 			//System.err.println(str);
 			this.genes.add(genenme.length()>0 ? genenme : ID);
+			if(biot==null) type  = biot;
 			biotypes.putIfAbsent(type, type);
 			this.type.add(biotypes.get(type));
 			this.parents.add(paren);
