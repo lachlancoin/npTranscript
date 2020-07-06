@@ -227,6 +227,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addBoolean("reAlignExtra", false, "whether to try realigning the extra sequence");
 		addBoolean("combineOutput", false, "whether to combine output from different chroms");
 		addString("pattern", null, "Pattern of read name, used for filtering");
+		addString("span", "protein_coding", "Filtering span");
 		addInt("qual", 0, "Minimum quality required");
 		addInt("bin", 1, "Bin size for numerical hashing");
 		addInt("breakThresh", 1000, "Thresh for break points to match clusters.  If bigger than genome size then no break points");
@@ -296,6 +297,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		TranscriptUtils.attempt5rescue = cmdLine.getBooleanVal("attempt5rescue");
 		TranscriptUtils.attempt3rescue = cmdLine.getBooleanVal("attempt3rescue");
 		GFFAnnotation.setGFFFeatureNames(cmdLine.getStringVal("GFF_features").split(":"));
+		GFFAnnotation.span_only = Arrays.asList(cmdLine.getStringVal("span").split(":"));
 		boolean sorted = true;
 		boolean coronavirus = cmdLine.getBooleanVal("coronavirus");
 		String[] msaOpts = cmdLine.getStringVal("doMSA").split(":"); //e.g 5_3:sep or all:sep
