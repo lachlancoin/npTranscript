@@ -157,7 +157,7 @@ public class GFFAnnotation extends Annotation{
 						if(start.get(i)<=pos+tolerance && end.get(i)>=pos - tolerance){
 							l.add(i);
 							String paren = this.parents.get(i);
-							geneNames.add(paren==null ? paren : this.genes.get(i));
+							geneNames.add(paren!=null ? paren : this.genes.get(i));
 						}	
 					}
 				}
@@ -192,6 +192,16 @@ public class GFFAnnotation extends Annotation{
 		biotype = str[3];
 		parent = str[4];
 	}
+	//ID:description:ID:gene_type:gene_name
+	
+	//ID=exon:ENST00000456328.2:1;Parent=ENST00000456328.2;gene_id=ENSG00000223972.5;transcript_id=ENST00000456328.2;gene_type=transcribed_unprocessed_pseudogene;gene_name=DDX
+	
+//   ID=exon:ENST00000495576.1:1;Parent=ENST00000495576.1;gene_id=ENSG00000239945.1;transcript_id=ENST00000495
+
+	
+	//--GFF_features=exon_id:description:ID:gene_type:gene_name 
+//	gene_name:description:ID:gene_type
+	
 	List<String> parents = new ArrayList<String>();
 	public static String name = "Name";
 	public static String description="description";
@@ -224,6 +234,7 @@ public class GFFAnnotation extends Annotation{
 			String ID = null;
 			for(int j=0; j<desc.length; j++){
 				String[] descj = desc[j].split("=");
+				descj[1] = descj[1].replace("gene:", "").replace("exon:", "");
 				if(descj[0].equals(name)){
 					genenme = descj[1];
 				}else if(descj[0].equals(description)){
@@ -237,7 +248,7 @@ public class GFFAnnotation extends Annotation{
 			}
 				
 				if(descj[0].equals(id)){
-					ID = descj[1].replace("gene:", ""); //.replace("CDS:", "").
+					ID = descj[1]; //.replace("CDS:", "").
 				}
 			}
 			if(ID==null){
@@ -247,7 +258,7 @@ public class GFFAnnotation extends Annotation{
 			pw.println(str);
 			//System.err.println(str);
 			this.genes.add(genenme.length()>0 ? genenme : ID);
-			if(biot==null) type  = biot;
+			if(biot!=null) type  = biot;
 			biotypes.putIfAbsent(type, type);
 			this.type.add(biotypes.get(type));
 			this.parents.add(paren);

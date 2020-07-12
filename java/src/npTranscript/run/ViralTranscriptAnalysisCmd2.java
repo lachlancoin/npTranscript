@@ -201,7 +201,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		 return  "gene:ncRNA:pseudogene:miRNA";	
 	 }
 	 else{
-		 return "exon:ncRNA:miRNA";
+		 return "exon";
 	 }
 		
 }
@@ -297,8 +297,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		TranscriptUtils.attempt5rescue = cmdLine.getBooleanVal("attempt5rescue");
 		TranscriptUtils.attempt3rescue = cmdLine.getBooleanVal("attempt3rescue");
 		GFFAnnotation.setGFFFeatureNames(cmdLine.getStringVal("GFF_features").split(":"));
-		GFFAnnotation.span_only = Arrays.asList(cmdLine.getStringVal("span").split(":"));
-		if(GFFAnnotation.span_only.equals("all")) GFFAnnotation.span_only= new ArrayList<String>();
+		GFFAnnotation.span_only = cmdLine.getStringVal("span").equals("all") ?new ArrayList<String>() :   Arrays.asList(cmdLine.getStringVal("span").split(":"));
 		boolean sorted = true;
 		boolean coronavirus = cmdLine.getBooleanVal("coronavirus");
 		String[] msaOpts = cmdLine.getStringVal("doMSA").split(":"); //e.g 5_3:sep or all:sep
