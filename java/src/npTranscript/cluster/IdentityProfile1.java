@@ -266,7 +266,7 @@ public class IdentityProfile1 {
 			readSeq1.setDesc(chrom_index+" "+CigarHash2.getString(breaks,-1)+" "+CigarHash2.getString(read_breaks)+" "+(end_read-start_read));
 			this.o.writeToCluster(secondKeySt,"_"+clusterID[1]+"_", source_index, readSeq1, baseQ1, str, readSeq.getName(), strand);
 		}
-		return secondKeySt;
+		return secondKeySt+" "+span_str;
 	}
 	
 	
