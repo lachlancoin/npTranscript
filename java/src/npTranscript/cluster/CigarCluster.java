@@ -21,6 +21,7 @@ public class CigarCluster  {
 		
 		
 		static int round2 = 100;
+		public static boolean recordDepthByPosition = false;
 		int breakSt = -1;
 		int breakEnd = -1;
 		int breakSt2 = -1;
@@ -90,12 +91,19 @@ public class CigarCluster  {
 		public CigarCluster(String id,  int num_sources){
 			this.id = id;
 			this.readCount = new int[num_sources];
-			this.maps = new SparseVector[num_sources];
-			this.errors= new SparseVector[num_sources];
-			for(int i=0; i<maps.length; i++){
-				maps[i] = new SparseVector();
-				errors[i] = new SparseVector();
-				
+			if(recordDepthByPosition){
+				map = new SparseVector();
+				this.maps = new SparseVector[num_sources];
+				this.errors= new SparseVector[num_sources];
+				for(int i=0; i<maps.length; i++){
+					maps[i] = new SparseVector();
+					errors[i] = new SparseVector();
+					
+				}
+			}else{
+				maps = null;
+				errors = null;
+				map = null;
 			}
 		}
 		
@@ -116,30 +124,35 @@ public class CigarCluster  {
 			addReadCount(source_index);
 			start = c1.start;
 			end = c1.end;
-			
-			map.merge( c1.map);
-			for(int i=0; i<maps.length; i++){
-				maps[i].merge( c1.maps[i]);
-				errors[i].merge(c1.errors[i]);
-				if(errors[i].valsum()<0) throw new NumberFormatException("shoud not be negative");
-				if(errors[i].valsum()>maps[i].valsum()) throw new NumberFormatException("shoud not be greater");
+			if(recordDepthByPosition){
+				map.merge( c1.map);
+				for(int i=0; i<maps.length; i++){
+					maps[i].merge( c1.maps[i]);
+					errors[i].merge(c1.errors[i]);
+					if(errors[i].valsum()<0) throw new NumberFormatException("shoud not be negative");
+					if(errors[i].valsum()>maps[i].valsum()) throw new NumberFormatException("shoud not be greater");
+				}
 			}
 		}
 
-		private SparseVector map = new SparseVector(); //coverate at high res
-	
+		private final SparseVector map;// = new SparseVector(); //coverage at high res
 		final private SparseVector[] maps, errors;
+
 		public void clear(int source_index) {
-			map.clear();
+			
+			
 			span.clear();
 			this.forward = null;
 			this.breakSt=-1;
 			this.breakEnd = -1;
 			this.breakSt2=-1;
 			this.breakEnd2 = -1;
-			for(int i=0; i<maps.length; i++){
-				maps[i].clear();
-				errors[i].clear();
+			if(this.recordDepthByPosition){
+				map.clear();
+				for(int i=0; i<maps.length; i++){
+					maps[i].clear();
+					errors[i].clear();
+				}
 			}
 			Arrays.fill(readCount, 0);
 			readCount[source_index]=1;
@@ -168,16 +181,13 @@ public class CigarCluster  {
 			}
 			prev_position = pos;
 			}
-			
-			map.addToEntry(pos, 1);
-		
-			//int round1 = (int) Math.floor((double)pos/round2);
-		//	map100.addToEntry(round(pos,round2),1);
-		
-			maps[src_index].addToEntry(pos, 1);
-			
-			if(!match){
-				errors[src_index].addToEntry(pos, 1);
+
+			if(CigarCluster.recordDepthByPosition){
+				map.addToEntry(pos, 1);
+				maps[src_index].addToEntry(pos, 1);
+				if(!match){
+					errors[src_index].addToEntry(pos, 1);
+				}
 			}
 		}
 
@@ -189,6 +199,7 @@ public class CigarCluster  {
 		
 		
 		Integer getDepth(Integer i) {
+			if(map==null) return 0;
 			return this.map.getDepth(i);//this.map.containsKey(i) ?  map.get(i) :  0;
 		}
 		
@@ -196,12 +207,14 @@ public class CigarCluster  {
 		
 		void getDepthSt(Integer i, int[] row, int start_pos, boolean match) {
 			//StringBuffer sb = new StringBuffer();
+			if(maps==null) return ;
 			for(int src_index=0; src_index<maps.length; src_index++){
 				row[start_pos+src_index] = match?  this.maps[src_index].getDepth(i) : this.errors[src_index].getDepth(i) ;
 			}
 		}
 		
 		String getTotDepthSt(boolean match) {
+			if(maps==null) return "NA";
 			StringBuffer sb = new StringBuffer();
 			for(int src_index=0; src_index<maps.length; src_index++){
 				if(src_index>0)sb.append("\t");
@@ -214,6 +227,7 @@ public class CigarCluster  {
 		}
 		
 		String getError(int src_index){
+			if(errors==null) return "NA";
 			double err = (double)this.errors[src_index].valsum()/(double)this.maps[src_index].valsum();
 			if(err<-1e-5 || err> 1.0001) throw new NumberFormatException(" error is outside range of 0 1"+errors[src_index].valsum()+" "+maps[src_index].valsum());
 			String st = this.maps[src_index].valsum()==0 ?  "NaN" :  String.format("%5.3g", err);
@@ -221,6 +235,7 @@ public class CigarCluster  {
 		}
 		
 		String getErrorRatioSt() {
+			if(errors==null) return "NA";
 			StringBuffer sb = new StringBuffer();
 			for(int src_index=0; src_index<maps.length; src_index++){
 				if(src_index>0)sb.append("\t");
@@ -233,15 +248,11 @@ public class CigarCluster  {
 		int[][] exons;
 		
 		void addZeros(int seqlen){
-			boolean prev0 = start>1;
-			boolean printPrev = false;
-			//numPos =0;
-			List<Integer> breaks = new ArrayList<Integer>();
+			if(map==null) return;
 			List<Integer> keys = this.map.keys();
 			if(start> 1){
 				map.addToEntry(start-1, 0);
 			}
-			
 			for(int i=1; i<keys.size(); i++){
 				if(keys.get(i)-keys.get(i-1)> 10){
 					map.addToEntry(keys.get(i)-1, 0);
@@ -407,11 +418,12 @@ public class CigarCluster  {
 			this.readCountSum+=c1.readCountSum;
 			//System.err.println(this.breaks.toString()+"\t"+c1.index+" "+readCountSum);
 					
-			 map.merge( c1.map);
-		//	int sum2 = map100.merge(c1.map100);
-			for(int i=0; i<maps.length; i++){
-				maps[i].merge( c1.maps[i]);
-				errors[i].merge(c1.errors[i]);
+			if(this.recordDepthByPosition){
+				map.merge( c1.map);
+				for(int i=0; i<maps.length; i++){
+					maps[i].merge( c1.maps[i]);
+					errors[i].merge(c1.errors[i]);
+				}
 			}
 			return br;
 		}

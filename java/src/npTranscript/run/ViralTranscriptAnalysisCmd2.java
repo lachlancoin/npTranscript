@@ -71,6 +71,7 @@ import japsa.seq.SequenceReader;
 import japsa.util.CommandLine;
 import japsa.util.deploy.Deployable;
 import npTranscript.cluster.Annotation;
+import npTranscript.cluster.CigarCluster;
 import npTranscript.cluster.CigarHash;
 import npTranscript.cluster.CigarHash2;
 import npTranscript.cluster.EmptyAnnotation;
@@ -321,6 +322,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		Outputs.writePolyA = cmdLine.getBooleanVal("writePolyA");
 		if(coronavirus){
 		//	
+			CigarCluster.recordDepthByPosition = true;
 			System.err.println("running in coronavirus mode");
 			calcBreaks  = true; 
 			filterBy5_3 = true;
@@ -335,6 +337,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		}else{
 		//	TranscriptUtils.reAlignExtra = false;
 		//	TranscriptUtils.findPolyA = false;
+			CigarCluster.recordDepthByPosition = false;
 			TranscriptUtils.coronavirus = false;
 			TranscriptUtils.extra_threshold1 = 1000000;
 			//Outputs.writeUnSplicedFastq = false;
@@ -480,7 +483,7 @@ public static boolean combineOutput = false;
 	//	genes_all_pw.close();
 		IdentityProfile1 profile = null;
 		Outputs outp = null;
-		if(combineOutput)	outp = new Outputs(resDir,  in_nmes, overwrite, 0, true, true); 
+		if(combineOutput)	outp = new Outputs(resDir,  in_nmes, overwrite, 0, true, CigarCluster.recordDepthByPosition); 
 		final SAMRecordIterator[] samIters = new SAMRecordIterator[len];
 		SamReader[] samReaders = new SamReader[len];
 		outer1: for (int ii = 0; ii < len; ii++) {
@@ -643,7 +646,7 @@ public static boolean combineOutput = false;
 									new Annotation(new File(annot_file), currentIndex+"", seqlen, len);
 							}
 						//	pw.close();
-						if(!combineOutput)	outp = new Outputs(resDir,  in_nmes, overwrite, currentIndex, true, true); 
+						if(!combineOutput)	outp = new Outputs(resDir,  in_nmes, overwrite, currentIndex, true, CigarCluster.recordDepthByPosition); 
 							boolean calcBreaks1 = calcBreaks && break_thresh < seqlen;
 							profile = new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh, annot, calcBreaks1, chr.getName(), currentIndex);
 					}

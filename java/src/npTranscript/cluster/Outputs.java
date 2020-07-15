@@ -74,7 +74,7 @@ public class Outputs{
 	
 		public File transcripts_file;
 		public File reads_file; 
-		private final File outfile, outfile1, outfile2, outfile2_1, outfile4, outfile5, outfile6, outfile7, outfile10, outfile11;
+		private final File outfile, outfile1, outfile2,  outfile4, outfile5, outfile6, outfile7, outfile10, outfile11;
 		//outfile9;
 		private final FOutp[] leftover_l, polyA;//, leftover_r, fusion_l, fusion_r;
 	
@@ -88,7 +88,7 @@ public class Outputs{
 		public void close() throws IOException{
 			transcriptsP.close();
 			readClusters.close();
-			clusterW.close();
+			if(clusterW!=null) clusterW.close();
 			this.altT.close();
 		this.annotP.close();
 			//this.clusters.close();
@@ -117,7 +117,6 @@ public class Outputs{
 			 outfile = new File(resDir,genome_index+ ".txt");
 			 outfile1 = new File(resDir, genome_index+ "coref.txt");
 			 outfile2 = new File(resDir, genome_index+".clusters.h5");
-			 outfile2_1 = new File(resDir, genome_index+"clusters1.h5");
 			
 			 outfile4 = new File(resDir,genome_index+ ".exons.txt.gz");
 			 outfile5 = new File(resDir,genome_index+ ".clusters.fa.gz");
