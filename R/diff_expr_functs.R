@@ -4,8 +4,9 @@
   pchisq(sum(unlist(lapply(pvi[nonNA],qchisq,lower.tail=F, df=1 ))),df=length(nonNA), lower.tail=F)
   
 }
-readH5_h<-function(h5file, df, thresh =100,log=F){
+readH5_h<-function(h5file, df, filenames, thresh =100,log=F){
   IDS = df$ID
+  chrs = df$chrs
   header = h5read(h5file,"header")
   
   if(header[2]!="base") header = c(header[1], "base", header[-1])
@@ -13,6 +14,10 @@ readH5_h<-function(h5file, df, thresh =100,log=F){
   error_inds = grep("errors[0-9]", header)
   dinds  = grep("depth", header)
   einds  = grep("error", header)
+  
+  header[dinds] = paste("depth",filenames,sep="_")
+  header[einds] =  paste("error",filenames,sep="_")
+  
   
   countT = apply(df[,grep("count[0-9]", names(df)),drop=F],1,min)
   pos_ind = which(header=="pos")
@@ -26,26 +31,22 @@ readH5_h<-function(h5file, df, thresh =100,log=F){
   for(i in 1:length(inds)){
     print(paste(i, length(inds), sep=" of "))
     ID = as.character(IDS[inds[i]])
+    chr =  as.character(chrs[inds[i]])
     mat = t(h5read(h5file,as.character(ID)))
     countT1 = apply(mat[,depth_inds,drop=F],1,sum)
     indsi = which(countT1>thresh)
     if(length(indsi)>0){
     mat1 = mat[indsi,,drop=F]
-  #  v = unlist(mat1[163,])
-  #  betaBinomialP2(v,depth_inds, error_inds, control=1, case=2,binom=F, log=F)
-    pv1 = t(apply(mat1,1,betaBinomialP2, depth_inds,error_inds , control=1, case=2, binom=F,log=log))
-    #dimnames(pv1) = list(mat$pos[indsi],c("pv1","pv2"))
-    IDv = rep(ID, length(indsi))
-  #  chrv=rep(df$chrs[i], length(indsi))
-    mat2 = data.frame(IDv ,mat1,pv1)
-    #print(head(mat2))
+  
+    IDv = rep(chr, length(indsi))
+    mat2 = data.frame(IDv ,mat1) #,pv1)
     if(dim(mat2)[1]>0){
       if(is.null(mat_all)) mat_all = mat2 else mat_all = rbind(mat_all,mat2)
     }
     }
   } 
   if(is.null(mat_all)) mat_all = data.frame(matrix(nrow = 0, ncol = length(header)+3))
-  names(mat_all) = c("IDS",header, "pv1","pv2")
+  names(mat_all) = c("chrs",header) #, "pv1","pv2")
   #print(head(mat_all[mat_all$pv2<1e-100,]))
   mat_all
 }
@@ -82,20 +83,41 @@ DE_err<-function(DE, inds_control=1, inds_case=2, sum_thresh = 100){
 betaBinomialP2<-function(v, indsDepth, indsError, control, case,binom=F,log=F){
   pv1 = rep(NA, length(control))
   pv2 = rep(NA, length(control))
+  ratio1 = rep(NA, length(control))
+  ratio2 = rep(NA, length(control))
   
   for(j in 1:length(control)){
     indsj = c(indsDepth[control[j]], indsError[control[j]], indsDepth[case[j]], indsError[case[j]])
-    indsj2 = c(indsDepth[case[j]], indsError[case[j]], indsDepth[control[j]], indsError[control[j]])
+    #indsj2 = c(indsDepth[case[j]], indsError[case[j]], indsDepth[control[j]], indsError[control[j]])
     pv1[j] = betaBinomialP1(v,indsj , binom=binom, lower.tail=T, log=log)
     pv2[j] = betaBinomialP1(v, indsj, binom=binom, lower.tail=F, log=log)
+    r =.ratios(v,indsj )
+    ratio1[j] = r[2]*100
+    ratio2[j] = r[1]*100
   }
-  pv1m =chisqCombine(pv1,log=log)
-  pv2m = chisqCombine(pv2,log=log)
-  c(pv1m,pv2)
+ # pv1m =chisqCombine(pv1,log=log)
+#  pv2m = chisqCombine(pv2,log=log)
+  c(pv1,pv2,ratio1, ratio2)
+ # c(pv1m,pv2m)
 #  2*min(pv1m, pv2m, na.rm=T)
 }
 
-
+.ratios<-function(v,ord){
+  if(length(which(is.na(v)))!=0) return (NA)
+  size = v[ord[1]];
+  shape1 = v[ord[2]]
+  y = shape1
+  shape2 = size-shape1
+  sizex = v[ord[3]]
+  shape1x = v[ord[4]]
+  x = shape1x
+  
+  shape2x = sizex -shape1x
+  if(sizex==0 || size==0) return (1)
+  x1 = x;
+  
+  c(x1/sizex,y/size)
+}
 
 betaBinomialP1<-function(v, ord, binom=F, lower.tail=T,log=F){
   if(length(which(is.na(v)))!=0) return (NA)
@@ -114,7 +136,8 @@ betaBinomialP1<-function(v, ord, binom=F, lower.tail=T,log=F){
   if(binom){
     pv_res = pbinom(x1,size = sizex,prob = y/size,log=log)
   }else{
-    pv_res = pbetabinom.ab(x1,size = sizex,shape1 = shape1,shape2 =shape2,log=log)
+   # print(paste(x1,sizex, shape1, shape2))
+    pv_res = pbetabinom.ab(x1,size = sizex,shape1 = shape1[[1]],shape2 =shape2[[1]],log=log)
     
   }
   if(log){
@@ -179,10 +202,41 @@ chisqCombine<-function(pv,log=log){
   }
 }
 
-.write<-function(DE1, resdir, filename="results.csv"){
-  DE1[,1:9] = apply(DE1[,1:9], c(1,2), function(x) sub(' ' , '', sprintf("%5.3g",x)))
+.write<-function(DE1, resdir, filename="results.csv", numeric_inds=1:9){
+  if(length(numeric_inds)>0){
+  DE1[,numeric_inds] = apply(DE1[,numeric_inds], c(1,2), function(x) sub(' ' , '', sprintf("%5.3g",x)))
+  }
   write.table(DE1[attr(DE1,"order"),],file=paste(resdir,filename,sep="/") , quote=F, row.names=F, sep="\t", col.names=T)
 }
+
+DEdepth<-function(df,control_names, infected_names,tojoin=1:3){
+  #  betaBinomialP2(v,depth_inds, error_inds, control=1, case=2,binom=F, log=F)
+ # df = df[,grep(exclude_name, names(df), inv=T)]
+  depth_inds = grep("depth", names(df))
+  error_inds = grep("error", names(df))
+  inds = c(depth_inds, error_inds)
+  df1 = apply(df[,inds,drop=F],c(1,2),as.numeric)
+  if(is.null(df1)) df1 = as.matrix(df1)
+  nme = names(df)[inds]
+  pvs =data.frame(matrix(NA, ncol = 4*length(control_names), nrow = dim(df1)[1]))
+  st_col = 1
+  for(i in 1:length(control_names)){
+    nmes_i = c(grep(control_names[i], nme,v=T),grep(infected_names[i], nme,v=T))
+    inds_i = which(nme %in% nmes_i)
+    dfi =  df1[,inds_i,drop=F]
+    depth_inds_i = grep("depth", nme[inds_i])
+    error_inds_i = grep("error", nme[inds_i])
+#    pvs =data.frame(matrix(NA, ncol = 4, nrow = dim(df1)[1]))
+    indsk = st_col:(st_col+4-1)
+    st_col = st_col+4
+    pvs[,indsk] =  t(apply(dfi, 1, betaBinomialP2, depth_inds_i, error_inds_i,1,2,binom=F, log=F))
+    names(pvs)[indsk] = paste(control_names[i], c("pv_less","pv_more","ratio_control","ratio_case"),sep="_")
+  }
+  #print(tojoin)
+  if(length(tojoin)>0)  pvs= cbind(df[,tojoin,drop=F],pvs)
+  pvs
+}
+
 
 #which x is significiantly more or less than expected given y
 #if(lower.tail=T returns p(x<=y) else p(x>=y)
@@ -444,7 +498,7 @@ if(length(comb)>0) geneID[comb] = rightGene[comb]
   subt = transcripts1[unlist(lapply(extract_inds,function(x) x[1])),]
   for(i in 1:length(extract_inds)){
     subind = extract_inds[[i]]
-    subt[i,ind_s] =apply(transcripts1[subind,ind_s,drop=F],2,sum)
+    subt[i,ind_s] =apply(apply(transcripts1[subind,ind_s,drop=F],c(1,2),as.numeric),2,sum)
   }
   rbind(transcripts1[-torem,,drop=F], subt)
   
@@ -549,18 +603,25 @@ if(inherits(dfi,"try-error")) {
   attr(res,"chrom_names") = chrom_names
   attr(res,"info") = attr(dfs,"info")
  # attr(res,"chroms")=chrom_
-  dimnames(res)[[1]] = res$ID
+ # dimnames(res)[[1]] = res$ID
   
   res
 }
 
 
-.process<-function(transcriptsl, attributes, resdir, control_names, infected_names,type_names=c("control","infected"), outp = "results.csv", type=""){
+.process<-function(transcriptsl, control_names, infected_names, 
+                   annotFile = "annotation.csv.gz"){
   transcriptsl = lapply(transcriptsl, .mergeRows,sum_names= c(control_names, infected_names), colid="geneID" )
   transcripts=.combineTranscripts(transcriptsl, attributes)
+   dimnames(transcripts)[[1]] = transcripts$ID
   # 
   info = attr(transcripts,'info')
-  transcripts=.addAnnotation("annotation.csv.gz", transcripts, colid="geneID", nmes = c("ID" , "Name" , "Description","biotype"))
+  transcripts=.addAnnotation(annotFile, transcripts, colid="geneID", nmes = c("ID" , "Name" , "Description","biotype"))
+  transcripts
+}
+
+.processDE<-function(transcripts, attributes, resdir, control_names, infected_names,type_names=c("control","infected"), 
+                     outp = "results.csv", type=""){
  print(head(transcripts[1,]))
  print(control_names)
  print(infected_names)
@@ -572,7 +633,8 @@ if(inherits(dfi,"try-error")) {
    
   DE1 = .transferAttributes(DE1, attributes)
   .write(DE1 ,resdir,outp)
-  .qqplot(DE1$pvals, min.p= 1e-200,main=paste(type,"both"))
+  par(mfrow = c(1,1))
+ # .qqplot(DE1$pvals, min.p= 1e-200,main=paste(type,"both"))
   .qqplot(DE1$pvals1, min.p= 1e-200,main=paste(type,"infected_more"))
   .qqplot(DE1$pvals2, min.p= 1e-200,main=paste(type,"infected less"),add=T)
   #.vis(DE1,i=1,min.p=1e-50)
@@ -607,61 +669,37 @@ readIsoformH5<-function(h5file,  transcripts_){
   trans
   
 }
-.readH5All<-function(transcripts, attr = attributes(transcripts), thresh = 1000,chroms= attr[which(names(attr)=="chroms")][[1]]){
-  depth = NULL
-  ranges = matrix(nrow = length(ord), ncol=2)
-  start = 1
-  depths = list()
-  for(i in 1:length(chroms)){
-    print(chroms[i])
-    infile = paste(chroms[i],"clusters.h5", sep=".")
-  
-    dfi= try(readH5_h(infile, transcripts, thresh =thresh,log=F))
-    if(inherits(dfi,"try-error")) {
-depths[[i]] = NULL
-	}else{
-depths[[i]]  = dfi
-	}
 
-  }
-H5close();
- # if(TRUE) return(depths[[1]])
+
+.readH5All<-function(transcripts, attributes,filenames,  thresh,chrs=NULL){
+  filenames=  attributes[which(names(attributes)=="info")][[1]]
   
-  lengs = unlist(lapply(depths,function(x) if(is.null(x)) NA else dim(x)[1]))
-  inds = which(!is.na(lengs))
+  chroms= attributes[which(names(attributes)=="chroms")][[1]]
+  names(chroms) = attr[which(names(attr)=="chrom_names")][[1]]
+  if(!is.null(chrs)){
+    print(chroms)
+    inds_ = which(names(chroms) %in% chrs)
+    
+   chroms = chroms[ inds_]
+  
+  }
+  h5files =lapply(chroms, function (x)   infile = paste(x,"clusters.h5", sep="."))
+  thresh =1000
+  depth_ls = lapply(h5files, function(infile) try(readH5_h(infile, transcripts, filenames, thresh =thresh,log=F)))
+ # depth=.combineTranscripts(depth_ls, attributes)
+  H5close();
+  lengs = unlist(lapply(depth_ls,function(x) if(is.null(x)) NA else dim(x)[1]))
+  inds = which(!is.na(lengs) & lengs>0)
   chroms = chroms[inds]
   depths = depths[inds]
   lengs = lengs[inds]
-  res = data.frame(matrix(nrow  =sum(lengs), ncol = dim(depths[[1]])[2]))
-  names(res) = names(depths[[1]])
-  start=1;
+  depth_ls = depth_ls[inds]
+  names(depth_ls) = chroms
+ # header = names(depth_ls[[1]])
   
-  ranges = data.frame(matrix(nrow = length(depths), ncol=4))
-  names(ranges) = c("start","end","chrom","chrom_name");
-  if(length(depths)>0){
-  for(i in 1:length(depths)){
-    #print(i)
-    depths[[i]][,1] = as.character(depths[[i]][,1])
-    
-    lengi = dim(depths[[i]])[1]
-    ranges[i,] = c(start, start+lengi-1, chroms[i], names(chroms)[i]);
-    
-    if(lengi>0){
-     res[ranges[i,1]:ranges[i,2],] = depths[[i]]
-     start = start+lengi
-    }
-  }
+  return(depth_ls)
 }
-  attr(res,"ranges") = ranges
-  attr(res,"chroms")=chroms
-  m1 =rep(NA, dim(res)[1])# matrix(nrow = dim(depth)[1], ncol=2)
-  for(i in 1:(dim(ranges)[1])){
-   ri = as.numeric(ranges[i,]) 
-   m1[ri[1]:ri[2]]=ri[3]
-  }
-  attr(res,"chr_inds")=m1
-  res
-  }
+ 
 
 
 .readTranscriptsHost<-function(infilesT1, 
@@ -872,6 +910,8 @@ findSigChrom<-function( DE, thresh = 1e-10, go_thresh = 1e-5,nme="FDR1", nme2="c
 #}
 
 
+.qqplot1<-function(df, nme,log=F,min.p = 1e-20,main="", add=F, col=2) .qqplot(df[,which(names(df)==nme)],log,min.p,main,add,col)
+  
 
 .qqplot<-function(pvals1,log=F,min.p = 1e-20,main="", add=F, col=2){
   pvals = pvals1[!is.na(pvals1)]
@@ -890,49 +930,61 @@ findSigChrom<-function( DE, thresh = 1e-10, go_thresh = 1e-5,nme="FDR1", nme2="c
   pv1[pv1<log10(min.p)] = log10(min.p)
   pv1
 }
-.vis<-function(dpth, i,min.p = 1e-20,log=F, chroms=NULL, xlim = NULL){
-  pv_inds = grep("pv", names(dpth))
-  pvs = dpth[,pv_inds,drop=F]
-#  for(i in 1:(dim(pvs)[2])){
-    pvs[,i] = .log10p(pvs[,i], log=log, min.p = min.p)
- # }
-    ranges = attr(dpth, "ranges")
+.getRanges<-function(matr){
+  levs = getlev(matr$chrs)
+  levs = levs[order(as.numeric(sub("chr","",as.character(levs[,1])))),]
+  ranges = matrix(NA, ncol=3, nrow = dim(levs)[1])
+  for(i in 1:(dim(levs)[1])){
+    chr = as.character(levs[i,1])
+    inds = which( matr$chrs==chr)
+    ranges[i,] = c(min(inds), max(inds), chr)
+  }
+  ranges
+}
+.vis<-function(dpth, nme,min.p = 1e-50,log=F, chroms=NULL, xlim = NULL, funct = .log10p, usePos=F){
+  
+  pv_inds = which(names(dpth) %in% nme)
+  pvs = dpth[,pv_inds[1]]
+  if(!is.null(funct)){
+   pvs = funct(pvs, log=log, min.p = min.p)
+  }
+    ranges = .getRanges(dpth)
     pos=dpth$pos
-    
     if(is.null(pos)) pos = dpth$start
     offset = 0
+    chrs = dpth$chrs
+    lev= ranges[,3]
+  chr_inds = unlist(lapply(chrs, function(x) which(lev==x)))
     for(j in 1:(dim(ranges)[1])){
-      r2 = as.numeric(ranges[j,1:2])
-      pos[r2[1]:r2[2]] = pos[r2[1]:r2[2]]+offset
-      offset =  pos[r2[2]]+10e6
+       r2 = as.numeric(ranges[j,1:2])
+       if(usePos){
+        pos[r2[1]:r2[2]] = pos[r2[1]:r2[2]]+offset
+       }else{
+         pos[r2[1]:r2[2]] = (r2[1]:r2[2]) 
+       }
+        offset =  pos[r2[2]]
+        if(length(chroms)==1) offset =0
+        chrs[r2[1]:r2[2]] =ranges[j,3]
       
     }
-    chr_inds = attr(dpth,'chr_inds')
-    #print(chr_inds)
-    toplot = cbind(pos, -pvs[,i], chr_inds)  #, col=0,ylim = c(0,-min(pvs[,i])))
-    
-    if(!is.null(chroms)){
    
-    inds_ = which(chr_inds %in% chroms)
-    print(length(inds_))
-    toplot1=cbind(pos[inds_], pvs[inds_,i],chr_inds[inds_])  #, col=0,ylim = c(0,-min(pvs[,i])))
-    plot(toplot1[,1:2],col=0,ylim = c(0,-min(pvs[,i], na.rm=T) ), xlim = xlim)
+    toplot = cbind(pos, pvs, chr_inds)  #, col=0,ylim = c(0,-min(pvs[,i])))
+  
+    if(is.null(chroms)) toincl  = 1:length(pos) else toincl = which(chrs %in% chroms)
+    if(!is.null(chroms)) xlab  =paste(chroms) else xlab = paste(sub("chr","",ranges[,3]))
     
-    }else{
-      
-    plot(toplot[,1:2],col=0,ylim = c(0,-min(pvs[,i],na.rm=T) ), xlim = xlim)
-    
-    }
+    plot(toplot[toincl,1:2],col=0, xlim = xlim,main=nme, xlab = xlab)
     for(j in 1:(dim(ranges)[1])) {
+      if(is.null(chroms) || ranges[j,3] %in% chroms ){
       r2 = as.numeric(ranges[j,1:2])
-      
-      if(is.null(chroms) || ranges[j,3] %in% chroms){   
         print(j)
         print(r2)
+       # print(toplot[r2[1]:r2[2],1])
         lines(toplot[r2[1]:r2[2],1:2],type="p", col=j)  #col=0,ylim = c(0,-min(pvs[,i]) ),col=0)
       }
+      
     }
-    dimnames(toplot)[[2]] = c("pos","pv", "chr_ind")
+    dimnames(toplot)[[2]] = c("pos","pv","chr_inds")
     invisible(data.frame(toplot))
 #    invisible(minp)
 }
