@@ -100,7 +100,7 @@ public class TranscriptUtils {
 		//Outputs output = profile.o;
 		int refPos = sam.getAlignmentStart() - 1;// convert to 0-based index
 		String id = sam.getReadName();
-		
+		String chrom = refSeq.getName();
 		profile.newRead(source_index);
 		for (final CigarElement e : sam.getCigar().getCigarElements()) {
 			final int length = e.getLength();
@@ -287,8 +287,11 @@ public class TranscriptUtils {
 
 				if(sam.getReadNegativeStrandFlag()) {
 					leftseq =TranscriptUtils.revCompl(leftseq); 
-							
+					leftseq.setDesc(leftseq.getDesc()+" rev "+chrom);		
 					baseQL = (new StringBuilder(baseQ)).reverse().toString();
+				}
+				else{
+					leftseq.setDesc(leftseq.getDesc()+" fwd "+chrom);		
 				}
 			
 				leftseq.setName(readSeq.getName());
@@ -381,7 +384,7 @@ public class TranscriptUtils {
 	public static Sequence revCompl(Sequence leftseq) {
 		String sequence = SequenceUtil.reverseComplement(leftseq.toString());
 	   Sequence res = new Sequence(Alphabet.DNA(), sequence.toCharArray(), leftseq.getName());
-	  res.setDesc(leftseq.getDesc()+" rev");
+	  res.setDesc(leftseq.getDesc());
 	   return res;
 	}
 	
