@@ -15,7 +15,10 @@ if(install){
 
 args = commandArgs(trailingOnly=TRUE)
 if(length(args)==0){
-  args = c("control=control","infected=infected", "betabinom","none")
+  args = c("control","infected", "betabinom","none")
+  args[1] = "cDNA"
+  args[2] = "RNA"
+  args[4] = "GE"
 }
 
   control_names = unlist(strsplit(args[1],':'))
@@ -99,25 +102,45 @@ infected_names = unlist(lapply(infected_names, grep, filenames, v=T))
 control_names = grep(exclude_nme, control_names, inv=T,v=T)
 infected_names = grep(exclude_nme, infected_names, inv=T,v=T)
 
-
 print(paste(type_names[1],paste(control_names,collapse=" ")))
 print(paste(type_names[2] , paste(infected_names, collapse=" ")))
-
+if(length(control_names)!=length(infected_names)) error(" lengths different")
 transcriptsl = lapply(transcriptsl, .processTranscripts)
 filtered = .filter(transcriptsl)
 
+transcripts_keep = .process(filtered$keep, control_names, infected_names)
+transcripts_removed = .process(filtered$remove, control_names, infected_names)
 pdf(paste(resdir, "/qq.pdf",sep=""))
-.process(filtered$keep,attributes, resdir, control_names, infected_names, type_names= type_names, outp= "results.csv", type="keep")
-.process(filtered$remove,attributes, resdir, control_names, infected_names, type_names = type_names, outp= "results_removed.csv", type="keep")
+
+res_keep = .processDE(transcripts_keep,attributes, resdir, control_names, infected_names, type_names = type_names, outp= "results_removed.csv", type="keep")
+res_remove = .processDE(transcripts_removed,attributes, resdir, control_names, infected_names, type_names = type_names, outp= "results_removed.csv", type="keep")
 dev.off()
+
+.head1<-function(transcripts, nme="order1",n=10){
+  head(transcripts[attr(transcripts,nme),],n)
+}
+.head1(res_keep$DE1,"order1",10)
+
+
 
 #this calculates pvalues for base-level error rates
 
 print("####DEPTH ANALYSIS #### ")
-##library(rhdf5)
+##
 #source(.findFile(src, "depth_association.R"))
 
 
 
+####
+transcripts =.combineTranscripts(transcriptsl, attributes)
+ORFs = strsplit(transcripts$ORFs,";")
+lens = unlist(lapply(ORFs,length))
+mtch = unlist(lapply(ORFs, function(x) x[1]==x[2]))
+trans1 = transcripts[mtch==FALSE,]
+which(trans1$countTotal==max(trans1[trans1$chrs!="chr11",]$countTotal))
 
+which(transcripts_removed$countTotal==max(transcripts_removed$countTotal))
+ord = order(transcripts_removed$countTotal, decreasing=T)
+tr = transcripts_removed[ord,]
+head(cbind(tr$end - tr$start, tr$countTotal),30)
 
