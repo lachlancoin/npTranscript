@@ -425,10 +425,11 @@ public static boolean combineOutput = false;
 				List<String> head = Arrays.asList(st.split("\\t"));
 				int readind = head.indexOf("readID");
 				int orfind = head.indexOf("ORFs");
+				int chromind = head.indexOf("chrom");
 				while((st = br.readLine())!=null){
 					String[] str  = st.split("\\t");
 					String readId = str[readind];
-					String orfID = str[orfind];
+					String orfID = str[chromind]+";"+str[orfind];
 					Collection<String> l= map.get(orfID) ;
 					if(l==null) {
 						map.put(orfID, new HashSet<String>());
@@ -652,7 +653,7 @@ public static boolean combineOutput = false;
 					}
 				
 					try{
-						String pool = readList==null || poolID<0 ? "" : (readList[poolID].split("\\.")[0]+";");
+						String pool = readList==null || poolID<0 ? "" : (readList[poolID]+"|");
 						TranscriptUtils.identity1(chr, chr5prime,chr3prime, readSeq, sam, profile, source_index, cluster_reads, chr.length(), pool);
 					}catch(NumberFormatException exc){
 						System.err.println(readSeq.getName());
