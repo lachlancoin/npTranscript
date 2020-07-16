@@ -94,7 +94,8 @@ target= list( chrom="character",
 
 infilesT = grep("transcripts.txt", dir(), v=T)
 transcriptsl = readTranscriptHostAll(infilesT, start_text = start_text,target = target,   filter = filter, 
-                                    combined_depth_thresh = 1)
+                                    combined_depth_thresh = 100)
+
 attributes = attributes(transcriptsl)
 filenames = attr(transcriptsl,"info")
 control_names = unlist(lapply(control_names, grep, filenames, v=T));#  grep(control_names,filenames,v=T)
@@ -108,10 +109,12 @@ print(paste(type_names[1],paste(control_names,collapse=" ")))
 print(paste(type_names[2] , paste(infected_names, collapse=" ")))
 if(length(control_names)!=length(infected_names)) error(" lengths different")
 transcriptsl = lapply(transcriptsl, .processTranscripts)
-filtered = .filter(transcriptsl)
 
-transcripts_keep = .process(filtered$keep, control_names, infected_names)
-transcripts_removed = .process(filtered$remove, control_names, infected_names)
+filtered = .filter(transcriptsl)
+keep = filtered$keep[unlist(lapply(filtered$keep,function(x) dim(x)[[1]]))>0]
+transcripts_keep = .process(keep, control_names, infected_names)
+remove = filtered$remove[unlist(lapply(filtered$remove,function(x) dim(x)[[1]]))>0]
+transcripts_removed = .process(remove, control_names, infected_names)
 pdf(paste(resdir, "/qq.pdf",sep=""))
 
 res_keep = .processDE(transcripts_keep,attributes, resdir, control_names, infected_names, type_names = type_names, outp= "results_removed.csv", type="keep")
@@ -122,8 +125,9 @@ dev.off()
   head(transcripts[attr(transcripts,nme),],n)
 }
 .head1(res_keep$DE1,"order1",10)
+findSigChrom(res_keep$DE1, thresh = 1e-10, go_thresh = 1e-2,nme="p.adj1", nme2="chrs")
 
-
+findSigChrom(res_keep$DE1, thresh = 1e-10, go_thresh = 1e-2,nme="p.adj2", nme2="chrs")
 
 #this calculates pvalues for base-level error rates
 
@@ -134,6 +138,7 @@ print("####DEPTH ANALYSIS #### ")
 
 
 ####
+if(FALSE){
 transcripts =.combineTranscripts(transcriptsl, attributes)
 ORFs = strsplit(transcripts$ORFs,";")
 lens = unlist(lapply(ORFs,length))
@@ -145,4 +150,4 @@ which(transcripts_removed$countTotal==max(transcripts_removed$countTotal))
 ord = order(transcripts_removed$countTotal, decreasing=T)
 tr = transcripts_removed[ord,]
 head(cbind(tr$end - tr$start, tr$countTotal),30)
-
+}

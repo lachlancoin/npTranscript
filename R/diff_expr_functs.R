@@ -310,18 +310,22 @@ infected_inds[i] = which(names(df)==infected_names[i])
 #  output[orders[,1],,drop=F]
 }
 
-.filter<-function(transcriptsl){
+.filter<-function(transcriptsl, prefix = NULL){
   transcripts_l_keep = list()
   transcripts_l_remove = list()
   
   for(i in 1:length(transcriptsl)){
     transcripts = transcriptsl[[i]]
-    pos = lapply(as.character(transcripts$geneID), function(x) strsplit(x,"\\.")[[1]])
-    lens = (lapply(pos,length))
-    indsK = lens!=2 
-    indsK1 = which(lens==2)
-    ##keep those things which dont have 2 elements sepearated by . or which do and are not numeric
-    tokeep = c(which(indsK),indsK1[(is.na(lapply(pos[indsK1],function(x) min(as.numeric(x)))))])
+    if(!is.null(prefix)){
+	tokeep = grep(prefix, transcripts$geneID)
+	}else{
+	    pos = lapply(as.character(transcripts$geneID), function(x) strsplit(x,"\\.")[[1]])
+	    lens = (lapply(pos,length))
+	    indsK = lens!=2 
+	    indsK1 = which(lens==2)
+	    ##keep those things which dont have 2 elements sepearated by . or which do and are not numeric
+	    tokeep = c(which(indsK),indsK1[(is.na(lapply(pos[indsK1],function(x) min(as.numeric(x)))))])
+	}
     transcripts_l_keep[[i]] = transcripts[tokeep,,drop=F]
     if(length(tokeep)>0){
       transcripts_l_remove[[i]]=transcripts[-tokeep,,drop=F]
@@ -887,7 +891,7 @@ findSigChrom<-function( DE, thresh = 1e-10, go_thresh = 1e-5,nme="FDR1", nme2="c
   mn = dim(DE)[1]
   pvs = DE[,grep(nme, names(DE))[1]]
   chr_ind = grep(nme2,names(DE))
-  sig =  which(pvs<thresh)
+  sig =  which(pvs<=thresh)
   if(length(sig)==0) return(NULL)
   lev_all =getlev(DE[,chr_ind, drop=F])
   lev_ = getlev(DE[sig,chr_ind, drop=F])
