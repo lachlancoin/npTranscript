@@ -709,8 +709,11 @@ readIsoformH5<-function(h5file,  transcripts_){
   ){
 
   names(target)[names(target)=="start"] = start_text
-  
-  header = names(read.table( infilesT1,sep="\t", head=T, nrows = 3, comment.char='#'))
+  #print('h')
+  header = names(read.table( infilesT1,sep="\t", head=T, nrows = 3, comment.char='#', fill=T))
+  ncol = dim(read.table( infilesT1,sep="\t", head=F, nrows = 2,skip = 2, comment.char='#'))[2]
+#print(header)
+#print(ncol)
    extra = grep("count[0-9]", header,v=T)
 extran = as.list(rep("numeric", length(extra)))
 names(extran) = extra
@@ -723,10 +726,12 @@ target = c(target,extran)
   types = unlist(lapply(inf, function(x) rev(strsplit(x,"_")[[1]])[1]))
   header_inds = match(names(target),header)
   #print(target)
-  colClasses = rep(NA, length(header));
+  
+  colClasses = rep(NA, ncol);
   colClasses[header_inds] = target
   #colClass = cbind(rep("numeric", length(extra)), colClasses)
-  transcripts = read.table( infilesT1,sep="\t", head=T, comment.char='#', colClasses= colClasses)
+  transcripts = read.table( infilesT1,skip=2,sep="\t", head=F, comment.char='#', colClasses= colClasses)
+names(transcripts) = header[1:(dim(transcripts)[2])]
   if(!is.null(filter)){
     for(k in 1:length(filter)){
       nme_ind = grep(names(filter)[k], names(transcripts))

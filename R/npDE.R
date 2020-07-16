@@ -31,7 +31,7 @@ if(length(args)==0){
 
 	analysis=args[3]
 	
-	exclude_nme = if(length(args)<4) "do_not_include"  else args[4]
+	exclude_nme = if(length(args)<4) "do_not_include"  else strsplit(args[4],":")[[1]]
 	edgeR = FALSE;
 	if(analysis=="edgeR") edgeR = T
 
@@ -99,8 +99,10 @@ attributes = attributes(transcriptsl)
 filenames = attr(transcriptsl,"info")
 control_names = unlist(lapply(control_names, grep, filenames, v=T));#  grep(control_names,filenames,v=T)
 infected_names = unlist(lapply(infected_names, grep, filenames, v=T))
-control_names = grep(exclude_nme, control_names, inv=T,v=T)
-infected_names = grep(exclude_nme, infected_names, inv=T,v=T)
+for(i in 1:length(exclude_nme)){
+control_names = grep(exclude_nme[i], control_names, inv=T,v=T)
+infected_names = grep(exclude_nme[i], infected_names, inv=T,v=T)
+}
 
 print(paste(type_names[1],paste(control_names,collapse=" ")))
 print(paste(type_names[2] , paste(infected_names, collapse=" ")))
