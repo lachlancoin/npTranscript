@@ -212,16 +212,24 @@ public class TranscriptUtils {
 			int polyAlen = TranscriptUtils.polyAlen(refSeq);
 			if(TranscriptUtils.coronavirus && st_r > extra_threshold1 && attempt5rescue && st_r < 1000 && sam.getAlignmentStart()> 100 ){
 				//good candidate for a missed 5' alignment
+				try{
 				 align_5prime = SWGAlignment.align(readSeq.subSequence(0, st_r), fivePrimeRefSeq);
+				}catch(Exception exc){
+					System.err.println("warning could not attemp 5'rescue "+ readSeq.subSequence(0, st_r));
+				}
 			}
 			
 			int seqlen1 = refSeq.length()-polyAlen;
 			if(TranscriptUtils.coronavirus && diff_r > extra_threshold2 && attempt3rescue &&  diff_r < 1000 && sam.getAlignmentEnd()< seqlen1- 100 ){
 				//good candidate for a missed 3' alignment
+				try{
 				 align_3prime = SWGAlignment.align(readSeq.subSequence(end_r+1,readSeq.length()), threePrimeRefSeq);
 				// align_3primeRev = SWGAlignment.align(TranscriptUtils.revCompl(readSeq.subSequence(end_r+1,readSeq.length())), threePrimeRefSeq);
 
 				 offset_3prime = refSeq.length()-threePrimeRefSeq.length();
+				}catch(Exception exc){
+					System.err.println("warning could not attempt 3'rescue "+ readSeq.subSequence(end_r+1,readSeq.length()));
+				}
 			}
 			Sequence leftseq = null;  Sequence rightseq = null;
 		 double phredQL = st_r < 20 ? 0 : npTranscript.run.ViralChimericReadsAnalysisCmd.median(phredQs, 0,st_r);
@@ -230,7 +238,7 @@ public class TranscriptUtils {
 		 //System.err.println(phredQL+" "+phredQ+" "+phredQR);
 			if(st_r> extra_threshold && Outputs.writePolyA && !Double.isNaN(phredQL) && phredQL >= qual_thresh){
 				leftseq = readSeq.subSequence(0,st_r);
-				
+				try{
 				SWGAlignment polyAlign =  SWGAlignment.align(leftseq, polyA);
 				if(polyAlign.getIdentity() > 0.9 * polyAlign.getLength()  && polyAlign.getLength()>15){
 					int st = polyAlign.getStart1();
@@ -247,10 +255,14 @@ public class TranscriptUtils {
 						return;
 					}
 				}
+				}catch(Exception exc){
+					System.err.println("warning could not do polyA alignment");
+				}
 
 			}
 			if(readSeq.length() -  end_r >extra_threshold && Outputs.writePolyA &&  !Double.isNaN(phredQR) && phredQR >= qual_thresh){
 				rightseq = readSeq.subSequence(end_r+1, readSeq.length());
+				try{
 				SWGAlignment polyAlign =  SWGAlignment.align(rightseq, polyA);
 				if(polyAlign.getIdentity() > 0.9 * polyAlign.getLength()  && polyAlign.getLength()>10 ){
 					 int st = polyAlign.getStart1() + end_r;
@@ -265,6 +277,9 @@ public class TranscriptUtils {
 							System.err.println("internal polyA 3'");
 					return;
 					 }
+				}
+				}catch(Exception exc){
+					System.err.println("warning could not do polyA alignment");
 				}
 			}
 			 
@@ -341,7 +356,7 @@ public class TranscriptUtils {
 					
 					Sequence refSeq1 = refSeq.length() < 30000  ? refSeq : 
 							refSeq.subSequence(profile.startPos - 10000, profile.endPos+1000);
-					
+					try{
 				 align_3prime = SWGAlignment.align(rightseq, refSeq1);
 					
 				 TranscriptUtils.getStartEnd(align_3prime, seq1, seq2, end_r, 0, sam.getReadNegativeStrandFlag());
@@ -355,6 +370,9 @@ public class TranscriptUtils {
 
 						 desc.append(" "+secondKey1+" "+String.format("%5.3g",(double)seq2[1]/(double) seq2[0]).trim()+" "+getString(seq1)+";"+getString(seq2));
 							
+					}
+					}catch(Exception exc){
+						System.err.println("warning 3'alignment unsuccessful");
 					}
 				}
 				 rightseq.setDesc(desc.toString());

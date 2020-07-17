@@ -216,7 +216,7 @@ public class IdentityProfile1 {
 		+startPos+"\t"+endPos+"\t"+coRefPositions.numBreaks()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
 		+coRefPositions.getError(src_index)+"\t"+secondKeySt+"\t"+strand+"\t"+breakSt+"\t"+span_str+"\t"+geneNames.size();
 		this.o.printRead(str);
-		boolean writeMSA = Outputs.doMSA!=null && includeInConsensus;
+		boolean writeMSA = Outputs.doMSA!=null && includeInConsensus  && Outputs.msa_sources.containsKey(source_index);
 		if(includeInConsensus && TranscriptUtils.coronavirus){
 			int st1 = startPos; //position>0 ? position : startPos; // start after break
 			inner: for(int i=annot.start.size()-1; i>=0; i--){
@@ -255,8 +255,9 @@ public class IdentityProfile1 {
 			}
 		}
 		
-		if(Outputs.doMSA!=null && Outputs.doMSA.contains(type_nme) && includeInConsensus || 
-				Outputs.doMSA.contains(span) && includeInConsensus && Outputs.msa_sources.containsKey(source_index)
+		if(includeInConsensus  && Outputs.msa_sources.containsKey(source_index) && 
+				(Outputs.doMSA!=null && Outputs.doMSA.contains(type_nme)  || 
+				Outputs.doMSA.contains(span))
 				) {
 			Sequence readSeq1 = readSeq.subSequence(start_read, end_read);
 			String baseQ1 = baseQ.length()<=1 ? baseQ :baseQ.substring(start_read, end_read);

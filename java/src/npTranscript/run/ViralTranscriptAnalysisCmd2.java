@@ -273,7 +273,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		
 	}
 	
- public static void run(CommandLine cmdLine, String bamFile, String resDir,Map<String, JapsaAnnotation> anno,  Set<String> chrs) throws IOException{
+ public static void run(CommandLine cmdLine, String[] bamFiles, String resDir,Map<String, JapsaAnnotation> anno,  Set<String> chrs) throws IOException{
 		String reference = cmdLine.getStringVal("reference");
 		int qual = cmdLine.getIntVal("qual");
 		int bin = cmdLine.getIntVal("bin");
@@ -304,7 +304,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		boolean coronavirus = cmdLine.getBooleanVal("coronavirus");
 		String[] msaOpts = cmdLine.getStringVal("doMSA").split(":"); //e.g 5_3:sep or all:sep
 		String msa_source = cmdLine.getStringVal("msa_source");
-		String[] bamFiles =bamFile.split(":"); 
+	//	String[] bamFiles =bamFile.split(":"); 
 		int len =  bamFiles.length;
 		if(msa_source!=null){
 			String[] str = msa_source.split(";");
@@ -371,7 +371,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			CigarHash2.subclusterBasedOnStEnd = false;
 			calcBreaks = false;
 		}
-			errorAnalysis(bamFile, reference, annotFile,readList,annotationType, 
+			errorAnalysis(bamFiles, reference, annotFile,readList,annotationType, 
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  sorted , 
 				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, overwrite, isoformDepthThresh, coverageDepthThresh);
 	}
@@ -401,7 +401,18 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		File resDir = new File(resdir);
 		if(!resDir.exists())resDir.mkdir();
 		printParams(resDir, args1);
-		run(cmdLine, bamFile, resdir, anno,  chrs);
+		String[] bamFiles_ = bamFile.split(":");
+		if(bamFile.equals("all") || bamFile.equals(".")){
+			bamFiles_ = (new File("./")).list(new FilenameFilter(){
+
+				@Override
+				public boolean accept(File dir, String name) {
+					return name.endsWith(".bam");
+				}
+				
+			});
+		}
+		run(cmdLine, bamFiles_, resdir, anno,  chrs);
 		
 		
 		// paramEst(bamFile, reference, qual);
@@ -411,7 +422,7 @@ public static boolean combineOutput = false;
 	/**
 	 * Error analysis of a bam file. Assume it has been sorted
 	 */
-	static void errorAnalysis(String bamFiles, String refFile, String annot_file, String[] readList,    String annotationType, String resdir, String pattern, int qual, int round, 
+	static void errorAnalysis(String[] bamFiles_, String refFile, String annot_file, String[] readList,    String annotationType, String resdir, String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads,  boolean sorted,
 			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,Map<String, JapsaAnnotation> anno, Set<String>chrToInclude, boolean overwrite,
 			int writeIsoformDepthThresh, int writeCoverageDepthThresh) throws IOException {
@@ -428,17 +439,8 @@ public static boolean combineOutput = false;
 		if(annotSummary.exists()) annotSummary.delete();
 		PrintWriter annotation_pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(annotSummary, false))));
 		boolean calcTree = false;
-		String[] bamFiles_ = bamFiles.split(":");
-		if(bamFiles.equals("all") || bamFiles.equals(".")){
-			bamFiles_ = (new File("./")).list(new FilenameFilter(){
-
-				@Override
-				public boolean accept(File dir, String name) {
-					return name.endsWith(".bam");
-				}
-				
-			});
-		}
+	//	String[] bamFiles_ = bamFiles.split(":");
+	
 		Collection<String>[] reads= null;
 		if(readList.length>0 && readList[0].length()>0){
 		 if( readList[0].indexOf("readToCluster.txt.gz")>=0){
