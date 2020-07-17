@@ -184,7 +184,7 @@ public class SequenceOutputStream1 {
 	
 	static double perc_target = 0.5; // more means greater truncation
   private OutputStreamWriter so; 
-  File target ;
+ private  File target ;
   boolean append;
   int thresh = 10;
   

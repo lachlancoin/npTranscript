@@ -231,6 +231,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addString("span", "protein_coding", "Filtering span.  Use all not to filter.");
 		addInt("qual", 0, "Minimum quality required");
 		addInt("bin", 1, "Bin size for numerical hashing");
+		addInt("maxNumBreaks", 0, "max number of splices For  MSA");
 		addInt("breakThresh", 1000, "Thresh for break points to match clusters.  If bigger than genome size then no break points");
 		addInt("coverageDepthThresh", 100, "Threshhold for writing base level depth information to h5 file");
 		addInt("isoformDepthThresh", 10, "Threshhold for printing out all isoforms");
@@ -298,6 +299,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		TranscriptUtils.reAlignExtra = cmdLine.getBooleanVal("reAlignExtra");
 		TranscriptUtils.attempt5rescue = cmdLine.getBooleanVal("attempt5rescue");
 		TranscriptUtils.attempt3rescue = cmdLine.getBooleanVal("attempt3rescue");
+		Outputs.maxNumBreaks = cmdLine.getIntVal("maxNumBreaks");
 		GFFAnnotation.setGFFFeatureNames(cmdLine.getStringVal("GFF_features").split(":"));
 		GFFAnnotation.span_only = cmdLine.getStringVal("span").equals("all") ?new ArrayList<String>() :   Arrays.asList(cmdLine.getStringVal("span").split(":"));
 		boolean sorted = true;

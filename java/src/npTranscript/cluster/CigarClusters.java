@@ -92,7 +92,7 @@ public class CigarClusters {
 		}
 	clusterIDs[0] = clusterID;
 	
-	clusterIDs[1] = subID.toString(CigarHash2.round, 1, subID.size()-1);
+	clusterIDs[1] = subID.toString(CigarHash2.round, 1, subID.size()-1).hashCode()+"";
 		//return clusterID;
 	}
 
