@@ -236,7 +236,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addInt("isoformDepthThresh", 10, "Threshhold for printing out all isoforms");
 		addDouble("msaDepthThresh", 10, "Threshhold for running MSA per subcluster");
 		addDouble("qualThresh", 20, "Quality thresh for leftover seqs");
-		addString("doMSA", "false" , "Options: 5_3 or all ");
+		addString("doMSA", "false" , "Options: 5_3 or all or span=0 ");
+		addString("msa_source", null , "indicates how to group msa, e.g 0,1,2;3,4,5 ");
 		//addString("aligner", "kalign" , "Options: kalign3, poa, spoa, abpoa");
 		addInt("startThresh", 100, "Threshold for having 5'");
 		addInt("endThresh", 100, "Threshold for having 3'");
@@ -302,13 +303,28 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		boolean sorted = true;
 		boolean coronavirus = cmdLine.getBooleanVal("coronavirus");
 		String[] msaOpts = cmdLine.getStringVal("doMSA").split(":"); //e.g 5_3:sep or all:sep
-		
+		String msa_source = cmdLine.getStringVal("msa_source");
+		if(msa_source!=null){
+			String[] str = msa_source.split(";");
+			for(int i=0; i<str.length;i++){
+				String[] str1 = str[i].split(",");
+				for(int j=0; j<str1.length;j++){
+					Outputs.msa_sources.put(Integer.parseInt(str1[j]), i);
+				}
+			}
+		}else{
+			int len =  bamFile.split(":").length;
+			for(int i=0; i<len; i++){
+				Outputs.msa_sources.put(i, 0);
+			}
+		}
+		for(int i=0; i<msaOpts.length; i++){
+			if(msaOpts[i].startsWith("span=")) msaOpts[i] = msaOpts[i].split("=")[1];
+		}
 		Outputs.doMSA =Arrays.asList((msaOpts[0].equals("all") ?"5_3,no5_3,5_no3,no5_no3": msaOpts[0]).split(",")) ;
 		Outputs.minClusterEntries = cmdLine.getIntVal("minClusterEntries");
 		if(msaOpts[0].equals("false")){
 			Outputs.doMSA = null;
-		}else{
-			Outputs.mergeSourceClusters = msaOpts.length==1 || !msaOpts[1].startsWith("sep");
 		}
 		Outputs.keepAlignment = cmdLine.getBooleanVal("keepAlignment");
 		Outputs.keepinputFasta = Outputs.keepAlignment ;

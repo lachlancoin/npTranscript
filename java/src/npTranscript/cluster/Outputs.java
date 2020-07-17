@@ -8,6 +8,9 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -19,10 +22,7 @@ import ch.systemsx.cisd.hdf5.IHDF5SimpleWriter;
 import htsjdk.samtools.fastq.FastqRecord;
 import htsjdk.samtools.fastq.FastqWriter;
 import htsjdk.samtools.fastq.FastqWriterFactory;
-import japsa.bio.np.ErrorCorrection;
-import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
-import japsa.seq.SequenceOutputStream;
 import npTranscript.cluster.CigarCluster.Count;
 import npTranscript.run.CompressDir;
 import npTranscript.run.SequenceOutputStream1;
@@ -65,7 +65,8 @@ public class Outputs{
 	}
 	// public static boolean MSA_at_cluster = true;
 	public static List<String> doMSA = null;//"5_3";
-	public static boolean mergeSourceClusters = true;
+	public static Map<Integer,Integer>msa_sources = new HashMap<Integer, Integer>();
+//	public static boolean mergeSourceClusters = true;
 	public static boolean gzipFasta = false;
 	public static boolean keepAlignment = true;
 	public static boolean keepinputFasta = true;
@@ -126,15 +127,19 @@ public class Outputs{
 			 
 			 outfile11 = new File(resDir, genome_index+".annot.txt.gz");
 		//	String prefix = readsF.getName().split("\\.")[0];
-			
-			 if(doMSA!=null && mergeSourceClusters){
+			List<Integer> vals = new ArrayList<Integer>(new HashSet<Integer> (Outputs.msa_sources.values()));
+			Collections.sort(vals);
+			 //List<String>[] types = new ArrayList<String>[vals.size())]; 
+			 if(doMSA!=null && ( Outputs.msa_sources.size()==0)){
 				 clusters = new CompressDir[] {new CompressDir(new File(resDir,  genome_index+"." +"clusters"), true)};
 		//		 so =  new FOutp[] {new FOutp("consensus")};
-			 }else if(doMSA!=null && !mergeSourceClusters){
-				 clusters =  new CompressDir[type_nmes.length];
+			 }else if(doMSA!=null &&  ( Outputs.msa_sources.size()>0)){
+				 clusters =  new CompressDir[vals.size()];
 			//	 this.so = new FOutp[type_nmes.length];
+				
 				 for(int i=0; i<clusters.length; i++){
-					 String nmei =  genome_index+"."+type_nmes[i]+".";
+					 
+					 String nmei =  genome_index+"."+vals.get(i)+".";
 					 clusters[i] = new CompressDir(new File(resDir, nmei+"clusters"), true);
 				//	 so[i] = new FOutp(nmei+"consensus" );
 				 }
@@ -293,10 +298,12 @@ public class Outputs{
 		
 		private CompressDir getCluster(int source){
 			if(clusters==null) return null;
-			return mergeSourceClusters? this.clusters[0] : this.clusters[source];
+			return this.clusters[this.msa_sources.get(source)];
+			//return mergeSourceClusters? this.clusters[0] : this.clusters[source];
 		}
 		private int getCount(Count val, int source){
-			return mergeSourceClusters ? Arrays.stream(val.count()).sum()  : val.count()[source];
+			return val.count()[this.msa_sources.get(source)];
+		//	return mergeSourceClusters ? Arrays.stream(val.count()).sum()  : val.count()[source];
 		}
 
 		

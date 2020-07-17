@@ -210,14 +210,14 @@ public class IdentityProfile1 {
 		clusterID[0] = chrom+".NA";
 		clusterID[1] = "NA";
 		}
-		
+		String span = ""+geneNames.size();
 		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"+start_read+"\t"+end_read+"\t"
 		+type_nme+"\t"+chrom+"\t"
 		+startPos+"\t"+endPos+"\t"+coRefPositions.numBreaks()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
 		+coRefPositions.getError(src_index)+"\t"+secondKeySt+"\t"+strand+"\t"+breakSt+"\t"+span_str+"\t"+geneNames.size();
 		this.o.printRead(str);
 		boolean writeMSA = Outputs.doMSA!=null && includeInConsensus;
-		if(includeInConsensus){
+		if(includeInConsensus && TranscriptUtils.coronavirus){
 			int st1 = startPos; //position>0 ? position : startPos; // start after break
 			inner: for(int i=annot.start.size()-1; i>=0; i--){
 				if(st1 -10> annot.start.get(i)) break inner;
@@ -255,7 +255,9 @@ public class IdentityProfile1 {
 			}
 		}
 		
-		if(Outputs.doMSA!=null && Outputs.doMSA.contains(type_nme) && includeInConsensus) {
+		if(Outputs.doMSA!=null && Outputs.doMSA.contains(type_nme) && includeInConsensus || 
+				Outputs.doMSA.contains(span) && includeInConsensus && Outputs.msa_sources.containsKey(source_index)
+				) {
 			Sequence readSeq1 = readSeq.subSequence(start_read, end_read);
 			String baseQ1 = baseQ.length()<=1 ? baseQ :baseQ.substring(start_read, end_read);
 			List<Integer>read_breaks = new ArrayList<Integer>();
