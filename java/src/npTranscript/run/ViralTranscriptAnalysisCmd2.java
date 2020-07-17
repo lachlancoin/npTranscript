@@ -248,7 +248,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addBoolean("keepAlignment", false, "whether to keep alignment for MSA");
 		addBoolean("attempt5rescue", true, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
 		addBoolean("attempt3rescue", true, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
-		addBoolean("writePolyA", false, "whether write reads with polyA in middle");
+		addBoolean("writePolyA", false, "whether write reads with poly								qqq	A in middle");
 		addBoolean("coronavirus", true, "whether to run in coronavirus mode (necessary to do breakpoint analysis, but takes more memory)");
 		addStdHelp();
 	}
@@ -304,16 +304,24 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		boolean coronavirus = cmdLine.getBooleanVal("coronavirus");
 		String[] msaOpts = cmdLine.getStringVal("doMSA").split(":"); //e.g 5_3:sep or all:sep
 		String msa_source = cmdLine.getStringVal("msa_source");
+		String[] bamFiles =bamFile.split(":"); 
+		int len =  bamFiles.length;
 		if(msa_source!=null){
 			String[] str = msa_source.split(";");
-			for(int i=0; i<str.length;i++){
-				String[] str1 = str[i].split(",");
-				for(int j=0; j<str1.length;j++){
-					Outputs.msa_sources.put(Integer.parseInt(str1[j]), i);
-				}
+			outer: for(int j=0; j<bamFiles.length;j++){
+				for(int i=0; i<str.length;i++){
+						String[] str1 = str[i].split(",");
+						for(int k=0; k<str1.length; k++){
+							if(bamFiles[j].indexOf(str1[k])>=0){
+								Outputs.msa_sources.put(j, i);
+								continue outer;
+							}
+						}
+					}
 			}
+			System.err.println("msa_sources "+Outputs.msa_sources);
 		}else{
-			int len =  bamFile.split(":").length;
+			
 			for(int i=0; i<len; i++){
 				Outputs.msa_sources.put(i, 0);
 			}
