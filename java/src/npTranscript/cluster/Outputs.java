@@ -7,7 +7,6 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -15,6 +14,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ExecutorService;
 import java.util.zip.GZIPOutputStream;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
@@ -29,6 +29,7 @@ import npTranscript.run.SequenceOutputStream1;
 
 public class Outputs{
 	
+	public static  ExecutorService executor ;
 	
 	static final FastqWriterFactory factory = new FastqWriterFactory();
 	
@@ -90,9 +91,10 @@ public class Outputs{
 		public void close() throws IOException{
 			transcriptsP.close();
 			readClusters.close();
+			
 			if(clusterW!=null) clusterW.close();
 			this.altT.close();
-		this.annotP.close();
+			this.annotP.close();
 			//this.clusters.close();
 			for(int i=0; i<clusters.length; i++){
 				//if(so[i]!=null) this.so[i].close();
@@ -171,7 +173,7 @@ public class Outputs{
 			 //upstream        downstream      strand  breaks
 
 			 String header = 
- "readID\tclusterId\tsubID\tsource\tlength\tstart_read\tend_read\ttype_nme\tchrom\tstartPos\tendPos\tnum_breaks\tleader_break\terrorRatio\tORFs\tstrand\tbreaks\tspan\tspan_count";
+ "readID\tclusterId\tsubID\tsource\tlength\tstart_read\tend_read\ttype_nme\tchrom\tstartPos\tendPos\tstrand\tnum_breaks\tleader_break\terrorRatio\tORFs\tstrand\tbreaks\tspan\tspan_count";
 			 readClusters.println(header); //\tbreakStart\tbreakEnd\tbreakStart2\tbreakEnd2\tstrand\tbreaks");
 		
 			 transcripts_file = new File(resDir,genome_index+ ".transcripts.txt.gz");
@@ -269,28 +271,44 @@ public class Outputs{
 			String entryname =  ID;
 			if(subID!=null) entryname = entryname+"."+subID;
 			if(cluster!=null){
-				SequenceOutputStream1 out   = cluster.getSeqStream(entryname+".fa", true);
+				SequenceOutputStream1 out   = cluster.getSeqStream(entryname+".fa");
 				//Outputs.writeFasta(out, seq);
 				out.write(seq);
-				cluster.closeWriter(out);
+				//cluster.closeWriter(out);
 			}
 		}
+		
 		
 		
 		public void writeLeft(Sequence subseq,String baseQ,  boolean negStrand, int source_index)  throws IOException{
 			FOutp[] leftover = this.leftover_l;
-				//	fusion ? (left ? this.fusion_l : this.fusion_r) : (left ? this.leftover_l : this.leftover_r);
+			//	fusion ? (left ? this.fusion_l : this.fusion_r) : (left ? this.leftover_l : this.leftover_r);
 			FastqWriter writer = leftover[source_index].fastq;
-			if(negStrand){
-				subseq = TranscriptUtils.revCompl(subseq);
-				baseQ = new StringBuilder(baseQ).reverse().toString();
-			}
-			 writer.write(new FastqRecord(subseq.getName()+ " "+subseq.getDesc(), new String(subseq.charSequence()), "", baseQ));
-
-		//	subseq.writeFasta(leftover[source_index].os);
-		//	leftover[source_index].os.flush();
+			writeFastq(writer,subseq, baseQ, negStrand, source_index );
 		}
+			public void writeFastq(FastqWriter writer, Sequence subseq,String baseQ,  boolean negStrand, int source_index)  throws IOException{
+				if(writer==null) return;
+				Runnable run = new Runnable(){
+					@Override
+					public void run() {
+						 writer.write(new FastqRecord(subseq.getName()+ " "+subseq.getDesc(), 
+								 new String(negStrand ? TranscriptUtils.revCompl(subseq).charSequence(): subseq.charSequence()), "", 
+								 negStrand ? new StringBuilder(baseQ).reverse().toString() : baseQ));
+						
+					}
+					
+				};
+			//	run.run();
+				executor.execute(run);
+			}
 
+		
+		public void writePolyA(Sequence readseq, String nme, String baseQ, boolean negStrand, int source_index)  throws IOException{
+			if(polyA==null || polyA[source_index]==null) return ;
+			FastqWriter writer = polyA[source_index].fastq;
+			writeFastq(writer,readseq, baseQ, negStrand, source_index );
+			
+		}
 		
 		public void writeIntMatrix(String id, int[][] matr) {
 			this.clusterW.writeIntMatrix(id, matr);
@@ -355,18 +373,7 @@ public class Outputs{
 		}
 
 		
-		public void writePolyA(Sequence readseq, String nme, String baseQ, boolean negStrand, int source_index) {
-			if(polyA==null || polyA[source_index]==null) return ;
-			FastqWriter writer = polyA[source_index].fastq;
-			if(writer==null) return;
-			if(negStrand){
-				readseq = TranscriptUtils.revCompl(readseq);
-				baseQ = new StringBuilder(baseQ).reverse().toString();
-			}
-			 writer.write(new FastqRecord(nme+ " "+readseq.getDesc(), new String(readseq.charSequence()), "", baseQ));
-
-			
-		}
+		
 
 
 		

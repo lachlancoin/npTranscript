@@ -32,6 +32,7 @@ public class IdentityProfile1 {
 	public static int writeCoverageDepthThresh = 100;
 	public static int writeIsoformDepthThresh = 10;
 	public static int msaDepthThresh = 10;
+	public static boolean includeStart = true;
 	
 	public IdentityProfile1(Sequence refSeq,
 			Outputs o,
@@ -161,7 +162,9 @@ public class IdentityProfile1 {
 		int maxg2=0;
 		int maxg_ind2 =-1; 
 		boolean hasLeaderBreak = TranscriptUtils.coronavirus? (breaks.size()>1 &&  annot.isLeader(breaks.get(1))) : false;
-		secondKey.append(annot.nextUpstream(startPos,chrom_index, forward)+";");
+		if(includeStart){
+			secondKey.append(annot.nextUpstream(startPos,chrom_index, forward)+";");
+		}
 		if(annotByBreakPosition){
 			
 			for(int i=1; i<breaks.size()-1; i+=2){
@@ -213,7 +216,7 @@ public class IdentityProfile1 {
 		String span = ""+geneNames.size();
 		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"+start_read+"\t"+end_read+"\t"
 		+type_nme+"\t"+chrom+"\t"
-		+startPos+"\t"+endPos+"\t"+coRefPositions.numBreaks()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
+		+startPos+"\t"+endPos+"\t"+(forward? "+":"-")+"\t"+coRefPositions.numBreaks()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
 		+coRefPositions.getError(src_index)+"\t"+secondKeySt+"\t"+strand+"\t"+breakSt+"\t"+span_str+"\t"+geneNames.size();
 		this.o.printRead(str);
 		boolean writeMSA = Outputs.doMSA!=null && Outputs.msa_sources !=null && includeInConsensus  && Outputs.msa_sources.containsKey(source_index);

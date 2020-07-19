@@ -55,9 +55,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
+import ch.systemsx.cisd.base.unix.Unix.Time;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
 import htsjdk.samtools.SamInputResource;
@@ -233,6 +236,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addInt("bin", 1, "Bin size for numerical hashing");
 		addInt("maxNumBreaks", 0, "max number of splices For  MSA");
 		addInt("breakThresh", 1000, "Thresh for break points to match clusters.  If bigger than genome size then no break points");
+		addBoolean("includeStart", true, "Whether to include start position in the cluster hash");
+
 		addInt("coverageDepthThresh", 100, "Threshhold for writing base level depth information to h5 file");
 		addInt("isoformDepthThresh", 10, "Threshhold for printing out all isoforms");
 		addDouble("msaDepthThresh", 10, "Threshhold for running MSA per subcluster");
@@ -242,6 +247,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		//addString("aligner", "kalign" , "Options: kalign3, poa, spoa, abpoa");
 		addInt("startThresh", 100, "Threshold for having 5'");
 		addInt("endThresh", 100, "Threshold for having 3'");
+		addInt("maxThreads", 8, "max threads (only writing output uses threads at this stage)");
 		addInt("extra_threshold", 200, "Threshold saving umatched 3'or 5'parts of reads");
 		//addDouble("overlapThresh", 0.95, "Threshold for overlapping clusters");
 	//	addBoolean("coexpression", false, "whether to calc coexperssion matrices (large memory for small bin size)");
@@ -289,6 +295,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		int endThresh = cmdLine.getIntVal("endThresh");
 		int maxReads = cmdLine.getIntVal("maxReads");
 		Annotation.enforceStrand = cmdLine.getBooleanVal("RNA");
+		Outputs.executor=  cmdLine.getIntVal("maxThreads")==1 ? Executors.newSingleThreadExecutor():  Executors.newFixedThreadPool(cmdLine.getIntVal("maxThreads"));
+//		Outputs.executor=  ;
 		TranscriptUtils.qual_thresh = cmdLine.getDoubleVal("qualThresh");
 	ViralTranscriptAnalysisCmd2.combineOutput = cmdLine.getBooleanVal("combineOutput");
 		int isoformDepthThresh  = cmdLine.getIntVal("isoformDepthThresh");
@@ -300,6 +308,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		TranscriptUtils.attempt5rescue = cmdLine.getBooleanVal("attempt5rescue");
 		TranscriptUtils.attempt3rescue = cmdLine.getBooleanVal("attempt3rescue");
 		Outputs.maxNumBreaks = cmdLine.getIntVal("maxNumBreaks");
+		IdentityProfile1.includeStart = cmdLine.getBooleanVal("includeStart");
 		GFFAnnotation.setGFFFeatureNames(cmdLine.getStringVal("GFF_features").split(":"));
 		GFFAnnotation.span_only = cmdLine.getStringVal("span").equals("all") ?new ArrayList<String>() :   Arrays.asList(cmdLine.getStringVal("span").split(":"));
 		boolean sorted = true;
@@ -378,6 +387,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, overwrite, isoformDepthThresh, coverageDepthThresh);
 	}
 	public static void main(String[] args1) throws IOException, InterruptedException {
+		long tme = System.currentTimeMillis();
 		CommandLine cmdLine = new ViralTranscriptAnalysisCmd2();
 		String[] args = cmdLine.stdParseLine(args1);
 		String bamFile = cmdLine.getStringVal("bamFile");
@@ -415,8 +425,9 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			});
 		}
 		run(cmdLine, bamFiles_, resdir, anno,  chrs);
-		
-		
+		Outputs.executor.shutdown();
+		long time1 = System.currentTimeMillis();
+		System.err.println((time1-tme)/(1000)+ " seconds");
 		// paramEst(bamFile, reference, qual);
 	}
 public static boolean combineOutput = false;

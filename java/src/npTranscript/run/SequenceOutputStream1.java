@@ -9,39 +9,21 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Stack;
-import java.util.regex.Pattern;
-import java.util.zip.ZipOutputStream;
 
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
+import npTranscript.cluster.Outputs;
 
 public class SequenceOutputStream1 {
+	
+	
 	//public static boolean keepOriginalName  = false;
 	public static double se_thresh = 1.0;
 	public static int tolerance = 5;
 	
 	public  void writeFasta(Sequence seq) throws IOException{
-		String[] sequ1 = new String[] {seq.toString()};
-		String name = seq.getName();
-		String desc = seq.getDesc();
-		boolean allnull = true;
-		for(int i=0; i<sequ1.length; i++){
-			if(sequ1[i]!=null) allnull=false;
-		}
-		if(allnull) return;
-		so.write(">"+name+" "+desc+"\n");
-		int step = Integer.MAX_VALUE;
-		for(int k=0; k<sequ1.length; k++){
-			if(sequ1[k]!=null){
-			for(int j=0; j<sequ1[k].length(); j+=step){
-				String substr = sequ1[k].substring(j, Math.min(sequ1[k].length(), j+step));
-				//if(writeNumb) os1.write(j+" ");
-				so.write(substr);
-				so.write("\n");
-			}
-			}
-		}
+		
 	}
 	
 	public static  class DetailsComparator implements Comparator<Detail>{
@@ -142,7 +124,7 @@ public class SequenceOutputStream1 {
 		int en_target = det[det.length-mid].en;
 		Arrays.sort(det, new DetailsComparator("index"));
 
-		SequenceOutputStream1 so = new SequenceOutputStream1(target, false);
+		SequenceOutputStream1 so = new SequenceOutputStream1(target);
 		int excl_count =0;
 		for(int i=0; i<genomes.size(); i++){
 			if(det[i].index!=i) throw new RuntimeException("!!");
@@ -178,68 +160,117 @@ public class SequenceOutputStream1 {
 			System.err.println(target.getName()+" did not meet minimum record count after trimming " + so.stack.size()+" < "+min_seqs);
 			so.stack.clear();
 		}
-		so.close();
+		//so.close();
 		return so.target;
 	}
 	
 	static double perc_target = 0.5; // more means greater truncation
-  private OutputStreamWriter so; 
+  
  private  File target ;
-  boolean append;
+  //boolean append;
   int thresh = 10;
   
-  public SequenceOutputStream1(File out, boolean append) {
+  public SequenceOutputStream1(File out) {
 	
 	this.target = out;
-	this.append = append;
+	//this.append = append;
 	}
 
   
 
-  public SequenceOutputStream1(ZipOutputStream outS) {
+  /*public SequenceOutputStream1(ZipOutputStream outS) {
 	so = new OutputStreamWriter(outS);
-  }
+  }*/
 
 
+   boolean lock = false;  // is stream locked for closing
+ // private boolean close = false; // should we close stream once finished
+   //default is to append
 public void printAll() throws IOException {
-	if(so==null) so = new OutputStreamWriter(new FileOutputStream(target, append));
-	while(stack.size()>0){
-		writeFasta(stack.pop());;
-	}
+	lock = true; 
+	Runnable run = new Runnable(){
+
+		@Override
+		public void run() {
+		//	System.err.println("launching "+target);
+			try{
+			 OutputStreamWriter	so = new OutputStreamWriter(new FileOutputStream(target, true));
+ 			while(stack.size()>0){
+				
+				 Sequence seq = stack.pop();
+				 String[] sequ1 = new String[] {seq.toString()};
+					String name = seq.getName();
+					String desc = seq.getDesc();
+					boolean allnull = true;
+					for(int i=0; i<sequ1.length; i++){
+						if(sequ1[i]!=null) allnull=false;
+					}
+					if(allnull) continue;
+					so.write(">"+name+" "+desc+"\n");
+					int step = Integer.MAX_VALUE;
+					for(int k=0; k<sequ1.length; k++){
+						if(sequ1[k]!=null){
+						for(int j=0; j<sequ1[k].length(); j+=step){
+							String substr = sequ1[k].substring(j, Math.min(sequ1[k].length(), j+step));
+							//if(writeNumb) os1.write(j+" ");
+							so.write(substr);
+							so.write("\n");
+						}
+						}
+					}
+				 
+				 
+				
+				
+			}
+		
+			 so.close();
+			//	System.err.println("done.. "+target+" ");
+			}catch(IOException exc){
+				exc.printStackTrace();
+			}
+			lock = false;
+			
+		}
+		
+	};
+	Outputs.executor.execute(run);
 }
 
   
   public void write(Sequence seq) throws IOException {
-	  if(so!=null) writeFasta(seq);
-	  else{
+	 // if(so!=null) writeFasta(seq);
+	  //else{
 		stack.push(seq);
 		if(stack.size()==thresh){
 			this.printAll();
 		}
-	  }
+	  //}
 	}
 
 Stack<Sequence>  stack= new Stack();
 
 
-public void flush() throws IOException{
-	if(so!=null) so.close();
+/*public void flush() throws IOException{
+	if(so!=null) {
+		if(lock) close = true; else so.close();
+	}
 	// TODO Auto-generated method stub
 	
-}
+}*/
 
 
-
+/*
 public boolean close()  throws IOException{
 	if(so!=null) {
-		so.close();
+		if(lock) close = true; else so.close();
 		return true;
 	}else{
 		return false;
 	}
 	// TODO Auto-generated method stub
 	
-}
+}*/
 
 
 

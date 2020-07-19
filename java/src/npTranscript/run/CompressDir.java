@@ -10,12 +10,13 @@ import java.io.OutputStreamWriter;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.zip.Adler32;
 import java.util.zip.CheckedOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import japsa.seq.SequenceOutputStream;
+import npTranscript.cluster.Outputs;
 
 
 
@@ -71,14 +72,27 @@ public class CompressDir {
 	    
 	    
 	    public void run(int  min_lines) throws IOException{
-	    if(this.currentStreams.size()>0){
+	    	if(this.currentStreams.size()>0){
 	    		for(Iterator<Map.Entry<String, SequenceOutputStream1>> it = currentStreams.entrySet().iterator(); it.hasNext();){
 	    			Map.Entry<String, SequenceOutputStream1> so = it.next();
 	    			so.getValue().printAll();
-	    			so.getValue().close();
+	    		//	so.getValue().close();
 	    		}
-	    }
-	    			
+	    		currentStreams.clear();
+	    	}
+	    	if(Outputs.executor instanceof ThreadPoolExecutor){
+	    	while(((ThreadPoolExecutor)Outputs.executor).getActiveCount()>0){
+	    		try{
+		    	System.err.println("awaiting completion "+((ThreadPoolExecutor)Outputs.executor).getActiveCount());
+		    	//Thread.currentThread();
+				Thread.sleep(100);
+	    		}catch(InterruptedException exc){
+	    			exc.printStackTrace();
+	    		}
+	    	}
+	    	}
+	    	
+	    	System.err.println("all done");
 	    		  	//}
 	    	
 	    	try{
@@ -154,7 +168,7 @@ public class CompressDir {
 	    	}
 	    }
 	    
-	    public void closeWriter(SequenceOutputStream1 osw_s) throws IOException{
+	  /*  public void closeWriter(SequenceOutputStream1 osw_s) throws IOException{
 	    	if(osw_s==this.osw_s){
 	    	   osw_s.flush();
 	           outS.closeEntry();
@@ -162,7 +176,7 @@ public class CompressDir {
 	    		boolean closed = osw_s.close();
 	    		if(closed) this.currentStreams.remove(osw_s.entryname());
 	    	}
-	    }
+	    }*/
 	    
 	    public void closeWriter(OutputStreamWriter osw) throws IOException{
 	    	if(osw==this.osw){
@@ -175,24 +189,22 @@ public class CompressDir {
 	    
 	    Map<String, SequenceOutputStream1> currentStreams = new HashMap<String, SequenceOutputStream1>();
 	    
-	    public SequenceOutputStream1 getSeqStream(String entry,  boolean append) throws IOException{
-	    	boolean writeDirectToZip = false;
-	    	if(writeDirectToZip){
+	    public SequenceOutputStream1 getSeqStream(String entry) throws IOException{
+	    	//boolean writeDirectToZip = false;
+	    	/*if(writeDirectToZip){
 	    	//	if(append) throw new
 		    	ZipEntry headings = new ZipEntry(entry);
 			    outS.putNextEntry(headings);
 			    return new SequenceOutputStream1(outS);
-		    }else{
-		    	if(currentStreams.containsKey(entry)){
-		    		return currentStreams.get(entry);
-		    	}else{
+		    }else{*/
+	    	SequenceOutputStream1 so1 = currentStreams.get(entry);
+		    	if(so1==null){
 		    		File f = new File(inDir, entry);
-		    		if(append && ! f.exists()) append=false;
-		    		SequenceOutputStream1 so1 =  new SequenceOutputStream1(f, append);
+		    		 so1 =  new SequenceOutputStream1(f);
 		    		currentStreams.put(so1.entryname(), so1);
-		    		return so1;
+		    		
 		    	}
-		    }
+		    	return so1;
 	    }
 	    
 	    public OutputStreamWriter getWriter(String entry, boolean writeDirectToZip)throws IOException{
