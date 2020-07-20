@@ -4,8 +4,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
 
 import japsa.seq.Sequence;
@@ -434,6 +436,26 @@ public class CigarCluster  {
 			return (int)Math.round(((double)this.breaks.size()-2.0)/2.0);
 		}
 
+		public String exonCount(){
+			Set<Integer>s = new TreeSet<Integer>();
+			
+			for(Iterator<CigarHash2> it = this.all_breaks.keySet().iterator();it.hasNext();){
+				CigarHash2 br = it.next();
+				s.add((int) Math.round((double)br.size()/2.0));
+			}
+			StringBuffer sb = new StringBuffer();
+			boolean first = true;
+			for(Iterator<Integer> it = s.iterator(); it.hasNext(); ){
+				if(first){
+					first = false;
+				}else{
+					sb.append(",");
+				}
+				sb.append(it.next());
+			}
+			String st = sb.toString();
+			return st;
+		}
 		
 		
 	}

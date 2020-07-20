@@ -219,6 +219,9 @@ public class IdentityProfile1 {
 		+startPos+"\t"+endPos+"\t"+(forward? "+":"-")+"\t"+coRefPositions.numBreaks()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
 		+coRefPositions.getError(src_index)+"\t"+secondKeySt+"\t"+strand+"\t"+breakSt+"\t"+span_str+"\t"+geneNames.size();
 		this.o.printRead(str);
+		int num_exons =(int) Math.floor( (double)  coRefPositions.breaks.size()/2.0);
+
+		this.o.printBed(coRefPositions.breaks, id,  strand, source_index, clusterID[0], clusterID[1], num_exons);
 		boolean writeMSA = Outputs.doMSA!=null && Outputs.msa_sources !=null && includeInConsensus  && Outputs.msa_sources.containsKey(source_index);
 		if(includeInConsensus && TranscriptUtils.coronavirus){
 			int st1 = startPos; //position>0 ? position : startPos; // start after break
@@ -250,17 +253,16 @@ public class IdentityProfile1 {
 						if(diff1>0 && diff1> 0.8 *diff){
 							Sequence readSeq1 = readSeq.subSequence(start_read1, end_read1);
 							String baseQ1 = baseQ.length()<=1 ? baseQ : baseQ.substring(start_read1, end_read1);
-							readSeq1.setDesc(chrom_index+" "+start_ref+","+end_ref+" "+start_read1+","+end_read1+" "+(end_read1-start_read1));
+							readSeq1.setDesc(chrom_index+" "+start_ref+","+end_ref+" "+start_read1+","+end_read1+" "+(end_read1-start_read1)+" "+strand+" "+source_index);
 							this.o.writeToCluster("annot_"+annot.genes.get(i),null, source_index, readSeq1, baseQ1,null, readSeq.getName(), strand);
 						}
 					}
 				}
 			}
 		}
-		
 		if(includeInConsensus  && Outputs.msa_sources.containsKey(source_index) && 
 				(Outputs.doMSA!=null && Outputs.doMSA.contains(type_nme)  || 
-						Outputs.doMSA!=null && Outputs.doMSA.contains(span) && Outputs.numBreaks.contains(coRefPositions.breaks.size()-2) )
+						Outputs.doMSA!=null && Outputs.doMSA.contains(span) && Outputs.numBreaks.contains(num_exons) )
 				) {
 			Sequence readSeq1 = readSeq.subSequence(start_read, end_read);
 			String baseQ1 = baseQ.length()<=1 ? baseQ :baseQ.substring(start_read, end_read);
@@ -269,8 +271,8 @@ public class IdentityProfile1 {
 				read_breaks.add(sam.getReadPositionAtReferencePosition(breaks.get(i)-1, true));
 			}
 			//need to put breaks back in 0 coords for fasta file
-			readSeq1.setDesc(chrom_index+" "+CigarHash2.getString(breaks,-1)+" "+CigarHash2.getString(read_breaks)+" "+(end_read-start_read));
-			this.o.writeToCluster(secondKeySt,"_"+clusterID[1]+"_", source_index, readSeq1, baseQ1, str, readSeq.getName(), strand);
+			readSeq1.setDesc(chrom_index+" "+CigarHash2.getString(breaks,-1)+" "+CigarHash2.getString(read_breaks)+" "+(end_read-start_read)+ " "+strand+" "+source_index);
+			this.o.writeToCluster(num_exons+"_"+secondKeySt,"_"+clusterID[1]+"_", source_index, readSeq1, baseQ1, str, readSeq.getName(), strand);
 		}
 		return secondKeySt+" "+span_str;
 	}

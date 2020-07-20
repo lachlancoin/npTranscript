@@ -178,7 +178,7 @@ public class CigarClusters {
 			cc.id()+"\t"+chrom+"\t"+cc.start+"\t"+cc.end+"\t"+annot.getTypeNme(cc.start, cc.end, forward)+"\t"+
 		//cc.breaks.toString()+"\t"+cc.breaks.hashCode()+"\t"+
 	//	cc.breakSt+"\t"+cc.breakEnd+"\t"+cc.breakSt2+"\t"+cc.breakEnd2+"\t"+
-		cc.all_breaks.size()+"\t"+cc.numBreaks()+"\t"+(hasLeaderBreak? 1: 0)+"\t"+cc.breaks_hash.secondKey+"\t"+geneNme+"\t"+
+		cc.exonCount()+"\t"+cc.numBreaks()+"\t"+(hasLeaderBreak? 1: 0)+"\t"+cc.breaks_hash.secondKey+"\t"+geneNme+"\t"+
 	geneNames.size()+"\t"+
 	//	upstream+"\t"+downstream+"\t"+
 	//	upstream2+"\t"+downstream2+"\t"+

@@ -525,8 +525,7 @@ public static boolean combineOutput = false;
 		
 	//	genes_all_pw.close();
 		IdentityProfile1 profile = null;
-		Outputs outp = null;
-		if(combineOutput)	outp = new Outputs(resDir,  in_nmes, overwrite, 0, true, CigarCluster.recordDepthByPosition); 
+		
 		final SAMRecordIterator[] samIters = new SAMRecordIterator[len];
 		SamReader[] samReaders = new SamReader[len];
 		outer1: for (int ii = 0; ii < len; ii++) {
@@ -560,6 +559,8 @@ public static boolean combineOutput = false;
 			int currentIndex = 0;
 			
 			Sequence chr = genomes.get(currentIndex);
+			Outputs outp = null;
+			if(combineOutput)	outp = new Outputs(resDir,  in_nmes, overwrite, 0, chr.getName(), true, CigarCluster.recordDepthByPosition); 
 			int primelen = 500;//chr.length();
 			Sequence chr5prime = TranscriptUtils.coronavirus ? chr.subSequence(0	, Math.min( primelen, chr.length())) : null;
 			Sequence chr3prime = TranscriptUtils.coronavirus ? chr.subSequence(Math.max(0, chr.length()-primelen), chr.length()) : null;
@@ -689,7 +690,7 @@ public static boolean combineOutput = false;
 									new Annotation(new File(annot_file), currentIndex+"", seqlen, len);
 							}
 						//	pw.close();
-						if(!combineOutput)	outp = new Outputs(resDir,  in_nmes, overwrite, currentIndex, true, CigarCluster.recordDepthByPosition); 
+						if(!combineOutput)	outp = new Outputs(resDir,  in_nmes, overwrite, currentIndex, chr.getName(), true, CigarCluster.recordDepthByPosition); 
 							boolean calcBreaks1 = calcBreaks && break_thresh < seqlen;
 							profile = new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh, annot, calcBreaks1, chr.getName(), currentIndex);
 					}

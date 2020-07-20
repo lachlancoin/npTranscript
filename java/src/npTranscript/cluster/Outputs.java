@@ -1,5 +1,6 @@
 package npTranscript.cluster;
 
+import java.awt.Color;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -79,12 +80,12 @@ public class Outputs{
 	
 		public File transcripts_file;
 		public File reads_file; 
-		private final File outfile, outfile1, outfile2,  outfile4, outfile5, outfile6, outfile7, outfile10, outfile11;
+		private final File outfile, outfile1, outfile2,  outfile4, outfile5, outfile6, outfile7, outfile10, outfile11, bedoutput;
 		//outfile9;
 		private final FOutp[] leftover_l, polyA;//, leftover_r, fusion_l, fusion_r;
 	
 	//	final int seqlen;
-		 PrintWriter transcriptsP,readClusters, annotP;
+		 PrintWriter transcriptsP,readClusters, annotP, bedW;
 		 IHDF5SimpleWriter clusterW = null;
 		 IHDF5SimpleWriter altT = null;
 		File resDir;
@@ -93,6 +94,7 @@ public class Outputs{
 		public void close() throws IOException{
 			transcriptsP.close();
 			readClusters.close();
+			bedW.close();
 			
 			if(clusterW!=null) clusterW.close();
 			this.altT.close();
@@ -113,10 +115,11 @@ public class Outputs{
 		boolean writeDirectToZip = false;
 		
 		int genome_index=0;
-		
-		public Outputs(File resDir,  String[] type_nmes, boolean overwrite, int currentIndex, boolean isoforms, boolean cluster_depth) throws IOException{
+		final String chrom;
+		public Outputs(File resDir,  String[] type_nmes, boolean overwrite, int currentIndex,String chrom,  boolean isoforms, boolean cluster_depth) throws IOException{
 			this.type_nmes = type_nmes;
 			this.genome_index= currentIndex;
+			this.chrom = chrom.startsWith("chr") ? chrom : "chr"+chrom;
 			 this.resDir = resDir;
 		//	 this.seqlen = seqlen;
 			 int num_sources = type_nmes.length;
@@ -129,7 +132,7 @@ public class Outputs{
 			 outfile6 = new File(resDir,genome_index+ ".tree.txt.gz");
 			 outfile7 = new File(resDir,genome_index+ ".dist.txt.gz");
 			 outfile10 = new File(resDir,genome_index+".isoforms.h5");
-			 
+			 bedoutput = new File(resDir,genome_index+".bed.gz");
 			 outfile11 = new File(resDir, genome_index+".annot.txt.gz");
 		//	String prefix = readsF.getName().split("\\.")[0];
 			List<Integer> vals = new ArrayList<Integer>(new HashSet<Integer> (Outputs.msa_sources.values()));
@@ -170,6 +173,9 @@ public class Outputs{
 			 reads_file = new File(resDir,genome_index+ ".readToCluster.txt.gz");
 			 readClusters = new PrintWriter(
 					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(reads_file))));
+			 bedW = new PrintWriter(
+						new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.bedoutput))));
+			 bedW.println("track name=\""+genome_index+"\" description=\""+genome_index+"\" itemRgb=\"On\" ");
 //			 readID  clusterId       subID   source  length  start_read      end_read   
 			 //type_nme        chrom   startPos        endPos  breakStart      breakEnd        errorRatio
 			 //upstream        downstream      strand  breaks
@@ -199,7 +205,7 @@ public class Outputs{
 //							+"\t"+cc.getTotDepthSt(true)+"\t"+cc.getTotDepthSt(false)+"\t"+cc.getErrorRatioSt());
 			 
 			 transcriptsP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(transcripts_file))));
-				String transcriptP_header = "ID\tchrom\tstart\tend\ttype_nme\tisoforms\tnum_breaks\tleader_break\tORFs\tspan\tspan_length"
+				String transcriptP_header = "ID\tchrom\tstart\tend\ttype_nme\tisoforms\tnum_exons\tleader_break\tORFs\tspan\tspan_length"
 					+"\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true)
 				+"\t"+TranscriptUtils.getString("depth", num_sources, true)+"\t"+TranscriptUtils.getString("errors", num_sources, true)
 				+"\t"+TranscriptUtils.getString("error_ratio", num_sources, true);
@@ -259,6 +265,37 @@ public class Outputs{
 		public void printRead(String string) {
 			this.readClusters.println(string);
 			
+		}
+		
+		static Color[] cols = new Color[] {Color.BLACK, Color.blue, Color.GREEN, Color.CYAN, Color.YELLOW, Color.red, Color.ORANGE, Color.MAGENTA, Color.pink};
+		static int col_len = cols.length;
+		static String[] col_str = new String[cols.length];
+		static{
+			float[] f = new float[3];
+			for(int i=0; i<col_str.length; i++){
+				cols[i].getRGBColorComponents(f);
+				
+				col_str[i] = (int) Math.floor(255f*f[0])+","+(int) Math.floor(255f*f[1])+","+(int) Math.floor(255f*(f[2]));
+			}
+			//System.err.println(Arrays.asList(col_str));
+		}
+		public void printBed(List<Integer> breaks, String read_name, char strand, int source, String id, String subid, int num_exons){
+			int col_id = source % col_len;
+		
+			int startPos = breaks.get(0)-1;
+			int endPos = breaks.get(breaks.size()-1)-1;
+			StringBuffer block_sizes = new StringBuffer();
+			StringBuffer block_start = new StringBuffer();
+			String comma = "";
+			
+			for(int i=0; i<breaks.size(); i+=2){
+				block_start.append(comma+(breaks.get(i)-1-startPos));
+				block_sizes.append(comma+(breaks.get(i+1)-breaks.get(i)));
+				if(i==0) comma=",";
+			}
+			bedW.println(this.chrom+"\t"+startPos+"\t"+endPos+"\t"+read_name+"."+id+"\t1\t"+strand+"\t"+startPos+"\t"+endPos+"\t"
+					+col_str[col_id]+"\t"+num_exons+"\t"+block_sizes.toString()+"\t"+block_start.toString());
+
 		}
 
 		
