@@ -260,7 +260,7 @@ public class IdentityProfile1 {
 		
 		if(includeInConsensus  && Outputs.msa_sources.containsKey(source_index) && 
 				(Outputs.doMSA!=null && Outputs.doMSA.contains(type_nme)  || 
-						Outputs.doMSA!=null && Outputs.doMSA.contains(span) && coRefPositions.breaks.size()-2<= Outputs.maxNumBreaks)
+						Outputs.doMSA!=null && Outputs.doMSA.contains(span) && Outputs.numBreaks.contains(coRefPositions.breaks.size()-2) )
 				) {
 			Sequence readSeq1 = readSeq.subSequence(start_read, end_read);
 			String baseQ1 = baseQ.length()<=1 ? baseQ :baseQ.substring(start_read, end_read);

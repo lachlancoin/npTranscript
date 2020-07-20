@@ -7,6 +7,8 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -73,7 +75,7 @@ public class Outputs{
 	public static boolean keepinputFasta = true;
 	public static boolean writePolyA = false;
 	public static int minClusterEntries = 5;
-	public static int maxNumBreaks = 0; // numBreaks for MSA 
+	public static Collection numBreaks = Arrays.asList(new Integer[0]); // numBreaks for MSA 
 	
 		public File transcripts_file;
 		public File reads_file; 
