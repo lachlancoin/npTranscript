@@ -119,7 +119,7 @@ public class Outputs{
 		public Outputs(File resDir,  String[] type_nmes, boolean overwrite, int currentIndex,String chrom,  boolean isoforms, boolean cluster_depth) throws IOException{
 			this.type_nmes = type_nmes;
 			this.genome_index= currentIndex;
-			this.chrom = chrom.startsWith("chr") ? chrom : "chr"+chrom;
+			this.chrom = ((chrom.startsWith("chr") || chrom.startsWith("NC")) ? chrom : "chr"+chrom).split("\\.")[0];
 			 this.resDir = resDir;
 		//	 this.seqlen = seqlen;
 			 int num_sources = type_nmes.length;
@@ -148,6 +148,7 @@ public class Outputs{
 				 for(int i=0; i<clusters.length; i++){
 					 
 					 String nmei =  genome_index+"."+vals.get(i)+".";
+					// if(TranscriptUtils.coronavirus && vals.size()==type_nmes.length) nmei = genome_index+"."+type_nmes[i]+".";
 					 clusters[i] = new CompressDir(new File(resDir, nmei+"clusters"), true);
 				//	 so[i] = new FOutp(nmei+"consensus" );
 				 }

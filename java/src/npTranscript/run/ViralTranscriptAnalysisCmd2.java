@@ -234,7 +234,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addString("span", "protein_coding", "Filtering span.  Use all not to filter.");
 		addInt("qual", 0, "Minimum quality required");
 		addInt("bin", 1, "Bin size for numerical hashing");
-		addString("numBreaks", "none", "number of splices For  MSA");
+		addString("numBreaks", "none", "number of exons For  MSA");
 		addInt("breakThresh", 1000, "Thresh for break points to match clusters.  If bigger than genome size then no break points");
 		addBoolean("includeStart", true, "Whether to include start position in the cluster hash");
 

@@ -272,7 +272,8 @@ public class IdentityProfile1 {
 			}
 			//need to put breaks back in 0 coords for fasta file
 			readSeq1.setDesc(chrom_index+" "+CigarHash2.getString(breaks,-1)+" "+CigarHash2.getString(read_breaks)+" "+(end_read-start_read)+ " "+strand+" "+source_index);
-			this.o.writeToCluster(num_exons+"_"+secondKeySt,"_"+clusterID[1]+"_", source_index, readSeq1, baseQ1, str, readSeq.getName(), strand);
+			String prefix = TranscriptUtils.coronavirus ? "": num_exons+"_";
+			this.o.writeToCluster(prefix+secondKeySt,"_"+clusterID[1]+"_", source_index, readSeq1, baseQ1, str, readSeq.getName(), strand);
 		}
 		return secondKeySt+" "+span_str;
 	}
