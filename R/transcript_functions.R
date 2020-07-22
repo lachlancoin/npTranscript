@@ -1232,6 +1232,11 @@ readIsoformH5<-function(h5file,  transcripts_){
 header = h5read(h5file,"header")
  IDS = transcripts_$ID
 trans = list()
+names = h5ls(h5file)$name
+inds = which(transcripts_$ID %in% names)
+if(length(inds)==0) return (NULL)
+IDS = transcripts_$ID[inds]
+
   for(i in 1:length(IDS)){
 	ID = IDS[i]
 	mat = t(h5read(h5file,as.character(ID)))

@@ -1,9 +1,4 @@
-library(binom)
-library(ggplot2)
-library(gridExtra)
-library(RColorBrewer)
-library(gplots)
-library(seqinr)
+
 library(rhdf5)
 args = commandArgs(trailingOnly=TRUE)
 if(length(args)==0) args = c("out4.txt", "out4a.txt", "out4b.txt", "depth4")
@@ -27,7 +22,7 @@ src = c("~/github/npTranscript/R", "../../R")
   }
 }
 
-if(TRUE) src = gsub("~","C:/Users/LCOIN", src)
+if(FALSE) src = gsub("~","C:/Users/LCOIN", src)
 source(.findFile(src, "transcript_functions.R"))
 
 ####FUNCTIONS #####
@@ -103,6 +98,7 @@ for(i in 1:length(chromlev)){
     row = table1b[inds_i[j],]
     # table1b[inds_i[j],3:4]
     iso2 = readIsoformH5(isofile,  table2[res[[inds_i[j]]],])
+    H5close()
     if(!is.null(iso2)){
       inds_iso2 = lapply(iso2,.overlappingTranscripts, v=row[3:4],filter=filter)
       tokeep[inds_i[j]] = length(which(unlist(lapply(inds_iso2, length))>0))==0
