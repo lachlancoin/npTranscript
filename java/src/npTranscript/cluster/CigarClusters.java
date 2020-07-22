@@ -149,10 +149,10 @@ public class CigarClusters {
 					o.writeString(id, cc.all_breaks, this.num_sources);
 				}
 			}else{
-				boolean write=true;
+				boolean write=false;
 				for(int j=0; j<rcount.length; j++){
-					if(rcount[j]<IdentityProfile1.writeIsoformDepthThresh[j]){
-						write=false;
+					if(rcount[j]>=IdentityProfile1.writeIsoformDepthThresh[j]){
+						write=true;
 					}
 				}
 				if(write){
