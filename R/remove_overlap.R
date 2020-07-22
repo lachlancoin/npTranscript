@@ -97,15 +97,22 @@ for(i in 1:length(chromlev)){
   for(j in 1:length(inds_i) ){
     row = table1b[inds_i[j],]
     # table1b[inds_i[j],3:4]
-    iso2 = readIsoformH5(isofile,  table2[res[[inds_i[j]]],])
+   print(isofile)
+    iso2 = try(readIsoformH5(isofile,  table2[res[[inds_i[j]]],]))
+   if(!inherits(iso2,"try-error")) {
     H5close()
     if(!is.null(iso2)){
       inds_iso2 = lapply(iso2,.overlappingTranscripts, v=row[3:4],filter=filter)
       tokeep[inds_i[j]] = length(which(unlist(lapply(inds_iso2, length))>0))==0
     }else{
+	#print(isofile)
+    print( table2[res[[inds_i[j]]],1])
       print("did not find isoform model, need to rerun npTranscript with lower threshold")
       tokeep[inds_i[j]]=FALSE
     }
+  }else{
+	  print(paste(isofile,"error"))
+  }
   }
   }else{
     print(paste(isofile," does not exist"))
