@@ -280,7 +280,7 @@ public class Outputs{
 			}
 			//System.err.println(Arrays.asList(col_str));
 		}
-		public void printBed(List<Integer> breaks, String read_name, char strand, int source, String id, String subid, int num_exons){
+		public void printBed(List<Integer> breaks, String read_name, char strand, int source, String id, String subid, int num_exons, int span){
 			int col_id = source % col_len;
 		
 			int startPos = breaks.get(0)-1;
@@ -294,7 +294,7 @@ public class Outputs{
 				block_sizes.append(comma+(breaks.get(i+1)-breaks.get(i)));
 				if(i==0) comma=",";
 			}
-			bedW.println(this.chrom+"\t"+startPos+"\t"+endPos+"\t"+read_name+"."+id+"\t1\t"+strand+"\t"+startPos+"\t"+endPos+"\t"
+			bedW.println(this.chrom+"\t"+startPos+"\t"+endPos+"\t"+read_name+"."+id+"\t"+span+"\t"+strand+"\t"+startPos+"\t"+endPos+"\t"
 					+col_str[col_id]+"\t"+num_exons+"\t"+block_sizes.toString()+"\t"+block_start.toString());
 
 		}

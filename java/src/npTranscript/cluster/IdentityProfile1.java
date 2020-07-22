@@ -213,7 +213,7 @@ public class IdentityProfile1 {
 		clusterID[0] = chrom+".NA";
 		clusterID[1] = "NA";
 		}
-		String span = ""+geneNames.size();
+		int  span = geneNames.size();
 		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"+start_read+"\t"+end_read+"\t"
 		+type_nme+"\t"+chrom+"\t"
 		+startPos+"\t"+endPos+"\t"+(forward? "+":"-")+"\t"+coRefPositions.numBreaks()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
@@ -221,7 +221,7 @@ public class IdentityProfile1 {
 		this.o.printRead(str);
 		int num_exons =(int) Math.floor( (double)  coRefPositions.breaks.size()/2.0);
 
-		this.o.printBed(coRefPositions.breaks, id,  strand, source_index, clusterID[0], clusterID[1], num_exons);
+		this.o.printBed(coRefPositions.breaks, id,  strand, source_index, clusterID[0], clusterID[1], num_exons, span);
 		boolean writeMSA = Outputs.doMSA!=null && Outputs.msa_sources !=null && includeInConsensus  && Outputs.msa_sources.containsKey(source_index);
 		if(includeInConsensus && TranscriptUtils.coronavirus){
 			int st1 = startPos; //position>0 ? position : startPos; // start after break
