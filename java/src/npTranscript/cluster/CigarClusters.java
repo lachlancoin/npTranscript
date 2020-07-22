@@ -137,16 +137,28 @@ public class CigarClusters {
 		cc.addZeros(seqlen); 
 		String id = cc.id();
 		int totalDepth = cc.readCountSum();
+		int[] rcount=cc.readCount;
 		
 		if(o.clusterW!=null && totalDepth>IdentityProfile1.writeCoverageDepthThresh){
-		
-		 int[][] matr =cc.getClusterDepth(num_sources, this.refseq);
-		
-		 o.writeIntMatrix(id, matr);
+			int[][] matr =cc.getClusterDepth(num_sources, this.refseq);
+			o.writeIntMatrix(id, matr);
 		}
-		
-		if(o.altT!=null && totalDepth>IdentityProfile1.writeIsoformDepthThresh){
-		o.writeString(id, cc.all_breaks, this.num_sources);
+		if(o.altT!=null){
+			if(IdentityProfile1.writeIsoformDepthThresh.length==1){
+				if(totalDepth>=IdentityProfile1.writeIsoformDepthThresh[0]){
+					o.writeString(id, cc.all_breaks, this.num_sources);
+				}
+			}else{
+				boolean write=true;
+				for(int j=0; j<rcount.length; j++){
+					if(rcount[j]<IdentityProfile1.writeIsoformDepthThresh[j]){
+						write=false;
+					}
+				}
+				if(write){
+					o.writeString(id, cc.all_breaks, this.num_sources);
+				}
+			}
 		}
 		
 	}

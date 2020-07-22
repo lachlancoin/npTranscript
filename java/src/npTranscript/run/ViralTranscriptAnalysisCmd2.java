@@ -239,7 +239,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addBoolean("includeStart", true, "Whether to include start position in the cluster hash");
 
 		addInt("coverageDepthThresh", 100, "Threshhold for writing base level depth information to h5 file");
-		addInt("isoformDepthThresh", 10, "Threshhold for printing out all isoforms");
+		addString("isoformDepthThresh", "10", "Threshhold for printing out all isoforms");
 		addDouble("msaDepthThresh", 10, "Threshhold for running MSA per subcluster");
 		addDouble("qualThresh", 20, "Quality thresh for leftover seqs");
 		addString("doMSA", "false" , "Options: 5_3 or all or span=0 ");
@@ -298,8 +298,12 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		Outputs.executor=  cmdLine.getIntVal("maxThreads")==1 ? Executors.newSingleThreadExecutor():  Executors.newFixedThreadPool(cmdLine.getIntVal("maxThreads"));
 //		Outputs.executor=  ;
 		TranscriptUtils.qual_thresh = cmdLine.getDoubleVal("qualThresh");
-	ViralTranscriptAnalysisCmd2.combineOutput = cmdLine.getBooleanVal("combineOutput");
-		int isoformDepthThresh  = cmdLine.getIntVal("isoformDepthThresh");
+		ViralTranscriptAnalysisCmd2.combineOutput = cmdLine.getBooleanVal("combineOutput");
+		String[] d_thresh = cmdLine.getStringVal("isoformDepthThresh").split(":");
+		int[] isoformDepthThresh  = new int[d_thresh.length];
+		for(int i=0; i<d_thresh.length; i++){
+			isoformDepthThresh[i] = Integer.parseInt(d_thresh[i]);
+		}
 		int coverageDepthThresh = cmdLine.getIntVal("coverageDepthThresh");
 		IdentityProfile1.msaDepthThresh =(int) Math.floor(cmdLine.getDoubleVal("msaDepthThresh"));
 	TranscriptUtils.extra_threshold = cmdLine.getIntVal("extra_threshold");
@@ -441,7 +445,7 @@ public static boolean combineOutput = false;
 	static void errorAnalysis(String[] bamFiles_, String refFile, String annot_file, String[] readList,    String annotationType, String resdir, String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads,  boolean sorted,
 			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,Map<String, JapsaAnnotation> anno, Set<String>chrToInclude, boolean overwrite,
-			int writeIsoformDepthThresh, int writeCoverageDepthThresh) throws IOException {
+			int[] writeIsoformDepthThresh, int writeCoverageDepthThresh) throws IOException {
 		boolean cluster_reads = true;
 		CigarHash2.round = round;
 		

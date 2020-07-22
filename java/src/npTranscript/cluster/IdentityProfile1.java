@@ -30,7 +30,7 @@ public class IdentityProfile1 {
 	public static boolean annotByBreakPosition = true;
 	
 	public static int writeCoverageDepthThresh = 100;
-	public static int writeIsoformDepthThresh = 10;
+	public static int[] writeIsoformDepthThresh = new int[] {10};
 	public static int msaDepthThresh = 10;
 	public static boolean includeStart = true;
 	
