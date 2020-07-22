@@ -1227,12 +1227,12 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
 
 
 
-readIsoformH5<-function(h5file,  transcripts_){
+readIsoformH5<-function(h5file,  transcripts_, names = h5ls(h5file)$name){
 .ext<-function(x) x[unique(c(0,which(x>0)))]
 header = h5read(h5file,"header")
  IDS = transcripts_$ID
 trans = list()
-names = h5ls(h5file)$name
+
 inds = which(transcripts_$ID %in% names)
 if(length(inds)==0) return (NULL)
 IDS = transcripts_$ID[inds]
@@ -1240,16 +1240,17 @@ IDS = transcripts_$ID[inds]
   for(i in 1:length(IDS)){
 	ID = IDS[i]
 	mat = t(h5read(h5file,as.character(ID)))
-	cnts = data.frame(mat[,1:length(header)])
+	cnts = data.frame(mat[,1:length(header),drop=F])
 	names(cnts) = header
 	dimnames(cnts) = list(cnts$subID, header)
 	cnts = cnts[,-1]
 	cntT = apply(cnts,1,sum)
 	ord = order(cntT, decreasing=T)
 	cnts = cnts[ord,,drop=F]
-	mat = mat[ord,-(1:length(header))]
+	mat = mat[ord,-(1:length(header)),drop=F]
 	
 	transi = apply(mat,1,.ext)
+	if(is.array(transi)) transi = data.frame(transi)
 	names(transi) =dimnames(cnts)[[1]] #paste(ID,cnts$subID,sep='.')
 	trans[[i]] = list(breaks = transi, counts = cnts)
   } 
