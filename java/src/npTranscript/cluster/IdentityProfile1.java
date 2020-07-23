@@ -221,7 +221,7 @@ public class IdentityProfile1 {
 		this.o.printRead(str);
 		int num_exons =(int) Math.floor( (double)  coRefPositions.breaks.size()/2.0);
 
-		this.o.printBed(coRefPositions.breaks, id,  strand, source_index, clusterID[0], clusterID[1], num_exons, span);
+		this.o.printBed(coRefPositions.breaks, id,  strand, source_index, clusterID[0], clusterID[1], num_exons, span, span_str);
 		boolean writeMSA = Outputs.doMSA!=null && Outputs.msa_sources !=null && includeInConsensus  && Outputs.msa_sources.containsKey(source_index);
 		if(includeInConsensus && TranscriptUtils.coronavirus){
 			int st1 = startPos; //position>0 ? position : startPos; // start after break
