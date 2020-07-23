@@ -6,13 +6,16 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedSet;
-import java.util.TreeSet;
 
 import japsa.seq.JapsaAnnotation;
 import japsa.seq.JapsaFeature;
@@ -124,14 +127,23 @@ public class GFFAnnotation extends Annotation{
 	    	return st;
 	    }
 	static int tolerance =10;
-	static int tolerance1 = -10;
+	static int tolerance1 = 5;
+	static Comparator<Entry<String, Set<Integer>>> c = new Comparator<Entry<String, Set<Integer>>>(){
+
+		@Override
+		public int compare(Entry<String, Set<Integer>> o1, Entry<String, Set<Integer>> o2) {
+			return -1*Integer.compare(o1.getValue().size(),o2.getValue().size());
+		}
+		
+	};
+	Map<String, Set<Integer>> m= new HashMap<String, Set<Integer>>();
+	Set<Integer> breaks_in_exons = new HashSet<Integer>();
 	@Override
-	public String  getSpan(List<Integer> breaks,boolean forward,  Collection<Integer> l, SortedSet<String> geneNames){
+	public synchronized String  getSpan(List<Integer> breaks,boolean forward,  Collection<Integer> l, SortedSet<String> geneNames){
 		int istart =-1;
 		int iend = -1;
 		int start_ = breaks.get(0);
 		int end_ =breaks.get(breaks.size()-1);
-		
 		for(int i=0; i<this.genes.size(); i++){
 			if(!enforceStrand || forward==this.strand.get(i)){
 				if(this.end.get(i)> start_-tolerance1){
@@ -150,18 +162,44 @@ public class GFFAnnotation extends Annotation{
 		}
 		if(istart>=0 && iend>=0 && istart <= iend){
 			//
+			
 			for(int i=istart; i<=iend ; i++){
+				
 				if(span_only.size()==0|| span_only.contains(this.type.get(i))){
 					for(int j=0; j<breaks.size(); j++){
 						int pos = breaks.get(j);
 						if(start.get(i)<=pos+tolerance1 && end.get(i)>=pos - tolerance1){
-							l.add(i);
+							
 							String paren = this.parents.get(i);
-							geneNames.add(paren!=null ? paren : this.genes.get(i));
+							if(paren==null) paren = genes.get(i);
+							Set<Integer>s = m.get(paren);
+							if(s==null) m.put(paren, s = new HashSet<Integer>());
+							s.add(j);
+							breaks_in_exons.add(j);
 						}	
 					}
 				}
 			}
+			// this attempting to find the smallest set of genes to explain the breakpoints.  Its not exhaustive search but starts with biggest set first
+			if(m.size()>0){
+				List<Entry<String, Set<Integer>>> vals =  new ArrayList<Entry<String, Set<Integer>>>(m.entrySet());
+				Collections.sort(vals, c);
+				Set<Integer> set = vals.get(0).getValue();
+				int i=0;
+				l.add(0);
+				geneNames.add(vals.get(0).getKey());
+				while(set.size()<breaks_in_exons.size()
+						){
+					i= i+1;
+					set.addAll(vals.get(i).getValue());
+					l.add(i);
+					geneNames.add(vals.get(i).getKey());
+				}
+				m.clear();
+				breaks_in_exons.clear();
+			}
+			
+			
 			StringBuffer sb = new StringBuffer();
 			Iterator<String> it = geneNames.iterator();
 			while(it.hasNext()){
