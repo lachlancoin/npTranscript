@@ -76,7 +76,7 @@ public class Outputs{
 	public static boolean keepinputFasta = true;
 	public static boolean writePolyA = false;
 	public static int minClusterEntries = 5;
-	public static Collection numBreaks = Arrays.asList(new Integer[0]); // numBreaks for MSA 
+	public static Collection numExonsMSA = Arrays.asList(new Integer[0]); // numBreaks for MSA 
 	
 		public File transcripts_file;
 		public File reads_file; 

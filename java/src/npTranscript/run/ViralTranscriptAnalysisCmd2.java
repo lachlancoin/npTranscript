@@ -234,7 +234,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addString("span", "protein_coding", "Filtering span.  Use all not to filter.");
 		addInt("qual", 0, "Minimum quality required");
 		addInt("bin", 1, "Bin size for numerical hashing");
-		addString("numBreaks", "none", "number of exons For  MSA");
+		addString("numExonsMSA", "none", "number of exons For  MSA");
 		addInt("breakThresh", 1000, "Thresh for break points to match clusters.  If bigger than genome size then no break points");
 		addBoolean("includeStart", true, "Whether to include start position in the cluster hash");
 
@@ -312,7 +312,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		TranscriptUtils.attempt5rescue = cmdLine.getBooleanVal("attempt5rescue");
 		TranscriptUtils.attempt3rescue = cmdLine.getBooleanVal("attempt3rescue");
 		Pattern patt = Pattern.compile(":");
-		Outputs.numBreaks = patt.splitAsStream(cmdLine.getStringVal("numBreaks")=="none"  ? "" : cmdLine.getStringVal("numBreaks"))
+		Outputs.numExonsMSA = patt.splitAsStream(cmdLine.getStringVal("numExonsMSA")=="none"  ? "" : cmdLine.getStringVal("numExonsMSA"))
 		                            .map(Integer::valueOf)
 		                            .collect(Collectors.toList());
 		IdentityProfile1.includeStart = cmdLine.getBooleanVal("includeStart");
