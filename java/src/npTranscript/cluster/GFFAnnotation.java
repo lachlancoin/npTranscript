@@ -124,7 +124,7 @@ public class GFFAnnotation extends Annotation{
 	    	return st;
 	    }
 	static int tolerance =10;
-	
+	static int tolerance1 = -10;
 	@Override
 	public String  getSpan(List<Integer> breaks,boolean forward,  Collection<Integer> l, SortedSet<String> geneNames){
 		int istart =-1;
@@ -134,7 +134,7 @@ public class GFFAnnotation extends Annotation{
 		
 		for(int i=0; i<this.genes.size(); i++){
 			if(!enforceStrand || forward==this.strand.get(i)){
-				if(this.end.get(i)> start_){
+				if(this.end.get(i)> start_-tolerance1){
 					istart = i;
 					break;
 				}
@@ -142,7 +142,7 @@ public class GFFAnnotation extends Annotation{
 		}
 		for(int i=this.genes.size()-1;i>=0; i--){
 			if(!enforceStrand || forward==this.strand.get(i)){
-				if(this.start.get(i)< end_){
+				if(this.start.get(i)< end_+tolerance1){
 					iend= i;
 					break;
 				}
@@ -154,7 +154,7 @@ public class GFFAnnotation extends Annotation{
 				if(span_only.size()==0|| span_only.contains(this.type.get(i))){
 					for(int j=0; j<breaks.size(); j++){
 						int pos = breaks.get(j);
-						if(start.get(i)<=pos+tolerance && end.get(i)>=pos - tolerance){
+						if(start.get(i)<=pos+tolerance1 && end.get(i)>=pos - tolerance1){
 							l.add(i);
 							String paren = this.parents.get(i);
 							geneNames.add(paren!=null ? paren : this.genes.get(i));
