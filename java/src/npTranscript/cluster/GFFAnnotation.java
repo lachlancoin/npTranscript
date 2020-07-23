@@ -132,7 +132,7 @@ public class GFFAnnotation extends Annotation{
 
 		@Override
 		public int compare(Entry<String, Set<Integer>> o1, Entry<String, Set<Integer>> o2) {
-			return -1*Integer.compare(o1.getValue().size(),o2.getValue().size());
+			return Integer.compare(o2.getValue().size(),o1.getValue().size());
 		}
 		
 	};
@@ -175,24 +175,26 @@ public class GFFAnnotation extends Annotation{
 							Set<Integer>s = m.get(paren);
 							if(s==null) m.put(paren, s = new HashSet<Integer>());
 							s.add(j);
+							l.add(i);
 							breaks_in_exons.add(j);
 						}	
 					}
 				}
 			}
+			
 			// this attempting to find the smallest set of genes to explain the breakpoints.  Its not exhaustive search but starts with biggest set first
 			if(m.size()>0){
 				List<Entry<String, Set<Integer>>> vals =  new ArrayList<Entry<String, Set<Integer>>>(m.entrySet());
 				Collections.sort(vals, c);
 				Set<Integer> set = vals.get(0).getValue();
 				int i=0;
-				l.add(0);
+			//	l.add(0);
 				geneNames.add(vals.get(0).getKey());
 				while(set.size()<breaks_in_exons.size()
 						){
 					i= i+1;
 					set.addAll(vals.get(i).getValue());
-					l.add(i);
+					
 					geneNames.add(vals.get(i).getKey());
 				}
 				m.clear();
