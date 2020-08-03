@@ -226,6 +226,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addString("GFF_features", "Name:description:ID:biotype:Parent", "GFF feature names");
 		addBoolean("RNA", false, "If is direct RNA");
 		addInt("maxReads", Integer.MAX_VALUE, "ORF annotation file");
+		addDouble("probInclude", 1.0, "probability of including each read");
 		addInt("minClusterEntries",10,"threshold for consensus");
 		addBoolean("tryComplementOnExtra", false, "look for negative strand matches on left over seqs");
 		addBoolean("reAlignExtra", false, "whether to try realigning the extra sequence");
@@ -322,6 +323,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		boolean coronavirus = cmdLine.getBooleanVal("coronavirus");
 		String[] msaOpts = cmdLine.getStringVal("doMSA").split(":"); //e.g 5_3:sep or all:sep
 		String msa_source = cmdLine.getStringVal("msa_source");
+		double probInclude = cmdLine.getDoubleVal("probInclude");
 	//	String[] bamFiles =bamFile.split(":"); 
 		int len =  bamFiles.length;
 		if(msa_source!=null){
@@ -391,7 +393,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		}
 			errorAnalysis(bamFiles, reference, annotFile,readList,annotationType, 
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  sorted , 
-				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, overwrite, isoformDepthThresh, coverageDepthThresh);
+				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, overwrite, isoformDepthThresh, coverageDepthThresh, probInclude);
 	}
 	public static void main(String[] args1) throws IOException, InterruptedException {
 		long tme = System.currentTimeMillis();
@@ -445,7 +447,7 @@ public static boolean combineOutput = false;
 	static void errorAnalysis(String[] bamFiles_, String refFile, String annot_file, String[] readList,    String annotationType, String resdir, String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads,  boolean sorted,
 			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,Map<String, JapsaAnnotation> anno, Set<String>chrToInclude, boolean overwrite,
-			int[] writeIsoformDepthThresh, int writeCoverageDepthThresh) throws IOException {
+			int[] writeIsoformDepthThresh, int writeCoverageDepthThresh, double probInclude) throws IOException {
 		boolean cluster_reads = true;
 		CigarHash2.round = round;
 		
@@ -458,8 +460,6 @@ public static boolean combineOutput = false;
 		File annotSummary = new File(resdir, "annotation.csv.gz");
 		if(annotSummary.exists()) annotSummary.delete();
 		PrintWriter annotation_pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(annotSummary, false))));
-		boolean calcTree = false;
-	//	String[] bamFiles_ = bamFiles.split(":");
 	
 		Collection<String>[] reads= null;
 		if(readList.length>0 && readList[0].length()>0){
@@ -532,7 +532,7 @@ public static boolean combineOutput = false;
 		
 		final SAMRecordIterator[] samIters = new SAMRecordIterator[len];
 		SamReader[] samReaders = new SamReader[len];
-		outer1: for (int ii = 0; ii < len; ii++) {
+		for (int ii = 0; ii < len; ii++) {
 			int source_index = ii;
 			
 			String bamFile = bamFiles_[ii];
@@ -617,7 +617,11 @@ public static boolean combineOutput = false;
 					numNotAligned++;
 					continue;
 				}
-
+				if(probInclude<1.0 && Math.random()>probInclude){
+					//randomly exclude
+					continue;
+				}
+				
 				// int refPos = sam.getAlignmentStart() - 1;//convert to 0-based index
 				int refIndex = sam.getReferenceIndex();
 				
