@@ -467,8 +467,9 @@ findGenesByChrom<-function(DE,chrom="MT", thresh = 1e-10,nme2="chrs", nme="FDR1"
   df
 }
 .processTranscripts<-function(transcript, prefix="ENS"){
-  geneID= as.character(unlist(lapply(strsplit(transcript$ORFs,";"), function(v) v[1])))
-  rightGene = as.character(unlist(lapply(strsplit(transcript$ORFs,";"), function(v) v[length(v)])))
+  orfs = gsub("[-+]","",transcript$ORFs)
+  geneID= as.character(unlist(lapply(strsplit(orfs,";"), function(v) v[1])))
+  rightGene = as.character(unlist(lapply(strsplit(orfs,";"), function(v) v[length(v)])))
 indsL =  grep(prefix,geneID,inv=T)
 indsR =  grep(prefix,rightGene)
 comb = which(indsL %in% indsR)

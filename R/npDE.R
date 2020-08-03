@@ -20,6 +20,7 @@ if(length(args)==0){
   args[2] = "RNA"
   args[4] = "GE"
 }
+prefix = "ENS"
 
   control_names = unlist(strsplit(args[1],':'))
   infected_names = unlist(strsplit(args[2],':'))
@@ -33,10 +34,12 @@ if(length(args)==0){
 	
 	exclude_nme = if(length(args)<4) "do_not_include"  else strsplit(args[4],":")[[1]]
 	edgeR = FALSE;
-	if(analysis=="edgeR") edgeR = T
-
-library(VGAM)
-library(edgeR)
+	if(analysis=="edgeR"){
+		library(edgeR)
+		 edgeR = T
+	}else{
+	library(VGAM)
+	}
 library(stats)
 
 #library(seqinr)
@@ -85,7 +88,7 @@ if(isVirus){
 
 target= list( chrom="character", 
              ORFs ="character",start = "numeric", 
-             end="numeric", ID="character", isoforms="numeric" ,type_nme="character", countTotal="numeric")
+             end="numeric", ID="character" ,type_nme="character", countTotal="numeric")
 
 
 ##READ TRANSCRIPT DATA
@@ -110,7 +113,7 @@ print(paste(type_names[2] , paste(infected_names, collapse=" ")))
 if(length(control_names)!=length(infected_names)) error(" lengths different")
 transcriptsl = lapply(transcriptsl, .processTranscripts)
 
-filtered = .filter(transcriptsl)
+filtered = .filter(transcriptsl, prefix)
 keep = filtered$keep[unlist(lapply(filtered$keep,function(x) dim(x)[[1]]))>0]
 transcripts_keep = .process(keep, control_names, infected_names)
 remove = filtered$remove[unlist(lapply(filtered$remove,function(x) dim(x)[[1]]))>0]
