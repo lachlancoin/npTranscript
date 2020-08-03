@@ -313,7 +313,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		TranscriptUtils.attempt5rescue = cmdLine.getBooleanVal("attempt5rescue");
 		TranscriptUtils.attempt3rescue = cmdLine.getBooleanVal("attempt3rescue");
 		Pattern patt = Pattern.compile(":");
-		Outputs.numExonsMSA = patt.splitAsStream(cmdLine.getStringVal("numExonsMSA")=="none"  ? "" : cmdLine.getStringVal("numExonsMSA"))
+		Outputs.numExonsMSA = cmdLine.getStringVal("numExonsMSA")=="none"  ?  Arrays.asList(new Integer[0]) : 
+				patt.splitAsStream(cmdLine.getStringVal("numExonsMSA"))
 		                            .map(Integer::valueOf)
 		                            .collect(Collectors.toList());
 		IdentityProfile1.includeStart = cmdLine.getBooleanVal("includeStart");
