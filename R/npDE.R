@@ -120,7 +120,7 @@ remove = filtered$remove[unlist(lapply(filtered$remove,function(x) dim(x)[[1]]))
 transcripts_removed = .process(remove, control_names, infected_names)
 pdf(paste(resdir, "/qq.pdf",sep=""))
 
-res_keep = .processDE(transcripts_keep,attributes, resdir, control_names, infected_names, type_names = type_names, outp= "results_removed.csv", type="keep")
+res_keep = .processDE(transcripts_keep,attributes, resdir, control_names, infected_names, type_names = type_names, outp= "results_keep.csv", type="keep")
 res_remove = .processDE(transcripts_removed,attributes, resdir, control_names, infected_names, type_names = type_names, outp= "results_removed.csv", type="keep")
 dev.off()
 
