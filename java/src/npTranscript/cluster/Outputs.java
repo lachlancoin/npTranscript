@@ -294,7 +294,8 @@ public class Outputs{
 				block_sizes.append(comma+(breaks.get(i+1)-breaks.get(i)));
 				if(i==0) comma=",";
 			}
-			bedW.println(this.chrom+"\t"+startPos+"\t"+endPos+"\t"+read_name+"."+id+"\t"+span+"\t"+strand+"\t"+startPos+"\t"+endPos+"\t"
+			String chrom = TranscriptUtils.bedChr!=null ? TranscriptUtils.bedChr : this.chrom;
+			bedW.println(chrom+"\t"+startPos+"\t"+endPos+"\t"+read_name+"."+id+"\t"+span+"\t"+strand+"\t"+startPos+"\t"+endPos+"\t"
 					+col_str[col_id]+"\t"+num_exons+"\t"+block_sizes.toString()+"\t"+block_start.toString()+"\t"+span_str);
 
 		}

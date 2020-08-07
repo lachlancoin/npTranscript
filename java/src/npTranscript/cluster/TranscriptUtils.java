@@ -447,6 +447,10 @@ public class TranscriptUtils {
 
 
 	public static boolean writeAnnotP = true;
+
+
+
+	public static String bedChr= null;
 	
 	 static  void getStartEnd(SWGAlignment align, Integer[] seq1, Integer[] seq2,  int offset1, int offset2,  boolean negStrand1) {
 		int len1 = align.getOriginalSequence1().length();

@@ -222,6 +222,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		
 			addString("annotType", null, "Type of annotation (only included if annotation is GFF file", false);
 		addString("chroms", "all", "Restrict to these chroms, colon delimited", false);
+		addString("bedChr", null, "Use this for the chrom in bed chr, e.g. NC_045512v2, false");
+
 		addString("resdir", "results"+System.currentTimeMillis(), "results directory");
 		addString("GFF_features", "Name:description:ID:biotype:Parent", "GFF feature names");
 		addBoolean("RNA", false, "If is direct RNA");
@@ -312,6 +314,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		TranscriptUtils.reAlignExtra = cmdLine.getBooleanVal("reAlignExtra");
 		TranscriptUtils.attempt5rescue = cmdLine.getBooleanVal("attempt5rescue");
 		TranscriptUtils.attempt3rescue = cmdLine.getBooleanVal("attempt3rescue");
+		TranscriptUtils.bedChr = cmdLine.getStringVal("bedChr");
 		Pattern patt = Pattern.compile(":");
 		Outputs.numExonsMSA = cmdLine.getStringVal("numExonsMSA")=="none"  ?  Arrays.asList(new Integer[0]) : 
 				patt.splitAsStream(cmdLine.getStringVal("numExonsMSA"))
