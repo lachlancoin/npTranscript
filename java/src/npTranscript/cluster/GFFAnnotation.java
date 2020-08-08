@@ -28,7 +28,7 @@ public class GFFAnnotation extends Annotation{
 	 * 
 	 * */
 	
-	public static Map<String, JapsaAnnotation> readAnno(String gff, String type,Set<String> chrs) throws IOException{
+	public static Map<String, JapsaAnnotation> readAnno(String gff, String type) throws IOException{
 		
 		FileInputStream aReader = new FileInputStream(gff);		
 		ArrayList<JapsaAnnotation> annos = JapsaAnnotation.readMGFF(aReader,0,0,type);

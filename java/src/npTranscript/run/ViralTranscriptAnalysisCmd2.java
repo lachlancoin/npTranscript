@@ -71,6 +71,7 @@ import japsa.seq.Alphabet;
 import japsa.seq.JapsaAnnotation;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
+import japsa.tools.seq.SequenceUtils;
 import japsa.util.CommandLine;
 import japsa.util.deploy.Deployable;
 import npTranscript.cluster.Annotation;
@@ -90,112 +91,7 @@ import npTranscript.cluster.TranscriptUtils;
 
 @Deployable(scriptName = "npTranscript.run", scriptDesc = "Analysis of coronavirus sequence data")
 public class ViralTranscriptAnalysisCmd2 extends CommandLine {
-	static String src_tag = "SC";
-	static String pool_tag = "PT";
-private static final class CombinedIterator implements Iterator<SAMRecord> {
-		private final SAMRecordIterator[] samIters;
-		int current_sam_index =0;
-		int currentIndex =0; //relates to chromosome
-		private final SAMRecord[] currentVals;
-		private final boolean[] returned;
-		private final int[] cnts ;
-		int max;
-		Collection<String>[] readList ;
-		Set<Integer> chrs;
-		private CombinedIterator(SAMRecordIterator[] samIters, int max, Collection<String>[]readList, Set<Integer> chrs) {
-			this.samIters = samIters;
-			this.readList = readList;
-			currentVals = new SAMRecord[samIters.length];
-			returned = new boolean [samIters.length];
-			this.max = max;
-			cnts = new int[samIters.length];
-			this.chrs = chrs;
-		}
-
-		@Override
-		public boolean hasNext() {
-			for(int i=0; i<samIters.length; i++){
-				if(samIters[i].hasNext() && cnts[i]<max) return true;
-			}
-			return false;
-		}
-		int pool_ind=-1;
-		private SAMRecord next(int i){
-			SAMRecord sr;
-			if(currentVals[i]!=null && !returned[i]){
-				sr = currentVals[i];
-			}else{
-				if(cnts[i]<max){
-					
-					//sr  = samIters[i].next();
-				/*	while(!(
-							sr==null || 
-							(readList==null || readList.contains(sr.getReadName())) ||
-							(chrs==null || chrs.contains(sr.getReferenceIndex()))
-							)
-							)*/
-					inner: while(true)
-					{
-						sr  = samIters[i].next();
-						if(sr==null) break inner;
-						pool_ind =-1;
-						if(readList!=null){
-							inner1: for(int i2=0; i2<readList.length; i2++){
-								if(readList[i2].contains(sr.getReadName())){
-									pool_ind = i2;
-									break inner1;
-								}
-							}
-						}
-						if(readList!=null && pool_ind>=0) break inner;
-						if(readList==null &&  chrs!=null && chrs.contains(sr.getReferenceIndex())) break inner;
-						if(readList==null  && chrs==null) break inner;
-					}
-					if(sr!=null) {
-						sr.setAttribute(pool_tag, pool_ind);
-						sr.setAttribute(src_tag, i);
-					}
-					currentVals[i] = sr;
-					returned[i] = false; 
-				}else{
-					sr = null;
-				}
-			}
-			return sr;
-		}
-
-		@Override
-		public SAMRecord next() {
-			//int curr_index = current_sam_index;
-			SAMRecord sr = next(current_sam_index);
-			
-			if(sr==null || sr.getReferenceIndex()>currentIndex ){
-				int[] ref_inds = new int[samIters.length];
-				int min_ind =-1;
-				int minv = Integer.MAX_VALUE;
-				for(int i=0; i<samIters.length; i++){
-					SAMRecord sr_i = next(i);
-					if(sr_i!=null) {
-						ref_inds[i] = sr_i.getReferenceIndex(); //note this only advances if not returned;
-						if(ref_inds[i]<minv){
-							min_ind = i;
-							minv = ref_inds[i];
-						}
-					}
-				}
-				current_sam_index = min_ind;
-			}
-			
-			if(current_sam_index<0) return null;
-			sr = this.currentVals[current_sam_index];
-			if(sr!=null) this.currentIndex = sr.getReferenceIndex();
-			cnts[current_sam_index]++;
-			returned[current_sam_index] = true; 
-			return sr;
-			
-		}
-	}
-
+	
 
 //	private static final Logger LOG = LoggerFactory.getLogger(HTSErrorAnalysisCmd.class);
 
@@ -214,7 +110,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		Deployable annotation = getClass().getAnnotation(Deployable.class);
 		setUsage(annotation.scriptName() + " [options]");
 		setDesc(annotation.scriptDesc());
-		addString("bamFile", null, "Name of bam file", true);
+		addString("bamFile", null, "Name of bam file", false);
+		addString("fastqFile", null, "Name of bam file", false);
 		addString("reference", null, "Name of reference genome", true);
 		addString("annotation", null, "ORF annotation file or GFF file", false);
 		addBoolean("useExons", true, "wehether to use exons");
@@ -260,6 +157,11 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addBoolean("attempt3rescue", true, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
 		addBoolean("writePolyA", false, "whether write reads with poly								qqq	A in middle");
 		addBoolean("coronavirus", true, "whether to run in coronavirus mode (necessary to do breakpoint analysis, but takes more memory)");
+		
+		addString("mm2_path", "/sw/minimap2/current/minimap2",  "minimap2 path", false);
+		addString("mm2Preset", "map-ont",  "preset for minimap2", false);
+		addString("mm2_memory", (Runtime.getRuntime().maxMemory()-1000000000)+"",  "minimap2 memory", false);
+		addInt("mm2_threads", 4, "threads for mm2", false);
 		addStdHelp();
 	}
 
@@ -282,9 +184,10 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		pw.close();
 		
 	}
-	
- public static void run(CommandLine cmdLine, String[] bamFiles, String resDir,Map<String, JapsaAnnotation> anno,  Set<String> chrs) throws IOException{
-		String reference = cmdLine.getStringVal("reference");
+	public static int mm2_threads;
+	public static String mm2_path, mm2_mem, mm2_index, mm2Preset;
+ public static void run(CommandLine cmdLine, String[] bamFiles, String resDir,Map<String, JapsaAnnotation> anno, String chrs, boolean fastq, String reference) throws IOException{
+		
 		int qual = cmdLine.getIntVal("qual");
 		int bin = cmdLine.getIntVal("bin");
 		int breakThresh = cmdLine.getIntVal("breakThresh");
@@ -315,6 +218,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		TranscriptUtils.attempt5rescue = cmdLine.getBooleanVal("attempt5rescue");
 		TranscriptUtils.attempt3rescue = cmdLine.getBooleanVal("attempt3rescue");
 		TranscriptUtils.bedChr = cmdLine.getStringVal("bedChr");
+		
 		Pattern patt = Pattern.compile(":");
 		Outputs.numExonsMSA = cmdLine.getStringVal("numExonsMSA")=="none"  ?  Arrays.asList(new Integer[0]) : 
 				patt.splitAsStream(cmdLine.getStringVal("numExonsMSA"))
@@ -397,21 +301,35 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		}
 			errorAnalysis(bamFiles, reference, annotFile,readList,annotationType, 
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  sorted , 
-				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, overwrite, isoformDepthThresh, coverageDepthThresh, probInclude);
+				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, overwrite, isoformDepthThresh, coverageDepthThresh, probInclude, fastq);
 	}
 	public static void main(String[] args1) throws IOException, InterruptedException {
 		long tme = System.currentTimeMillis();
 		CommandLine cmdLine = new ViralTranscriptAnalysisCmd2();
 		String[] args = cmdLine.stdParseLine(args1);
 		String bamFile = cmdLine.getStringVal("bamFile");
+		String fastqFile = cmdLine.getStringVal("fastqFile");
+		
+		
+		
+		mm2_threads = cmdLine.getIntVal("mm2_threads");
+		mm2_mem = cmdLine.getStringVal("mm2_mem");
+		mm2_path = cmdLine.getStringVal("mm2_path");
+		mm2Preset = cmdLine.getStringVal("mm2Preset");
+		String reference = cmdLine.getStringVal("reference");
+		if(fastqFile!=null){
+			try{
+				//make a minimap index
+			mm2_index = SequenceUtils.minimapIndex(new File(reference), mm2_path, mm2_mem, false);
+			}catch(Exception exc){
+				exc.printStackTrace();
+			}
+		}
 		
 		String resdir = cmdLine.getStringVal("resdir");
 		String annot_file = cmdLine.getStringVal("annotation");
 		String chroms= cmdLine.getStringVal("chroms");
-		Set<String> chrs = null;
-		if(!chroms.equals("all")){
-			chrs = new HashSet<String>(Arrays.asList(chroms.split(":")));
-		}
+		
 		boolean gff = annot_file !=null && annot_file.contains(".gff");
 		Map<String, JapsaAnnotation> anno  = null;
 		//boolean SARS = !gff;
@@ -419,25 +337,37 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			String  annotationType = getAnnotationsToInclude(cmdLine.getStringVal("annotType"), cmdLine.getBooleanVal("useExons"));
 
 			System.err.println("reading annotation");
-			 anno =  GFFAnnotation.readAnno(annot_file, annotationType, chrs);
+			 anno =  GFFAnnotation.readAnno(annot_file, annotationType);
 			// GFFAnnotation.read
 			System.err.println("done reading annotation");
 		}
 		File resDir = new File(resdir);
 		if(!resDir.exists())resDir.mkdir();
 		printParams(resDir, args1);
-		String[] bamFiles_ = bamFile.split(":");
-		if(bamFile.equals("all") || bamFile.equals(".")){
-			bamFiles_ = (new File("./")).list(new FilenameFilter(){
+		String[] bamFiles_ = null;
+		boolean fastq= true;
+		String inputFile;
+		if(bamFile!=null){
+			bamFiles_=bamFile.split(":");
+			fastq = false;
+			inputFile = bamFile;
+		}else{
+			bamFiles_=fastqFile.split(":");
+			fastq = true;
+			inputFile = fastqFile;
 
+		}
+		final boolean fastq_ = fastq;
+		if(inputFile.equals("all") || bamFile.equals(".")){
+			bamFiles_ = (new File("./")).list(new FilenameFilter(){
 				@Override
 				public boolean accept(File dir, String name) {
-					return name.endsWith(".bam");
+					return !fastq_ && name.endsWith(".bam") || (fastq_ && (name.endsWith(".fq.gz") || name.endsWith(".fastq.gz")  || name.endsWith(".fastq") || name.endsWith(".fq")));
 				}
 				
 			});
 		}
-		run(cmdLine, bamFiles_, resdir, anno,  chrs);
+		run(cmdLine, bamFiles_, resdir, anno,  chroms, fastq, reference);
 		Outputs.executor.shutdown();
 		long time1 = System.currentTimeMillis();
 		System.err.println((time1-tme)/(1000)+ " seconds");
@@ -450,8 +380,8 @@ public static boolean combineOutput = false;
 	 */
 	static void errorAnalysis(String[] bamFiles_, String refFile, String annot_file, String[] readList,    String annotationType, String resdir, String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads,  boolean sorted,
-			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,Map<String, JapsaAnnotation> anno, Set<String>chrToInclude, boolean overwrite,
-			int[] writeIsoformDepthThresh, int writeCoverageDepthThresh, double probInclude) throws IOException {
+			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,Map<String, JapsaAnnotation> anno, String chrToInclude, boolean overwrite,
+			int[] writeIsoformDepthThresh, int writeCoverageDepthThresh, double probInclude, boolean fastq) throws IOException {
 		boolean cluster_reads = true;
 		CigarHash2.round = round;
 		
@@ -465,7 +395,7 @@ public static boolean combineOutput = false;
 		if(annotSummary.exists()) annotSummary.delete();
 		PrintWriter annotation_pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(annotSummary, false))));
 	
-		Collection<String>[] reads= null;
+		Collection[] reads= null;
 		if(readList.length>0 && readList[0].length()>0){
 		 if( readList[0].indexOf("readToCluster.txt.gz")>=0){
 			 Map<String, Collection<String>> map = new HashMap<String, Collection<String>>();
@@ -534,36 +464,30 @@ public static boolean combineOutput = false;
 	//	genes_all_pw.close();
 		IdentityProfile1 profile = null;
 		
-		final SAMRecordIterator[] samIters = new SAMRecordIterator[len];
+		final Iterator<SAMRecord>[] samIters = new Iterator[len];
 		SamReader[] samReaders = new SamReader[len];
 		for (int ii = 0; ii < len; ii++) {
-			int source_index = ii;
-			
 			String bamFile = bamFiles_[ii];
 			File bam = new File( bamFile);
-		
-			
-			//https://www.programcreek.com/java-api-examples/?api=htsjdk.samtools.fastq.FastqWriter
 			SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
-		//	SamReader samReader = null;// SamReaderFactory.makeDefault().open(new File(bamFile));
-
-			if ("-".equals(bamFile))
-				samReaders[ii] = SamReaderFactory.makeDefault().open(SamInputResource.of(System.in));
-			else
+			if(bam.getName().endsWith(".bam")){
 				samReaders[ii] = SamReaderFactory.makeDefault().open(bam);
-
-			 samIters[ii] = samReaders[ii].iterator();
-			// Read the reference genome
-		}
-		Set<Integer> chrom_indices_to_include = null;
-		if(chrToInclude!=null){
-			chrom_indices_to_include= new HashSet<Integer>();
-			for(int i=0; i<genomes.size(); i++){
-				if(chrToInclude.contains(genomes.get(i).getName())) chrom_indices_to_include.add(i);
+				samIters[ii] = samReaders[ii].iterator();
+			}else{
+				//(File inFile, File mm2Index, String mm2_path, 
+			//	int mm2_threads, String mm2Preset, String mm2_mem)
+				samIters[ii] = SequenceUtils.getSAMIteratorFromFastq(bam, mm2_index, mm2_path, mm2_threads,  mm2Preset, mm2_mem);
 			}
 		}
+		Map<Integer, int[]> chrom_indices_to_include = new HashMap<Integer, int[]>();
+		Map<String, int[]> chromsToInclude = new HashMap<String, int[]>();
+		Iterator<SAMRecord> samIter= SequenceUtils.getCombined(samIters, reads,max_reads,chrToInclude,  chrom_indices_to_include);
+		Iterator<Integer> it = chrom_indices_to_include.keySet().iterator(); 
+		while(it.hasNext()){
+			Integer key  = it.next();
+			chromsToInclude.put(genomes.get(key).getName(),chrom_indices_to_include.get(key));
+		}
 		
-		Iterator<SAMRecord> samIter= new CombinedIterator(samIters, max_reads,reads, chrom_indices_to_include);
 			int currentIndex = 0;
 			
 			Sequence chr = genomes.get(currentIndex);
@@ -592,8 +516,8 @@ public static boolean combineOutput = false;
 				}
 				
 				if(sam==null) break outer;
-				int source_index = (Integer) sam.getAttribute(src_tag);
-				int poolID = (Integer)  sam.getAttribute(pool_tag);
+				int source_index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
+				int poolID = (Integer)  sam.getAttribute(SequenceUtils.pool_tag);
 				if (pattern != null && (!sam.getReadName().contains(pattern)))
 					continue;
 				Sequence readSeq = new Sequence(Alphabet.DNA(), sam.getReadString(), sam.getReadName());
@@ -642,9 +566,9 @@ public static boolean combineOutput = false;
 						
 						doneChr.add(chr.getName());
 						System.err.println("finished "+chr.getName());
-						if(chrToInclude != null ){
-							chrToInclude.remove(chr.getName());
-							if(chrToInclude.size()==0) {
+						if(chromsToInclude != null ){
+							chromsToInclude.remove(chr.getName());
+							if(chromsToInclude.size()==0) {
 								System.err.println("finished sample "+in_nmes[source_index]);
 								break outer;
 							}
@@ -716,7 +640,7 @@ public static boolean combineOutput = false;
 					}
 			}//samIter.hasNext()
 			for(int ii=0; ii<samReaders.length; ii++){
-			samReaders[ii].close();
+			if(samReaders[ii] !=null) samReaders[ii].close();
 			}
 			
 		
