@@ -18,20 +18,14 @@ library(RColorBrewer)
 library(gplots)
 library(seqinr)
 library(rhdf5)
+library(VGAM)
 args = commandArgs(trailingOnly=TRUE)
 if(length(args)>0){
 data_src = args[1]  ## location of fasta file and Coordinates file
 }else{
-data_src = c("~/github/npTranscript/data/SARS-Cov2/VIC01","~/github/npTranscript/data/229E_CoV" )
+data_src = c("C:/Users/LCOIN/github/npTranscript/data/SARS-Cov2/VIC01" ,"~/github/npTranscript/data/SARS-Cov2/VIC01","~/github/npTranscript/data/229E_CoV" )
 }
 
-
-#print(args)
-#print(length(args))
-#if(length(args)==0) stop("need to specify the type nmes, e.g. Cell:Virion")
-
- 
-#type_nme=	c( "Cell","Virion") #,"Cell2")
 
 #SHOULD BE RUN IN data/ subdirectory
 .findFile<-function(path, file, exact = T){
@@ -43,9 +37,7 @@ data_src = c("~/github/npTranscript/data/SARS-Cov2/VIC01","~/github/npTranscript
     }
    }else{
 	files = grep(file, dir(path[i]) , v=T)
-#	if(length(files)==1){
 		return(paste(path[i], files,sep="/"))
-#	}
    } 
   }
 }
@@ -73,7 +65,7 @@ if(length(infilesBr)!=length(type_nme)){
 }
 print(type_nme)
 }
-src = c("~/github/npTranscript/R", "../../R")
+src = c("~/github/npTranscript/R", "C:/Users/LCOIN/github/npTranscript/R")
 #data_src =  # c(".","..","~/github/npTranscript/data/SARS-Cov2" )
 print("#PRELIMINARIES ....")  
 source(.findFile(src, "diff_expr_functs.R"))    
@@ -113,6 +105,21 @@ leader_ind = c(leader_ind, leader_ind + nchar(leader)-1)
 
 
 transcripts = .readTranscripts(infilesT)
+attributes = attributes(transcripts)
+info = attr(transcripts, "info" )
+#count_names =  paste("count",info, sep="_")
+#names(transcripts)[grep("count[0-9]", names(transcripts))] =count_names
+#names(transcripts)[grep("errors[0-9]", names(transcripts))] = paste("errors",info, sep="_")
+#names(transcripts)[grep("error_ratio[0-9]", names(transcripts))] = paste("error_ratio",info, sep="_")
+
+#.processDE1(transcripts,1,2,resdir)
+#.processDE1(transcripts,1,3,resdir)
+#.processDE1(transcripts,1,4,resdir)
+
+
+
+
+
 transcripts_all = .splitTranscripts(transcripts, seqlen, nmes, splice=F)
 transcripts_all_splice = .splitTranscripts(transcripts, seqlen, nmes, splice=T)
 
@@ -151,7 +158,7 @@ for(i in 1:length(ml1_splice)){
 if(length(infilesAnnot)>0){
   annot0 = .readAnnotFile(.findFile(data_src, "0.annot.tsv"),plot=T, type_nme=c("Cell","Virion"), showEB=T,conf.level=0.95)
  
-	annots = .readAnnotFile(infilesAnnot,plot=T, type_nme=NULL, annot0 = annot0,conf.level=0.95,showEB=F)
+	annots = .readAnnotFile(infilesAnnot,plot=T, type_nme=type_nme, annot0 = annot0,conf.level=0.95,showEB=F)
 	double_inds = unlist(lapply(annots$annot[1,], typeof))=="double"
 	annots$annot[,double_inds] = apply(annots$annot[,double_inds,drop=F],c(1,2), function(x)  gsub(' ','',sprintf("%5.3g",x)))
 write.table(annots$annot,file=paste(resdir,"cellular_proportions.txt",sep="/"),sep=",",quote=F,col.names=T, row.names=F)

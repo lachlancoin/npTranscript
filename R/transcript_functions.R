@@ -1517,13 +1517,15 @@ transcripts
 
 .splitTranscripts<-function(transcripts, seqlen, nmes,splice = F){
 	transcripts_all = list()
+	break_ind = grep("num_", names(transcripts));
+	num_breaks = transcripts[,break_ind];
 	if(splice){
 		lead_inds =transcripts$ORFs %in% sort(unique( c(grep(";leader", transcripts$ORFs,v=T), grep("start", transcripts$ORFs,v=T))))
-		transcripts_all[[1]] = 	transcripts[transcripts$num_breaks==0,,drop=F]
-		transcripts_all[[2]] = 	transcripts[transcripts$num_breaks==1 & lead_inds,,drop=F]
-		transcripts_all[[3]] = 	transcripts[transcripts$num_breaks==1 & !lead_inds,,drop=F]
-		transcripts_all[[4]] = 	transcripts[transcripts$num_breaks>=2 & lead_inds,,drop=F]
-		transcripts_all[[5]] = 	transcripts[transcripts$num_breaks>=2 & !lead_inds,,drop=F]
+		transcripts_all[[1]] = 	transcripts[num_breaks==0,,drop=F]
+		transcripts_all[[2]] = 	transcripts[num_breaks==1 & lead_inds,,drop=F]
+		transcripts_all[[3]] = 	transcripts[num_breaks==1 & !lead_inds,,drop=F]
+		transcripts_all[[4]] = 	transcripts[num_breaks>=2 & lead_inds,,drop=F]
+		transcripts_all[[5]] = 	transcripts[num_breaks>=2 & !lead_inds,,drop=F]
 		names(transcripts_all) = c("unspliced","spliced1_leader","spliced1_noleader","spliced2_leader","spliced2_noleader");
 	
 	}else{
