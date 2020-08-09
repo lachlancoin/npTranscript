@@ -362,7 +362,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 
 		}
 		final boolean fastq_ = fastq;
-		if(inputFile.equals("all") || bamFile.equals(".")){
+		if(inputFile.equals("all") || inputFile.equals(".")){
 			bamFiles_ = (new File("./")).list(new FilenameFilter(){
 				@Override
 				public boolean accept(File dir, String name) {
