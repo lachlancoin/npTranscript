@@ -142,6 +142,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addString("isoformDepthThresh", "10", "Threshhold for printing out all isoforms");
 		addDouble("msaDepthThresh", 10, "Threshhold for running MSA per subcluster");
 		addDouble("qualThresh", 20, "Quality thresh for leftover seqs");
+		addDouble("fail_thresh", 7, "Pass threshold");
 		addString("doMSA", "false" , "Options: 5_3 or all or span=0 ");
 		addString("msa_source", null , "indicates how to group msa, e.g 0,1,2;3,4,5 ");
 		//addString("aligner", "kalign" , "Options: kalign3, poa, spoa, abpoa");
@@ -219,7 +220,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		TranscriptUtils.attempt5rescue = cmdLine.getBooleanVal("attempt5rescue");
 		TranscriptUtils.attempt3rescue = cmdLine.getBooleanVal("attempt3rescue");
 		TranscriptUtils.bedChr = cmdLine.getStringVal("bedChr");
-		
+		fail_thresh = cmdLine.getDoubleVal("fail_thresh");
 		Pattern patt = Pattern.compile(":");
 		Outputs.numExonsMSA = cmdLine.getStringVal("numExonsMSA")=="none"  ?  Arrays.asList(new Integer[0]) : 
 				patt.splitAsStream(cmdLine.getStringVal("numExonsMSA"))
@@ -377,7 +378,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		// paramEst(bamFile, reference, qual);
 	}
 public static boolean combineOutput = false;
-	
+	public static double fail_thresh = 7.0;
 	/**
 	 * Error analysis of a bam file. Assume it has been sorted
 	 */
@@ -514,9 +515,19 @@ public static boolean combineOutput = false;
 					sam = samIter.next();
 				}catch(Exception exc){
 					exc.printStackTrace();
-					
-					
 				}
+				byte[] b = sam.getBaseQualities();
+				double sump = 0;
+				for(int i=0; i<b.length; i++){
+					sump+= Math.pow(10, -b[i]/10);
+				}
+				sump = sump/b.length;
+				double q1 = -10*Math.log10(sump);
+				
+				if(q1 < fail_thresh) {
+					continue;
+				}
+			//	System.err.println(q1);
 				
 				if(sam==null) break outer;
 				int source_index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
