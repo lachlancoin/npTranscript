@@ -242,7 +242,7 @@ DEdepth<-function(df,control_names, infected_names,tojoin=1:3){
 #if(lower.tail=T returns p(x<=y) else p(x>=y)
 ##ASSUMES MATCHED DATA BETWEEN CONTROL  AND INFECTED
 DEgenes<-function(df,control_names,infected_names, edgeR = F,  type="lt", binom=F, log=F,
-                  remove=c(control_names, infected_names, "countT", "ID","type_nme", "ORFs")
+                  remove=c(control_names, infected_names, "countT", "ID","type_nme"), incl=c("ORFs")
                   ){
   lower.tail = T
   control_inds = rep(NA, length(control_names))
@@ -287,7 +287,8 @@ infected_inds[i] = which(names(df)==infected_names[i])
   ratio1 = probY1/probX1
   logFC = log(ratio1)/log(2)
   output =  data.frame(pvals, p.adj, pvals1,pvals2,p.adj1, p.adj2, tpm_control, tpm_infected, ratio1,logFC, sum_control=x,sum_infected=y)
-  output= cbind(output, df[, -which(names(df) %in% remove)])
+  indskk = which(names(df) %in% incl)
+  output= cbind(output, df[, indskk,drop=F])
   
   
   
@@ -309,6 +310,7 @@ infected_inds[i] = which(names(df)==infected_names[i])
   output
 #  output[orders[,1],,drop=F]
 }
+
 
 .filter<-function(transcriptsl, prefix = NULL){
   transcripts_l_keep = list()
@@ -625,8 +627,30 @@ if(inherits(dfi,"try-error")) {
   transcripts
 }
 
+.processDE1<-function(transcripts, i1, i2, resdir, top=5){
+  info = attr(transcripts,"info")
+  control_names = count_names[i1]
+  infected_names = count_names[i2]
+  outp = paste("results", info[i1], info[i2], "csv",sep=".")
+  type_names = c(control_names[1], infected_names[1])
+  res_keep3 = .processDE(transcripts,attributes(transcripts), resdir, control_names, infected_names, type_names = type_names, outp= outp, type="keep")
+  indsk = c(2,5,6,7,8,9,13)
+  print("order1")
+  resk1 = res_keep3$DE1[attr(res_keep3$DE1,"order1"),]
+  resk1 = resk1[!is.na(resk1$p.adj1) & resk1$p.adj1<1e-3,indsk]
+  resk2 = res_keep3$DE1[attr(res_keep3$DE1,"order2"),]
+  resk2 = resk2[!is.na(resk1$p.adj2) &resk2$p.adj2<1e-3,indsk]
+  n1 = dim(resk1)[[1]]
+  n2 = dim(resk2)[[2]]
+  n1 = min(top,n1)
+  n2 = min(top,n2)
+  print(paste(n1,n2))
+  print(resk1[1:n1,])
+  print("order2")
+  print(resk2[1:n2,])
+}
 .processDE<-function(transcripts, attributes, resdir, control_names, infected_names,type_names=c("control","infected"), 
-                     outp = "results.csv", type=""){
+                     outp = "results.csv", type="", edgeR= F){
  print(head(transcripts[1,]))
  print(control_names)
  print(infected_names)
