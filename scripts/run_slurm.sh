@@ -19,6 +19,11 @@ npTranscript=${HOME}/github/npTranscript
 #bamfiles=bins/allreads_fq.bam:virion/sorted.virion_refmap.bam
 bamdir="."
 bamfiles=$(ls ${bamdir} | grep '.bam$' | xargs -I {} echo ${bamdir}/{})
+bamfiles="--bamFile=${bamfiles}" 
+if [ ! $bamfiles ]; then 
+	bamfiles=$(ls ${bamdir} | grep '.fastq$' | xargs -I {} echo ${bamdir}/{})
+	bamfiles="--fastqFile=${bamfiles}" 
+fi
 bamfiles1=$(echo $bamfiles | sed 's/ /:/g')
 echo $bamfiles1
 opts1="" 
@@ -27,16 +32,20 @@ if [ $a -eq 1 ]; then
   opts1="--readList reads_in.txt" 
 fi
 
-reference="${npTranscript}/data/SARS-Cov2/VIC01/wuhan_coronavirus_australia.fasta.gz"
-coord_file="${npTranscript}/data/SARS-Cov2/VIC01/Coordinates.csv"
+reference="${npTranscript}/data/SARS-Cov2/NC/NC_045512.fasta.gz" 
+coord_file="${npTranscript}/data/SARS-Cov2/NC/Coordinates.csv"
+
+#reference="${npTranscript}/data/SARS-Cov2/VIC01/wuhan_coronavirus_australia.fasta.gz"
+#coord_file="${npTranscript}/data/SARS-Cov2/VIC01/Coordinates.csv"
 #alias abpoa='/sw/abpoa/v1.0.1/abpoa'
 dat=$(date +%Y%m%d%H%M%S)
 echo $dat
 resdir="results_${dat}"
 ##note that to do separate msa for multiple input bams you type --doMsa=5_3:sep
-opts="--bin=100 --breakThresh=1000  --isoformDepthThresh=10000 --coverageDepthThresh=0 --extra_threshold=200 --msaDepthThresh=20 --doMSA=all:sep --reAlignExtra=true"
+opts="--bin=100 --breakThresh=1000  --isoformDepthThresh=10000 --coverageDepthThresh=0 --extra_threshold=200 --msaDepthThresh=20 --doMSA=all:sep --reAlignExtra=true --bedChr=NC_045512v2"
+opts2="--fail_thresh=7" 
 #opts="${opts} --maxReads 10000"
-bash ${npTranscript}/scripts/run.sh --bamFile=${bamfiles1}   --reference=${reference} --annotation ${coord_file} --resdir ${resdir} ${opts} ${opts1}
+bash ${npTranscript}/scripts/run.sh ${bamfiles1}   --reference=${reference} --annotation ${coord_file} --resdir ${resdir} ${opts} ${opts1} ${opts2}
 
 cd ${resdir}
 #bash ${npTranscript}/scripts/consensus.sh 0
