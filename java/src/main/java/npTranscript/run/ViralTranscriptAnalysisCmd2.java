@@ -159,7 +159,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addBoolean("coronavirus", true, "whether to run in coronavirus mode (necessary to do breakpoint analysis, but takes more memory)");
 		
 		addString("mm2_path", "/sw/minimap2/current/minimap2",  "minimap2 path", false);
-		addString("mm2Preset", "map-ont",  "preset for minimap2", false);
+		addString("mm2Preset", "splice",  "preset for minimap2", false);
+		//addString("mm2Preset", "map-ont",  "preset for minimap2", false);
 		addString("mm2_memory", (Runtime.getRuntime().maxMemory()-1000000000)+"",  "minimap2 memory", false);
 		addInt("mm2_threads", 4, "threads for mm2", false);
 		addStdHelp();
@@ -185,7 +186,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		
 	}
 	public static int mm2_threads;
-	public static String mm2_path, mm2_mem, mm2_index, mm2Preset;
+	public static String mm2_path, mm2_mem, mm2_index, mm2Preset, mm2_splicing;
  public static void run(CommandLine cmdLine, String[] bamFiles, String resDir,Map<String, JapsaAnnotation> anno, String chrs, boolean fastq, String reference) throws IOException{
 		
 		int qual = cmdLine.getIntVal("qual");
@@ -285,6 +286,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			annotByBreakPosition = true;
 			TranscriptUtils.writeAnnotP = true;
 			CigarHash2.subclusterBasedOnStEnd = false;
+			mm2_splicing = "-un";
 		
 		}else{
 		//	TranscriptUtils.reAlignExtra = false;
@@ -298,6 +300,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			System.err.println("running in host mode");
 			CigarHash2.subclusterBasedOnStEnd = false;
 			calcBreaks = false;
+			mm2_splicing = "-uf";
 		}
 			errorAnalysis(bamFiles, reference, annotFile,readList,annotationType, 
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  sorted , 
@@ -476,7 +479,7 @@ public static boolean combineOutput = false;
 			}else{
 				//(File inFile, File mm2Index, String mm2_path, 
 			//	int mm2_threads, String mm2Preset, String mm2_mem)
-				samIters[ii] = SequenceUtils.getSAMIteratorFromFastq(bam, mm2_index, mm2_path, mm2_threads,  mm2Preset, mm2_mem);
+				samIters[ii] = SequenceUtils.getSAMIteratorFromFastq(bam, mm2_index, mm2_path, mm2_threads,  mm2Preset, mm2_mem, mm2_splicing);
 			}
 		}
 		Map<Integer, int[]> chrom_indices_to_include = new HashMap<Integer, int[]>();
