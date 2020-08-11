@@ -10,8 +10,15 @@ if(INSTALL){
 	BiocManager::install("gplots")
 	BiocManager::install("seqinr")
 	BiocManager::install("binom")
+	BiocManager::install("writexl")
+	BiocManager::install("ggrepel")
+	
 }
+library(abind)
+library(ggrepel)
+library(writexl)
 library(binom)
+library(grDevices)
 library(ggplot2)
 library(gridExtra)
 library(RColorBrewer)
@@ -44,7 +51,6 @@ data_src = c("C:/Users/LCOIN/github/npTranscript/data/SARS-Cov2/VIC01" ,"~/githu
 
 
 #type_nme = strsplit(args[1], ":")[[1]]
-infilesBr = grep("breakpoints.", dir(), v=T)
 infilesReads = grep("readToCluster", dir(), v=T)
 infilesAnnot = grep("annot.txt.gz$", dir(), v=T)
 infilesT = grep("transcripts.txt.gz$", dir(), v=T)
@@ -105,19 +111,14 @@ leader_ind = c(leader_ind, leader_ind + nchar(leader)-1)
 
 
 transcripts = .readTranscripts(infilesT)
-attributes = attributes(transcripts)
 info = attr(transcripts, "info" )
-#count_names =  paste("count",info, sep="_")
-#names(transcripts)[grep("count[0-9]", names(transcripts))] =count_names
-#names(transcripts)[grep("errors[0-9]", names(transcripts))] = paste("errors",info, sep="_")
-#names(transcripts)[grep("error_ratio[0-9]", names(transcripts))] = paste("error_ratio",info, sep="_")
 
-#.processDE1(transcripts,1,2,resdir)
+
+#.processDE1(transcripts,count_names, 5,6,resdir, top=5, pthresh = 1e-2)
+#.processDE1(transcripts,count_names, 1,5,resdir, top=5, pthresh = 1e-2)
+
 #.processDE1(transcripts,1,3,resdir)
 #.processDE1(transcripts,1,4,resdir)
-
-
-
 
 
 transcripts_all = .splitTranscripts(transcripts, seqlen, nmes, splice=F)
@@ -140,8 +141,8 @@ minpos = min(maxmin_pos)
 maxpos = max(maxmin_pos)
 
 
-tocompare = .getCompareVec(type_nme)
-ml1 = lapply(.getCompareVec(type_nme), .plotGeneExpr, transcripts_all, todo = 1:length(transcripts_all))
+tocompare = .getCompareVec(type_nme,b=5)
+ml1 = lapply(tocompare, .plotGeneExpr, transcripts_all, todo = 1:length(transcripts_all))
 ml1_splice = lapply(tocompare, .plotGeneExpr, transcripts_all_splice, todo = 1:length(transcripts_all_splice))
 names(ml1) = unlist(lapply(tocompare, function(x)  paste(type_nme[x], collapse=".")))
 names(ml1_splice) = unlist(lapply(tocompare, function(x)  paste(type_nme[x], collapse=".")))
@@ -158,7 +159,10 @@ for(i in 1:length(ml1_splice)){
 if(length(infilesAnnot)>0){
   annot0 = .readAnnotFile(.findFile(data_src, "0.annot.tsv"),plot=T, type_nme=c("Cell","Virion"), showEB=T,conf.level=0.95)
  
-	annots = .readAnnotFile(infilesAnnot,plot=T, type_nme=type_nme, annot0 = annot0,conf.level=0.95,showEB=F)
+#	annots = .readAnnotFile(infilesAnnot,plot=T, type_nme=type_nme, annot0 = annot0,conf.level=0.95,showEB=F)
+	annots = .readAnnotFile(infilesAnnot,plot=T, type_nme=type_nme, annot0 = NULL,conf.level=0.95,showEB=T)
+	
+	
 	double_inds = unlist(lapply(annots$annot[1,], typeof))=="double"
 	annots$annot[,double_inds] = apply(annots$annot[,double_inds,drop=F],c(1,2), function(x)  gsub(' ','',sprintf("%5.3g",x)))
 write.table(annots$annot,file=paste(resdir,"cellular_proportions.txt",sep="/"),sep=",",quote=F,col.names=T, row.names=F)
@@ -176,7 +180,7 @@ print("###READ LEVEL ANALYSIS")
 #sourcePath(src, "read_java_outputs.R")
 print('##COVERAGE ANALYSIS')
 if(length(infilesT)==1 && length(infiles)==1){
-	HEATMAP = TRUE
+	HEATMAP = FALSE
 	COVERAGE = TRUE
 	transcripts_all1 = transcripts_all
 	source(.findFile(src, "coverage_analysis.R"))
@@ -196,3 +200,66 @@ if(length(infilesBr)>=1 && length(infiles)>=1){
  	print("no break point files")
 }
 
+
+if(FALSE){
+  ##DE analysis
+  attributes = attributes(transcripts)
+  info = attr(transcripts, "info")
+  count_names =  paste("count",info, sep="_")
+  names(transcripts)[grep("count[0-9]", names(transcripts))] =count_names
+  names(transcripts)[grep("errors[0-9]", names(transcripts))] = paste("errors",info, sep="_")
+  names(transcripts)[grep("error_ratio[0-9]", names(transcripts))] = paste("error_ratio",info, sep="_")
+  
+  
+  
+  
+  todo = list(c(2,3),c(2,4),c(3,4),c(5,6),c(4,5),c(2,5),c(3,5))
+  for(i in 1:6){
+    todo[[length(todo)+1]] = c(i,7)
+    
+  }
+  names(todo) = unlist(lapply(todo, function(x) paste(info[x],collapse=" v ")))
+  pdf(paste(resdir,"DE.pdf",sep="/"))
+  DE1 = lapply(todo, function(x) .processDE1(transcripts, count_names,x[1],x[2], resdir, top=5, pthresh=1e-2))
+  volcanos = lapply(DE1, .volcano)
+  lapply(volcanos, function(x) print(x))
+  dev.off()
+  names(DE1) = unlist(lapply(DE1, function(x) gsub("_merged","",gsub("_pass","",gsub("_infected","",attr(x,"nme"))))))
+  names(volcanos) = names(DE1)  
+  write_xlsx(DE1, paste(resdir, "DE.xlsx",sep="/"))
+  
+##DIFF METH  
+  attributes = attributes(transcripts)
+  filenames = attr(transcripts,"info")
+  depths=.readH5All(transcripts_all[[1]],attributes,filenames, thresh = 100, chrs=NULL, readH5_ = readH5_h)
+  depth = depths[[1]] #.combineTranscripts(depths, attributes)
+  
+  depths_combined=.readH5All(transcripts,attributes,filenames, thresh = 100, chrs=NULL, readH5_ = readH5_c)
+  depth = depths_combined[[1]] #.combineTranscripts(depths, attributes)
+  
+  #depth = depths[[1]]
+  depth = .transferAttributes(depth, attributes)
+  pdf(paste(resdir,"DM.pdf",sep="/"))
+  DE2 = lapply(todo, function(x) .processDM(depth, info, x[1],x[2], method=.chisq, thresh =100))
+  dev.off()
+  pdf(paste(resdir,"DM_volcano.pdf",sep="/"))
+  volcanos = lapply(DE2, .volcano, pthresh = 1e-5)
+  lapply(volcanos, function(x) print(x))
+  dev.off()
+  .xlim<-function(x){
+    x1 = x[order(x$p.adj),]
+    x2 = x1[x1$p.adj<1e-5,]
+    x2
+  }
+  DE2_=lapply(DE2,.xlim)
+  names(DE2) = unlist(lapply(DE2, function(x) gsub("_merged","",gsub("_pass","",gsub("_infected","",attr(x,"nme"))))))
+  names(DE2_) = names(DE2)
+  write_xlsx(DE2_, paste(resdir, "DM1.xlsx",sep="/"))
+  
+  attr1 = attributes(depth)
+ 
+  .extractFromDepth(depth, info[todo[[7]]],ORF="st;leader,M;end", pos=26536)
+  
+  .extractFromDepth(depth, info[todo[[13]]],ORF="", pos=29759)
+  
+}
