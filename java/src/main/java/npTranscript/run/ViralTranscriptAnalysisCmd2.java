@@ -124,6 +124,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addString("resdir", "results"+System.currentTimeMillis(), "results directory");
 		addString("GFF_features", "Name:description:ID:biotype:Parent", "GFF feature names");
 		addBoolean("RNA", false, "If is direct RNA");
+		addBoolean("recordDepthByPosition", false, "whether to store position specific depth (high memory");
+
 		addInt("maxReads", Integer.MAX_VALUE, "ORF annotation file");
 		addDouble("probInclude", 1.0, "probability of including each read");
 		addInt("minClusterEntries",10,"threshold for consensus");
@@ -274,9 +276,10 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		//if(msa==null) throw new RuntimeException("!!");
 	//	ErrorCorrection.msa = msa;
 		Outputs.writePolyA = cmdLine.getBooleanVal("writePolyA");
+		CigarCluster.recordDepthByPosition = cmdLine.getBooleanVal("recordDepthByPosition");
 		if(coronavirus){
 		//	
-			CigarCluster.recordDepthByPosition = true;
+		//	CigarCluster.recordDepthByPosition = true;
 			System.err.println("running in coronavirus mode");
 			calcBreaks  = true; 
 			filterBy5_3 = true;
@@ -286,20 +289,20 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			TranscriptUtils.extra_threshold1 =50;
 			annotByBreakPosition = true;
 			TranscriptUtils.writeAnnotP = true;
-			CigarHash2.subclusterBasedOnStEnd = false;
+		//	CigarHash2.subclusterBasedOnStEnd = false;
 			mm2_splicing = "-un";
 		
 		}else{
 		//	TranscriptUtils.reAlignExtra = false;
 		//	TranscriptUtils.findPolyA = false;
-			CigarCluster.recordDepthByPosition = false;
+		
 			TranscriptUtils.coronavirus = false;
 			TranscriptUtils.extra_threshold1 = 1000000;
 			//Outputs.writeUnSplicedFastq = false;
 			TranscriptUtils.checkAlign = false;
 			TranscriptUtils.writeAnnotP = false;
 			System.err.println("running in host mode");
-			CigarHash2.subclusterBasedOnStEnd = false;
+			//CigarHash2.subclusterBasedOnStEnd = false;
 			calcBreaks = false;
 			mm2_splicing = "-uf";
 		}

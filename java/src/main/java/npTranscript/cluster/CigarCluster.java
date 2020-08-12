@@ -23,7 +23,7 @@ public class CigarCluster  {
 		
 		
 		static int round2 = 100;
-		public static boolean recordDepthByPosition = false;
+		public static boolean recordDepthByPosition = false; 
 		int breakSt = -1;
 		int breakEnd = -1;
 		int breakSt2 = -1;

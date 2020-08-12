@@ -9,7 +9,7 @@ import java.util.List;
 
 public class CigarHash2 extends ArrayList<Integer> {
 	
-	public static boolean subclusterBasedOnStEnd = false;
+	//public static boolean subclusterBasedOnStEnd = false;
 	
 	public CigarHash2 clone(boolean round){
 		CigarHash2 obj =new CigarHash2();
@@ -19,14 +19,14 @@ public class CigarHash2 extends ArrayList<Integer> {
 	}
 	
 	public void addAllR(CigarHash2 obj) {
-		if(subclusterBasedOnStEnd){
+		/*if(subclusterBasedOnStEnd){
 			addR(obj.get(0));
 			addR(obj.get(obj.size()-1));
-		}else{
+		}else{*/
 			for(int i=0; i<obj.size(); i++){
 				addR(obj.get(i));
 			}
-		}
+		//}
 		
 	}
 	
