@@ -203,63 +203,8 @@ if(length(infilesBr)>=1 && length(infiles)>=1){
 
 if(FALSE){
   ##DE analysis
-  attributes = attributes(transcripts)
-  info = attr(transcripts, "info")
-  count_names =  paste("count",info, sep="_")
-  names(transcripts)[grep("count[0-9]", names(transcripts))] =count_names
-  names(transcripts)[grep("errors[0-9]", names(transcripts))] = paste("errors",info, sep="_")
-  names(transcripts)[grep("error_ratio[0-9]", names(transcripts))] = paste("error_ratio",info, sep="_")
+  source(.findFile(src, "viral_de_analysis.R"))
   
   
-  
-  
-  todo = list(c(2,3),c(2,4),c(3,4),c(5,6),c(4,5),c(2,5),c(3,5))
-  for(i in 1:6){
-    todo[[length(todo)+1]] = c(i,7)
-    
-  }
-  names(todo) = unlist(lapply(todo, function(x) paste(info[x],collapse=" v ")))
-  pdf(paste(resdir,"DE.pdf",sep="/"))
-  DE1 = lapply(todo, function(x) .processDE1(transcripts, count_names,x[1],x[2], resdir, top=5, pthresh=1e-2))
-  volcanos = lapply(DE1, .volcano)
-  lapply(volcanos, function(x) print(x))
-  dev.off()
-  names(DE1) = unlist(lapply(DE1, function(x) gsub("_merged","",gsub("_pass","",gsub("_infected","",attr(x,"nme"))))))
-  names(volcanos) = names(DE1)  
-  write_xlsx(DE1, paste(resdir, "DE.xlsx",sep="/"))
-  
-##DIFF METH  
-  attributes = attributes(transcripts)
-  filenames = attr(transcripts,"info")
-  depths=.readH5All(transcripts_all[[1]],attributes,filenames, thresh = 100, chrs=NULL, readH5_ = readH5_h)
-  depth = depths[[1]] #.combineTranscripts(depths, attributes)
-  
-  depths_combined=.readH5All(transcripts,attributes,filenames, thresh = 100, chrs=NULL, readH5_ = readH5_c)
-  depth = depths_combined[[1]] #.combineTranscripts(depths, attributes)
-  
-  #depth = depths[[1]]
-  depth = .transferAttributes(depth, attributes)
-  pdf(paste(resdir,"DM.pdf",sep="/"))
-  DE2 = lapply(todo, function(x) .processDM(depth, info, x[1],x[2], method=.chisq, thresh =100))
-  dev.off()
-  pdf(paste(resdir,"DM_volcano.pdf",sep="/"))
-  volcanos = lapply(DE2, .volcano, pthresh = 1e-5)
-  lapply(volcanos, function(x) print(x))
-  dev.off()
-  .xlim<-function(x){
-    x1 = x[order(x$p.adj),]
-    x2 = x1[x1$p.adj<1e-5,]
-    x2
-  }
-  DE2_=lapply(DE2,.xlim)
-  names(DE2) = unlist(lapply(DE2, function(x) gsub("_merged","",gsub("_pass","",gsub("_infected","",attr(x,"nme"))))))
-  names(DE2_) = names(DE2)
-  write_xlsx(DE2_, paste(resdir, "DM1.xlsx",sep="/"))
-  
-  attr1 = attributes(depth)
- 
-  .extractFromDepth(depth, info[todo[[7]]],ORF="st;leader,M;end", pos=26536)
-  
-  .extractFromDepth(depth, info[todo[[13]]],ORF="", pos=29759)
   
 }

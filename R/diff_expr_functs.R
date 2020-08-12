@@ -4,7 +4,33 @@
   pchisq(sum(unlist(lapply(pvi[nonNA],qchisq,lower.tail=F, df=1 ))),df=length(nonNA), lower.tail=F)
   
 }
-readH5_h<-function(h5file, df, filenames, thresh =100,log=F){
+
+.xlim<-function(x, pthresh = 1e-5){
+  x1 = x[order(x$p.adj),]
+  x2 = x1[x1$p.adj<pthresh,]
+  x2
+}
+
+.joinSS<-function(l, sort=F){
+  res = NULL
+  for(i in 1:length(l)){
+    type=rep(names(l)[[i]],dim(l[[i]])[[1]])
+    toadd = l[[i]]
+    toadd[[length(toadd)+1]] = type
+    names(toadd)[length(toadd)] = "type"
+    if(i==1){
+      res = toadd
+    }else{
+      res = rbind(res, toadd)
+    }
+  }
+  if(sort){
+    res$ORFs = as.numeric(as.character(res$ORFs))
+    res = res[order(res$ORFs),]
+  }
+res
+}
+readH5_h<-function(h5file, df, filenames, thresh =100,tokeepi = NULL, log=F){
   IDS = df$ID
   chrs = df$chrs
   header = h5read(h5file,"header")
@@ -20,8 +46,8 @@ readH5_h<-function(h5file, df, filenames, thresh =100,log=F){
   pos_ind = which(header=="pos")
   names = h5ls(h5file)$name
   inds = which(countT>thresh & df$ID %in% names)
-array_nmes = list(c("depth","error"), c(), c(sub("depth_","",header[dinds]) ))
-    mat_all  = array(dim = c(2,0, length(dinds)),dimnames=array_nmes)
+  array_nmes = list(c("depth","error"), c(), c(sub("depth_","",header[dinds]) ))
+  mat_all  = array(dim = c(2,0, length(dinds)),dimnames=array_nmes)
   #  mat_all_e = data.frame(matrix(nrow = 0, ncol = length(einds)+1))
   
   if(length(inds)>0){
@@ -35,11 +61,11 @@ array_nmes = list(c("depth","error"), c(), c(sub("depth_","",header[dinds]) ))
     countT1 = apply(mat[,depth_inds,drop=F],1,sum)
     indsi = which(countT1>thresh)
     if(length(indsi)>0){
-    mat1 = mat[indsi,,drop=F]
-    mat1[mat1[,2]==0,2] = 'A'
-    mat1[mat1[,2]==1,2] = 'C'
-    mat1[mat1[,2]==2,2] = 'G'
-    mat1[mat1[,2]==3,2] = 'T'
+    mat1 = apply(mat[indsi,,drop=F],c(1,2),as.numeric)
+   # mat1[mat1[,2]==0,2] = 'A'
+  #  mat1[mat1[,2]==1,2] = 'C'
+  #  mat1[mat1[,2]==2,2] = 'G'
+  #  mat1[mat1[,2]==3,2] = 'T'
    
     IDv = apply(cbind(rep(chr, length(indsi)),mat1[,1:2,drop=F]),1,paste,collapse=".")
     array_nmes[[2]] = IDv
@@ -62,7 +88,7 @@ mat_all
 }
 
 # cumulative 
-readH5_c<-function(h5file, df, filenames, thresh=0, log=F,seqlen=30000){
+readH5_c<-function(h5file, df, filenames, thresh=0, log=F,tokeepi = NULL, seqlen=30000){
   IDS = df$ID
   chrs = df$chrs
   header = h5read(h5file,"header")
@@ -96,6 +122,42 @@ readH5_c<-function(h5file, df, filenames, thresh=0, log=F,seqlen=30000){
   
 }
 
+# split into transcripts
+readH5_s<-function(h5file, df, filenames, thresh=0, log=F, tokeepi=1 ,seqlen=30000){
+  IDS = df$ID
+  chrs = df$chrs
+  header = h5read(h5file,"header")
+  if(header[2]!="base") header = c(header[1], "base", header[-1])
+  depth_inds = grep("depth[0-9]", header)
+  error_inds = grep("errors[0-9]", header)
+#  tokeepi = grep(grep("depth_",grep(tokeep, header,v=T),v=T),header)
+  dinds  = grep("depth", header)
+  einds  = grep("error", header)
+  header[dinds] = paste("depth",filenames,sep="_")
+  header[einds] =  paste("error",filenames,sep="_")
+  #countT = apply(df[,grep("count[0-9]", names(df)),drop=F],1,min)
+  pos_ind = which(header=="pos")
+  names = h5ls(h5file)$name
+  inds = which( df$ID %in% names)
+  array_nmes = list(c("depth","error"), 1:seqlen, df$ORFs )
+  num_trans = dim(df)[[1]]
+  mat_all  = array(0,dim = c(2,seqlen, num_trans),dimnames=array_nmes)
+  
+  if(length(inds)>0){
+    for(i in 1:length(inds)){
+      print(paste(i, length(inds), sep=" of "))
+      ID = as.character(IDS[inds[i]])
+      chr =  as.character(chrs[inds[i]])
+      if(is.null(chr) || length(chr)==0) chr = as.character(df$ORFs[inds[i]])
+      mat = t(h5read(h5file,as.character(ID)))
+      mat_all[1,mat[,1],i] =  mat[,dinds[tokeepi]]
+      mat_all[2,mat[,1],i] =  mat[,einds[tokeepi]]
+    } 
+  }
+  mat_all
+  #print(head(mat_all[mat_all$pv2<1e-100,]))
+  
+}
 
 DE_err<-function(DE, inds_control=1, inds_case=2, sum_thresh = 100){
   
@@ -262,31 +324,34 @@ chisqCombine<-function(pv,log=log){
   f = chisq.test(matrix(v,nrow=nrow, ncol=ncol))
   c(f$p.value, NA,v[2,1]/v[1,1], v[2,2]/v[1,2])
 }
-.extractFromDepth<-function(depth, nmes,ORF="M;ORF10", pos=27483){
-  dnmes = dimnames(depth)[[2]]
-  depth1 =depth[,grep(ORF,dnmes),,drop=F]
-  depth2 =depth1[,grep(pos,dimnames(depth1)[[2]]),,drop=F]
-  indsc = c()
-  for(i in 1:length(nmes)){
-    indsc = c(indsc,grep(nmes[i], dimnames(depth)[[3]]))
+.extractFromDepth<-function(dpth, indsc=1:2,ORF="M;ORF10", pos=27483){
+  dnmes = dimnames(dpth)[[2]]
+  if(!is.null(ORF)){
+  dpth =dpth[,grep(ORF,dnmes),,drop=F]
   }
+  depth2 =dpth[,grep(pos,dimnames(dpth)[[2]]),,drop=F]
+  if(!is.null(indsc)){
   res = depth2[,,indsc,drop=F]
+  }
   ratio = apply(res,c(2,3),function(x) x[2]/x[1])
   res1 = abind(res,ratio, along=1)
   dimnames(res1)[[1]][3] = "ratio"
   res1
 }
-.processDM<-function(depth,info, i1,i2, thresh =1000, method=.chisq){
-  control_names = info[i1]
-  infected_names = info[i2]
+.processDM<-function(depth, i1,i2, thresh =1000, method=.chisq, plot=F){
+  inf = dimnames(depth)[[3]] 
+  control_names = inf[i1]
+  infected_names = inf[i2]
  
   
   #DE = list()
   DE = DEdepth(depth, control_names, infected_names, tojoin=1:3, thresh = thresh,method=method)
   
   type=paste(control_names, infected_names,sep=" vs ")
-  if(dim(DE)[[1]]>0){
-  .qqplot(DE$p.adj, min.p= 1e-200,main=type, col=1)
+  if(plot){
+    if(dim(DE)[[1]]>0){
+    .qqplot(DE$p.adj, min.p= 1e-200,main=type, col=1)
+    }
   }
   attr(DE,"nme") = paste(control_names, infected_names, sep=" vs ")
   invisible(DE)
@@ -319,7 +384,7 @@ DEdepth<-function(df,control_names, infected_names,tojoin=1:3, thresh = 100, max
   control_ratio=apply(pvs[,grep("ratio_control", names(pvs)),drop=F],1, mean)
   infected_ratio=apply(pvs[,grep("ratio_case", names(pvs)),drop=F],1, mean)
   ORFs = dimnames(df1)[[2]]
-  logFC = log2(control_ratio/infected_ratio)
+  logFC = log2(infected_ratio/control_ratio)
   logFC[is.na(logFC)] = 0
   logFC[!is.na(logFC) & logFC< -maxLogFC]=-maxLogFC
   logFC[!is.na(logFC) & logFC>maxLogFC]=maxLogFC
@@ -726,14 +791,14 @@ if(inherits(dfi,"try-error")) {
   transcripts
 }
 
-.processDE1<-function(transcripts, count_names, i1, i2, resdir, top=5, pthresh = 1e-3){
+.processDE1<-function(transcripts, count_names, i1, i2, resdir, top=5, pthresh = 1e-3,plot=F){
   info = attr(transcripts,"info")
   control_names = count_names[i1]
   infected_names = count_names[i2]
   outp = paste("results", info[i1], info[i2], "csv",sep=".")
   type_names = c(control_names[1], infected_names[1])
   res_keep3 = .processDE(transcripts,attributes(transcripts), resdir, control_names, infected_names, type_names = type_names, outp= outp, 
-                         type=gsub("count_","",paste(type_names,collapse=" vs ")))
+                         type=gsub("count_","",paste(type_names,collapse=" vs ")), plot=plot)
   indsk = c(2,5,6,7,8,9,13)
   print("order1")
   resk1 = res_keep3$DE1[attr(res_keep3$DE1,"order1"),]
@@ -753,7 +818,7 @@ if(inherits(dfi,"try-error")) {
   invisible(res_keep3$DE1[ord,])
 }
 
-.volcano<-function(df, logFCthresh = 1.0, pthresh = 1e-2){
+.volcano<-function(df, logFCthresh = 1.0, pthresh = 1e-2, prefix=""){
   if(dim(df)[[1]]==0) return(NULL)
 ggp<-ggplot(df, aes(x =logFC, y = -log10(p.adj),color = ifelse(abs(logFC)>0.6,"red","grey"))) 
 ggp<-ggp+  geom_point() +  xlab(expression("Fold Change, Log"[2]*"")) +  ylab(expression("Adjusted P value, Log"[10]*"")) 
@@ -772,12 +837,12 @@ ggp<-ggp+  theme(legend.position = "none")+
   scale_colour_manual(values = c("grey", "red")) 
 ggp<-ggp+  geom_text_repel(data=subset(df,abs(logFC) >= logFCthresh & p.adj < pthresh),
                   aes(logFC, -log10(p.adj), label = ORFs),size = 3, color="steelblue")
-ggp<-ggp+ggtitle(attr(df,"nme"))
+ggp<-ggp+ggtitle(paste(attr(df,"nme"),prefix))
 ggp
 }
 
 .processDE<-function(transcripts, attributes, resdir, control_names, infected_names,type_names=c("control","infected"), 
-                     outp = "results.csv", type="", edgeR= F){
+                     outp = "results.csv", type="", edgeR= F, plot=F){
  print(head(transcripts[1,]))
  print(control_names)
  print(infected_names)
@@ -789,10 +854,12 @@ ggp
    
   DE1 = .transferAttributes(DE1, attributes)
   .write(DE1 ,resdir,outp)
+  if(plot){
   par(mfrow = c(1,1))
  # .qqplot(DE1$pvals, min.p= 1e-200,main=paste(type,"both"))
   .qqplot(DE1$pvals1, min.p= 1e-200,main=type)
   .qqplot(DE1$pvals2, min.p= 1e-200,main=type, add=T)
+  }
   #.vis(DE1,i=1,min.p=1e-50)
   # .vis(DE1,i=2,min.p=1e-50)
   invisible(list(DE1=DE1, transcripts=transcripts))
@@ -827,7 +894,7 @@ readIsoformH5<-function(h5file,  transcripts_){
 }
 
 
-.readH5All<-function(transcripts, attributes,filenames,  thresh,chrs=NULL, readH5_ = readH5_c){
+.readH5All<-function(transcripts, attributes,filenames,  thresh,chrs=NULL,tokeepi =NULL, readH5_ = readH5_c){
   filenames=  attributes[which(names(attributes)=="info")][[1]]
   chroms = NULL
   if(length(which(names(attributes)=="chroms"))>0){
@@ -844,7 +911,7 @@ readIsoformH5<-function(h5file,  transcripts_){
   if(is.null(chroms)) chroms = c("0")
   h5files =lapply(chroms, function (x)   infile = paste(x,"clusters.h5", sep="."))
   #thresh =1000
-  depth_ls = lapply(h5files, function(infile) try(readH5_(infile, transcripts, filenames, thresh =thresh,log=F)))
+  depth_ls = lapply(h5files, function(infile) try(readH5_(infile, transcripts, filenames, thresh =thresh,tokeepi = tokeepi, log=F)))
  # depth=.combineTranscripts(depth_ls, attributes)
   H5close();
   lengs = unlist(lapply(depth_ls,function(x) if(is.null(x)) NA else dim(x)[2]))
@@ -855,11 +922,18 @@ readIsoformH5<-function(h5file,  transcripts_){
   depth_ls = depth_ls[inds]
   names(depth_ls) = chroms
  # header = names(depth_ls[[1]])
-  
-  return(depth_ls)
+  return(.transferAttributes(depth_ls, attributes))
 }
  
-
+#extracts and rearranges depth
+.mergeDepth<-function(i,depths_combined_spliced){
+  res =depths_combined_spliced[[1]][,,i,drop=F]
+  for(k in 2:length(depths_combined_spliced)){
+    res = abind(res,depths_combined_spliced[[k]][,,i,drop=F],along=3)
+  }
+  dimnames(res)[[3]] = names(depths_combined_spliced)
+  res
+}
 
 .readTranscriptsHost<-function(infilesT1, 
                                filter = NULL,
