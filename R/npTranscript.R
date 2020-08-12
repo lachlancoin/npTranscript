@@ -10,28 +10,29 @@ if(INSTALL){
 	BiocManager::install("gplots")
 	BiocManager::install("seqinr")
 	BiocManager::install("binom")
+	BiocManager::install("writexl")
+	BiocManager::install("ggrepel")
+	
 }
+library(abind)
+library(ggrepel)
+library(writexl)
 library(binom)
+library(grDevices)
 library(ggplot2)
 library(gridExtra)
 library(RColorBrewer)
 library(gplots)
 library(seqinr)
 library(rhdf5)
+library(VGAM)
 args = commandArgs(trailingOnly=TRUE)
 if(length(args)>0){
 data_src = args[1]  ## location of fasta file and Coordinates file
 }else{
-data_src = c("~/github/npTranscript/data/SARS-Cov2/VIC01","~/github/npTranscript/data/229E_CoV" )
+data_src = c("C:/Users/LCOIN/github/npTranscript/data/SARS-Cov2/VIC01" ,"~/github/npTranscript/data/SARS-Cov2/VIC01","~/github/npTranscript/data/229E_CoV" )
 }
 
-
-#print(args)
-#print(length(args))
-#if(length(args)==0) stop("need to specify the type nmes, e.g. Cell:Virion")
-
- 
-#type_nme=	c( "Cell","Virion") #,"Cell2")
 
 #SHOULD BE RUN IN data/ subdirectory
 .findFile<-function(path, file, exact = T){
@@ -43,16 +44,13 @@ data_src = c("~/github/npTranscript/data/SARS-Cov2/VIC01","~/github/npTranscript
     }
    }else{
 	files = grep(file, dir(path[i]) , v=T)
-#	if(length(files)==1){
 		return(paste(path[i], files,sep="/"))
-#	}
    } 
   }
 }
 
 
 #type_nme = strsplit(args[1], ":")[[1]]
-infilesBr = grep("breakpoints.", dir(), v=T)
 infilesReads = grep("readToCluster", dir(), v=T)
 infilesAnnot = grep("annot.txt.gz$", dir(), v=T)
 infilesT = grep("transcripts.txt.gz$", dir(), v=T)
@@ -73,7 +71,7 @@ if(length(infilesBr)!=length(type_nme)){
 }
 print(type_nme)
 }
-src = c("~/github/npTranscript/R", "../../R")
+src = c("~/github/npTranscript/R", "C:/Users/LCOIN/github/npTranscript/R")
 #data_src =  # c(".","..","~/github/npTranscript/data/SARS-Cov2" )
 print("#PRELIMINARIES ....")  
 source(.findFile(src, "diff_expr_functs.R"))    
@@ -113,6 +111,16 @@ leader_ind = c(leader_ind, leader_ind + nchar(leader)-1)
 
 
 transcripts = .readTranscripts(infilesT)
+info = attr(transcripts, "info" )
+
+
+#.processDE1(transcripts,count_names, 5,6,resdir, top=5, pthresh = 1e-2)
+#.processDE1(transcripts,count_names, 1,5,resdir, top=5, pthresh = 1e-2)
+
+#.processDE1(transcripts,1,3,resdir)
+#.processDE1(transcripts,1,4,resdir)
+
+
 transcripts_all = .splitTranscripts(transcripts, seqlen, nmes, splice=F)
 transcripts_all_splice = .splitTranscripts(transcripts, seqlen, nmes, splice=T)
 
@@ -133,8 +141,8 @@ minpos = min(maxmin_pos)
 maxpos = max(maxmin_pos)
 
 
-tocompare = .getCompareVec(type_nme)
-ml1 = lapply(.getCompareVec(type_nme), .plotGeneExpr, transcripts_all, todo = 1:length(transcripts_all))
+tocompare = .getCompareVec(type_nme,b=5)
+ml1 = lapply(tocompare, .plotGeneExpr, transcripts_all, todo = 1:length(transcripts_all))
 ml1_splice = lapply(tocompare, .plotGeneExpr, transcripts_all_splice, todo = 1:length(transcripts_all_splice))
 names(ml1) = unlist(lapply(tocompare, function(x)  paste(type_nme[x], collapse=".")))
 names(ml1_splice) = unlist(lapply(tocompare, function(x)  paste(type_nme[x], collapse=".")))
@@ -151,7 +159,10 @@ for(i in 1:length(ml1_splice)){
 if(length(infilesAnnot)>0){
   annot0 = .readAnnotFile(.findFile(data_src, "0.annot.tsv"),plot=T, type_nme=c("Cell","Virion"), showEB=T,conf.level=0.95)
  
-	annots = .readAnnotFile(infilesAnnot,plot=T, type_nme=NULL, annot0 = annot0,conf.level=0.95,showEB=F)
+#	annots = .readAnnotFile(infilesAnnot,plot=T, type_nme=type_nme, annot0 = annot0,conf.level=0.95,showEB=F)
+	annots = .readAnnotFile(infilesAnnot,plot=T, type_nme=type_nme, annot0 = NULL,conf.level=0.95,showEB=T)
+	
+	
 	double_inds = unlist(lapply(annots$annot[1,], typeof))=="double"
 	annots$annot[,double_inds] = apply(annots$annot[,double_inds,drop=F],c(1,2), function(x)  gsub(' ','',sprintf("%5.3g",x)))
 write.table(annots$annot,file=paste(resdir,"cellular_proportions.txt",sep="/"),sep=",",quote=F,col.names=T, row.names=F)
@@ -169,7 +180,7 @@ print("###READ LEVEL ANALYSIS")
 #sourcePath(src, "read_java_outputs.R")
 print('##COVERAGE ANALYSIS')
 if(length(infilesT)==1 && length(infiles)==1){
-	HEATMAP = TRUE
+	HEATMAP = FALSE
 	COVERAGE = TRUE
 	transcripts_all1 = transcripts_all
 	source(.findFile(src, "coverage_analysis.R"))
@@ -189,3 +200,11 @@ if(length(infilesBr)>=1 && length(infiles)>=1){
  	print("no break point files")
 }
 
+
+if(FALSE){
+  ##DE analysis
+  source(.findFile(src, "viral_de_analysis.R"))
+  
+  
+  
+}
