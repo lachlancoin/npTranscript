@@ -55,7 +55,7 @@
 	 <dependency>
           	  <groupId>coin</groupId>
           	  <artifactId>japsa</artifactId>
-           	 <version>1.9.4</version>
+           	 <version>1.9.4e</version>
       	</dependency>
 	 <dependency>
           		  <groupId>ch.ethz.wiki-bsse</groupId>
