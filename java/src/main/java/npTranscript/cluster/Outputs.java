@@ -34,7 +34,7 @@ public class Outputs{
 	
 	public static  ExecutorService executor ;
 	
-	static final FastqWriterFactory factory = new FastqWriterFactory();
+	public static final FastqWriterFactory factory = new FastqWriterFactory();
 	
 	 class FOutp{
 		//String nme;
@@ -411,6 +411,13 @@ public class Outputs{
 				exc.printStackTrace();
 			}
 			
+		}
+		
+		public static FastqWriter getFqWriter(String chrom,String resdir) {
+			// TODO Auto-generated method stub
+			File f = new File(resdir, chrom+".fastq");
+			System.err.println("new fastq writer "+f.getAbsolutePath());
+			return  factory.newWriter(f);
 		}
 
 		

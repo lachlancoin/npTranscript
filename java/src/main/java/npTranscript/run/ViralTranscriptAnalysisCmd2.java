@@ -62,11 +62,12 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecordIterator;
-import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.fastq.FastqRecord;
+import htsjdk.samtools.fastq.FastqWriter;
+import htsjdk.samtools.util.SequenceUtil;
 import japsa.seq.Alphabet;
 import japsa.seq.JapsaAnnotation;
 import japsa.seq.Sequence;
@@ -139,7 +140,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addString("numExonsMSA", "none", "number of exons For  MSA");
 		addInt("breakThresh", 1000, "Thresh for break points to match clusters.  If bigger than genome size then no break points");
 		addBoolean("includeStart", true, "Whether to include start position in the cluster hash");
-
+		addString("chromsToRemap", "", "names of chromosomes (entries in reference) which should be remapped (colon delimited) .  Will produce fastq output files for each chrom with mapping reads");
 		addInt("coverageDepthThresh", 100, "Threshhold for writing base level depth information to h5 file");
 		addString("isoformDepthThresh", "10", "Threshhold for printing out all isoforms");
 		addDouble("msaDepthThresh", 10, "Threshhold for running MSA per subcluster");
@@ -268,6 +269,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		}
 		Outputs.keepAlignment = cmdLine.getBooleanVal("keepAlignment");
 		Outputs.keepinputFasta = Outputs.keepAlignment ;
+		String chromsToRemap = cmdLine.getStringVal("chromsToRemap");
+		
 		//Outputs.MSA_at_cluster = false;
 		boolean calcBreaks=true;// = cmdLine.getBooleanVal("calcBreaks");// whether to calculate data for the break point heatmap, true for SARS_COV2
 		boolean filterBy5_3 = false;// should be true for SARS_COV2
@@ -308,7 +311,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		}
 			errorAnalysis(bamFiles, reference, annotFile,readList,annotationType, 
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  sorted , 
-				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, overwrite, isoformDepthThresh, coverageDepthThresh, probInclude, fastq);
+				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, overwrite, isoformDepthThresh, coverageDepthThresh, probInclude, fastq, chromsToRemap==null ? null: chromsToRemap.split(":"));
 	}
 	public static void main(String[] args1) throws IOException, InterruptedException {
 		long tme = System.currentTimeMillis();
@@ -388,7 +391,7 @@ public static boolean combineOutput = false;
 	static void errorAnalysis(String[] bamFiles_, String refFile, String annot_file, String[] readList,    String annotationType, String resdir, String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads,  boolean sorted,
 			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,Map<String, JapsaAnnotation> anno, String chrToInclude, boolean overwrite,
-			int[] writeIsoformDepthThresh, int writeCoverageDepthThresh, double probInclude, boolean fastq) throws IOException {
+			int[] writeIsoformDepthThresh, int writeCoverageDepthThresh, double probInclude, boolean fastq, String[] chromsToRemap) throws IOException {
 		boolean cluster_reads = true;
 		CigarHash2.round = round;
 		
@@ -510,10 +513,16 @@ public static boolean combineOutput = false;
 			if(chrom_indices_to_include==null || chrom_indices_to_include.containsKey(key))
 				chromsToInclude.put(genomes.get(key).getName(),chrom_indices_to_include==null ? new int[]{0,Integer.MAX_VALUE} :chrom_indices_to_include.get(key));
 		}
+		Collection<String> chromToRemap = Arrays.asList(chromsToRemap);
+		
+		
 		System.err.println(chromsToInclude.size());
 			int currentIndex = 0;
 			
+		
+			
 			Sequence chr = genomes.get(currentIndex);
+			FastqWriter fqw = chromToRemap.contains(chr.getName()) ? Outputs.getFqWriter(chr.getName(), resdir) : null;
 			Outputs outp = null;
 			if(combineOutput)	outp = new Outputs(resDir,  in_nmes, overwrite, 0, chr.getName(), true, CigarCluster.recordDepthByPosition); 
 			int primelen = 500;//chr.length();
@@ -526,7 +535,7 @@ public static boolean combineOutput = false;
 			int numReads = 0;
 
 			int numNotAligned = 0;
-			int prev_src_index =-1;
+			//int prev_src_index =-1;
 			int numSecondary =0;
 			outer: for (; samIter.hasNext() ; ) {
 				SAMRecord sam= null;
@@ -535,6 +544,15 @@ public static boolean combineOutput = false;
 				}catch(Exception exc){
 					exc.printStackTrace();
 				}
+				if(sam.isSecondaryOrSupplementary()) {
+					numSecondary++;
+					continue;
+				}
+				if (sam.getReadUnmappedFlag()) {
+					numNotAligned++;
+					continue;
+				}
+				
 				if(chrom_indices_to_include!=null && !chrom_indices_to_include.containsKey(sam.getReferenceIndex())){
 					continue;
 				}
@@ -553,14 +571,15 @@ public static boolean combineOutput = false;
 				double q1 = -10*Math.log10(sump);
 				
 				if(q1 < fail_thresh) {
+					System.err.println(q1);
 					continue;
 				}
-			//	System.err.println(q1);
+			//	
 				
 				if(sam==null) break outer;
 				int source_index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
 				//if(source_index==null) source_index = 0;
-				
+			//	System.err.println(source_index);
 				if (pattern != null && (!sam.getReadName().contains(pattern)))
 					continue;
 				Sequence readSeq = new Sequence(Alphabet.DNA(), sam.getReadString(), sam.getReadName());
@@ -573,14 +592,7 @@ public static boolean combineOutput = false;
 				}
 
 				numReads++;
-				if(sam.isSecondaryOrSupplementary()) {
-					numSecondary++;
-					continue;
-				}
-				if (sam.getReadUnmappedFlag()) {
-					numNotAligned++;
-					continue;
-				}
+				
 
 				int flag = sam.getFlags();
 
@@ -624,13 +636,29 @@ public static boolean combineOutput = false;
 						break outer;
 					}
 					chr = genomes.get(currentIndex);
+					if(fqw!=null) fqw.close();
+					fqw = chromToRemap.contains(chr.getName()) ? Outputs.getFqWriter(chr.getName(), resdir) : null;
 					chr5prime = TranscriptUtils.coronavirus ? chr.subSequence(0	, Math.min( primelen, chr.length())) : null;
 					chr3prime = TranscriptUtils.coronavirus ? chr.subSequence(Math.max(0, chr.length()-primelen), chr.length()) : null;
 					System.err.println("switch chrom "+prev_chrom+"  to "+chr.getName());
 				}
-				if(source_index!=prev_src_index){
-					System.err.println("switch "+prev_src_index+"  to "+source_index+ " chr:"+chr.getName());
-					 prev_src_index = source_index;
+			//	if(source_index!=prev_src_index){
+				//	System.err.println("switch "+prev_src_index+"  to "+source_index+ " chr:"+chr.getName());
+					// prev_src_index = source_index;
+	//			}
+				
+				if(fqw!=null){
+					// this assumes that minimap2 corrected the strand and we need to reverse complement neg strand to get it back to original 
+					boolean negStrand = sam.getReadNegativeStrandFlag();
+					String sequence = sam.getReadString();
+					String baseQL = sam.getBaseQualityString();
+					FastqRecord fqr= new FastqRecord(sam.getReadName(),
+							negStrand ? SequenceUtil.reverseComplement(sequence): sequence,
+									"",
+									negStrand ?(new StringBuilder(baseQL)).reverse().toString(): baseQL
+											);
+					fqw.write(fqr);
+					continue outer;
 				}
 				
 				
@@ -693,7 +721,7 @@ public static boolean combineOutput = false;
 				profile.getConsensus();
 				
 			}
-		
+			if(fqw!=null) fqw.close();
 		if(outp!=null) outp.close();
 	
 		if(annotation_pw!=null) annotation_pw.close();
