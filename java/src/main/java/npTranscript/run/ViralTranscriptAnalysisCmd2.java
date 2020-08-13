@@ -402,7 +402,7 @@ public static boolean combineOutput = false;
 		if(annotSummary.exists()) annotSummary.delete();
 		PrintWriter annotation_pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(annotSummary, false))));
 	
-		Collection[] reads= null;
+		Map<String, Integer> reads= new HashMap<String, Integer>();
 		if(readList.length>0 && readList[0].length()>0){
 		 if( readList[0].indexOf("readToCluster.txt.gz")>=0){
 			 Map<String, Collection<String>> map = new HashMap<String, Collection<String>>();
@@ -427,27 +427,28 @@ public static boolean combineOutput = false;
 				br.close();
 			 }
 			readList = map.keySet().toArray(new String[0]);
-			reads = new Collection[readList.length];
-			for(int i=0; i<reads.length; i++){
-				 reads[i]= map.get(readList[i]);
+			for(int i=0; i<readList.length; i++){
+				Iterator<String> it =  map.get(readList[i]).iterator();
+				while(it.hasNext()){
+					reads.put(it.next(),i);
+				}
 			}
 		 }else{
-			
-		 reads= new Collection[readList.length];
-		 for(int i=0; i<reads.length; i++){
-			reads[i] = new HashSet<String>();
+		// reads= new Collection[readList.length];
+		 for(int i=0; i<readList.length; i++){
+		//	reads[i] = new HashSet<String>();
 			BufferedReader br = new BufferedReader(new FileReader(new File(readList[i])));
 			String st;
 			while((st = br.readLine())!=null){
 				String st_ = st.split("\\s+")[0];
 				System.err.println(st_);
-				reads[i].add(st_);
+				reads.put(st, i);
 			}
 			br.close();
 		 }
 		 }
 		}
-		
+		if(reads.size()==0) reads=null;  //make it null to turn off this feature
 		TranscriptUtils.break_thresh = break_thresh;
 		int len = bamFiles_.length;
 		// len = 1;
@@ -488,13 +489,28 @@ public static boolean combineOutput = false;
 		}
 		Map<Integer, int[]> chrom_indices_to_include = new HashMap<Integer, int[]>();
 		Map<String, int[]> chromsToInclude = new HashMap<String, int[]>();
-		Iterator<SAMRecord> samIter= SequenceUtils.getCombined(samIters, reads,max_reads,chrToInclude,  chrom_indices_to_include);
-		Iterator<Integer> it = chrom_indices_to_include.keySet().iterator(); 
-		while(it.hasNext()){
-			Integer key  = it.next();
-			chromsToInclude.put(genomes.get(key).getName(),chrom_indices_to_include.get(key));
+		if(chrToInclude!=null && !chrToInclude.equals("all")){
+			String[] chri = chrToInclude.split(":");
+			for(int i=0; i<chri.length; i++){
+				String[] str = chri[i].split(",");
+				int[] vals ;
+				if(str.length==1) vals = new int[] {0,Integer.MAX_VALUE};
+				else{
+					vals = new int[] {Integer.parseInt(str[1]), Integer.parseInt(str[2])};
+				}
+				chrom_indices_to_include.put(Integer.parseInt(str[0]), vals);
+			}
 		}
+		if(chrom_indices_to_include.size()==0) chrom_indices_to_include=null;
 		
+		Iterator<SAMRecord> samIter= SequenceUtils.getCombined(samIters);
+		System.err.println("chrom indices to include");
+		System.err.println(chrom_indices_to_include);
+		for(int key=0; key<genomes.size();key++){
+			if(chrom_indices_to_include==null || chrom_indices_to_include.containsKey(key))
+				chromsToInclude.put(genomes.get(key).getName(),chrom_indices_to_include==null ? new int[]{0,Integer.MAX_VALUE} :chrom_indices_to_include.get(key));
+		}
+		System.err.println(chromsToInclude.size());
 			int currentIndex = 0;
 			
 			Sequence chr = genomes.get(currentIndex);
@@ -519,6 +535,15 @@ public static boolean combineOutput = false;
 				}catch(Exception exc){
 					exc.printStackTrace();
 				}
+				if(chrom_indices_to_include!=null && !chrom_indices_to_include.containsKey(sam.getReferenceIndex())){
+					continue;
+				}
+				int poolID = 0;
+				if(reads!=null){ 
+					Integer readInd = reads.get(sam.getReadName());
+					if(readInd==null) continue;
+					else poolID = readInd;
+				}
 				byte[] b = sam.getBaseQualities();
 				double sump = 0;
 				for(int i=0; i<b.length; i++){
@@ -534,7 +559,8 @@ public static boolean combineOutput = false;
 				
 				if(sam==null) break outer;
 				int source_index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
-				int poolID = (Integer)  sam.getAttribute(SequenceUtils.pool_tag);
+				//if(source_index==null) source_index = 0;
+				
 				if (pattern != null && (!sam.getReadName().contains(pattern)))
 					continue;
 				Sequence readSeq = new Sequence(Alphabet.DNA(), sam.getReadString(), sam.getReadName());
