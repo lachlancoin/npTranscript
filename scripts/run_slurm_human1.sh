@@ -38,22 +38,18 @@ fi
 
 #reference="../Chlorocebus_sabaeus.ChlSab1.1.dna.toplevel.fa.gz"
 #coord_file="../Chlorocebus_sabaeus.ChlSab1.1.99.gff3.gz"
-export coord_file=$(pwd)"/gencode.v28.annotation.gff3.gz"
-export reference=$(pwd)"/GRCh38_full_analysis_set_plus_decoy_hla.fa"
-#reference="/DataOnline/Data/H.sapiens/Reference/GRCh38_reference_genome/GRCh38_chromosome_only.fa"
-#coord_file="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/human/GRCh38_latest_genomic.gff.gz"
-#reference="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/human/GRCh38_latest_genomic.fna"
-
+reference="./human_virus_sequin_ensembl_pri_merged_genome.fasta"
+coord_file="./gencode.v28.annotation.gff3.gz"
 dat=$(date +%Y%m%d%H%M%S)
 resdir="results_${dat}"
 opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=8 --extra_threshold=1000 --writePolyA=true --msaDepthThresh=1000 --doMSA=false --numExonsMSA=1:2:3:4:5 --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh 1000"
 #for dRNA datasets
 opts="${opts} --RNA=true"
-opts2="--fail_thresh=0  --mm2_memory=10g --recordDepthByPosition=false"
-#--GFF_features=ID:description:ID:gene_type:gene_name
+opts2="--fail_thresh=0  --chromsToRemap=MT007544.1  --mm2_memory=10g --recordDepthByPosition=true"
+opts3="--GFF_features=ID:description:ID:gene_type:gene_name"
 
 #opts="${opts} --maxReads 10000"
-bash ${npTranscript}/scripts/run.sh ${bamfiles1}   --reference=${reference} --annotation ${coord_file} --resdir ${resdir} ${opts} ${opts1} ${opts2}
+bash ${npTranscript}/scripts/run.sh ${bamfiles1}   --reference=${reference} --annotation ${coord_file} --resdir ${resdir} ${opts} ${opts1} ${opts2} ${opts3}
 
 
 cd ${resdir}
