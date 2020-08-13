@@ -452,11 +452,15 @@ public class Outputs{
 			
 		}
 		
-		public static FastqWriter getFqWriter(String chrom,String resdir) {
+		public static FastqWriter[] getFqWriter(String chrom,String resdir, String[] in_nmes) {
 			// TODO Auto-generated method stub
-			File f = new File(resdir, chrom+".fastq");
+			FastqWriter[] res = new FastqWriter[in_nmes.length];
+			for(int i=0; i<in_nmes.length; i++){
+			File f = new File(resdir, in_nmes[i]+"."+chrom+".fastq");
 			System.err.println("new fastq writer "+f.getAbsolutePath());
-			return  factory.newWriter(f);
+			res[i]  = factory.newWriter(f);
+			}
+			return res;
 		}
 
 	

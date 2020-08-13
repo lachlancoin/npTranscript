@@ -525,7 +525,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		
 			
 			Sequence chr = null; //genomes.get(currentIndex);
-			FastqWriter fqw = null;//chromToRemap.contains(chr.getName()) ? Outputs.getFqWriter(chr.getName(), resdir) : null;
+			FastqWriter[] fqw = null;//chromToRemap.contains(chr.getName()) ? Outputs.getFqWriter(chr.getName(), resdir) : null;
 			
 			Outputs 	outp = new Outputs(resDir,  in_nmes, overwrite,  true, CigarCluster.recordDepthByPosition); 
 			
@@ -674,8 +674,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					profile.update(annot);
 					
 					
-					if(fqw!=null) fqw.close();
-					fqw = chromToRemap.contains(chr.getName()) ? Outputs.getFqWriter(chr.getName(), resdir) : null;
+					if(fqw!=null) for(int i=0; i<fqw.length; i++) fqw[i].close();
+					fqw = chromToRemap.contains(chr.getName()) ? Outputs.getFqWriter(chr.getName(), resdir, in_nmes) : null;
 					chr5prime = TranscriptUtils.coronavirus ? chr.subSequence(0	, Math.min( primelen, chr.length())) : null;
 					chr3prime = TranscriptUtils.coronavirus ? chr.subSequence(Math.max(0, chr.length()-primelen), chr.length()) : null;
 					System.err.println("switch chrom "+prev_chrom+"  to "+chr.getName());
@@ -692,7 +692,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 									"",
 									negStrand ?(new StringBuilder(baseQL)).reverse().toString(): baseQL
 											);
-					fqw.write(fqr);
+					fqw[source_index].write(fqr);
 					continue outer;
 				}
 				
@@ -718,7 +718,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				profile.getConsensus();
 				
 			}
-			if(fqw!=null) fqw.close();
+			if(fqw!=null) for(int i=0; i<fqw.length; i++) fqw[i].close();
 		if(outp!=null) outp.close();
 	
 		if(annotation_pw!=null) annotation_pw.close();
