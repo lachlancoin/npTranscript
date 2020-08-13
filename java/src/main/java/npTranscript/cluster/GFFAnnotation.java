@@ -249,7 +249,7 @@ public class GFFAnnotation extends Annotation{
 	public static String biotype = "biotype";
 	public static String parent = "Parent";
 	static String emptyString = "";
-	public	GFFAnnotation(JapsaAnnotation annot, int seqlen, PrintWriter pw, int source_count) throws IOException{
+	public	GFFAnnotation(String chr, JapsaAnnotation annot, int seqlen, PrintWriter pw, int source_count) throws IOException{
 		super(annot.getAnnotationID(), seqlen);
 	
 		String genenme = "";
@@ -274,27 +274,29 @@ public class GFFAnnotation extends Annotation{
 			String ID = null;
 			for(int j=0; j<desc.length; j++){
 				String[] descj = desc[j].split("=");
-				descj[1] = descj[1].replace("gene:", "").replace("exon:", "");
+		//		descj[1] = descj[1].replace("gene:", "").replace("exon:", "");
+				String[] descjv = descj[1].split(":");
+				String val = descjv[descjv.length-1];
 				if(descj[0].equals(name)){
-					genenme = descj[1];
+					genenme = val;
 				}else if(descj[0].equals(description)){
-					descr = descj[1];
+					descr = val;
 				
 			}else if(descj[0].equals(biotype)){
-				biot = descj[1];
+				biot = val;
 			}else if(descj[0].equals(parent)){
-				paren = descj[1];
+				paren = val;
 				paren = paren.replace("transcript:", "");
 			}
 				
 				if(descj[0].equals(id)){
-					ID = descj[1]; //.replace("CDS:", "").
+					ID = val; //.replace("CDS:", "").
 				}
 			}
 			if(ID==null){
-				ID = f.getDesc().substring(0,Math.min(f.getDesc().length(),5));
+				ID = genenme;//if.getDesc().substring(0,Math.min(f.getDesc().length(),5));
 			}
-			String str = ID+"\t"+genenme+"\t"+descr+"\t"+biot;
+			String str = chr+"\t"+ID+"\t"+genenme+"\t"+descr+"\t"+biot;
 			pw.println(str);
 			//System.err.println(str);
 			this.genes.add(genenme.length()>0 ? genenme : ID);

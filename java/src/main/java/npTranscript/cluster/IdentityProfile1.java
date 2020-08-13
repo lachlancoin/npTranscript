@@ -8,9 +8,6 @@ import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import org.apache.commons.math3.linear.OpenMapRealMatrix;
-import org.apache.commons.math3.linear.SparseRealMatrix;
-
 import htsjdk.samtools.SAMRecord;
 import japsa.bio.np.barcode.SWGAlignment;
 import japsa.seq.Sequence;
@@ -23,8 +20,7 @@ import japsa.seq.Sequence;
 
 public class IdentityProfile1 {
 	
-	//OpenMapRealMatrix
-	//SparseFieldMatrix sm;
+
 	final String[] type_nmes; 
 	
 	public static boolean annotByBreakPosition = true;
@@ -36,7 +32,7 @@ public class IdentityProfile1 {
 	
 	public IdentityProfile1(Sequence refSeq,
 			Outputs o,
-			String[] in_nmes,  int startThresh, int endThresh, Annotation annot, boolean calcBreakpoints, String chrom, int chrom_index) throws IOException {
+			String[] in_nmes,  int startThresh, int endThresh, boolean calcBreakpoints, String chrom, int chrom_index) throws IOException {
 	this.chrom = chrom;
 	this.chrom_index = chrom_index;
 	this.type_nmes = in_nmes;
@@ -48,40 +44,29 @@ public class IdentityProfile1 {
 		refBase = 0;
 		readBase = 0;
 		int seqlen = refSeq.length();
-		all_clusters =new CigarClusters(refSeq, annot, num_sources);
-		this.breakpoints = new SparseRealMatrix[this.num_sources][2];
-		this.breakSt = new SparseVector[this.num_sources][2];
-		this.breakEnd = new SparseVector[this.num_sources][2];
+		all_clusters =new CigarClusters(refSeq,  num_sources);
+	
 		
 		if(calcBreakpoints){
 			System.err.println("calculating break point usage");
-			for(int i=0; i<breakpoints.length; i++){
-				this.breakSt[i] = new SparseVector[] {new SparseVector(),new SparseVector()};
-				this.breakEnd[i] = new SparseVector[] {new SparseVector(),new SparseVector()};
-				breakpoints[i] = new OpenMapRealMatrix[] {new OpenMapRealMatrix(seqlen, seqlen),new OpenMapRealMatrix(seqlen, seqlen)};
-			
-			}
+			bp = new BreakPoints(num_sources, seqlen);
 		}else{
-			System.err.println("not calculating breakpoints");
+			bp  = null;
 		}
 		
 	}
-
+public void update(Annotation annot){
+	this.all_clusters.update(annot);
+}
 	
 
-	//final int startThresh, endThresh;
 	
-	//final  double bin ;
-	//private final boolean calculateCoExpression;
-
-//	final String[] nmes =  "5_3:5_no3:no5_3:no5_no3".split(":");
-
-	//this after all postions in a read processed
 	
 	static double break_round = 10.0;
 	static String NAstring = "NA";
 
 	public static boolean subclusterBasedOnStEnd = false;
+	public static int cleanUpMoreThan = 100000; // 
 	
 	public int startPos, endPos;
 	public int readSt, readEn; 
@@ -94,6 +79,7 @@ public class IdentityProfile1 {
 			SWGAlignment align3primeRev,
 			int offset_3prime, int polyAlen, String pool
 			) throws IOException, NumberFormatException{
+		this.all_clusters.clearUpTo(sam.getAlignmentStart() -cleanUpMoreThan , o, chrom, chrom_index, geneNames);
 		startPos = sam.getAlignmentStart()+1; // transfer to one based
 		endPos = sam.getAlignmentEnd()+1;
 		readSt = start_read; readEn = end_read;
@@ -174,10 +160,10 @@ public class IdentityProfile1 {
 				secondKey.append(annot.nextDownstream(breaks.get(i+1), chrom_index,forward)+";");
 				if(gap > TranscriptUtils.break_thresh){
 					if(annot.isLeader(breaks.get(i))){
-						this.addBreakPoint(source_index, 0, breaks.get(i), breaks.get(i+1));
+						if(bp!=null) this.bp.addBreakPoint(source_index, 0, breaks.get(i), breaks.get(i+1));
 						hasLeaderBreak = true;
 					}else{
-						this.addBreakPoint(source_index, 1, breaks.get(i), breaks.get(i+1));
+						if(bp!=null)  this.bp.addBreakPoint(source_index, 1, breaks.get(i), breaks.get(i+1));
 
 					}
 				}
@@ -207,6 +193,8 @@ public class IdentityProfile1 {
 		// need to group by start position if we annotating by break pos,e.g. so 5'mapping reads map together
 		String secondKeySt = secondKey.toString();
 		coRefPositions.breaks_hash.setSecondKey(secondKeySt);
+		
+		
 		
 		if(cluster_reads)  this.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources,  this.chrom_index, clusterID); // this also clears current cluster
 		else{
@@ -282,14 +270,7 @@ public class IdentityProfile1 {
 
 	
 
-	private void addBreakPoint(int source_index,int i, int prev_position, int position) {
-		if(breakpoints[source_index][i]!=null){
-			this.breakpoints[this.source_index][i].addToEntry(prev_position, position, 1);
-			this.breakSt[this.source_index][i].addToEntry(prev_position, 1);
-			this.breakEnd[this.source_index][i].addToEntry(position,  1);
-		}
-		
-	}
+	
 
 	public void addRefPositions(int position, boolean match) {
 		//we add back in one here to convert it to a 1 based index
@@ -297,15 +278,23 @@ public class IdentityProfile1 {
 	}
 
 	
-	final CigarCluster coRefPositions;
+	final CigarCluster coRefPositions; // this is a temporary object used to store information for each read as it comes through 
+	
 	public CigarClusters all_clusters;
-	final public SparseRealMatrix[][] breakpoints;
-	final public SparseVector[][] breakSt, breakEnd ;
+	final public BreakPoints bp;
+	
+	public void refresh(Sequence chr, int chrom_index){
+		this.all_clusters.clear();
+		this.chrom = chr.getName();
+		this.chrom_index = chrom_index;
+		if(bp!=null) bp.refresh(chr.length());
+		this.genome =chr;
+	}
 	
 	public int refBase, readBase;
 
 	//private  PrintWriter readClusters;
-	private final Sequence genome;
+	private Sequence genome;
 	private final int num_sources;
 	public int source_index=-1; //source index
 	public void updateSourceIndex(int i) {
@@ -313,56 +302,16 @@ public class IdentityProfile1 {
 	}
 	
 
-	public void printBreakPoints()  throws IOException {
-		for(int i=0; i<this.breakpoints.length; i++){
-			if(breakpoints[i]!=null && breakpoints[i][0]!=null){
-				for(int j=0 ; j<breakpoints[i].length; j++)
-				{
-				PrintWriter pw = o.getBreakPointPw(chrom_index+"",i, j);
-				printMatrix(this.breakpoints[i][j],this.breakSt[i][j], this.breakEnd[i][j],  pw);
-				pw.close();
-				}
-			}
-		}
-	}
-	 void printMatrix(SparseRealMatrix cod, SparseVector breakSt2, SparseVector breakEnd2, PrintWriter pw) throws IOException{
-		
 	
-		StringBuffer secondLine = new StringBuffer();
-		List<Integer> rows  = breakSt2.keys();
-		List<Integer> cols =  breakEnd2.keys();
-		for(Iterator<Integer> it = cols.iterator(); it.hasNext();){
-			pw.print(",");
-			Integer val = it.next();
-			pw.print(val);
-			secondLine.append(",");
-			secondLine.append(breakEnd2.get(val));
-		}
-		pw.println();
-		pw.println(secondLine.toString());
-		//Set<Integer> cols = breakEnd2
-		for (Iterator<Integer> it =rows.iterator(); it.hasNext();) {
-			Integer row = it.next(); // nonZeroRows.get(i);
-			pw.print(row);
-			pw.print(",");
-			pw.print(breakSt2.get(row));
-			for(Iterator<Integer> it1 = cols.iterator(); it1.hasNext();){
-				Integer col = it1.next();// nonZeroRows.get(j);
-				int val =  (int) cod.getEntry(row, col);// : 0;
-				pw.print(",");
-				pw.print(val);
-			}
-			pw.println();
-		}
-		
-	}
+	 
 
-	public final String chrom;
-	public final int chrom_index;
+	public  String chrom;
+	public  int chrom_index;
 	public final Outputs o;
 	
 	public void getConsensus() throws IOException {
 			this.all_clusters.getConsensus( o, this.chrom, this.chrom_index, this.geneNames);
+			
 	}	
 
 
@@ -373,6 +322,17 @@ public class IdentityProfile1 {
 	public void newRead(int source_index2) {
 		this.updateSourceIndex(source_index2);
 		this.coRefPositions.clear(source_index2);
+	}
+
+
+
+
+
+
+
+	public void printBreakPoints() throws IOException {
+		if(bp!=null) this.bp.printBreakPoints(this.o, this.chrom_index);
+		
 	}
 
 }

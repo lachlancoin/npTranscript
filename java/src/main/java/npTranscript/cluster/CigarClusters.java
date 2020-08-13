@@ -1,11 +1,12 @@
 package npTranscript.cluster;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.SortedSet;
-import java.util.TreeSet;
 
 import japsa.seq.Sequence;
 
@@ -38,44 +39,26 @@ public class CigarClusters {
 		return sb.toString();
 	}
 
-	CigarClusters( Sequence refSeq, Annotation annot, int num_sources){
+	CigarClusters( Sequence refSeq, int num_sources){
 	//	this.thresh = thresh;
 		this.refseq = refSeq;
 		this.seqlen = refSeq.length();
-		this.annot = annot;
+		
 		this.num_sources = num_sources;
 	}
-	/*public DistanceMatrix getDistanceMatrix( PrintWriter pw){
-		CigarCluster[] l1 = this.l.values().toArray(new CigarCluster[0]);
-		int len  = l1.length;
-		double[][] res = new double[len][];
-		String[] labels = new String[len];
-		for(int i=0; i<len; i++) {
-			
-			res[i] = new double[len];
-			CigarCluster cc = l1[i];
-			labels[i] = cc.id;
-			res[i][i] =0;
-			for(int j=0; j<i; j++) {
-				CigarCluster cc_j = l1[j];
-				double dist = 1-cc.similarity(cc_j);
-				res[i][j] = dist;
-				res[j][i] = dist;
-			}
-			
-		}
-		for(int i=0; i<len; i++) {
-			pw.print(labels[i]+","+l1[i].index+",");
-			pw.println(getString(res[i]));
-		}
+
+	public void update(Annotation annot){
+		this.annot = annot;
+	}
 	
-		IdGroup group = new  SimpleIdGroup(labels);
-		DistanceMatrix dm = new DistanceMatrix(res, group);
-		return dm;
-	}*/
 	Map<CigarHash, CigarCluster> l = new HashMap<CigarHash, CigarCluster>();
 
-
+	
+	
+	public void clear() {
+		l.clear();
+		
+	}
 	
 	public void matchCluster(CigarCluster c1,  int source_index, int num_sources, int chrom_index,String[] clusterIDs) throws NumberFormatException{
 		String clusterID;
@@ -96,40 +79,8 @@ public class CigarClusters {
 		//return clusterID;
 	}
 
-	/*private void writeSeq(SequenceOutputStream seqFasta,Annotation annot,  PrintWriter exonP, int[][] exons, CigarCluster cc, String refseq, int[] firstlast){
-		StringBuffer descline; String annotline;
-		String id = cc.id+"";
-		int read_count = cc.readCountSum;
-		if(cc.breakSt>0){
-			String leftseq = refseq.subSequence(cc.start, cc.breakSt).toString();
-			String rightseq = refseq.subSequence(cc.breakEnd, cc.end).toString();
-		}else{
-			String rightseq = refseq.subSequence(cc.start, cc.end).toString();
-		}
-		for(int j=0; j<exons.length; j++) {
-			int start = exons[j][0];
-			int end = exons[j][1];
-			exonP.println(id+"\t"+start+"\t"+end+"\t"+read_count);
-
-			
-			annotline.append(annot.calcORFOverlap(start, end, first_last, transcript_len));
-
-			int len = end-start+1;
-			descline.append(";");
-			descline.append(start); descline.append("-"); descline.append(end); descline.append(","); descline.append(len);
-			subseq.append();
-			
-			transcript_len += len;
-			//seqline.append(subseq.toString());
-		}
-		Sequence subseq1 = new Sequence(refseq.alphabet(),subseq.toString().toCharArray(), id);
 	
-		descline.append(" "); descline.append(annotline);
-		subseq1.setDesc(descline.toString());
-		subseq1.writeFasta(seqFasta); 
-	}*/
-	//static int tolerance = 10;
-	final Annotation annot;
+	Annotation annot;
 	final Sequence  refseq;
 	final int seqlen;
 	final int num_sources;
@@ -164,60 +115,51 @@ public class CigarClusters {
 	}
 	public void process1(CigarCluster cc,   Outputs o,String chrom,int chrom_index, boolean forward,SortedSet<String> geneNames ){
 		String read_count = TranscriptUtils.getString(cc.readCount);
-	/*	int startPos, endPos, startPos2, endPos2;
-		if(!IdentityProfile1.annotByBreakPosition ){
-			startPos = cc.start;
-			endPos =cc.end;
-			startPos2 =-1;
-			endPos2 = -1;
-			
-		}else{
-			startPos = cc.breakSt;
-			endPos = cc.breakEnd;
-			startPos2 = cc.breakSt2;
-			endPos2 = cc.breakEnd2;
-		} */
-	//	String downstream = annot==null ? null : annot.nextDownstream(endPos, chrom_index);
-	//	String upstream = annot==null ? null : annot.nextUpstream(startPos, chrom_index);
-	//	String downstream2 = annot==null ||  endPos2<0 ? null : annot.nextDownstream(endPos2, chrom_index);
-	//	String upstream2 = annot==null||  startPos2<0  ? null : annot.nextUpstream(startPos2, chrom_index);
-	//	if(upstream==null) upstream =  chrom_index+"."+TranscriptUtils.round(startPos, CigarHash2.round)+"";
-	//	if(downstream==null) downstream = chrom_index+"."+ TranscriptUtils.round(endPos, CigarHash2.round)+"";
 		boolean hasLeaderBreak = TranscriptUtils.coronavirus  ? (cc.breaks.size()>1 &&  annot.isLeader(cc.breaks.get(1)*CigarHash2.round)) : false;
 		geneNames.clear();
 		String geneNme = annot.getString(cc.span, geneNames);
 		o.printTranscript(
 			cc.id()+"\t"+chrom+"\t"+cc.start+"\t"+cc.end+"\t"+annot.getTypeNme(cc.start, cc.end, forward)+"\t"+
-		//cc.breaks.toString()+"\t"+cc.breaks.hashCode()+"\t"+
-	//	cc.breakSt+"\t"+cc.breakEnd+"\t"+cc.breakSt2+"\t"+cc.breakEnd2+"\t"+
+	
 		cc.exonCount()+"\t"+cc.numBreaks()+"\t"+(hasLeaderBreak? 1: 0)+"\t"+cc.breaks_hash.secondKey+"\t"+geneNme+"\t"+
-	geneNames.size()+"\t"+
-	//	upstream+"\t"+downstream+"\t"+
-	//	upstream2+"\t"+downstream2+"\t"+
+		geneNames.size()+"\t"+
 		cc.totLen+"\t"+cc.readCountSum()+"\t"+read_count
 				+"\t"+cc.getTotDepthSt(true)+"\t"+cc.getTotDepthSt(false)+"\t"+cc.getErrorRatioSt());
-		//return TranscriptUtils.round(cc.start, 100)+"."+downstream+"."+upstream+"."+TranscriptUtils.round(seqlen-cc.end, 100);
 	}
+	public static int clearUpThreshold = 100;
+	/** clears consensus up to certain start position.  This designed to keep memory foot print under control.  Assumes the bams are sorted */
+	public int clearUpTo(int endThresh, 	Outputs o, String chrom, int chrom_index,SortedSet<String> geneNames){
+		if(this.l.size()< clearUpThreshold) return 0;
+		List<CigarHash> torem = new ArrayList<CigarHash>();
+		for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();){
+			CigarCluster cc = it.next();
+			if(cc.end<endThresh){
+				this.process1(cc, o, chrom, chrom_index, cc.forward, geneNames);
+				this.process(cc, o, chrom, chrom_index);
+				torem.add(cc.breaks_hash);
+			}
+		}
+		System.err.println("removed "+torem.size() + " of "+l.size());
+
+		for(int i=0; i<torem.size(); i++){
+			l.remove(torem.get(i));
+		}
+		return torem.size();
+	}
+	
 	
 	public void getConsensus(  
 			Outputs o, String chrom, int chrom_index,SortedSet<String> geneNames
 			) throws IOException{
-		//o.readClusters.close();
 		if(TranscriptUtils.writeAnnotP) this.annot.print(o.annotP);
 		for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();) {
 			CigarCluster cc = it.next();
 			this.process1(cc, o, chrom, chrom_index, cc.forward, geneNames);
-		}
-		//System.err.println("closing transcripts pw");
-	 //  o.transcriptsP.close();
-      
-		for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();) {
-			CigarCluster cc = it.next();
 			this.process(cc, o, chrom, chrom_index);
 		}
 		
-		
-		
 	}
+
+	
 
 }

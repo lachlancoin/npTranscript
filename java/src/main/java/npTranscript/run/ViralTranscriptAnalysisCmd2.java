@@ -119,7 +119,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addString("readList", "", "List of reads", false);
 		
 			addString("annotType", null, "Type of annotation (only included if annotation is GFF file", false);
-		addString("chroms", "all", "Restrict to these chroms, colon delimited", false);
+		addString("chroms_to_include", "all", "Restrict to these chroms, colon delimited", false);
 		addString("bedChr", null, "Use this for the chrom in bed chr, e.g. NC_045512v2, false");
 
 		addString("resdir", "results"+System.currentTimeMillis(), "results directory");
@@ -132,7 +132,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addInt("minClusterEntries",10,"threshold for consensus");
 		addBoolean("tryComplementOnExtra", false, "look for negative strand matches on left over seqs");
 		addBoolean("reAlignExtra", false, "whether to try realigning the extra sequence");
-		addBoolean("combineOutput", false, "whether to combine output from different chroms");
+	//	addBoolean("combineOutput", false, "whether to combine output from different chroms");
 		addString("pattern", null, "Pattern of read name, used for filtering");
 		addString("span", "protein_coding", "Filtering span.  Use all not to filter.");
 		addInt("qual", 0, "Minimum quality required");
@@ -209,7 +209,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		Outputs.executor=  cmdLine.getIntVal("maxThreads")==1 ? Executors.newSingleThreadExecutor():  Executors.newFixedThreadPool(cmdLine.getIntVal("maxThreads"));
 //		Outputs.executor=  ;
 		TranscriptUtils.qual_thresh = cmdLine.getDoubleVal("qualThresh");
-		ViralTranscriptAnalysisCmd2.combineOutput = cmdLine.getBooleanVal("combineOutput");
+		//ViralTranscriptAnalysisCmd2.combineOutput = cmdLine.getBooleanVal("combineOutput");
 		String[] d_thresh = cmdLine.getStringVal("isoformDepthThresh").split(":");
 		int[] isoformDepthThresh  = new int[d_thresh.length];
 		for(int i=0; i<d_thresh.length; i++){
@@ -338,7 +338,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		
 		String resdir = cmdLine.getStringVal("resdir");
 		String annot_file = cmdLine.getStringVal("annotation");
-		String chroms= cmdLine.getStringVal("chroms");
+		String chroms= cmdLine.getStringVal("chroms_to_include");
 		
 		boolean gff = annot_file !=null && annot_file.contains(".gff");
 		Map<String, JapsaAnnotation> anno  = null;
@@ -383,7 +383,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		System.err.println((time1-tme)/(1000)+ " seconds");
 		// paramEst(bamFile, reference, qual);
 	}
-public static boolean combineOutput = false;
+//public static boolean combineOutput = false;
 	public static double fail_thresh = 7.0;
 	/**
 	 * Error analysis of a bam file. Assume it has been sorted
@@ -451,7 +451,10 @@ public static boolean combineOutput = false;
 		 }
 		 }
 		}
-		if(reads.size()==0) reads=null;  //make it null to turn off this feature
+		if(reads.size()==0){
+			readList = null;
+			reads=null;  //make it null to turn off this feature
+		}
 		TranscriptUtils.break_thresh = break_thresh;
 		int len = bamFiles_.length;
 		// len = 1;
@@ -473,7 +476,6 @@ public static boolean combineOutput = false;
 			
 		
 	//	genes_all_pw.close();
-		IdentityProfile1 profile = null;
 		
 		final Iterator<SAMRecord>[] samIters = new Iterator[len];
 		SamReader[] samReaders = new SamReader[len];
@@ -501,37 +503,41 @@ public static boolean combineOutput = false;
 				else{
 					vals = new int[] {Integer.parseInt(str[1]), Integer.parseInt(str[2])};
 				}
-				chrom_indices_to_include.put(Integer.parseInt(str[0]), vals);
+				chromsToInclude.put(str[0], vals);
 			}
 		}
-		if(chrom_indices_to_include.size()==0) chrom_indices_to_include=null;
 		
-		Iterator<SAMRecord> samIter= SequenceUtils.getCombined(samIters);
+		
+		Iterator<SAMRecord> samIter= SequenceUtils.getCombined(samIters, sorted);
 		System.err.println("chrom indices to include");
 		System.err.println(chrom_indices_to_include);
 		for(int key=0; key<genomes.size();key++){
-			if(chrom_indices_to_include==null || chrom_indices_to_include.containsKey(key))
-				chromsToInclude.put(genomes.get(key).getName(),chrom_indices_to_include==null ? new int[]{0,Integer.MAX_VALUE} :chrom_indices_to_include.get(key));
+			if( chromsToInclude.containsKey(genomes.get(key).getName()))
+				chrom_indices_to_include.put(key, chromsToInclude.get(key));
 		}
+		if(chrom_indices_to_include.size()==0) chrom_indices_to_include=null;
 		Collection<String> chromToRemap = Arrays.asList(chromsToRemap);
 		
 		
 		System.err.println(chromsToInclude.size());
-			int currentIndex = 0;
+			int currentIndex = -1;
 			
 		
 			
-			Sequence chr = genomes.get(currentIndex);
-			FastqWriter fqw = chromToRemap.contains(chr.getName()) ? Outputs.getFqWriter(chr.getName(), resdir) : null;
-			Outputs outp = null;
-			if(combineOutput)	outp = new Outputs(resDir,  in_nmes, overwrite, 0, chr.getName(), true, CigarCluster.recordDepthByPosition); 
+			Sequence chr = null; //genomes.get(currentIndex);
+			FastqWriter fqw = null;//chromToRemap.contains(chr.getName()) ? Outputs.getFqWriter(chr.getName(), resdir) : null;
+			
+			Outputs 	outp = new Outputs(resDir,  in_nmes, overwrite,  true, CigarCluster.recordDepthByPosition); 
+			
+			IdentityProfile1 profile = null;
+			//boolean updateProfile = true;
 			int primelen = 500;//chr.length();
 			Sequence chr5prime = TranscriptUtils.coronavirus ? chr.subSequence(0	, Math.min( primelen, chr.length())) : null;
 			Sequence chr3prime = TranscriptUtils.coronavirus ? chr.subSequence(Math.max(0, chr.length()-primelen), chr.length()) : null;
 
 			Set<String> doneChr = new HashSet<String>();
 			
-			long totReadBase = 0, totRefBase = 0;
+		//	long totReadBase = 0, totRefBase = 0;
 			int numReads = 0;
 
 			int numNotAligned = 0;
@@ -610,15 +616,10 @@ public static boolean combineOutput = false;
 				
 				// if move to another chrom, get that chrom
 				if (refIndex != currentIndex) {
+					
 					if( profile!=null && currentIndex>=0){
 						profile.printBreakPoints();
 						profile.getConsensus();
-						if(!combineOutput){
-							outp.close();
-							outp = null;
-						}
-						profile= null;
-						
 						doneChr.add(chr.getName());
 						System.err.println("finished "+chr.getName());
 						if(chromsToInclude != null ){
@@ -630,22 +631,56 @@ public static boolean combineOutput = false;
 						}
 					}
 					currentIndex = refIndex;
+					
 					String prev_chrom = chr==null ? "null": chr.getName();
 					if(currentIndex>=genomes.size() || currentIndex <0){
 						System.err.println("for some reason the refIndex greater than genome size, so finishing here "+currentIndex+" "+genomes.size());
 						break outer;
 					}
 					chr = genomes.get(currentIndex);
+					outp.updateChrom(chr.getName(),currentIndex );
+					if(doneChr.contains(chr.getName())){
+						try{
+							throw new RuntimeException("not sorted contains "+ chr.getName());
+						}catch(Exception exc){
+							exc.printStackTrace();
+						}
+					}
+					int seqlen = chr.length();
+					Annotation annot = null;
+					if(gff){
+						JapsaAnnotation annot1 = anno.get(chr.getName());
+						if(annot1==null) annot1 = anno.get("chr"+chr.getName());
+						if(annot1==null) annot1 = anno.get(chr.getName().replaceAll("chr", ""));
+						if(annot1==null){
+							try{
+								annot = new EmptyAnnotation(chr.getName(), chr.getDesc(), seqlen, annotation_pw);
+							System.err.println("no annotation for  "+ chr.getName());
+							}catch(Exception exc){
+								exc.printStackTrace();
+							}
+						}else{
+							
+							annot = new GFFAnnotation(chr.getName(),annot1, seqlen, annotation_pw, len);
+							
+						}
+					}else{
+						annot = annot_file == null ? new EmptyAnnotation(chr.getName(), chr.getDesc(), seqlen, annotation_pw) : 
+							new Annotation(new File(annot_file), currentIndex+"", seqlen, len);
+					}
+					boolean calcBreaks1 = calcBreaks && break_thresh < seqlen;
+					if(profile==null) profile =  	new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh,  calcBreaks1, chr.getName(), currentIndex);
+					else profile.refresh(chr, currentIndex);
+					profile.update(annot);
+					
+					
 					if(fqw!=null) fqw.close();
 					fqw = chromToRemap.contains(chr.getName()) ? Outputs.getFqWriter(chr.getName(), resdir) : null;
 					chr5prime = TranscriptUtils.coronavirus ? chr.subSequence(0	, Math.min( primelen, chr.length())) : null;
 					chr3prime = TranscriptUtils.coronavirus ? chr.subSequence(Math.max(0, chr.length()-primelen), chr.length()) : null;
 					System.err.println("switch chrom "+prev_chrom+"  to "+chr.getName());
 				}
-			//	if(source_index!=prev_src_index){
-				//	System.err.println("switch "+prev_src_index+"  to "+source_index+ " chr:"+chr.getName());
-					// prev_src_index = source_index;
-	//			}
+		
 				
 				if(fqw!=null){
 					// this assumes that minimap2 corrected the strand and we need to reverse complement neg strand to get it back to original 
@@ -662,48 +697,10 @@ public static boolean combineOutput = false;
 				}
 				
 				
-					if(profile==null){
-							if(doneChr.contains(chr.getName())){
-								try{
-									throw new RuntimeException("not sorted contains "+ chr.getName());
-								}catch(Exception exc){
-									exc.printStackTrace();
-								}
-							//	System.err.println("warning done"+chr.getName());
-							}
-							int seqlen = chr.length();
-						//	if(!anno.containsKey(chr))
-							Annotation annot = null;
-						
-							
-							if(gff){
-								JapsaAnnotation annot1 = anno.get(chr.getName());
-								if(annot1==null) annot1 = anno.get("chr"+chr.getName());
-								if(annot1==null) annot1 = anno.get(chr.getName().replaceAll("chr", ""));
-								if(annot1==null){
-									try{
-										annot = new EmptyAnnotation(chr.getName(), chr.getDesc(), seqlen, annotation_pw);
-									System.err.println("no annotation for  "+ chr.getName());
-									}catch(Exception exc){
-										exc.printStackTrace();
-									}
-								}else{
-									
-									annot = new GFFAnnotation(annot1, seqlen, annotation_pw, len);
-									
-								}
-							}else{
-								annot = annot_file == null ? new EmptyAnnotation(chr.getName(), chr.getDesc(), seqlen, annotation_pw) : 
-									new Annotation(new File(annot_file), currentIndex+"", seqlen, len);
-							}
-						//	pw.close();
-						if(!combineOutput)	outp = new Outputs(resDir,  in_nmes, overwrite, currentIndex, chr.getName(), true, CigarCluster.recordDepthByPosition); 
-							boolean calcBreaks1 = calcBreaks && break_thresh < seqlen;
-							profile = new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh, annot, calcBreaks1, chr.getName(), currentIndex);
-					}
+					
 				
 					try{
-						String pool = readList==null || poolID<0 ? "" : (readList[poolID]+"|");
+						String pool = readList==null || readList.length==0 ||  poolID<0 ? "" : (readList[poolID]+"|");
 						TranscriptUtils.identity1(chr, chr5prime,chr3prime, readSeq, sam, profile, source_index, cluster_reads, chr.length(), pool);
 					}catch(NumberFormatException exc){
 						System.err.println(readSeq.getName());
