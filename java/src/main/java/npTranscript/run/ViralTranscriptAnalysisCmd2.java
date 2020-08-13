@@ -506,15 +506,19 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				chromsToInclude.put(str[0], vals);
 			}
 		}
+		if(chromsToInclude.size()==0){
+			for(int k=0; k<genomes.size(); k++){
+				chromsToInclude.put(genomes.get(k).getName(), new int[] {0,Integer.MAX_VALUE});
+			}
+		}
 		
 		
-		Iterator<SAMRecord> samIter= SequenceUtils.getCombined(samIters, sorted);
-		System.err.println("chrom indices to include");
-		System.err.println(chrom_indices_to_include);
 		for(int key=0; key<genomes.size();key++){
 			if( chromsToInclude.containsKey(genomes.get(key).getName()))
 				chrom_indices_to_include.put(key, chromsToInclude.get(key));
 		}
+		System.err.println("chrom indices to include");
+		System.err.println(chrom_indices_to_include);
 		if(chrom_indices_to_include.size()==0) chrom_indices_to_include=null;
 		Collection<String> chromToRemap = Arrays.asList(chromsToRemap);
 		
@@ -543,6 +547,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			int numNotAligned = 0;
 			//int prev_src_index =-1;
 			int numSecondary =0;
+			Iterator<SAMRecord> samIter= SequenceUtils.getCombined(samIters, sorted);
 			outer: for (; samIter.hasNext() ; ) {
 				SAMRecord sam= null;
 				try{

@@ -296,7 +296,7 @@ public class GFFAnnotation extends Annotation{
 			if(ID==null){
 				ID = genenme;//if.getDesc().substring(0,Math.min(f.getDesc().length(),5));
 			}
-			String str = chr+"\t"+ID+"\t"+genenme+"\t"+descr+"\t"+biot;
+			String str = chr+"\t"+ID+"\t"+genenme+"\t"+descr+"\t"+biot+"\t"+paren;
 			pw.println(str);
 			//System.err.println(str);
 			this.genes.add(genenme.length()>0 ? genenme : ID);
