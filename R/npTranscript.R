@@ -5,12 +5,13 @@ if(INSTALL){
     install.packages("BiocManager")
 	BiocManager::install("rhdf5")
 	BiocManager::install("ggplot2")
-	BiocManager::install("gridExtra")
+
 	BiocManager::install("RColorBrewer")
 	BiocManager::install("gplots")
 	BiocManager::install("seqinr")
 	BiocManager::install("binom")
 	BiocManager::install("writexl")
+	BiocManager::install("gridExtra")
 	BiocManager::install("ggrepel")
 	
 }
