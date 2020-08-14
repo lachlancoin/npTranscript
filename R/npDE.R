@@ -143,7 +143,7 @@ write_xlsx(DE_list, paste(resdir, "DE.xlsx",sep="/"))
 library(ggplot2)
 library(ggrepel)
 volcanos = lapply(DE_list, .volcano, pthresh = 1e-5)
-pdf(paste(resdir, "/qq.pdf",sep=""))
+pdf(paste(resdir, "/volcano.pdf",sep=""))
 lapply(volcanos, function(x) print(x))
 dev.off()
 .head1<-function(transcripts, nme="order1",n=10){
