@@ -59,12 +59,12 @@ public class CigarClusters {
 		l.clear();
 		
 	}
-	
+	int rem_count =0;
 	public void matchCluster(CigarCluster c1,  int source_index, int num_sources, int chrom_index,String[] clusterIDs) throws NumberFormatException{
 		String clusterID;
 		CigarHash2 subID ;
 		if(!l.containsKey(c1.breaks_hash)){
-			CigarCluster newc = new CigarCluster("ID"+chrom_index+"."+l.keySet().size(), num_sources, c1, source_index);
+			CigarCluster newc = new CigarCluster("ID"+chrom_index+"."+(l.keySet().size()+rem_count), num_sources, c1, source_index);
 			clusterID = newc.id();
 			l.put(newc.breaks_hash, newc);
 			subID = newc.breaks;
@@ -140,7 +140,7 @@ public class CigarClusters {
 			}
 		}
 		System.err.println("removed "+torem.size() + " of "+l.size());
-
+		rem_count+=torem.size();
 		for(int i=0; i<torem.size(); i++){
 			l.remove(torem.get(i));
 		}
