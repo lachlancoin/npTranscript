@@ -3,7 +3,7 @@ install= FALSE
 if(install){
   install.packages("BiocManager")
   BiocManager::install("VGAM")
-#  BiocManager::install("ggplot2")
+ BiocManager::install("ggplot2")
 #  BiocManager::install("gplots")
   #BiocManager::install("jsonlite")
   #BiocManager::install("gridExtra")
@@ -11,14 +11,17 @@ if(install){
  # BiocManager::install("binom")
  BiocManager::install("biomaRt")
  BiocManager::install("edgeR")
+ BiocManager::install("writexl")
+ BiocManager::install("gridExtra")
+ BiocManager::install("ggrepel")
 }
 
 args = commandArgs(trailingOnly=TRUE)
 if(length(args)==0){
   args = c("control","infected", "betabinom","none")
-  args[1] = "cDNA"
-  args[2] = "RNA"
-  args[4] = "GE"
+#  args[1] = "cDNA"
+#  args[2] = "RNA"
+ # args[4] = "GE"
 }
 prefix = "ENS"
 
@@ -41,7 +44,9 @@ prefix = "ENS"
 	library(VGAM)
 	}
 library(stats)
-
+	library(ggplot2)
+	library(gridExtra)
+	library(ggrepel)
 #library(seqinr)
 
 resdir = "results"
@@ -112,25 +117,41 @@ print(paste(type_names[1],paste(control_names,collapse=" ")))
 print(paste(type_names[2] , paste(infected_names, collapse=" ")))
 if(length(control_names)!=length(infected_names)) error(" lengths different")
 transcriptsl = lapply(transcriptsl, .processTranscripts)
-
+if(length(transcriptsl)==1){
+transcriptsl[[1]]$ID = paste("ID",1:length(transcriptsl[[1]]$ID),sep="")
+}
 filtered = .filter(transcriptsl, prefix)
 keep = filtered$keep[unlist(lapply(filtered$keep,function(x) dim(x)[[1]]))>0]
 transcripts_keep = .process(keep, control_names, infected_names)
 remove = filtered$remove[unlist(lapply(filtered$remove,function(x) dim(x)[[1]]))>0]
 transcripts_removed = .process(remove, control_names, infected_names)
+transcripts_removed$ORFs =  
+  apply(cbind(transcripts_removed$chrs, transcripts_removed$start, transcripts_removed$end),1,paste,collapse="_")
 pdf(paste(resdir, "/qq.pdf",sep=""))
 
 res_keep = .processDE(transcripts_keep,attributes, resdir, control_names, infected_names, type_names = type_names, outp= "results_keep.csv", type="keep")
 res_remove = .processDE(transcripts_removed,attributes, resdir, control_names, infected_names, type_names = type_names, outp= "results_removed.csv", type="keep")
 dev.off()
+attr(res_keep$DE1, 'nme') = 'Known genes'
+attr(res_remove$DE1, 'nme') = 'Novel genes'
 
+DE_list = list("genes"=res_keep$DE1, 'novel'=res_remove$DE1)
+
+#.volcano(res_keep$DE1, pthresh = 1e-3, prefix="keep")
+
+volcanos = lapply(DE_list, .volcano, pthresh = 1e-5)
+pdf(paste(resdir, "/qq.pdf",sep=""))
+lapply(volcanos, function(x) print(x))
+dev.off()
 .head1<-function(transcripts, nme="order1",n=10){
   head(transcripts[attr(transcripts,nme),],n)
 }
-.head1(res_keep$DE1,"order1",10)
-findSigChrom(res_keep$DE1, thresh = 1e-10, go_thresh = 1e-2,nme="p.adj1", nme2="chrs")
+.head1(res_keep$DE1,"order",10)
+.head1(res_remove$DE1,"order",10)
 
-findSigChrom(res_keep$DE1, thresh = 1e-10, go_thresh = 1e-2,nme="p.adj2", nme2="chrs")
+#findSigChrom(res_keep$DE1, thresh = 1e-10, go_thresh = 1e-2,nme="p.adj1", nme2="chrs")
+
+#findSigChrom(res_keep$DE1, thresh = 1e-10, go_thresh = 1e-2,nme="p.adj2", nme2="chrs")
 
 #this calculates pvalues for base-level error rates
 
