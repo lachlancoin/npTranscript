@@ -129,8 +129,8 @@ transcripts_removed$ORFs =
   apply(cbind(transcripts_removed$chrs, transcripts_removed$start, transcripts_removed$end),1,paste,collapse="_")
 pdf(paste(resdir, "/qq.pdf",sep=""))
 
-res_keep = .processDE(transcripts_keep,attributes, resdir, control_names, infected_names, type_names = type_names, outp= "results_keep.csv", type="keep")
-res_remove = .processDE(transcripts_removed,attributes, resdir, control_names, infected_names, type_names = type_names, outp= "results_removed.csv", type="keep")
+res_keep = .processDE(transcripts_keep,attributes, resdir, control_names, infected_names, type_names = type_names, outp= "results_keep.csv", type="keep",plot=T)
+res_remove = .processDE(transcripts_removed,attributes, resdir, control_names, infected_names, type_names = type_names, outp= "results_removed.csv", type="keep",plot=T)
 dev.off()
 attr(res_keep$DE1, 'nme') = 'Known genes'
 attr(res_remove$DE1, 'nme') = 'Novel genes'
