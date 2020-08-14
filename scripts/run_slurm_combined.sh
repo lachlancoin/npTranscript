@@ -75,4 +75,5 @@ bash ${npTranscript}/scripts/run.sh ${bamfiles2}   --reference=${reference_virus
 Rscript ${npTranscript}/R/npDE.R  control infected betabinom
 
 cd ${resdir_virus}
+Rscript ${npTranscript}/R/npDE.R  control infected betabinom
 Rscript ${npTranscript}/R/npTranscript.R
