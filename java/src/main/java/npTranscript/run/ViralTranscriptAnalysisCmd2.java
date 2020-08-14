@@ -232,7 +232,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		IdentityProfile1.includeStart = cmdLine.getBooleanVal("includeStart");
 		GFFAnnotation.setGFFFeatureNames(cmdLine.getStringVal("GFF_features").split(":"));
 		GFFAnnotation.span_only = cmdLine.getStringVal("span").equals("all") ?new ArrayList<String>() :   Arrays.asList(cmdLine.getStringVal("span").split(":"));
-		boolean sorted = true;
+		
 		boolean coronavirus = cmdLine.getBooleanVal("coronavirus");
 		String[] msaOpts = cmdLine.getStringVal("doMSA").split(":"); //e.g 5_3:sep or all:sep
 		String msa_source = cmdLine.getStringVal("msa_source");
@@ -292,6 +292,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			TranscriptUtils.extra_threshold1 =50;
 			annotByBreakPosition = true;
 			TranscriptUtils.writeAnnotP = true;
+			
 		//	CigarHash2.subclusterBasedOnStEnd = false;
 			mm2_splicing = "-un";
 		
@@ -310,9 +311,10 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			mm2_splicing = "-uf";
 		}
 			errorAnalysis(bamFiles, reference, annotFile,readList,annotationType, 
-				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  sorted , 
+				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  
 				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, overwrite, isoformDepthThresh, coverageDepthThresh, probInclude, fastq, chromsToRemap==null ? null: chromsToRemap.split(":"));
 	}
+ static boolean sorted = true;
 	public static void main(String[] args1) throws IOException, InterruptedException {
 		long tme = System.currentTimeMillis();
 		CommandLine cmdLine = new ViralTranscriptAnalysisCmd2();
@@ -361,11 +363,12 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			bamFiles_=bamFile.split(":");
 			fastq = false;
 			inputFile = bamFile;
+			sorted= true;
 		}else{
 			bamFiles_=fastqFile.split(":");
 			fastq = true;
 			inputFile = fastqFile;
-
+			sorted = false;
 		}
 		final boolean fastq_ = fastq;
 		if(inputFile.equals("all") || inputFile.equals(".")){
@@ -389,7 +392,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 	 * Error analysis of a bam file. Assume it has been sorted
 	 */
 	static void errorAnalysis(String[] bamFiles_, String refFile, String annot_file, String[] readList,    String annotationType, String resdir, String pattern, int qual, int round, 
-			int break_thresh, int startThresh, int endThresh, int max_reads,  boolean sorted,
+			int break_thresh, int startThresh, int endThresh, int max_reads, 
 			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,Map<String, JapsaAnnotation> anno, String chrToInclude, boolean overwrite,
 			int[] writeIsoformDepthThresh, int writeCoverageDepthThresh, double probInclude, boolean fastq, String[] chromsToRemap) throws IOException {
 		boolean cluster_reads = true;
@@ -529,6 +532,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		
 			
 			Sequence chr = null; //genomes.get(currentIndex);
+			Sequence chr5prime =null;Sequence chr3prime = null;
 			FastqWriter[] fqw = null;//chromToRemap.contains(chr.getName()) ? Outputs.getFqWriter(chr.getName(), resdir) : null;
 			
 			Outputs 	outp = new Outputs(resDir,  in_nmes, overwrite,  true, CigarCluster.recordDepthByPosition); 
@@ -536,9 +540,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			IdentityProfile1 profile = null;
 			//boolean updateProfile = true;
 			int primelen = 500;//chr.length();
-			Sequence chr5prime = TranscriptUtils.coronavirus ? chr.subSequence(0	, Math.min( primelen, chr.length())) : null;
-			Sequence chr3prime = TranscriptUtils.coronavirus ? chr.subSequence(Math.max(0, chr.length()-primelen), chr.length()) : null;
-
+			
 			Set<String> doneChr = new HashSet<String>();
 			
 		//	long totReadBase = 0, totRefBase = 0;
@@ -582,7 +584,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				double q1 = -10*Math.log10(sump);
 				
 				if(q1 < fail_thresh) {
-					System.err.println(q1);
+					//System.err.println(q1);
 					continue;
 				}
 			//	
@@ -643,6 +645,9 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 						break outer;
 					}
 					chr = genomes.get(currentIndex);
+					chr5prime = TranscriptUtils.coronavirus ? chr.subSequence(0	, Math.min( primelen, chr.length())) : null;
+					 chr3prime = TranscriptUtils.coronavirus ? chr.subSequence(Math.max(0, chr.length()-primelen), chr.length()) : null;
+
 					outp.updateChrom(chr.getName(),currentIndex );
 					if(doneChr.contains(chr.getName())){
 						try{
