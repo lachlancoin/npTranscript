@@ -12,7 +12,7 @@ if(install){
  BiocManager::install("biomaRt")
  BiocManager::install("edgeR")
  BiocManager::install("writexl")
- BiocManager::install("gridExtra")
+ #BiocManager::install("gridExtra")
  BiocManager::install("ggrepel")
 }
 
@@ -44,9 +44,7 @@ prefix = "ENS"
 	library(VGAM)
 	}
 library(stats)
-	library(ggplot2)
-	library(gridExtra)
-	library(ggrepel)
+	
 #library(seqinr)
 
 resdir = "results"
@@ -137,8 +135,13 @@ attr(res_remove$DE1, 'nme') = 'Novel genes'
 
 DE_list = list("genes"=res_keep$DE1, 'novel'=res_remove$DE1)
 
+
+library(writexl)
+write_xlsx(DE_list, paste(resdir, "DE.xlsx",sep="/"))
 #.volcano(res_keep$DE1, pthresh = 1e-3, prefix="keep")
 
+library(ggplot2)
+library(ggrepel)
 volcanos = lapply(DE_list, .volcano, pthresh = 1e-5)
 pdf(paste(resdir, "/qq.pdf",sep=""))
 lapply(volcanos, function(x) print(x))
