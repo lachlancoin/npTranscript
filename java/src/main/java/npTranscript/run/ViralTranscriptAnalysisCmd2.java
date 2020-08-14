@@ -676,7 +676,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 						}
 					}else{
 						annot = annot_file == null ? new EmptyAnnotation(chr.getName(), chr.getDesc(), seqlen, annotation_pw) : 
-							new Annotation(new File(annot_file), currentIndex+"", seqlen, len);
+							new Annotation(new File(annot_file), currentIndex+"", seqlen, annotation_pw, len);
 					}
 					boolean calcBreaks1 = calcBreaks && break_thresh < seqlen;
 					if(profile==null) profile =  	new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh,  calcBreaks1, chr.getName(), currentIndex);

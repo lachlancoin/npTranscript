@@ -120,7 +120,7 @@ public class Annotation{
 		this.chrom = chrom;
 	}
 	
-	public	Annotation(File f,String chrom, int seqlen, int source_count) throws IOException{
+	public	Annotation(File f,String chrom, int seqlen,  PrintWriter pw,int source_count) throws IOException{
 		this(chrom, seqlen);
 		BufferedReader br = new BufferedReader(new FileReader(f)) ;
 			List<String> header = Arrays.asList(br.readLine().split(","));
@@ -138,6 +138,8 @@ public class Annotation{
 					start.add(st);
 					end.add(en);
 					strand.add(line[direction_ind].equals("forward"));
+					String str1 = "0\t"+gene+"\t"+gene+"\t"+gene+"\t"+gene+"\t"+gene;
+					pw.println(str1);
 				//	if(i>0){
 				//		this.breakSt.add(break_start);
 				//		this.breakEnd.add(st);
