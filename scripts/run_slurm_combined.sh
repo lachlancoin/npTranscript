@@ -18,6 +18,12 @@ npTranscript=${HOME}/github/npTranscript
 dat=$(date +%Y%m%d%H%M%S)
 mm2_path="/sw/minimap2/current/minimap2"
 
+mode=$1
+
+if [ ! $mode ];then
+ mode="combined"
+fi
+
 bamdir="."
 bamfiles=$(ls ${bamdir} | grep '.bam$' | xargs -I {} echo ${bamdir}/{})
 bamfiles_="--bamFile=${bamfiles}"
@@ -37,7 +43,7 @@ coord_file_virus="${npTranscript}/data/SARS-Cov2/VIC01/Coordinates.csv"
 cov_chr=$(zcat ${reference_virus} | head -n 1 | cut -f 1 -d ' ' | sed 's/>//g')
 echo "coronavirus chr id ${cov_chr}" 
 resdir="results_${dat}"
-opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=8 --extra_threshold=1000 --writePolyA=true --msaDepthThresh=1000 --doMSA=false --numExonsMSA=1:2:3:4:5 --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh 1000"
+opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=8 --extra_threshold=1000 --writePolyA=true --msaDepthThresh=1000 --doMSA=false --numExonsMSA=1:2:3:4:5 --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh 50"
 
 #for dRNA datasets
 opts="${opts} --RNA=true"
@@ -49,9 +55,9 @@ bash ${npTranscript}/scripts/run.sh ${bamfiles1}   --reference=${reference} --an
 
 
 cd ${resdir}
-##HOST DE
-#Rscript ${npTranscript}/R/npDE.R  control infected betabinom
 
+
+if [ $mode == "combined" ]; then
 ##VIRAL ANALYSIS ON VIRAL READS
 bamdir="."
 bamfiles=$(wc -l *fastq | tr -s ' ' | grep -v ' 0 '  | cut -f 3 -d ' ' | grep -v 'polyA'  | grep -v 'leftover' | grep -v 'total' |  xargs -I {} echo ${bamdir}/{})
@@ -73,4 +79,4 @@ bamfiles=$(wc -l *fastq | tr -s ' ' | grep -v ' 0 '  | cut -f 3 -d ' ' | grep  '
 bamfiles_="--fastqFile=${bamfiles}"
 bamfiles_leftover=$(echo $bamfiles_ | sed 's/ /:/g')
 bash ${npTranscript}/scripts/run.sh ${bamfiles_leftover}   --reference=${reference_virus} --annotation ${coord_file_virus} --resdir ${resdir_leftover} ${opts} ${opts1} ${opts2} ${opts3}
-
+fi
