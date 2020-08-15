@@ -254,18 +254,15 @@ public class GFFAnnotation extends Annotation{
 	
 		String genenme = "";
 		String descr="";
-		
-		//biot;
-	//	pw.println("ID\tName\tdescription\tbiotype");
 		System.err.println("num features" +annot.numFeatures());
 		Map<String, String> biotypes = new HashMap<String,String>();
+		Set<String> gn_nme = new HashSet<String>();
 		for(int i=0; i<annot.numFeatures(); i++){
 			JapsaFeature f = annot.getFeature(i);
 			String type = f.getType();
 			this.start.add(f.getStart());
 			this.end.add(f.getEnd());
 			this.strand.add(f.getStrand()=='+');
-			//System.err.println(f.getDesc());
 			String[] desc = f.getDesc().split(";");
 			 genenme = "";
 			 descr = "";
@@ -274,7 +271,6 @@ public class GFFAnnotation extends Annotation{
 			String ID = null;
 			for(int j=0; j<desc.length; j++){
 				String[] descj = desc[j].split("=");
-		//		descj[1] = descj[1].replace("gene:", "").replace("exon:", "");
 				String[] descjv = descj[1].split(":");
 				String val = descjv[descjv.length-1];
 				if(descj[0].equals(name)){
@@ -296,8 +292,11 @@ public class GFFAnnotation extends Annotation{
 			if(ID==null){
 				ID = genenme;//if.getDesc().substring(0,Math.min(f.getDesc().length(),5));
 			}
-			String str = chr+"\t"+ID+"\t"+genenme+"\t"+descr+"\t"+biot+"\t"+paren;
-			pw.println(str);
+			if(!gn_nme.contains(genenme)){
+				String str = chr+"\t"+ID+"\t"+genenme+"\t"+descr+"\t"+biot+"\t"+paren;
+				pw.println(str);
+				gn_nme.add(genenme);
+			}
 			//System.err.println(str);
 			this.genes.add(genenme.length()>0 ? genenme : ID);
 			if(biot!=null) type  = biot;

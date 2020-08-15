@@ -164,6 +164,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		
 		addString("mm2_path", "/sw/minimap2/current/minimap2",  "minimap2 path", false);
 		addString("mm2Preset", "splice",  "preset for minimap2", false);
+		addBoolean("writeBed", false, "whether to write bed",false);
 		//addString("mm2Preset", "map-ont",  "preset for minimap2", false);
 		addString("mm2_memory", (Runtime.getRuntime().maxMemory()-1000000000)+"",  "minimap2 memory", false);
 		addInt("mm2_threads", 4, "threads for mm2", false);
@@ -323,7 +324,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		String fastqFile = cmdLine.getStringVal("fastqFile");
 		
 		
-		
+		Outputs.writeBed  = cmdLine.getBooleanVal("writeBed");
 		mm2_threads = cmdLine.getIntVal("mm2_threads");
 		mm2_mem = cmdLine.getStringVal("mm2_mem");
 		mm2_path = cmdLine.getStringVal("mm2_path");
@@ -732,8 +733,5 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		if(outp!=null) outp.close();
 	
 		if(annotation_pw!=null) annotation_pw.close();
-		
-	
 	}
-	
 }

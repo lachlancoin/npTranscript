@@ -77,6 +77,7 @@ public class Outputs{
 	public static boolean keepAlignment = true;
 	public static boolean keepinputFasta = true;
 	public static boolean writePolyA = false;
+	public static boolean writeBed=false;
 	public static int minClusterEntries = 5;
 	public static Collection numExonsMSA = Arrays.asList(new Integer[0]); // numBreaks for MSA 
 	
@@ -96,7 +97,7 @@ public class Outputs{
 		public void close() throws IOException{
 			transcriptsP.close();
 			readClusters.close();
-			bedW.close();
+			if(bedW!=null) bedW.close();
 			
 			if(clusterW!=null) clusterW.close();
 			this.altT.close();
@@ -183,9 +184,11 @@ public class Outputs{
 			 reads_file = new File(resDir,genome_index+ "readToCluster.txt.gz");
 			 readClusters = new PrintWriter(
 					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(reads_file))));
-			 bedW = new PrintWriter(
+			 if(writeBed){
+				 bedW = new PrintWriter(
 						new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.bedoutput))));
-			 bedW.println("track name=\""+"all"+"\" description=\""+"all"+"\" itemRgb=\"On\" ");
+				 bedW.println("track name=\""+"all"+"\" description=\""+"all"+"\" itemRgb=\"On\" ");
+			 }
 //			 readID  clusterId       subID   source  length  start_read      end_read   
 			 //type_nme        chrom   startPos        endPos  breakStart      breakEnd        errorRatio
 			 //upstream        downstream      strand  breaks
@@ -320,6 +323,7 @@ public class Outputs{
 			//System.err.println(Arrays.asList(col_str));
 		}
 		public void printBed(List<Integer> breaks, String read_name, char strand, int source, String id, String subid, int num_exons, int span, String span_str){
+			if(bedW==null) return;
 			int col_id = source % col_len;
 		
 			int startPos = breaks.get(0)-1;
