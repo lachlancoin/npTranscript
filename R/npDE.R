@@ -14,7 +14,13 @@ options('np.isoformDepth'=100)
 options("np.dm.test"="chisq.test") #fisher.test
 options("np.maxIsoformGroups"=5)
 options("np.adjustMethod"="BH");
-
+print(.libPaths())
+vers = R.Version()
+version=paste(vers$major,vers$minor,sep=".")
+libdir=paste("~/R/lib",version,sep="/")
+dir.create(libdir , recursive=T)
+.libPaths(libdir)
+.libPaths()
 #options("np.source"="../../R")
 args = commandArgs(trailingOnly=TRUE)
 if(length(args)>0){
@@ -25,11 +31,12 @@ if(length(args)>0){
 libs_to_install = unlist(strsplit(getOption("np.libs_to_install"),","))
 if(getOption("np.install","FALSE")=="TRUE"){
   if(length(libs_to_install)==0){
-    libs_to_install = c("VGAM","ggplot2","biomaRt","edgeR","writexl","ggrepel","abind")
+    libs_to_install = c("rhdf5","VGAM","ggplot2","biomaRt","edgeR","writexl","ggrepel","abind")
   }
-  install.packages("BiocManager")
-  for(i in libs_to_insall){
-    BiocManager::install(i, update=update, ask=F)
+  install.packages("BiocManager", lib=libdir, repos="https://cran.ms.unimelb.edu.au/")
+  library("BiocManager")
+  for(i in libs_to_install){
+    BiocManager::install(i, update=F, ask=F, lib=libdir)
   }
 } 
 
@@ -150,7 +157,7 @@ DE_list = lapply(transcripts_all, .processDE, attributes, resdir, control_names,
 for(i in 1:length(DE_list)) attr(DE_list[[i]],"nme") = names(transcripts_all)[i]
 
 ##OUTPUT FILE
-h5DE = "DE.h5"
+h5DE = paste(resdir,"DE.h5",sep="/")
 file.remove(h5DE)
 h5createFile(h5DE)
 h5createGroup(h5DE,"DE")
