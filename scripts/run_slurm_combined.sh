@@ -16,6 +16,7 @@
 export JSA_MEM=30000m
 npTranscript=${HOME}/github/npTranscript
 dat=$(date +%Y%m%d%H%M%S)
+mm2_path="/sw/minimap2/current/minimap2"
 
 bamdir="."
 bamfiles=$(ls ${bamdir} | grep '.bam$' | xargs -I {} echo ${bamdir}/{})
@@ -25,11 +26,15 @@ bamfiles1=$(echo $bamfiles_ | sed 's/ /:/g')
 ##SPECIFY LOCATION OF COMBINED AND VIRUS ONLY DB
 #reference="../Chlorocebus_sabaeus.ChlSab1.1.dna.toplevel.fa.gz"
 #coord_file="../Chlorocebus_sabaeus.ChlSab1.1.99.gff3.gz"
-reference="./human_virus_sequin_ensembl_pri_merged_genome.fasta"
-coord_file="./gencode.v28.annotation.gff3.gz"
+reference="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/merged/human_virus_sequin_ensembl_pri_merged_genome.fasta"
+coord_file="../gencode.v28.annotation.gff3.gz"
+##FOLLOWING IS FEATURES IN GFF FILE.THIS MAY NEED TO BE CUSTOMISED
+##IF uSING USE_eXONS=true, THEY SHOULD REFER TO GENE FEATURES, NOT EXON FEATURES
+GFF_features="gene_id:description:gene_name:gene_type:gene_name"
+
 reference_virus="${npTranscript}/data/SARS-Cov2/VIC01/wuhan_coronavirus_australia.fasta.gz"
 coord_file_virus="${npTranscript}/data/SARS-Cov2/VIC01/Coordinates.csv"
-cov_chr=$(zcat ${coord_file_virus} | head -n 1 | cut -f 1 -d ' ' | sed 's/>//g')
+cov_chr=$(zcat ${reference_virus} | head -n 1 | cut -f 1 -d ' ' | sed 's/>//g')
 echo "coronavirus chr id ${cov_chr}" 
 resdir="results_${dat}"
 opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=8 --extra_threshold=1000 --writePolyA=true --msaDepthThresh=1000 --doMSA=false --numExonsMSA=1:2:3:4:5 --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh 1000"
@@ -43,37 +48,29 @@ bash ${npTranscript}/scripts/run.sh ${bamfiles1}   --reference=${reference} --an
 
 
 
-#####NOW RUN ON THE EXTRACTED VIRAL READS
-
 cd ${resdir}
+##HOST DE
+#Rscript ${npTranscript}/R/npDE.R  control infected betabinom
 
-resdir_virus="results_virus"
-opts="--bin=100 --breakThresh=1000  --isoformDepthThresh=10000 --coverageDepthThresh=0 --extra_threshold=200 --msaDepthThresh=20 --doMSA=all:sep --reAlignExtra=true --bedChr=NC_045512v2"
-opts2="--fail_thresh=0 --recordDepthByPosition=true"
-
-
+##VIRAL ANALYSIS ON VIRAL READS
 bamdir="."
 bamfiles=$(wc -l *fastq | tr -s ' ' | grep -v ' 0 '  | cut -f 3 -d ' ' | grep -v 'polyA'  | grep -v 'leftover' | grep -v 'total' |  xargs -I {} echo ${bamdir}/{})
 bamfiles_="--fastqFile=${bamfiles}"
-bamfiles1=$(echo $bamfiles_ | sed 's/ /:/g')
-bash ${npTranscript}/scripts/run.sh ${bamfiles1}   --reference=${reference_virus} --annotation ${coord_file_virus} --resdir ${resdir_virus} ${opts} ${opts1} ${opts2}
+bamfiles_virus=$(echo $bamfiles_ | sed 's/ /:/g')
 
-##RUN ON THE LEFTOVER READS TOO
+
+resdir_virus="results_virus"
+resdir_leftover="results_leftover"
+
+opts="--bin=100 --breakThresh=1000  --isoformDepthThresh=10000 --coverageDepthThresh=0 --extra_threshold=200 --msaDepthThresh=20 --doMSA=all:sep --reAlignExtra=true"
+opts2="--fail_thresh=0 --recordDepthByPosition=true"
+opts3="--mm2_path=${mm2_path}"
+bash ${npTranscript}/scripts/run.sh ${bamfiles_virus}   --reference=${reference_virus} --annotation ${coord_file_virus} --resdir ${resdir_virus} ${opts} ${opts1} ${opts2} ${opts3}
+
+
 bamdir="."
 bamfiles=$(wc -l *fastq | tr -s ' ' | grep -v ' 0 '  | cut -f 3 -d ' ' | grep  'leftover' | grep -v 'total' |  xargs -I {} echo ${bamdir}/{})
-#bamfiles=$(ls ${bamdir} | grep '.fastq$' | grep 'leftover'  | xargs -I {} echo ${bamdir}/{})
 bamfiles_="--fastqFile=${bamfiles}"
-bamfiles2=$(echo $bamfiles_ | sed 's/ /:/g')
-resdir_leftover="results_leftover_${dat}"
-bash ${npTranscript}/scripts/run.sh ${bamfiles2}   --reference=${reference_virus} --annotation ${coord_file_virus} --resdir ${resdir_leftover} ${opts} ${opts1} ${opts2}
+bamfiles_leftover=$(echo $bamfiles_ | sed 's/ /:/g')
+bash ${npTranscript}/scripts/run.sh ${bamfiles_leftover}   --reference=${reference_virus} --annotation ${coord_file_virus} --resdir ${resdir_leftover} ${opts} ${opts1} ${opts2} ${opts3}
 
-
-
-
-
-##NOW RUN THE R SCRIPTS
-Rscript ${npTranscript}/R/npDE.R  control infected betabinom
-
-cd ${resdir_virus}
-Rscript ${npTranscript}/R/npDE.R  control infected betabinom
-Rscript ${npTranscript}/R/npTranscript.R
