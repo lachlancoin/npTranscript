@@ -25,7 +25,7 @@ if(length(args)>0){
 libs_to_install = unlist(strsplit(getOption("np.libs_to_install"),","))
 if(getOption("np.install","FALSE")=="TRUE"){
   if(length(libs_to_install)==0){
-    libs_to_install = c("VGAM","ggplot2","biomaRt","edgeR","writexl","ggrepel")
+    libs_to_install = c("VGAM","ggplot2","biomaRt","edgeR","writexl","ggrepel","abind")
   }
   install.packages("BiocManager")
   for(i in libs_to_insall){
@@ -48,6 +48,7 @@ library(writexl)
 library(rhdf5)
 library(ggplot2)
 library(ggrepel)
+library(abind)
 
 resdir = getOption("np.results","results")
 dir.create(resdir);
