@@ -15,11 +15,9 @@ if(INSTALL){
 	BiocManager::install("ggrepel")
 	
 }
-library(abind)
-library(ggrepel)
-library(writexl)
+
+
 library(binom)
-library(grDevices)
 library(ggplot2)
 library(gridExtra)
 library(RColorBrewer)

@@ -1,53 +1,52 @@
-install= FALSE
-#ggforce for ggsina
-if(install){
-  install.packages("BiocManager")
-  BiocManager::install("VGAM")
- BiocManager::install("ggplot2")
-#  BiocManager::install("gplots")
-  #BiocManager::install("jsonlite")
-  #BiocManager::install("gridExtra")
-  #BiocManager::install("GGally")
- # BiocManager::install("binom")
- BiocManager::install("biomaRt")
- BiocManager::install("edgeR")
- BiocManager::install("writexl")
- #BiocManager::install("gridExtra")
- BiocManager::install("ggrepel")
-}
+install = Sys.getenv(c("INSTALL_R_PCKGS", "INSTALL_UPDATE"))
+libs_to_install = unlist(strsplit(Sys.getenv("R_PCKGS_TO_INSTALL"),","))
+if(install[1]=="TRUE"){
+  if(length(libs_to_install)==0){
+      libs_to_install = c("VGAM","ggplot2","biomaRt","edgeR","writexl","ggrepel")
+  }
+   update = install[2]=="TRUE"
+    install.packages("BiocManager", update=F,ask=F)
+    for(i in libs_to_insall){
+      BiocManager::install(i, update=update, ask=F)
+    }
+} 
 
+options("np.qThresh"=2)
+
+options("np.control"="control")
+options("np.case"='infected')
+options("np.exclude"="none")
+options("np.analysis"="betabinom")
+options("np.depth_thresh"="100")
+options("np.prefix_keep"=NULL)
+options("np.prefix_remove"="^[0-9]{1,}\\.")
+options("np.prefix_sequins"="^R[0-9]_")
+options('np.IsoformDepth'=100)
+
+#options("np.source"="../../R")
 args = commandArgs(trailingOnly=TRUE)
-if(length(args)==0){
-  args = c("control","infected", "betabinom","none")
-#  args[1] = "cDNA"
-#  args[2] = "RNA"
- # args[4] = "GE"
+if(length(args)>0){
+  argv = (lapply(args, function(x) strsplit(x,"=")[[1]][2]))
+  names(argv) = unlist(lapply(args, function(x) strsplit(x,"=")[[1]][1]))
+  options(argv)
 }
-prefix = "ENS"
 
-  control_names = unlist(strsplit(args[1],':'))
-  infected_names = unlist(strsplit(args[2],':'))
-  type_names = c("control","infected")
-  if(length(control_names[1])==1) type_names[1] = control_names[1]
-  if(length(infected_names[1])==1) type_names[2] = infected_names[1]
-  
-  type_names = c(control_names[1], infected_names[1])
+control_names = unlist(strsplit(getOption("np.control"),':'))
+infected_names = unlist(strsplit(getOption("np.case"),':'))
+type_names = c(control_names[1], infected_names[1])
 
-	analysis=args[3]
-	
-	exclude_nme = if(length(args)<4) "do_not_include"  else strsplit(args[4],":")[[1]]
-	edgeR = FALSE;
-	if(analysis=="edgeR"){
+if(getOption("np.analysis","betabinom")=="edgeR"){
 		library(edgeR)
-		 edgeR = T
 	}else{
-	library(VGAM)
-	}
+	  library(VGAM)
+}
 library(stats)
-	
-#library(seqinr)
+library(writexl)
+library(rhdf5)
+library(ggplot2)
+library(ggrepel)
 
-resdir = "results"
+resdir = getOption("np.results","results")
 dir.create(resdir);
 
 .findFile<-function(path, file, exact = T){
@@ -67,13 +66,11 @@ dir.create(resdir);
 }
 
 
-src = c( "../../R" , "~/github/npTranscript/R" )
-source(.findFile(src, "transcript_functions.R"))
-source(.findFile(src, "diff_expr_functs.R"))
+source(.findFile(getOption("np.source","~/github/npTranscript/R"), "transcript_functions.R"))
+source(.findFile(getOption("np.source","~/github/npTranscript/R"), "diff_expr_functs.R"))
 
 files = dir()
 chroms = NULL
-
 binsize = 1e5
 isVirus=  FALSE;
 start_text = "start"
@@ -95,86 +92,119 @@ target= list( chrom="character",
 
 
 ##READ TRANSCRIPT DATA
-
-
-
 infilesT = grep("transcripts.txt", dir(), v=T)
 transcriptsl = readTranscriptHostAll(infilesT, start_text = start_text,target = target,   filter = filter, 
-                                    combined_depth_thresh = 100)
+                                    combined_depth_thresh = getOption("np.depth_thresh",100))
 
 attributes = attributes(transcriptsl)
 filenames = attr(transcriptsl,"info")
 control_names = unlist(lapply(control_names, grep, filenames, v=T));#  grep(control_names,filenames,v=T)
 infected_names = unlist(lapply(infected_names, grep, filenames, v=T))
+exclude_nme = getOption("np.exclude",'none')
 for(i in 1:length(exclude_nme)){
-control_names = grep(exclude_nme[i], control_names, inv=T,v=T)
-infected_names = grep(exclude_nme[i], infected_names, inv=T,v=T)
+  control_names = grep(exclude_nme[i], control_names, inv=T,v=T)
+  infected_names = grep(exclude_nme[i], infected_names, inv=T,v=T)
 }
 
-print(paste(type_names[1],paste(control_names,collapse=" ")))
-print(paste(type_names[2] , paste(infected_names, collapse=" ")))
+#print(paste(type_names[1],paste(control_names,collapse=" ")))
+#print(paste(type_names[2] , paste(infected_names, collapse=" ")))
 if(length(control_names)!=length(infected_names)) error(" lengths different")
 transcriptsl = lapply(transcriptsl, .processTranscripts)
-if(length(transcriptsl)==1){
-transcriptsl[[1]]$ID = paste("ID",1:length(transcriptsl[[1]]$ID),sep="")
+
+if(!is.null(getOption("np.prefix_remove",NULL))){
+  remove = lapply(transcriptsl,.filter, getOption("np.prefix_remove"), inv=F)
+  keep = lapply(transcriptsl,.filter, getOption("np.prefix_remove"), inv=T)
+}else {
+  remove = lapply(transcriptsl,.filter, getOption("np.prefix_keep","\\."), inv=T)
+  keep = lapply(transcriptsl,.filter, getOption("np.prefix_keep","\\."), inv=F)
 }
-filtered = .filter(transcriptsl, prefix)
-keep = filtered$keep[unlist(lapply(filtered$keep,function(x) dim(x)[[1]]))>0]
-transcripts_keep = .process(keep, control_names, infected_names)
-remove = filtered$remove[unlist(lapply(filtered$remove,function(x) dim(x)[[1]]))>0]
-transcripts_removed = .process(remove, control_names, infected_names)
-transcripts_removed$ORFs =  
-  apply(cbind(transcripts_removed$chrs, transcripts_removed$start, transcripts_removed$end),1,paste,collapse="_")
-pdf(paste(resdir, "/qq.pdf",sep=""))
 
-res_keep = .processDE(transcripts_keep,attributes, resdir, control_names, infected_names, type_names = type_names, outp= "results_keep.csv", type="keep",plot=T)
-res_remove = .processDE(transcripts_removed,attributes, resdir, control_names, infected_names, type_names = type_names, outp= "results_removed.csv", type="keep",plot=T)
-dev.off()
-attr(res_keep$DE1, 'nme') = 'Known genes'
-attr(res_remove$DE1, 'nme') = 'Novel genes'
+.rename<-function(x) {
+  strand = rep("",length(x))
+  strand[regexpr("\\+$",x$ORFs)>=0]="+"
+  strand[regexpr("\\-$",x$ORFs)>=0]="-"
+  apply(cbind(x$chrs, x$start, x$end, strand),1,paste,collapse="_")
+}
+##CHANGE NAME OF NOVEL ORFS TO BE MORE READABLE
+for(i in 1:length(remove)) remove[[i]]$ORFs = .rename(remove[[i]])
 
-DE_list = list("genes"=res_keep$DE1, 'novel'=res_remove$DE1)
+if(!is.null(getOption("np.prefix_sequins",NULL))){
+  sequins = lapply(remove,.filter, getOption("np.prefix_sequins"), inv=F)
+  remove = lapply(remove,.filter, getOption("np.prefix_sequins"), inv=T)
+}else{
+  sequins = list();
+}
+
+transcripts_all = list(genes=keep, novel=remove, sequins = sequins)
+transcripts_all =  lapply(transcripts_all, .process, control_names, infected_names)
+
+pdf(paste(resdir, "/DE.pdf",sep=""))
+DE_list = lapply(transcripts_all, .processDE, attributes, resdir, control_names, infected_names, type_names, type="known",plot=T)
+for(i in 1:length(res_)) attr(DE_list[[i]],"nme") = names(transcripts_all)[i]
+
+##OUTPUT FILE
+h5DE = "DE.h5"
+file.remove(h5DE)
+h5createFile(h5DE)
+h5createGroup(h5DE,"DE")
+lapply(DE_list, function(x) h5write(x, h5DE,paste("DE",attr(x, "nme"),sep="/")))
+#h5ls(h5DE)
+#
 
 
-library(writexl)
-write_xlsx(DE_list, paste(resdir, "DE.xlsx",sep="/"))
+write_xlsx(lapply(DE_list,function(x) x[attr(x,"order"),,drop=F]), paste(resdir, "DE.xlsx",sep="/"))
 #.volcano(res_keep$DE1, pthresh = 1e-3, prefix="keep")
 
-library(ggplot2)
-library(ggrepel)
+
 volcanos = lapply(DE_list, .volcano, pthresh = 1e-5)
-pdf(paste(resdir, "/volcano.pdf",sep=""))
 lapply(volcanos, function(x) print(x))
 dev.off()
-.head1<-function(transcripts, nme="order1",n=10){
-  head(transcripts[attr(transcripts,nme),],n)
-}
-.head1(res_keep$DE1,"order",10)
-.head1(res_remove$DE1,"order",10)
 
-#findSigChrom(res_keep$DE1, thresh = 1e-10, go_thresh = 1e-2,nme="p.adj1", nme2="chrs")
-
-#findSigChrom(res_keep$DE1, thresh = 1e-10, go_thresh = 1e-2,nme="p.adj2", nme2="chrs")
-
-#this calculates pvalues for base-level error rates
 
 print("####DEPTH ANALYSIS #### ")
-##
-#source(.findFile(src, "depth_association.R"))
 
+##isoform analysis
+pdf(paste(resdir, "/isoDE.pdf",sep=""))
+infilesAltT = grep("isoforms.h5" , dir(),v=T)
+pvs_all = lapply(transcripts_all, .testIsoformsAll, infilesAltT,n=5, test_func = chisq.test)
+pvs_all = pvs_all[unlist(lapply(pvs_all, length))>0]
+for(i in 1:length(pvs_all)) attr(pvs_all[[i]],"nme") = names(pvs_all)[i]
+for(i in 1:length(pvs_all)) .qqplot1(pvs_all[[i]],"p", main = names(pvs_all)[[i]], add = i>1)
 
+volcanos = lapply(pvs_all, .volcano, pthresh = 1e-5, useadj = T)
+lapply(volcanos, function(x) print(x))
 
-####
+dev.off()
+h5createGroup(h5DE,"isoDE")
+lapply(pvs_all, function(x) h5write(x, h5DE,paste("isoDE",attr(x, "nme"),sep="/")))
+h5ls(h5DE)
+write_xlsx(lapply(pvs_all,function(x) x[order(x$p),,drop=F]), paste(resdir, "isoDE.xlsx",sep="/"))
+
+#h5closeAll()
+
+######
+pdf(paste(resdir,"DM_combined.pdf",sep="/"))
+
+depth_combined=lapply(transcripts_all,
+                      function(transcripts_)   .readH5All(transcripts_,attributes,filenames, thresh = 1000,  readH5_ = readH5_h))
+
+DE2 = lapply(depth_combined,.processDM,  1,2, method=.chisq, thresh =1000,plot=T,adjust="none")
+DE2 = DE2[unlist(lapply(DE2, function(x) !is.null(x) && dim(x)[[1]]))>0]
+for(i in 1:length(DE2)) attr(DE2[[i]],"nme") = names(DE2)[i]
+
+volcanos = lapply(DE2, .volcano, pthresh = 1e-4)
+
+lapply(volcanos, function(x) print(x))
+dev.off()
+
+h5createGroup(h5DE,"DM")
+lapply(DE2, function(x) h5write(x, h5DE,paste("DM",attr(x, "nme"),sep="/")))
+h5ls(h5DE)
+h5closeAll()
+
+write_xlsx(lapply(DE2,.xlim,1e-2), paste(resdir, "DM_combined.xlsx",sep="/"))
+
 if(FALSE){
-transcripts =.combineTranscripts(transcriptsl, attributes)
-ORFs = strsplit(transcripts$ORFs,";")
-lens = unlist(lapply(ORFs,length))
-mtch = unlist(lapply(ORFs, function(x) x[1]==x[2]))
-trans1 = transcripts[mtch==FALSE,]
-which(trans1$countTotal==max(trans1[trans1$chrs!="chr11",]$countTotal))
-
-which(transcripts_removed$countTotal==max(transcripts_removed$countTotal))
-ord = order(transcripts_removed$countTotal, decreasing=T)
-tr = transcripts_removed[ord,]
-head(cbind(tr$end - tr$start, tr$countTotal),30)
+fisher.test(.extractFromDepth(depth_combined[[1]], 1:2,"12.56159663")[1:2,,])
 }
+

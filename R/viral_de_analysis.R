@@ -1,3 +1,8 @@
+library(abind)
+library(ggrepel)
+library(writexl)
+library(grDevices)
+
 attributes = attributes(transcripts)
 info = attr(transcripts, "info")
 count_names =  paste("count",info, sep="_")
@@ -24,13 +29,6 @@ names(DE1) = unlist(lapply(DE1, function(x) gsub("_merged","",gsub("_pass","",gs
 names(volcanos) = names(DE1)  
 write_xlsx(DE1, paste(resdir, "DE.xlsx",sep="/"))
 
-.shorten<-function(str, len=31){
-  str = gsub("_pass","",str)
-  str = gsub("_","",str)
-  str = gsub("vs","v",str)
-  if(nchar(str)>len)str = substr(str,1,len)
-  str
-}
 ##DIFF METH  ON COMBINED
 depth_combined=.readH5All(transcripts,attributes,filenames, thresh = 100, chrs=NULL, readH5_ = readH5_c)[[1]]
 DE2 = lapply(todo, function(x) .processDM(depth_combined,  x[1],x[2], method=.exact, thresh =100))
