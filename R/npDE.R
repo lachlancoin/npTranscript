@@ -206,7 +206,8 @@ dev.off()
 h5createGroup(h5DE,"DM")
 lapply(DE2, function(x) h5write(x, h5DE,paste("DM",attr(x, "nme"),sep="/")))
 h5ls(h5DE)
-h5closeAll()
+H5close()
+#h5closeAll()
 
 write_xlsx(lapply(DE2,.xlim,1e-2), paste(resdir, "DM_combined.xlsx",sep="/"))
 
