@@ -341,16 +341,13 @@ chisqCombine<-function(pv,log=log){
   dimnames(res1)[[1]][3] = "ratio"
   res1
 }
-.processDM<-function(depth, i1,i2, thresh =1000, method=.chisq, plot=F, adjust="BH"){
+.processDM<-function(depth, i1,i2, thresh =1000, method=.chisq, plot=F, adjust=getOption("np.adjustMethod","BH")){
   if(is.null(depth)) return(NULL)
   inf = dimnames(depth)[[3]] 
   control_names = inf[i1]
   infected_names = inf[i2]
- 
-  
-  #DE = list()
-  DE = DEdepth(depth, control_names, infected_names, tojoin=1:3, thresh = thresh,method=method, adjust=adjust)
-  
+  method1 = if(method=="chisq.test") .chisq else if(method=="fisher.test") .exact else method
+  DE = DEdepth(depth, control_names, infected_names, tojoin=1:3, thresh = thresh,method=method1, adjust=adjust)
   type=paste(control_names, infected_names,sep=" vs ")
   if(plot){
     if(dim(DE)[[1]]>0){
@@ -360,7 +357,7 @@ chisqCombine<-function(pv,log=log){
   attr(DE,"nme") = paste(control_names, infected_names, sep=" vs ")
   invisible(DE)
 }
-DEdepth<-function(df,control_names, infected_names,tojoin=1:3, thresh = 100, maxLogFC=10, method=.exact, adjust  = "none"){
+DEdepth<-function(df,control_names, infected_names,tojoin=1:3, thresh = 100, maxLogFC=10, method=chisq.test, adjust  = "none"){
  inds = which(dimnames(df)[[3]] %in%  c(control_names, infected_names))
   row_inds = apply(df[1,,inds],1,min)>thresh
   df1 = df[,row_inds,inds,drop=F]
@@ -856,8 +853,10 @@ ggp
   invisible(DE1)
 #  invisible(list(DE1=DE1, transcripts=transcripts))
 }
-.testIsoformsAll<-function(transcripts_i,isofile, n=5, test_func = chisq.test, adjust="BH"){
-  isoforms_i=  readIsoformH5(transcripts_i, isofile, depth = getOption('np.IsoformDepth',100))
+.testIsoformsAll<-function(transcripts_i,isofile, n=5, test_func = chisq.test, 
+                           adjust=getOption("np.adjustMethod","BH"),
+                           depth = getOption('np.isoformDepth',100)){
+  isoforms_i=  readIsoformH5(transcripts_i, isofile,depth=depth)
   inds = attr(isoforms_i,"inds")
   if(length(inds)==0) return (NULL)
   transcripts_i1 = transcripts_i[inds,!duplicated(names(transcripts_i)),drop=F]

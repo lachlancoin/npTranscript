@@ -21,7 +21,11 @@ options("np.depth_thresh"="100")
 options("np.prefix_keep"=NULL)
 options("np.prefix_remove"="^[0-9]{1,}\\.")
 options("np.prefix_sequins"="^R[0-9]_")
-options('np.IsoformDepth'=100)
+options('np.isoformDepth'=100)
+options("np.isoform.test"="chisq.test") #fisher.test
+options("np.dm.test"="chisq.test") #fisher.test
+options("np.maxIsoformGroups"=5)
+options("np.adjustMethod"="BH");
 
 #options("np.source"="../../R")
 args = commandArgs(trailingOnly=TRUE)
@@ -162,11 +166,10 @@ dev.off()
 
 
 print("####DEPTH ANALYSIS #### ")
-
 ##isoform analysis
 pdf(paste(resdir, "/isoDE.pdf",sep=""))
 infilesAltT = grep("isoforms.h5" , dir(),v=T)
-pvs_all = lapply(transcripts_all, .testIsoformsAll, infilesAltT,n=5, test_func = chisq.test)
+pvs_all = lapply(transcripts_all, .testIsoformsAll, infilesAltT,n=getOption("np.maxIsoformGroups",5), test_func = getOption("np.isoform.test","chisq.test"))
 pvs_all = pvs_all[unlist(lapply(pvs_all, length))>0]
 for(i in 1:length(pvs_all)) attr(pvs_all[[i]],"nme") = names(pvs_all)[i]
 for(i in 1:length(pvs_all)) .qqplot1(pvs_all[[i]],"p", main = names(pvs_all)[[i]], add = i>1)
@@ -188,7 +191,7 @@ pdf(paste(resdir,"DM_combined.pdf",sep="/"))
 depth_combined=lapply(transcripts_all,
                       function(transcripts_)   .readH5All(transcripts_,attributes,filenames, thresh = 1000,  readH5_ = readH5_h))
 
-DE2 = lapply(depth_combined,.processDM,  1,2, method=.chisq, thresh =1000,plot=T,adjust="none")
+DE2 = lapply(depth_combined,.processDM,  1,2, method=getOption("np.dm.test", "chisq.test"), thresh =1000,plot=T,adjust="none")
 DE2 = DE2[unlist(lapply(DE2, function(x) !is.null(x) && dim(x)[[1]]))>0]
 for(i in 1:length(DE2)) attr(DE2[[i]],"nme") = names(DE2)[i]
 
