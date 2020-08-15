@@ -11,7 +11,6 @@ options("np.prefix_keep"=NULL)
 options("np.prefix_remove"="^[0-9]{1,}\\.")
 options("np.prefix_sequins"="^R[0-9]_")
 options('np.isoformDepth'=100)
-options("np.isoform.test"="chisq.test") #fisher.test
 options("np.dm.test"="chisq.test") #fisher.test
 options("np.maxIsoformGroups"=5)
 options("np.adjustMethod"="BH");
@@ -155,14 +154,7 @@ file.remove(h5DE)
 h5createFile(h5DE)
 h5createGroup(h5DE,"DE")
 lapply(DE_list, function(x) h5write(x, h5DE,paste("DE",attr(x, "nme"),sep="/")))
-#h5ls(h5DE)
-#
-
-
 write_xlsx(lapply(DE_list,function(x) x[attr(x,"order"),,drop=F]), paste(resdir, "DE.xlsx",sep="/"))
-#.volcano(res_keep$DE1, pthresh = 1e-3, prefix="keep")
-
-
 volcanos = lapply(DE_list, .volcano, pthresh = 1e-5)
 lapply(volcanos, function(x) print(x))
 dev.off()
@@ -172,7 +164,7 @@ print("####DEPTH ANALYSIS #### ")
 ##isoform analysis
 pdf(paste(resdir, "/isoDE.pdf",sep=""))
 infilesAltT = grep("isoforms.h5" , dir(),v=T)
-pvs_all = lapply(transcripts_all, .testIsoformsAll, infilesAltT,n=getOption("np.maxIsoformGroups",5), test_func = getOption("np.isoform.test","chisq.test"))
+pvs_all = lapply(transcripts_all, .testIsoformsAll, infilesAltT,n=getOption("np.maxIsoformGroups",5), test_func =chisq.test)
 pvs_all = pvs_all[unlist(lapply(pvs_all, length))>0]
 for(i in 1:length(pvs_all)) attr(pvs_all[[i]],"nme") = names(pvs_all)[i]
 for(i in 1:length(pvs_all)) .qqplot1(pvs_all[[i]],"p", main = names(pvs_all)[[i]], add = i>1)
