@@ -1,18 +1,7 @@
-install = Sys.getenv(c("INSTALL_R_PCKGS", "INSTALL_UPDATE"))
-libs_to_install = unlist(strsplit(Sys.getenv("R_PCKGS_TO_INSTALL"),","))
-if(install[1]=="TRUE"){
-  if(length(libs_to_install)==0){
-      libs_to_install = c("VGAM","ggplot2","biomaRt","edgeR","writexl","ggrepel")
-  }
-   update = install[2]=="TRUE"
-    install.packages("BiocManager", update=F,ask=F)
-    for(i in libs_to_insall){
-      BiocManager::install(i, update=update, ask=F)
-    }
-} 
 
-options("np.qThresh"=2)
-
+options("np.install"="FALSE")
+options("np.libs_to_install"="")
+options("np.results"="results")
 options("np.control"="control")
 options("np.case"='infected')
 options("np.exclude"="none")
@@ -34,6 +23,17 @@ if(length(args)>0){
   names(argv) = unlist(lapply(args, function(x) strsplit(x,"=")[[1]][1]))
   options(argv)
 }
+libs_to_install = unlist(strsplit(getOption("np.libs_to_install"),","))
+if(getOption("np.install","FALSE")=="TRUE"){
+  if(length(libs_to_install)==0){
+    libs_to_install = c("VGAM","ggplot2","biomaRt","edgeR","writexl","ggrepel")
+  }
+  install.packages("BiocManager")
+  for(i in libs_to_insall){
+    BiocManager::install(i, update=update, ask=F)
+  }
+} 
+
 
 control_names = unlist(strsplit(getOption("np.control"),':'))
 infected_names = unlist(strsplit(getOption("np.case"),':'))
@@ -52,6 +52,7 @@ library(ggrepel)
 
 resdir = getOption("np.results","results")
 dir.create(resdir);
+
 
 .findFile<-function(path, file, exact = T){
   for(i in 1:length(path)){
@@ -72,6 +73,9 @@ dir.create(resdir);
 
 source(.findFile(getOption("np.source","~/github/npTranscript/R"), "transcript_functions.R"))
 source(.findFile(getOption("np.source","~/github/npTranscript/R"), "diff_expr_functs.R"))
+optionFile = paste(resdir,"options.txt",sep="/")
+.printOptions(optionFile)
+
 
 files = dir()
 chroms = NULL
@@ -110,8 +114,6 @@ for(i in 1:length(exclude_nme)){
   infected_names = grep(exclude_nme[i], infected_names, inv=T,v=T)
 }
 
-#print(paste(type_names[1],paste(control_names,collapse=" ")))
-#print(paste(type_names[2] , paste(infected_names, collapse=" ")))
 if(length(control_names)!=length(infected_names)) error(" lengths different")
 transcriptsl = lapply(transcriptsl, .processTranscripts)
 
@@ -129,6 +131,7 @@ if(!is.null(getOption("np.prefix_remove",NULL))){
   strand[regexpr("\\-$",x$ORFs)>=0]="-"
   apply(cbind(x$chrs, x$start, x$end, strand),1,paste,collapse="_")
 }
+
 ##CHANGE NAME OF NOVEL ORFS TO BE MORE READABLE
 for(i in 1:length(remove)) remove[[i]]$ORFs = .rename(remove[[i]])
 
@@ -144,7 +147,7 @@ transcripts_all =  lapply(transcripts_all, .process, control_names, infected_nam
 
 pdf(paste(resdir, "/DE.pdf",sep=""))
 DE_list = lapply(transcripts_all, .processDE, attributes, resdir, control_names, infected_names, type_names, type="known",plot=T)
-for(i in 1:length(res_)) attr(DE_list[[i]],"nme") = names(transcripts_all)[i]
+for(i in 1:length(DE_list)) attr(DE_list[[i]],"nme") = names(transcripts_all)[i]
 
 ##OUTPUT FILE
 h5DE = "DE.h5"

@@ -357,6 +357,13 @@ chisqCombine<-function(pv,log=log){
   attr(DE,"nme") = paste(control_names, infected_names, sep=" vs ")
   invisible(DE)
 }
+
+.printOptions<-function(out, prefix="np."){
+  nme=grep(prefix,names(options()),v=T)
+  vals = unlist(lapply(nme,function(x) getOption(x)))
+  names(vals) = nme
+  write.table(as.matrix(vals),out,row.names=T,col.names=F)
+}
 DEdepth<-function(df,control_names, infected_names,tojoin=1:3, thresh = 100, maxLogFC=10, method=chisq.test, adjust  = "none"){
  inds = which(dimnames(df)[[3]] %in%  c(control_names, infected_names))
   row_inds = apply(df[1,,inds],1,min)>thresh
