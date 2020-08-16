@@ -102,7 +102,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		 return  "gene:ncRNA:pseudogene:miRNA";	
 	 }
 	 else{
-		 return "exon";
+		 return "all";
+//		 return "exon";
 	 }
 		
 }
@@ -192,7 +193,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 	}
 	public static int mm2_threads;
 	public static String mm2_path, mm2_mem, mm2_index, mm2Preset, mm2_splicing;
- public static void run(CommandLine cmdLine, String[] bamFiles, String resDir,Map<String, JapsaAnnotation> anno, String chrs, boolean fastq, String reference) throws IOException{
+ public static void run(CommandLine cmdLine, String[] bamFiles, String resDir,File anno, String chrs, boolean fastq, String reference) throws IOException{
 		
 		int qual = cmdLine.getIntVal("qual");
 		int bin = cmdLine.getIntVal("bin");
@@ -344,16 +345,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		String chroms= cmdLine.getStringVal("chroms_to_include");
 		
 		boolean gff = annot_file !=null && annot_file.contains(".gff");
-		Map<String, JapsaAnnotation> anno  = null;
-		//boolean SARS = !gff;
-		if(gff){
-			String  annotationType = getAnnotationsToInclude(cmdLine.getStringVal("annotType"), cmdLine.getBooleanVal("useExons"));
-
-			System.err.println("reading annotation");
-			 anno =  GFFAnnotation.readAnno(annot_file, annotationType);
-			// GFFAnnotation.read
-			System.err.println("done reading annotation");
-		}
+		
 		File resDir = new File(resdir);
 		if(!resDir.exists())resDir.mkdir();
 		printParams(resDir, args1);
@@ -381,7 +373,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				
 			});
 		}
-		run(cmdLine, bamFiles_, resdir, anno,  chroms, fastq, reference);
+		run(cmdLine, bamFiles_, resdir, new File(annot_file),  chroms, fastq, reference);
 		Outputs.executor.shutdown();
 		long time1 = System.currentTimeMillis();
 		System.err.println((time1-tme)/(1000)+ " seconds");
@@ -394,7 +386,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 	 */
 	static void errorAnalysis(String[] bamFiles_, String refFile, String annot_file, String[] readList,    String annotationType, String resdir, String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads, 
-			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,Map<String, JapsaAnnotation> anno, String chrToInclude, boolean overwrite,
+			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,File gffFile, String chrToInclude, boolean overwrite,
 			int[] writeIsoformDepthThresh, int writeCoverageDepthThresh, double probInclude, boolean fastq, String[] chromsToRemap) throws IOException {
 		boolean cluster_reads = true;
 		CigarHash2.round = round;
@@ -409,6 +401,18 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		if(annotSummary.exists()) annotSummary.delete();
 		PrintWriter annotation_pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(annotSummary, false))));
 	
+		Annotation anno  = null;
+		//boolean SARS = !gff;
+		if(gffFile.getName().indexOf(".gff")>=0){
+			//String  annotationType = getAnnotationsToInclude(cmdLine.getStringVal("annotType"), cmdLine.getBooleanVal("useExons"));
+ 
+			System.err.println("reading annotation");
+			 anno =  GFFAnnotation.readAnno(annot_file,0, annotation_pw);
+			// GFFAnnotation.read
+			System.err.println("done reading annotation");
+		}
+		
+		
 		Map<String, Integer> reads= new HashMap<String, Integer>();
 		if(readList.length>0 && readList[0].length()>0){
 		 if( readList[0].indexOf("readToCluster.txt.gz")>=0){
@@ -471,7 +475,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		else if(!resDir.isDirectory()) throw new RuntimeException(resDir+"should be a directory");
 		///ArrayList<IdentityProfile1> profiles = new ArrayList<IdentityProfile1>();
 		
-		boolean gff = anno!=null;
+		
 		for (int ii = 0; ii < len; ii++) {
 			String bamFile = bamFiles_[ii];
 			File bam = new File( bamFile);
@@ -658,23 +662,10 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 						}
 					}
 					int seqlen = chr.length();
-					Annotation annot = null;
-					if(gff){
-						JapsaAnnotation annot1 = anno.get(chr.getName());
-						if(annot1==null) annot1 = anno.get("chr"+chr.getName());
-						if(annot1==null) annot1 = anno.get(chr.getName().replaceAll("chr", ""));
-						if(annot1==null){
-							try{
-								annot = new EmptyAnnotation(chr.getName(), chr.getDesc(), seqlen, annotation_pw);
-							System.err.println("no annotation for  "+ chr.getName());
-							}catch(Exception exc){
-								exc.printStackTrace();
-							}
-						}else{
+					Annotation annot  = null;
+					if(gffFile.getName().indexOf(".gff")>=0){
+							annot = anno;//
 							
-							annot = new GFFAnnotation(chr.getName(),annot1, seqlen, annotation_pw, len);
-							
-						}
 					}else{
 						annot = annot_file == null ? new EmptyAnnotation(chr.getName(), chr.getDesc(), seqlen, annotation_pw) : 
 							new Annotation(new File(annot_file), currentIndex+"", seqlen, annotation_pw, len);

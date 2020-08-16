@@ -66,7 +66,8 @@ public void update(Annotation annot){
 	static String NAstring = "NA";
 
 	public static boolean subclusterBasedOnStEnd = false;
-	public static int cleanUpMoreThan = 100000; // 
+	public static int cleanUpMoreThan = 100000; //  distance between previous end and current start to remove cluster
+	public static int clearUpThreshold = 100; //number of clusters before try to clear up 
 	
 	public int startPos, endPos;
 	public int readSt, readEn; 

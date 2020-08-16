@@ -1,7 +1,11 @@
 package npTranscript.cluster;
 
+import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,20 +20,19 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedSet;
-
-import japsa.seq.JapsaAnnotation;
-import japsa.seq.JapsaFeature;
+import java.util.zip.GZIPInputStream;
 
 public class GFFAnnotation extends Annotation{
 
-	 List<String> type = new ArrayList<String>();
-	
+//	 List<String> type = new ArrayList<String>();
+//	 List<String> parents = new ArrayList<String>();
 	/* type is gene
 	 * 
 	 * */
 	
-	public static Map<String, JapsaAnnotation> readAnno(String gff, String type) throws IOException{
-		
+	public static GFFAnnotation readAnno(String gff, int seqlen, PrintWriter pw) throws IOException{
+		return new GFFAnnotation(new File(gff), seqlen, pw);
+		/*
 		FileInputStream aReader = new FileInputStream(gff);		
 		ArrayList<JapsaAnnotation> annos = JapsaAnnotation.readMGFF(aReader,0,0,type);
 		aReader.close();
@@ -40,7 +43,7 @@ public class GFFAnnotation extends Annotation{
 				m.put(annos.get(i).getAnnotationID(), anno);
 			}
 		}
-		return m;
+		return m;*/
 	}
 	@Override
 	public String nextDownstream(int rightBreak, int chrom_index, boolean forward){
@@ -86,7 +89,7 @@ public class GFFAnnotation extends Annotation{
 		
 		for(Iterator<Integer> it = span.iterator(); it.hasNext();){
 			int ii = it.next();
-			String paren =this.parents.get(ii); 
+			String paren =this.genes.get(ii);//this.parents.get(ii); 
 			obj.add(paren==null ? this.genes.get(ii) : paren);
 			
 		}
@@ -165,13 +168,13 @@ public class GFFAnnotation extends Annotation{
 			
 			for(int i=istart; i<=iend ; i++){
 				
-				if(span_only.size()==0|| span_only.contains(this.type.get(i))){
+				if(span_only.size()==0|| true) {//span_only.contains(this.type.get(i))){
 					for(int j=0; j<breaks.size(); j++){
 						int pos = breaks.get(j);
 						if(start.get(i)<=pos+tolerance1 && end.get(i)>=pos - tolerance1){
 							
-							String paren = this.parents.get(i);
-							if(paren==null) paren = genes.get(i);
+							//String paren = this.parents.get(i);
+							String paren = genes.get(i);
 							Set<Integer>s = m.get(paren);
 							if(s==null) m.put(paren, s = new HashSet<Integer>());
 							s.add(j);
@@ -242,14 +245,115 @@ public class GFFAnnotation extends Annotation{
 	//--GFF_features=exon_id:description:ID:gene_type:gene_name 
 //	gene_name:description:ID:gene_type
 	
-	List<String> parents = new ArrayList<String>();
+	
+	//vero	
+//	Parent=transcript:ENSCSAT00000009412;Name=ENSCSAE00000046777;constitutive=1;ensembl_end_phase=1;ensembl_phase=1;exon_id=ENSCSAE00000046777;rank=2;version=1
+//--GFF_features Parent:description:Parent:gene_type:Parent
+	
+	
 	public static String name = "Name";
 	public static String description="description";
 	public static String id = "ID";
 	public static String biotype = "biotype";
 	public static String parent = "Parent";
 	static String emptyString = "";
-	public	GFFAnnotation(String chr, JapsaAnnotation annot, int seqlen, PrintWriter pw, int source_count) throws IOException{
+	
+	static void process(String str, String[] target, List<String> names){
+		String[] desc = str.split(";");
+		Arrays.fill(target, "");
+		for(int j=0; j<desc.length; j++){
+			String[] descj = desc[j].split("=");
+			String[] descjv = descj[1].split(":");
+			String val = descjv[descjv.length-1];
+			int ind =names.indexOf(descj[0]);
+			if(ind>=0){
+				if(ind==2){
+					 target[ind ] = descj[1].split("\\[")[0];
+				}
+				else target[ind ] = val;
+			}
+		}
+	}
+	//chr1    HAVANA  exon    13453   13670   .       +       .       ID
+	public GFFAnnotation(File in, int seqlen, PrintWriter pw) throws IOException{
+		super(in.getName(), seqlen);
+		
+		InputStream is=new FileInputStream(in);
+		if(in.getName().endsWith(".gz")){
+			is = new GZIPInputStream(is);
+		}
+		BufferedReader br = new BufferedReader(new InputStreamReader(is));
+		String st = "";
+		//String genenme="";String desc = ""; String id = "";String biot = ""; String parentG=""; String parentT=""; //these properties of gene
+		String[] gene_vals = new String[5];
+		String[] transcript_vals = new String[5];
+		String[] exon_vals = new String[5];
+		List<String> headers = Arrays.asList(new String[] {id, name, description, biotype, parent});
+		Map<String, String> genemap = new HashMap<String,String>();
+		String biot;String descr; String paren; String nme; String id;
+		boolean hasTranscript=true;
+		boolean hasExon = true;
+		while((st = br.readLine())!=null){
+			if(st.startsWith("#")) continue;
+			
+			String[] str = st.split("\t");
+			String type = str[2];
+			if(type.equals("chromosome") || type.endsWith("biological_region") || type.startsWith("unknown") || type.indexOf("scaffold")>=0 || type.indexOf("contig")>=0){
+				continue;
+			}
+			String chr = str[0];
+			int start = Integer.parseInt(str[3]);
+			int end = Integer.parseInt(str[3]);
+			
+			
+			char strand = str[6].charAt(0);
+		//	ncRNA_gene
+			//pseudogene
+			if(type.endsWith("gene")){
+				if(!hasExon){
+					System.err.println( "no exon for gene "+ Arrays.asList(gene_vals)+ "  "+hasTranscript);
+				}
+				hasExon=false;
+				hasTranscript=false;
+				process(str[8], gene_vals, headers);
+				String stri = chr+"\t"+gene_vals[0]+"\t"+gene_vals[1]+"\t"+gene_vals[2]+"\t"+gene_vals[3];//+"\t"+paren;
+				pw.println(stri);
+			//	biotypes.putIfAbsent(biot, biot);
+			}else if(type.endsWith("exon")){
+				hasExon = true;
+				process(str[8], exon_vals, headers);
+				paren = exon_vals[4];
+				if(paren.equals(transcript_vals[0])){
+					paren = transcript_vals[4];
+				}
+				if(paren.equals(gene_vals[0])){
+					this.start.add(start);
+					this.end.add(end);
+					this.strand.add(strand=='+');
+					//this hopefully saves memory by only keeping a pointer, rather than multiple copies.
+					genemap.putIfAbsent(gene_vals[0], gene_vals[0]);
+					genes.add(genemap.get(gene_vals[0]));
+					
+				}else{
+					System.err.println("missed "+st);
+				}
+			}else if(type.endsWith("transcript")|| type.endsWith("RNA")){
+				hasTranscript=true;
+					//else if(type.equals("transcript")){
+						process(str[8], transcript_vals, headers);
+					//}
+				//	System.err.println("treating as transcript "+Arrays.asList(transcript_vals));
+			}else if(type.equals("CDS") || type.endsWith("UTR")){
+				
+			}else{
+				System.err.println("unknown "+type);
+			}
+		}
+		br.close();
+		pw.flush();
+	}
+	
+	/*public	GFFAnnotation(String chr, JapsaAnnotation annot, int seqlen, PrintWriter pw, int source_count) throws IOException{
 		super(annot.getAnnotationID(), seqlen);
 	
 		String genenme = "";
@@ -306,7 +410,10 @@ public class GFFAnnotation extends Annotation{
 		}
 		
 		super.mkOrfs(source_count);
-	}
+	}*/
+	
+	
+	
 	public GFFAnnotation(String chrom, int seqlen) {
 		// TODO Auto-generated constructor stub
 		super(chrom,seqlen);

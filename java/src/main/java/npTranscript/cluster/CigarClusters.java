@@ -126,10 +126,10 @@ public class CigarClusters {
 		cc.totLen+"\t"+cc.readCountSum()+"\t"+read_count
 				+"\t"+cc.getTotDepthSt(true)+"\t"+cc.getTotDepthSt(false)+"\t"+cc.getErrorRatioSt());
 	}
-	public static int clearUpThreshold = 100;
+	
 	/** clears consensus up to certain start position.  This designed to keep memory foot print under control.  Assumes the bams are sorted */
 	public int clearUpTo(int endThresh, 	Outputs o, String chrom, int chrom_index,SortedSet<String> geneNames){
-		if(this.l.size()< clearUpThreshold) return 0;
+		if(this.l.size()< IdentityProfile1.clearUpThreshold) return 0;
 		List<CigarHash> torem = new ArrayList<CigarHash>();
 		for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();){
 			CigarCluster cc = it.next();
@@ -139,7 +139,7 @@ public class CigarClusters {
 				torem.add(cc.breaks_hash);
 			}
 		}
-		System.err.println("removed "+torem.size() + " of "+l.size());
+		//System.err.println("removed "+torem.size() + " of "+l.size());
 		rem_count+=torem.size();
 		for(int i=0; i<torem.size(); i++){
 			l.remove(torem.get(i));
