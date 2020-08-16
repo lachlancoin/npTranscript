@@ -343,7 +343,7 @@ public class GFFAnnotation extends Annotation{
 						process(str[8], transcript_vals, headers);
 					//}
 				//	System.err.println("treating as transcript "+Arrays.asList(transcript_vals));
-			}else if(type.equals("CDS") || type.endsWith("UTR")){
+			}else if(type.equals("CDS") || type.endsWith("UTR") || type.indexOf("codon")>=0){
 				
 			}else{
 				System.err.println("unknown "+type);
