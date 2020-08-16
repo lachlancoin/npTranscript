@@ -3,9 +3,10 @@ package npTranscript.cluster;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,6 +22,9 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
+
+import japsa.seq.Sequence;
 
 public class GFFAnnotation extends Annotation{
 
@@ -30,8 +34,19 @@ public class GFFAnnotation extends Annotation{
 	 * 
 	 * */
 	
-	public static GFFAnnotation readAnno(String gff, int seqlen, PrintWriter pw) throws IOException{
-		return new GFFAnnotation(new File(gff), seqlen, pw);
+	public static Map<String, File> readAnno(String gff, File outdir, ArrayList<Sequence> genomes) throws IOException{
+		if(outdir.exists() && outdir.listFiles().length>0){
+			File[] f = outdir.listFiles();
+			Map<String, File> m = new HashMap<String, File>();
+			for(int i=0; i<f.length; i++){
+				m.put(f[i].getName().split("\\.")[0], f[i]);
+			}
+		}else{
+			outdir.mkdir();
+		}
+		GFFIn gffin =  new GFFIn(new File(gff), outdir, genomes);
+		gffin.run();
+		return gffin.posm;
 		/*
 		FileInputStream aReader = new FileInputStream(gff);		
 		ArrayList<JapsaAnnotation> annos = JapsaAnnotation.readMGFF(aReader,0,0,type);
@@ -274,15 +289,85 @@ public class GFFAnnotation extends Annotation{
 			}
 		}
 	}
-	//chr1    HAVANA  exon    13453   13670   .       +       .       ID
-	public GFFAnnotation(File in, int seqlen, PrintWriter pw) throws IOException{
-		super(in.getName(), seqlen);
+	
+	public static class GFFIn{
+		BufferedReader br;
+		File in;
+		String next_st;
+		String currChrom;
+		int cnt =0;
+		Map<String, File> posm = new HashMap<String, File>();
+		boolean haschr = false;
+		PrintWriter pw;
+		final File outdir;
 		
-		InputStream is=new FileInputStream(in);
-		if(in.getName().endsWith(".gz")){
-			is = new GZIPInputStream(is);
+		File getFile(String chrom1){
+			String chrom = chrom1;
+			if(haschr && !chrom.startsWith("chr")) chrom = "chr"+chrom1;
+			if(!haschr && chrom.startsWith("chr")) chrom = chrom1.substring(3);
+			File f = this.posm.get(chrom);
+			return f;
 		}
-		BufferedReader br = new BufferedReader(new InputStreamReader(is));
+		
+		Set<String> chrs = new HashSet<String>();
+		GFFIn(File in, File outdir, ArrayList<Sequence> genomes) throws IOException{
+			this.in = in;
+			for(int i=0; i<genomes.size(); i++){
+				chrs.add(genomes.get(i).getName());
+			}
+			this.outdir = outdir;
+			br = new BufferedReader(new InputStreamReader(in.getName().endsWith(".gz") ? new GZIPInputStream(new FileInputStream(in)) : new FileInputStream(in)));
+			while((next_st = br.readLine())!=null){
+				cnt++;
+				if(!next_st.startsWith("#")){
+					break;
+				}
+			};
+			String[] st = next_st.split("\t");
+			if(st[0].startsWith("chr")) haschr=true;
+			currChrom=st[0];
+			File outf = new File(outdir, currChrom+".txt.gz");
+			outf.deleteOnExit();
+			if(chrs.contains(currChrom)){
+				pw  = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outf, true))));
+				pw.println(next_st);
+			}
+			posm.put(currChrom, outf);
+			
+		}
+		
+		public void run() throws IOException{
+			String currChromStr =currChrom+"\t";
+				while((next_st = br.readLine())!=null){
+					if(!next_st.startsWith(currChromStr)){
+						if(pw!=null) pw.close();
+						String[] st = next_st.split("\t");
+						currChrom=st[0];
+						File outf = new File(outdir, currChrom+".txt.gz");
+						outf.deleteOnExit();
+						if(chrs.contains(currChrom)){
+						pw  = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outf, true))));
+						}else{
+							System.err.println("not including "+currChrom);
+						}
+						posm.put(currChrom, outf);
+						currChromStr = currChrom+"\t";
+						
+					}
+					if(pw!=null) pw.println(next_st);
+				}
+				br.close();
+				if(pw!=null) pw.close();
+		}
+
+	}
+	
+	//chr1    HAVANA  exon    13453   13670   .       +       .       ID
+	public GFFAnnotation(File in , String chrom,  int seqlen, PrintWriter pw) throws IOException{
+		super(chrom, seqlen);
+		BufferedReader	br = new BufferedReader(new InputStreamReader(in.getName().endsWith(".gz") ? new GZIPInputStream(new FileInputStream(in)) : new FileInputStream(in)));
+
+		
 		String st = "";
 		//String genenme="";String desc = ""; String id = "";String biot = ""; String parentG=""; String parentT=""; //these properties of gene
 		String[] gene_vals = new String[5];

@@ -69,7 +69,6 @@ import htsjdk.samtools.fastq.FastqRecord;
 import htsjdk.samtools.fastq.FastqWriter;
 import htsjdk.samtools.util.SequenceUtil;
 import japsa.seq.Alphabet;
-import japsa.seq.JapsaAnnotation;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
 import japsa.tools.seq.SequenceUtils;
@@ -81,6 +80,7 @@ import npTranscript.cluster.CigarHash;
 import npTranscript.cluster.CigarHash2;
 import npTranscript.cluster.EmptyAnnotation;
 import npTranscript.cluster.GFFAnnotation;
+import npTranscript.cluster.GFFAnnotation.GFFIn;
 import npTranscript.cluster.IdentityProfile1;
 import npTranscript.cluster.Outputs;
 import npTranscript.cluster.TranscriptUtils;
@@ -401,16 +401,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		if(annotSummary.exists()) annotSummary.delete();
 		PrintWriter annotation_pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(annotSummary, false))));
 	
-		Annotation anno  = null;
-		//boolean SARS = !gff;
-		if(gffFile.getName().indexOf(".gff")>=0){
-			//String  annotationType = getAnnotationsToInclude(cmdLine.getStringVal("annotType"), cmdLine.getBooleanVal("useExons"));
- 
-			System.err.println("reading annotation");
-			 anno =  GFFAnnotation.readAnno(annot_file,0, annotation_pw);
-			// GFFAnnotation.read
-			System.err.println("done reading annotation");
-		}
+		
 		
 		
 		Map<String, Integer> reads= new HashMap<String, Integer>();
@@ -468,7 +459,15 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		// len = 1;
 		String[] in_nmes  = new String[len];
 		ArrayList<Sequence> genomes = SequenceReader.readAll(refFile, Alphabet.DNA());
-
+		
+		Map<String, File> anno  = null;
+		if(gffFile.getName().indexOf(".gff")>=0){
+			File annotF = new File(annot_file);
+			System.err.println("reading annotation");
+			 anno =  GFFAnnotation.readAnno(annot_file, new File("split_"+annotF.getName()), genomes);
+			System.err.println("done reading annotation");
+		}
+		
 		// get the first chrom
 		File resDir =  new File(resdir);
 		if(!resDir.exists()) resDir.mkdir();
@@ -610,6 +609,10 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				}
 
 				numReads++;
+				if(numReads>max_reads) {
+					System.err.println(numReads+" "+max_reads);
+					break outer;
+				}
 				
 
 				int flag = sam.getFlags();
@@ -664,7 +667,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					int seqlen = chr.length();
 					Annotation annot  = null;
 					if(gffFile.getName().indexOf(".gff")>=0){
-							annot = anno;//
+							annot = new GFFAnnotation(anno.get(chr.getName()),chr.getName(), seqlen, annotation_pw);
 							
 					}else{
 						annot = annot_file == null ? new EmptyAnnotation(chr.getName(), chr.getDesc(), seqlen, annotation_pw) : 
@@ -722,7 +725,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			}
 			if(fqw!=null) for(int i=0; i<fqw.length; i++) fqw[i].close();
 		if(outp!=null) outp.close();
-	
+	if(anno!=null);// anno.close();
 		if(annotation_pw!=null) annotation_pw.close();
 	}
 }
+ 

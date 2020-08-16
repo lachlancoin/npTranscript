@@ -177,6 +177,7 @@ public class Annotation{
 		}
 
 		public void adjust3UTR(int seqlen2) {
+			if(end.size()==0) return ;
 			if(this.end.get(end.size()-1)>seqlen2 && this.start.get(end.size()-1) < seqlen2){
 				end.set(end.size()-1, seqlen2);
 			}
