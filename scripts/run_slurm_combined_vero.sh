@@ -36,7 +36,7 @@ bamfiles1=$(echo $bamfiles_ | sed 's/ /:/g')
 ##SPECIFY LOCATION OF COMBINED AND VIRUS ONLY DB
 reference="/DataOnline/Data/raw_external/Coronavirus/monkey/newdb/Chlorocebus_sabaeus.ChlSab1.1.dna.toplevel.fa.gz"
 coord_file="/DataOnline/Data/raw_external/Coronavirus/monkey/newdb/Chlorocebus_sabaeus.ChlSab1.1.99.gff3.gz"
-GFF_features="Name:description:ID:biotype:Parent"
+GFF_features="-GFF_features=Name:description:ID:biotype:Parent"
 #reference="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/merged/human_virus_sequin_ensembl_pri_merged_genome.fasta"
 #coord_file="../gencode.v28.annotation.gff3.gz"
 #GFF_features="gene_name:description:ID:gene_type:Parent"
@@ -47,15 +47,15 @@ coord_file_virus="${npTranscript}/data/SARS-Cov2/VIC01/Coordinates.csv"
 cov_chr=$(zcat ${reference_virus} | head -n 1 | cut -f 1 -d ' ' | sed 's/>//g')
 echo "coronavirus chr id ${cov_chr}" 
 resdir="results_${dat}"
-opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=8 --extra_threshold=1000 --writePolyA=true --msaDepthThresh=1000 --doMSA=false --numExonsMSA=1:2:3:4:5 --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh 50"
+opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=8 --extra_threshold=100 --writePolyA=true --msaDepthThresh=1000 --doMSA=false --numExonsMSA=1:2:3:4:5 --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh 50"
 
 #for dRNA datasets
 opts="${opts} --RNA=true"
 opts2="--fail_thresh=0  --chromsToRemap=${cov_chr}  --mm2_memory=10g --recordDepthByPosition=true"
-opts3="--GFF_features=gene_id:description:gene_name:gene_type:gene_name"
+
 opts="${opts} $@"
 echo $opts
-bash ${npTranscript}/scripts/run.sh ${bamfiles1}   --reference=${reference} --annotation ${coord_file} --resdir ${resdir} ${opts} ${opts1} ${opts2} ${opts3}
+bash ${npTranscript}/scripts/run.sh ${bamfiles1}   --reference=${reference} --annotation=${coord_file} --resdir=${resdir} ${opts} ${opts1} ${opts2} ${GFF_features}
 
 
 
