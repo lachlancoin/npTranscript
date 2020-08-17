@@ -34,7 +34,7 @@ bamfiles_="--bamFile=${bamfiles}"
 bamfiles1=$(echo $bamfiles_ | sed 's/ /:/g')
 
 ##SPECIFY LOCATION OF COMBINED AND VIRUS ONLY DB
-reference="/DataOnline/Data/raw_external/Coronavirus/monkey/newdb/Chlorocebus_sabaeus.ChlSab1.1.dna.toplevel.fa.gz"
+reference="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/merged/monkey_virus_sequin_genome.fasta"
 coord_file="/DataOnline/Data/raw_external/Coronavirus/monkey/newdb/Chlorocebus_sabaeus.ChlSab1.1.99.gff3.gz"
 GFF_features="-GFF_features=Name:description:ID:biotype:Parent"
 #reference="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/merged/human_virus_sequin_ensembl_pri_merged_genome.fasta"

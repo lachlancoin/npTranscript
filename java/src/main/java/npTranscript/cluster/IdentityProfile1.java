@@ -33,7 +33,8 @@ public class IdentityProfile1 {
 	public IdentityProfile1(Sequence refSeq,
 			Outputs o,
 			String[] in_nmes,  int startThresh, int endThresh, boolean calcBreakpoints, Sequence chrom, int chrom_index) throws IOException {
-	this.chrom = chrom;
+	this.ref = chrom;
+	this.chrom_ =chrom.getName();
 	this.chrom_index = chrom_index;
 	this.type_nmes = in_nmes;
 		this.num_sources = in_nmes.length;
@@ -199,12 +200,12 @@ public void update(Annotation annot){
 		
 		if(cluster_reads)  this.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources,  this.chrom_index, clusterID); // this also clears current cluster
 		else{
-		clusterID[0] = chrom+".NA";
+		clusterID[0] = chrom_+".NA";
 		clusterID[1] = "NA";
 		}
 		int  span = geneNames.size();
 		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"+start_read+"\t"+end_read+"\t"
-		+type_nme+"\t"+chrom+"\t"
+		+type_nme+"\t"+chrom_+"\t"
 		+startPos+"\t"+endPos+"\t"+(forward? "+":"-")+"\t"+coRefPositions.numBreaks()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
 		+coRefPositions.getError(src_index)+"\t"+secondKeySt+"\t"+strand+"\t"+breakSt+"\t"+span_str+"\t"+geneNames.size();
 		this.o.printRead(str);
@@ -286,7 +287,8 @@ public void update(Annotation annot){
 	
 	public void refresh(Sequence chr, int chrom_index){
 		this.all_clusters.clear();
-		this.chrom = chr;
+		this.ref = chr;
+		this.chrom_ = chr.getName();
 		this.chrom_index = chrom_index;
 		if(bp!=null) bp.refresh(chr.length());
 		this.genome =chr;
@@ -306,12 +308,13 @@ public void update(Annotation annot){
 	
 	 
 
-	public  Sequence chrom;
+	public  Sequence ref;
+	public String chrom_;
 	public  int chrom_index;
 	public final Outputs o;
 	
 	public void getConsensus() throws IOException {
-			this.all_clusters.getConsensus( o, this.chrom, this.chrom_index, this.geneNames);
+			this.all_clusters.getConsensus( o, this.ref, this.chrom_index, this.geneNames);
 			
 	}	
 
