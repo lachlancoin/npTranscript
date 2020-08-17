@@ -60,6 +60,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
+import java.util.zip.ZipFile;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
@@ -71,6 +72,7 @@ import htsjdk.samtools.util.SequenceUtil;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
+import japsa.seq.ZipGFF;
 import japsa.tools.seq.SequenceUtils;
 import japsa.util.CommandLine;
 import japsa.util.deploy.Deployable;
@@ -80,7 +82,6 @@ import npTranscript.cluster.CigarHash;
 import npTranscript.cluster.CigarHash2;
 import npTranscript.cluster.EmptyAnnotation;
 import npTranscript.cluster.GFFAnnotation;
-import npTranscript.cluster.GFFAnnotation.GFFIn;
 import npTranscript.cluster.IdentityProfile1;
 import npTranscript.cluster.Outputs;
 import npTranscript.cluster.TranscriptUtils;
@@ -458,15 +459,32 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		int len = bamFiles_.length;
 		// len = 1;
 		String[] in_nmes  = new String[len];
+		ZipFile  anno  = null;
+		boolean writeDirect = true;
+		if(gffFile.getName().indexOf(".gff")>=0){
+			if(gffFile.getName().endsWith(".zip")){
+				anno = new ZipFile(gffFile);
+			}
+			else {
+				String out_nme = gffFile.getName();
+				int ind = out_nme.lastIndexOf('.');
+				out_nme = out_nme.substring(0, ind);
+				File outzip = new File(gffFile.getParentFile(),out_nme+".zip");
+				if(outzip.exists()){
+					System.err.println("reading existing gff zip file "+outzip.getAbsolutePath());
+					anno = new ZipFile(outzip);
+				}
+				else{
+					System.err.println("making gff.zip file");
+					ZipGFF gffin =  new ZipGFF( gffFile, outzip,writeDirect);
+					gffin.run();
+					anno = new ZipFile(outzip);
+				}
+			}
+		}
 		ArrayList<Sequence> genomes = SequenceReader.readAll(refFile, Alphabet.DNA());
 		
-		Map<String, File> anno  = null;
-		if(gffFile.getName().indexOf(".gff")>=0){
-			File annotF = new File(annot_file);
-			System.err.println("reading annotation");
-			 anno =  GFFAnnotation.readAnno(annot_file, new File("split_"+annotF.getName()), genomes);
-			System.err.println("done reading annotation");
-		}
+		
 		
 		// get the first chrom
 		File resDir =  new File(resdir);
@@ -667,7 +685,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					int seqlen = chr.length();
 					Annotation annot  = null;
 					if(gffFile.getName().indexOf(".gff")>=0){
-							annot = new GFFAnnotation(anno.get(chr.getName()),chr.getName(), seqlen, annotation_pw);
+							annot = new GFFAnnotation(anno,chr.getName(), seqlen, annotation_pw);
 							
 					}else{
 						annot = annot_file == null ? new EmptyAnnotation(chr.getName(), chr.getDesc(), seqlen, annotation_pw) : 
@@ -725,7 +743,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			}
 			if(fqw!=null) for(int i=0; i<fqw.length; i++) fqw[i].close();
 		if(outp!=null) outp.close();
-	if(anno!=null);// anno.close();
+	if(anno!=null) anno.close();
 		if(annotation_pw!=null) annotation_pw.close();
 	}
 }

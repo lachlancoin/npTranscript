@@ -3,7 +3,6 @@ package npTranscript.cluster;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -22,9 +21,11 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
-import japsa.seq.Sequence;
+import japsa.seq.ZipGFF;
+import npTranscript.run.CompressDir;
 
 public class GFFAnnotation extends Annotation{
 
@@ -34,32 +35,7 @@ public class GFFAnnotation extends Annotation{
 	 * 
 	 * */
 	
-	public static Map<String, File> readAnno(String gff, File outdir, ArrayList<Sequence> genomes) throws IOException{
-		if(outdir.exists() && outdir.listFiles().length>0){
-			File[] f = outdir.listFiles();
-			Map<String, File> m = new HashMap<String, File>();
-			for(int i=0; i<f.length; i++){
-				m.put(f[i].getName().split("\\.")[0], f[i]);
-			}
-		}else{
-			outdir.mkdir();
-		}
-		GFFIn gffin =  new GFFIn(new File(gff), outdir, genomes);
-		gffin.run();
-		return gffin.posm;
-		/*
-		FileInputStream aReader = new FileInputStream(gff);		
-		ArrayList<JapsaAnnotation> annos = JapsaAnnotation.readMGFF(aReader,0,0,type);
-		aReader.close();
-		Map<String, JapsaAnnotation> m = new HashMap<String, JapsaAnnotation>();
-		for(int i = annos.size()-1; i>=0; i--){
-			if(!annos.get(i).isEmpty()){
-				JapsaAnnotation anno = annos.get(i);
-				m.put(annos.get(i).getAnnotationID(), anno);
-			}
-		}
-		return m;*/
-	}
+	
 	@Override
 	public String nextDownstream(int rightBreak, int chrom_index, boolean forward){
 		if(rightBreak<0) return null;
@@ -292,30 +268,34 @@ public class GFFAnnotation extends Annotation{
 	
 	public static class GFFIn{
 		BufferedReader br;
+		final boolean writeDirectToZip;
 		File in;
 		String next_st;
 		String currChrom;
 		int cnt =0;
-		Map<String, File> posm = new HashMap<String, File>();
+	//	Map<String, File> posm = new HashMap<String, File>();
 		boolean haschr = false;
-		PrintWriter pw;
-		final File outdir;
-		
-		File getFile(String chrom1){
+		OutputStreamWriter pw;
+		//final File outdir;
+		final CompressDir output;
+		String getFile(String chrom1){
 			String chrom = chrom1;
 			if(haschr && !chrom.startsWith("chr")) chrom = "chr"+chrom1;
 			if(!haschr && chrom.startsWith("chr")) chrom = chrom1.substring(3);
-			File f = this.posm.get(chrom);
-			return f;
+			//File f = this.posm.get(chrom);
+			return chrom;
 		}
-		
-		Set<String> chrs = new HashSet<String>();
-		GFFIn(File in, File outdir, ArrayList<Sequence> genomes) throws IOException{
+		final File outzip;
+		//Set<String> chrs = new HashSet<String>();
+		GFFIn(File in, File outf,  boolean writeDirectToZip) throws IOException{
 			this.in = in;
-			for(int i=0; i<genomes.size(); i++){
-				chrs.add(genomes.get(i).getName());
-			}
-			this.outdir = outdir;
+			this.writeDirectToZip = writeDirectToZip;
+			
+			
+			if(outf.exists() && outf.listFiles().length>0) throw new RuntimeException("this file should not exist "+outf);
+			this.output = new CompressDir(outf, false);
+			///output
+			outzip = new File(outf.getAbsolutePath()+".zip");
 			br = new BufferedReader(new InputStreamReader(in.getName().endsWith(".gz") ? new GZIPInputStream(new FileInputStream(in)) : new FileInputStream(in)));
 			while((next_st = br.readLine())!=null){
 				cnt++;
@@ -324,49 +304,60 @@ public class GFFAnnotation extends Annotation{
 				}
 			};
 			String[] st = next_st.split("\t");
+			cnt++;
 			if(st[0].startsWith("chr")) haschr=true;
 			currChrom=st[0];
-			File outf = new File(outdir, currChrom+".txt.gz");
-			outf.deleteOnExit();
-			if(chrs.contains(currChrom)){
-				pw  = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outf, true))));
-				pw.println(next_st);
-			}
-			posm.put(currChrom, outf);
+			
+				pw = output.getWriter(currChrom, writeDirectToZip, true);
+				//pw  = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outf, true))));
+				pw.write(next_st);
+				pw.write("\n");
+			
 			
 		}
-		
+		Set<String> done = new HashSet<String>();
 		public void run() throws IOException{
 			String currChromStr =currChrom+"\t";
-				while((next_st = br.readLine())!=null){
+				inner: while((next_st = br.readLine())!=null){
+					cnt++;
+					if(next_st.startsWith("#")) continue inner;
 					if(!next_st.startsWith(currChromStr)){
-						if(pw!=null) pw.close();
+						done.add(currChrom);
+						output.closeWriter(pw);
 						String[] st = next_st.split("\t");
 						currChrom=st[0];
-						File outf = new File(outdir, currChrom+".txt.gz");
-						outf.deleteOnExit();
-						if(chrs.contains(currChrom)){
-						pw  = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outf, true))));
-						}else{
-							System.err.println("not including "+currChrom);
-						}
-						posm.put(currChrom, outf);
+						
+						
+							if(writeDirectToZip && done.contains(currChrom)){
+								outzip.deleteOnExit();
+								throw new RuntimeException("not sorted gff "+currChrom+ " "+cnt);
+							}
+							pw  = output.getWriter(currChrom, writeDirectToZip, true);
+						
+						//posm.put(currChrom, outf);
 						currChromStr = currChrom+"\t";
 						
 					}
-					if(pw!=null) pw.println(next_st);
+					pw.write(next_st+"\n");
 				}
 				br.close();
 				if(pw!=null) pw.close();
-		}
+				this.output.writeAll();
+				this.output.close();
 
+		}
 	}
 	
 	//chr1    HAVANA  exon    13453   13670   .       +       .       ID
-	public GFFAnnotation(File in , String chrom,  int seqlen, PrintWriter pw) throws IOException{
+	public GFFAnnotation(ZipFile zf , String chrom,  int seqlen, PrintWriter pw) throws IOException{
 		super(chrom, seqlen);
-		BufferedReader	br = new BufferedReader(new InputStreamReader(in.getName().endsWith(".gz") ? new GZIPInputStream(new FileInputStream(in)) : new FileInputStream(in)));
-
+		
+		ZipEntry entry = zf.getEntry(chrom);
+	
+		BufferedReader br;
+		if(entry!=null){
+			br = new BufferedReader(new InputStreamReader(zf.getInputStream(entry)));
+		
 		
 		String st = "";
 		//String genenme="";String desc = ""; String id = "";String biot = ""; String parentG=""; String parentT=""; //these properties of gene
@@ -435,6 +426,9 @@ public class GFFAnnotation extends Annotation{
 			}
 		}
 		br.close();
+		}else{
+			System.err.println("didnt exist "+chrom);
+		}
 		pw.flush();
 	}
 	

@@ -46,8 +46,9 @@ public class CompressDir {
 	    int len;
 	    
 	    public CompressDir(File f, boolean includeFileLength) throws IOException{
-	    	this.inDir = f;
 	    	this.includeFileLength = includeFileLength;
+
+	    	this.inDir = f;
 	    	inDir.mkdir();
 	    	len = inDir.getAbsolutePath().length()+1;
 	    	 dest = new FileOutputStream(new File(inDir.getParentFile(), inDir.getName()+".zip"));
@@ -94,36 +95,53 @@ public class CompressDir {
 	    	
 	    	System.err.println("all done");
 	    		  	//}
-	    	
-	    	try{
 	    	File[] f = inDir.listFiles();
 	    	int min_seqs = (int) Math.floor((double)min_lines/2.0);
-	    	for(int i=0; i<f.length; i++){
-	    		if(!f[i].getName().startsWith(".")){
-	    			if(!f[i].getName().startsWith("annot_") && doTrim){
-	    				try{
-	    					
-	    				f[i] = SequenceOutputStream1.trim(f[i],min_seqs, false);
-	    				}catch(Exception exc){
-	    					System.err.println("problem with "+f[i]);
-	    					exc.printStackTrace();
-	    				}
-	    			}
-	    			if(f[i]!=null && f[i].exists()){
-	    				this.writeHeader(f[i]);
-	    				this.delete(f[i]);
-	    			}
-	    		}
-	    	}
-	    	this.delete(inDir);
-	    	this.close();
-	    	}catch(Exception exc){
-	    		System.err.println("problem with "+inDir);
-	    		exc.printStackTrace();
-	    	}
+	    
+		    	//int min_seqs = (int) Math.floor((double)min_lines/2.0);
+		    	for(int i=0; i<f.length; i++){
+		    		if(!f[i].getName().startsWith(".")){
+		    			if(!f[i].getName().startsWith("annot_") && doTrim){
+		    				try{
+		    				f[i] = SequenceOutputStream1.trim(f[i],min_seqs, false);
+		    				}catch(Exception exc){
+		    					System.err.println("problem with "+f[i]);
+		    					exc.printStackTrace();
+		    				}
+		    			}
+		    			
+		    		}
+		    	}
+		    	
+		    	
+	    	writeAllFiles(f);
+	    	
+	    }
+	   public void writeAll() {
+	    	this.writeAllFiles(inDir.listFiles());
 	    }
 	   
-	    private int getLength(File file)  throws IOException{
+	    private void writeAllFiles(File[] f) {
+	    	try{
+		    	//
+		    	for(int i=0; i<f.length; i++){
+		    		if(!f[i].getName().startsWith(".")){
+		    			if(f[i]!=null && f[i].exists()){
+		    				this.writeHeader(f[i]);
+		    				this.delete(f[i]);
+		    			}
+		    		}
+		    	}
+		    	this.delete(inDir);
+		    	this.close();
+		    	}catch(Exception exc){
+		    		System.err.println("problem with "+inDir);
+		    		exc.printStackTrace();
+		    	}
+			
+		}
+
+		private int getLength(File file)  throws IOException{
 	    	BufferedReader reader = new BufferedReader(new FileReader(file));
 	    	int lines = 0;
 	    	while (reader.readLine() != null) lines++;
@@ -208,7 +226,7 @@ public class CompressDir {
 	    }
 	    
 	    public OutputStreamWriter getWriter(String entry, boolean writeDirectToZip)throws IOException{
- return getWriter(entry,writeDirectToZip, false );
+	    		return getWriter(entry,writeDirectToZip, false );
 	    }
 	    public OutputStreamWriter getWriter(String entry, boolean writeDirectToZip, boolean append)throws IOException{
 	    	if(writeDirectToZip){
@@ -222,6 +240,7 @@ public class CompressDir {
 	    	}
 		        
 	    }
+	    
 
 	   /* public static void compress(File dir) {
 			try{
