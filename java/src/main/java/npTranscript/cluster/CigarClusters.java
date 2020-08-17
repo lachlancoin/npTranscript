@@ -26,7 +26,7 @@ public class CigarClusters {
 	public CigarClusters(int num_sources){
 	 this.num_sources = num_sources;
 	 this.seqlen =0;
-	 this.refseq =null;
+	// this.refseq =null;
 	 this.annot = null;
 	}
 	
@@ -41,7 +41,7 @@ public class CigarClusters {
 
 	CigarClusters( Sequence refSeq, int num_sources){
 	//	this.thresh = thresh;
-		this.refseq = refSeq;
+	//	this.refseq = refSeq;
 		this.seqlen = refSeq.length();
 		
 		this.num_sources = num_sources;
@@ -81,17 +81,17 @@ public class CigarClusters {
 
 	
 	Annotation annot;
-	final Sequence  refseq;
+	//final Sequence  refseq;
 	final int seqlen;
 	final int num_sources;
-	public void process(CigarCluster cc,   Outputs o,String chrom,int chrom_index){
+	public void process(CigarCluster cc,   Outputs o,Sequence chrom,int chrom_index){
 		cc.addZeros(seqlen); 
 		String id = cc.id();
 		int totalDepth = cc.readCountSum();
 		int[] rcount=cc.readCount;
 		
 		if(o.clusterW!=null && totalDepth>IdentityProfile1.writeCoverageDepthThresh){
-			int[][] matr =cc.getClusterDepth(num_sources, this.refseq);
+			int[][] matr =cc.getClusterDepth(num_sources, chrom);
 			o.writeIntMatrix(id, matr);
 		}
 		if(o.altT!=null){
@@ -128,13 +128,13 @@ public class CigarClusters {
 	}
 	
 	/** clears consensus up to certain start position.  This designed to keep memory foot print under control.  Assumes the bams are sorted */
-	public int clearUpTo(int endThresh, 	Outputs o, String chrom, int chrom_index,SortedSet<String> geneNames){
+	public int clearUpTo(int endThresh, 	Outputs o, Sequence chrom, int chrom_index,SortedSet<String> geneNames){
 		if(this.l.size()< IdentityProfile1.clearUpThreshold) return 0;
 		List<CigarHash> torem = new ArrayList<CigarHash>();
 		for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();){
 			CigarCluster cc = it.next();
 			if(cc.end<endThresh){
-				this.process1(cc, o, chrom, chrom_index, cc.forward, geneNames);
+				this.process1(cc, o, chrom.getName(), chrom_index, cc.forward, geneNames);
 				this.process(cc, o, chrom, chrom_index);
 				torem.add(cc.breaks_hash);
 			}
@@ -149,12 +149,12 @@ public class CigarClusters {
 	
 	
 	public void getConsensus(  
-			Outputs o, String chrom, int chrom_index,SortedSet<String> geneNames
+			Outputs o, Sequence chrom, int chrom_index,SortedSet<String> geneNames
 			) throws IOException{
 		if(TranscriptUtils.writeAnnotP) this.annot.print(o.annotP);
 		for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();) {
 			CigarCluster cc = it.next();
-			this.process1(cc, o, chrom, chrom_index, cc.forward, geneNames);
+			this.process1(cc, o, chrom.getName(), chrom_index, cc.forward, geneNames);
 			this.process(cc, o, chrom, chrom_index);
 		}
 		

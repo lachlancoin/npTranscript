@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
@@ -39,6 +40,17 @@ class SparseVector{
 		Collections.sort(l);
 		return l;
 	}
+	public List<Integer> keys(double thresh) {
+		List<Integer> l= new ArrayList<Integer>();
+		for(Iterator<Map.Entry<Integer, Integer>> it = m.entrySet().iterator(); it.hasNext();){
+			Map.Entry<Integer, Integer> nxt = it.next();
+			if(nxt.getValue()>=thresh){
+				l.add(nxt.getKey());
+			}
+		}
+		Collections.sort(l);
+		return l;
+	}
 	public Iterator<Integer> keyIt(){
 		return m.keySet().iterator();
 	}
@@ -50,20 +62,7 @@ class SparseVector{
 	}
 	
 	
-	public double similarity(SparseVector sv_B) {
-		double intersection = 0;
-		double Asize = m.size();//valsum;// m.size();
-		double BnotA = 0;
-		for (Iterator<Integer> it = sv_B.keyIt(); it.hasNext();) {
-			if (m.containsKey(it.next())) {
-				intersection+=1; //already in union
-			} else {
-				BnotA +=1;
-			}
-		}
-		double union = Asize + BnotA;
-		return ((double) intersection) / union;
-	}
+	
 
 	public void clear() {
 		m.clear();
@@ -90,6 +89,7 @@ class SparseVector{
 	public double valsum() {
 	return valsum;
 	}
+
 	
 	/*
 	public static double similarity(Map<Integer, Integer> map, Map<Integer, Integer> m1) {

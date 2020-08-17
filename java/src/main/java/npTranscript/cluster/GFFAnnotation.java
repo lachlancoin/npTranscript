@@ -266,94 +266,16 @@ public class GFFAnnotation extends Annotation{
 		}
 	}
 	
-	public static class GFFIn{
-		BufferedReader br;
-		final boolean writeDirectToZip;
-		File in;
-		String next_st;
-		String currChrom;
-		int cnt =0;
-	//	Map<String, File> posm = new HashMap<String, File>();
-		boolean haschr = false;
-		OutputStreamWriter pw;
-		//final File outdir;
-		final CompressDir output;
-		String getFile(String chrom1){
-			String chrom = chrom1;
-			if(haschr && !chrom.startsWith("chr")) chrom = "chr"+chrom1;
-			if(!haschr && chrom.startsWith("chr")) chrom = chrom1.substring(3);
-			//File f = this.posm.get(chrom);
-			return chrom;
-		}
-		final File outzip;
-		//Set<String> chrs = new HashSet<String>();
-		GFFIn(File in, File outf,  boolean writeDirectToZip) throws IOException{
-			this.in = in;
-			this.writeDirectToZip = writeDirectToZip;
-			
-			
-			if(outf.exists() && outf.listFiles().length>0) throw new RuntimeException("this file should not exist "+outf);
-			this.output = new CompressDir(outf, false);
-			///output
-			outzip = new File(outf.getAbsolutePath()+".zip");
-			br = new BufferedReader(new InputStreamReader(in.getName().endsWith(".gz") ? new GZIPInputStream(new FileInputStream(in)) : new FileInputStream(in)));
-			while((next_st = br.readLine())!=null){
-				cnt++;
-				if(!next_st.startsWith("#")){
-					break;
-				}
-			};
-			String[] st = next_st.split("\t");
-			cnt++;
-			if(st[0].startsWith("chr")) haschr=true;
-			currChrom=st[0];
-			
-				pw = output.getWriter(currChrom, writeDirectToZip, true);
-				//pw  = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outf, true))));
-				pw.write(next_st);
-				pw.write("\n");
-			
-			
-		}
-		Set<String> done = new HashSet<String>();
-		public void run() throws IOException{
-			String currChromStr =currChrom+"\t";
-				inner: while((next_st = br.readLine())!=null){
-					cnt++;
-					if(next_st.startsWith("#")) continue inner;
-					if(!next_st.startsWith(currChromStr)){
-						done.add(currChrom);
-						output.closeWriter(pw);
-						String[] st = next_st.split("\t");
-						currChrom=st[0];
-						
-						
-							if(writeDirectToZip && done.contains(currChrom)){
-								outzip.deleteOnExit();
-								throw new RuntimeException("not sorted gff "+currChrom+ " "+cnt);
-							}
-							pw  = output.getWriter(currChrom, writeDirectToZip, true);
-						
-						//posm.put(currChrom, outf);
-						currChromStr = currChrom+"\t";
-						
-					}
-					pw.write(next_st+"\n");
-				}
-				br.close();
-				if(pw!=null) pw.close();
-				this.output.writeAll();
-				this.output.close();
-
-		}
-	}
+	
 	
 	//chr1    HAVANA  exon    13453   13670   .       +       .       ID
 	public GFFAnnotation(ZipFile zf , String chrom,  int seqlen, PrintWriter pw) throws IOException{
 		super(chrom, seqlen);
 		
 		ZipEntry entry = zf.getEntry(chrom);
-	
+		if(entry==null && !chrom.startsWith("chr")) entry = zf.getEntry("chr"+chrom);
+		if(entry==null && chrom.startsWith("chr")) entry = zf.getEntry(chrom.substring(3));
+		if(entry==null) System.err.println("WARNING NO ANNOTATION FOR CHROM "+chrom);
 		BufferedReader br;
 		if(entry!=null){
 			br = new BufferedReader(new InputStreamReader(zf.getInputStream(entry)));

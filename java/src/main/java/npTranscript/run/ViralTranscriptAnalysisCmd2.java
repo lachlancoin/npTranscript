@@ -692,7 +692,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 							new Annotation(new File(annot_file), currentIndex+"", seqlen, annotation_pw, len);
 					}
 					boolean calcBreaks1 = calcBreaks && break_thresh < seqlen;
-					if(profile==null) profile =  	new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh,  calcBreaks1, chr.getName(), currentIndex);
+					if(profile==null) profile =  	new IdentityProfile1(chr, outp,  in_nmes, startThresh, endThresh,  calcBreaks1, chr, currentIndex);
 					else profile.refresh(chr, currentIndex);
 					profile.update(annot);
 					

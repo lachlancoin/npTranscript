@@ -32,7 +32,7 @@ public class IdentityProfile1 {
 	
 	public IdentityProfile1(Sequence refSeq,
 			Outputs o,
-			String[] in_nmes,  int startThresh, int endThresh, boolean calcBreakpoints, String chrom, int chrom_index) throws IOException {
+			String[] in_nmes,  int startThresh, int endThresh, boolean calcBreakpoints, Sequence chrom, int chrom_index) throws IOException {
 	this.chrom = chrom;
 	this.chrom_index = chrom_index;
 	this.type_nmes = in_nmes;
@@ -80,7 +80,7 @@ public void update(Annotation annot){
 			SWGAlignment align3primeRev,
 			int offset_3prime, int polyAlen, String pool
 			) throws IOException, NumberFormatException{
-		this.all_clusters.clearUpTo(sam.getAlignmentStart() -cleanUpMoreThan , o, chrom, chrom_index, geneNames);
+		this.all_clusters.clearUpTo(sam.getAlignmentStart() -cleanUpMoreThan , o, refSeq, chrom_index, geneNames);
 		startPos = sam.getAlignmentStart()+1; // transfer to one based
 		endPos = sam.getAlignmentEnd()+1;
 		readSt = start_read; readEn = end_read;
@@ -286,7 +286,7 @@ public void update(Annotation annot){
 	
 	public void refresh(Sequence chr, int chrom_index){
 		this.all_clusters.clear();
-		this.chrom = chr.getName();
+		this.chrom = chr;
 		this.chrom_index = chrom_index;
 		if(bp!=null) bp.refresh(chr.length());
 		this.genome =chr;
@@ -306,7 +306,7 @@ public void update(Annotation annot){
 	
 	 
 
-	public  String chrom;
+	public  Sequence chrom;
 	public  int chrom_index;
 	public final Outputs o;
 	

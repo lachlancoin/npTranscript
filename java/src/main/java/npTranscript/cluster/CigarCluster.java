@@ -271,60 +271,28 @@ public class CigarCluster  {
 		public int[][] getClusterDepth(int num_sources, Sequence ref) {
 			//numPos =0;
 			totLen =0;
+			int seqlen = ref.length();
 			int numcols = 1 + num_sources * 2 + 1; 
 		//	boolean prev0 = start>1;
 			//boolean printPrev = false;
-			List<Integer> keys = this.map.keys();
+			List<Integer> keys = this.map.keys(IdentityProfile1.writeCoverageDepthThresh);
 			int[][] matr = new int[keys.size()][numcols];
-			int keysize = keys.size();
+			 int keysize = keys.size();
 			
 			for(int i=0; i<keysize; i++){
 				Integer pos = keys.get(i);
 				int[] row = matr[i];
 				row[0] = pos;
-				row[1] = (int) ref.getBase(pos-1); // because sequence is in 0 in index
+				row[1] = pos <= ref.length() ? (int) ref.getBase(pos-1) : -1; // because sequence is in 0 in index
 				//System.err.println(ref.charAt(pos-1)+" -> " + row[1]);
 				//A =, C = 1, G = 2. T = 3
 				getDepthSt(pos, row,2, true);
 				getDepthSt(pos, row,2 + num_sources, false);
-				
 			}
 			return matr;
 			//TranscriptUtils.printedLines[index]+=keys.size();
 		}
-		public int[][] getExons( double threshPerc, int numsteps) {
-			List<Integer> start1 = new ArrayList<Integer>();
-			List<Integer> end1 = new ArrayList<Integer>();
 		
-			double thresh = (double) readCountSum*threshPerc;
-			boolean in =false;
-			if(exons!=null) return exons;
-			outer: for(int i=start; i<=end; i++) {
-				double dep = getDepth(i);
-				if(!in && dep>=thresh) {
-					for(int j = 1; j<numsteps && i+j < end; j++) {
-						if(getDepth(i+j)<thresh) continue outer; // no longer jumping in
-					}
-					in = true; 
-					start1.add(i);
-				}
-				if(in && dep<thresh) {
-					for(int j = 1; j<numsteps && i+j < end; j++) {
-						if(getDepth(i+j)>=thresh) continue outer; // no longer jumping out
-					}
-					in  = false;
-					end1.add(i-1);
-				}
-			}
-			if(end1.size() < start1.size()) end1.add(end);
-			 exons = new int[end1.size()][];
-			for(int i=0; i<end1.size(); i++) {
-				exons[i] = new int[] {start1.get(i), end1.get(i)};
-				totLen += end1.get(i) - start1.get(i)+1;
-			}
-			return exons;
-		}
-	
 		
 		
 		int[] readCount; 
@@ -334,54 +302,11 @@ public class CigarCluster  {
 		public Collection<Integer> span = new TreeSet<Integer>();
 		
 		
-		/** if its going to be less than thresh we return zero */
-		public double similarity(CigarCluster c1, double thresh) {
-			//if(this.index !=index) return 0;
-			int overlap = TranscriptUtils.overlap(c1.start,c1.end,start, end);
-		    if(overlap<0) return 0;
-		    else{
-		    	double union = (double) TranscriptUtils.union(c1.start, c1.end, start, end, overlap) ;
-		    	if(overlap / union < thresh) return 0;
-		    }
-		//	double sim = map100.similarity(c1.map100);//this.similarity(map100, c1.map100);
-			//if(sim<thresh ) return 0;
-			double sim = map.similarity( c1.map);
-			//System.err.println(highRes+" "+sim);
-			return sim;
-		}
 		
 		
 		
-		public static double similarity(int[][] exons1, int[][] exons2 ){
-			int overlap =0;
-			int union =0;
-			for(int i=0; i<exons1.length; i++){
-				int st1 = exons1[i][0];
-				int end1 = exons1[i][1];
-				for(int j=0; j<exons2.length; j++){
-					int st2  =  exons2[j][0];
-					int end2 = exons2[j][1];
-					int overl = TranscriptUtils.overlap(st1, end1,st2, end2);
-					int unio = TranscriptUtils.union(st1, end1,st2, end2, overl);
-					overlap+=overl;
-					union+= unio;
-				}
-			}
-			return (double) overlap/(double) union;
-		}
-		public double exonSimilarity(CigarCluster c1){
-			return similarity(c1.exons, this.exons);
-		}
-		public double similarity(CigarCluster c1) {
-			int overlap = TranscriptUtils.overlap(c1.start, c1.end,start, end);
-		    if(overlap<=0) return 0;
-		    int union = TranscriptUtils.union(c1.start, c1.end,start, end, overlap);
-		    double sim = (double) overlap/(double) union;
-	    	if(sim < 0.5) return 0;
-	    	//double sim1 = map100.similarity(c1.map100);
-	    	//if(sim1<0.5) return sim1;
-	    	 return  map.similarity( c1.map);  
-		}
+		
+		
 		
 		
 	/*	static int sum(Map<Integer, Integer> source){
