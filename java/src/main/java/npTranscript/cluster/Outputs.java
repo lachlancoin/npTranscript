@@ -456,13 +456,17 @@ public class Outputs{
 			
 		}
 		
-		public static FastqWriter[] getFqWriter(String chrom,String resdir, String[] in_nmes) {
+		public static FastqWriter[][] getFqWriter(String chrom,String resdir, String[] in_nmes) {
 			// TODO Auto-generated method stub
-			FastqWriter[] res = new FastqWriter[in_nmes.length];
-			for(int i=0; i<in_nmes.length; i++){
-			File f = new File(resdir, in_nmes[i]+"."+chrom+".fastq");
-			System.err.println("new fastq writer "+f.getAbsolutePath());
-			res[i]  = factory.newWriter(f);
+			String[] prefix = "primary:secondary:supplementary".split(":");
+			FastqWriter[][] res = new FastqWriter[prefix.length][in_nmes.length]; //second row is for supplementary alignments, first for primary alignments
+			for(int j=0; j<res.length; j++){
+			
+				for(int i=0; i<in_nmes.length; i++){
+					File f = new File(resdir, in_nmes[i]+"."+chrom+"."+prefix+".fastq");
+					System.err.println("new fastq writer "+f.getAbsolutePath());
+					res[j][i]  = factory.newWriter(f);
+				}
 			}
 			return res;
 		}

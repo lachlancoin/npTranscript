@@ -555,7 +555,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			
 			Sequence chr = null; //genomes.get(currentIndex);
 			Sequence chr5prime =null;Sequence chr3prime = null;
-			FastqWriter[] fqw = null;//chromToRemap.contains(chr.getName()) ? Outputs.getFqWriter(chr.getName(), resdir) : null;
+			FastqWriter[][] fqw = null;//chromToRemap.contains(chr.getName()) ? Outputs.getFqWriter(chr.getName(), resdir) : null;
+				// first row is primary , second is supplementary
 			
 			Outputs 	outp = new Outputs(resDir,  in_nmes, overwrite,  true, CigarCluster.recordDepthByPosition); 
 			
@@ -579,10 +580,11 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				}catch(Exception exc){
 					exc.printStackTrace();
 				}
-				if(sam.isSecondaryOrSupplementary()) {
-					numSecondary++;
-					continue;
-				}
+				
+				//if(sam.isSecondaryOrSupplementary()) {
+				//	numSecondary++;
+				//	continue;
+				//}
 				if (sam.getReadUnmappedFlag()) {
 					numNotAligned++;
 					continue;
@@ -697,7 +699,11 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					profile.update(annot);
 					
 					
-					if(fqw!=null) for(int i=0; i<fqw.length; i++) fqw[i].close();
+					if(fqw!=null){
+						for(int i=0; i<fqw.length; i++) {
+							for(int j=0; j<fqw[i].length; j++) fqw[i][j].close();
+						}
+					}
 					fqw = chromToRemap.contains(chr.getName()) ? Outputs.getFqWriter(chr.getName(), resdir, in_nmes) : null;
 					chr5prime = TranscriptUtils.coronavirus ? chr.subSequence(0	, Math.min( primelen, chr.length())) : null;
 					chr3prime = TranscriptUtils.coronavirus ? chr.subSequence(Math.max(0, chr.length()-primelen), chr.length()) : null;
@@ -706,6 +712,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		
 				
 				if(fqw!=null){
+					int sam_ind = sam.isSecondaryOrSupplementary() ? (sam.isSecondaryAlignment() ? 1:2) : 0;
 					// this assumes that minimap2 corrected the strand and we need to reverse complement neg strand to get it back to original 
 					boolean negStrand = sam.getReadNegativeStrandFlag();
 					String sequence = sam.getReadString();
@@ -715,7 +722,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 									"",
 									negStrand ?(new StringBuilder(baseQL)).reverse().toString(): baseQL
 											);
-					fqw[source_index].write(fqr);
+					fqw[sam_ind][source_index].write(fqr);
 					continue outer;
 				}
 				
@@ -741,7 +748,13 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				profile.getConsensus();
 				
 			}
-			if(fqw!=null) for(int i=0; i<fqw.length; i++) fqw[i].close();
+			if(fqw!=null) {
+				for(int i=0; i<fqw.length; i++) {
+					for(int j=0; j<fqw[i].length; j++) fqw[i][j].close();
+				}
+			}
+				
+				
 		if(outp!=null) outp.close();
 	if(anno!=null) anno.close();
 		if(annotation_pw!=null) annotation_pw.close();
