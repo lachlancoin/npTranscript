@@ -581,10 +581,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					exc.printStackTrace();
 				}
 				
-				//if(sam.isSecondaryOrSupplementary()) {
-				//	numSecondary++;
-				//	continue;
-				//}
+				
 				if (sam.getReadUnmappedFlag()) {
 					numNotAligned++;
 					continue;
@@ -726,10 +723,14 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					continue outer;
 				}
 				
-				
+				if(sam.isSecondaryOrSupplementary()) {
+					numSecondary++;
+					continue;
+				}
 					
 				
 					try{
+						
 						String pool = readList==null || readList.length==0 ||  poolID<0 ? "" : (readList[poolID]+"|");
 						TranscriptUtils.identity1(chr, chr5prime,chr3prime, readSeq, sam, profile, source_index, cluster_reads, chr.length(), pool);
 					}catch(NumberFormatException exc){
