@@ -460,10 +460,9 @@ public class Outputs{
 			// TODO Auto-generated method stub
 			String[] prefix = "primary:secondary:supplementary".split(":");
 			FastqWriter[][] res = new FastqWriter[prefix.length][in_nmes.length]; //second row is for supplementary alignments, first for primary alignments
-			for(int j=0; j<res.length; j++){
-			
+			for(int j=0; j<prefix.length; j++){
 				for(int i=0; i<in_nmes.length; i++){
-					File f = new File(resdir, in_nmes[i]+"."+chrom+"."+prefix+".fastq");
+					File f = new File(resdir, in_nmes[i]+"."+chrom+"."+prefix[j]+".fastq");
 					System.err.println("new fastq writer "+f.getAbsolutePath());
 					res[j][i]  = factory.newWriter(f);
 				}
