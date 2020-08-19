@@ -218,7 +218,7 @@ write_xlsx(pvs_all, paste(resdir, "isoDE.xlsx",sep="/"))
 #h5closeAll()
 
 ######
-transcripts_ = transcripts[transcriptsl_unmerged$countTotal>1000,,drop=F]
+transcripts_ = transcriptsl_unmerged[transcriptsl_unmerged$countTotal>1000,,drop=F]
 depth_combined=  readH5_h("0.clusters.h5",transcripts_,filenames, thresh = 1000)
 
 DE2 =.processDM(depth_combined,  filenames, control_names ,infected_names, method=getOption("np.dm.test", "chisq.test"), thresh_min =100,plot=T,adjust="none")
