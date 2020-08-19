@@ -297,7 +297,7 @@ else{
   pbb
 }
 
-chisqCombine<-function(pv,log=log){
+chisqCombine<-function(pv,log=F){
   #if(TRUE) return(pv[1])
   nonNA = which(!is.na(pv))
   
@@ -341,21 +341,21 @@ chisqCombine<-function(pv,log=log){
   dimnames(res1)[[1]][3] = "ratio"
   res1
 }
-.processDM<-function(depth, i1,i2, thresh =1000, method=.chisq, plot=F, adjust=getOption("np.adjustMethod","BH")){
+.processDM<-function(depth, filenames, control_names, infected_names, thresh_min =100, method=.chisq, plot=F, adjust=getOption("np.adjustMethod","BH")){
   if(is.null(depth)) return(NULL)
-  inf = dimnames(depth)[[3]] 
-  control_names = inf[i1]
-  infected_names = inf[i2]
+  inf = dimnames(depth)[[3]]
+  DE = list()
   method1 = if(method=="chisq.test") .chisq else if(method=="fisher.test") .exact else method
-  DE = DEdepth(depth, control_names, infected_names, tojoin=1:3, thresh = thresh,method=method1, adjust=adjust)
-  type=paste(control_names, infected_names,sep=" vs ")
-  if(plot){
-    if(dim(DE)[[1]]>0){
-    .qqplot(DE$p.adj, min.p= 1e-200,main=type, col=1)
-    }
+
+  row_inds = apply(depth[1,,inds],1,min)>thresh_min
+ # df1 = df[,row_inds,inds,drop=F]
+  for(i in 1:length(control_names)){
+    DE[[i]] = DEdepth(depth[,row_inds,], control_names[i], infected_names[i], tojoin=1:3, method=method1, adjust=adjust)
   }
-  attr(DE,"nme") = paste(control_names, infected_names, sep=" vs ")
-  invisible(DE)
+  DE[[length(DE)+1]] = DEdepth(depth[,row_inds,], control_names, infected_names, tojoin=1:3,method=method1, adjust=adjust)
+  names(DE) =  c(apply(cbind(infected_names, control_names),1,function(x).largestPrefix(x[1],x[2])),"meta")
+for(i in 1:length(DE))  attr(DE[[i]],"nme") = names(DE)[i]
+    invisible(rev(DE))
 }
 
 .printOptions<-function(out, prefix="np."){
@@ -364,16 +364,15 @@ chisqCombine<-function(pv,log=log){
   names(vals) = nme
   write.table(as.matrix(vals),out,row.names=T,col.names=F)
 }
-DEdepth<-function(df,control_names, infected_names,tojoin=1:3, thresh = 100, maxLogFC=10, method=chisq.test, adjust  = "none"){
+DEdepth<-function(df1,control_names, infected_names,tojoin=1:3, maxLogFC=10, method=chisq.test, adjust  = "none"){
  inds = which(dimnames(df)[[3]] %in%  c(control_names, infected_names))
-  row_inds = apply(df[1,,inds],1,min)>thresh
-  df1 = df[,row_inds,inds,drop=F]
+
   nme = dimnames(df1)[[3]]
   pvs =data.frame(matrix(NA, ncol = 4*length(control_names), nrow = length(which(row_inds))))
   st_col = 1
   inds_all = c()
-  print(length(row_inds))
-  if(length(which(row_inds))>0){
+ # print(length(row_inds))
+  #if(length(which(row_inds))>0){
   for(i in 1:length(control_names)){
     nmes_i = c(grep(control_names[i], nme,v=T),grep(infected_names[i], nme,v=T))
     inds_i = which(nme %in% nmes_i)
@@ -388,7 +387,7 @@ DEdepth<-function(df,control_names, infected_names,tojoin=1:3, thresh = 100, max
       #t(apply(dfi, 1, betaBinomialP2, depth_inds_i, error_inds_i,1,2,binom=F, log=F))
     names(pvs)[indsk] = paste(control_names[i], c("pv","OR","ratio_control","ratio_case"),sep="_")
   }
-  }
+  #}
   #print(tojoin)
   control_ratio=apply(pvs[,grep("ratio_control", names(pvs)),drop=F],1, mean)
   infected_ratio=apply(pvs[,grep("ratio_case", names(pvs)),drop=F],1, mean)
@@ -401,7 +400,7 @@ DEdepth<-function(df,control_names, infected_names,tojoin=1:3, thresh = 100, max
   OR=apply(pvs[,grep("OR", names(pvs)),drop=F],1, min)
   
   p.adj = p.adjust(pvals,method=adjust)
- pvs=data.frame( cbind(logFC,OR, p.adj))
+ pvs=data.frame( cbind(logFC,OR, p.adj,pvals))
  # if(length(tojoin)>0)  pvs= cbind(df[row_inds,tojoin,drop=F],pvs)
 # df2 = df1[1,, inds_all,drop=F]
 # df3 = df1[2,, inds_all,drop=F]
@@ -422,13 +421,14 @@ DEdepth<-function(df,control_names, infected_names,tojoin=1:3, thresh = 100, max
 DEgenes<-function(df,control_names,infected_names,  type="lt", binom=F, log=F
                   ){
   lower.tail = T
-  control_inds = rep(NA, length(control_names))
-  infected_inds = rep(NA, length(infected_names))
-  results = list();
+  
   ORFs = as.character(df$ORFs)
   dfn_ind = !is.na(df$Name)
   ORFs[dfn_ind]=as.character(df$Name[dfn_ind])
   grp=df$grp
+  control_inds = rep(NA, length(control_names))
+  infected_inds = rep(NA, length(infected_names))
+  results = list();
   for(i  in 1:length(control_inds)){
     print(i)
 	    control_inds[i] = which(names(df)==control_names[i])
@@ -633,11 +633,12 @@ findGenesByChrom<-function(DE,chrom="MT", thresh = 1e-10,nme2="chrs", nme="FDR1"
   return(transcripts)
 }
 
-.mergeRows<-function(transcripts1,sum_names = c(),  colid='geneID'){
+.mergeRows<-function(transcripts1,sum_names = c(), append_names= c(), colid='geneID', collapse="_"){
   if(dim(transcripts1)[[1]]==0) return(NULL)
   sum_names = unique(c(sum_names,"countTotal"));
   ind = which(names(transcripts1) %in% colid)
   ind_s = which(names(transcripts1) %in% sum_names)
+  ind_app = which(names(transcripts1) %in% append_names)
   lev = getlev(transcripts1[,ind])
   
   todo = as.character(lev[lev$cnts>1,]$lev)
@@ -645,12 +646,18 @@ findGenesByChrom<-function(DE,chrom="MT", thresh = 1e-10,nme2="chrs", nme="FDR1"
   extract_inds = lapply(todo, function(x) which(transcripts1[,ind]==x))
   torem = sort(unlist(extract_inds))
   subt = transcripts1[unlist(lapply(extract_inds,function(x) x[1])),]
+ # print(extract_inds)
   for(i in 1:length(extract_inds)){
     subind = extract_inds[[i]]
+    matr_join = transcripts1[subind,ind_app,drop=F]
     subt[i,ind_s] =apply(apply(transcripts1[subind,ind_s,drop=F],c(1,2),as.numeric),2,sum)
+    joined = apply(matr_join,2,paste, collapse=collapse)
+  #  print(matr_join)
+    subt[i,ind_app] =joined
   }
-  rbind(transcripts1[-torem,,drop=F], subt)
-  
+  resu = rbind(transcripts1[-torem,,drop=F], subt)
+ # subt
+  resu
 }
 
 readTranscriptHostAll<-function(infilesT, 
@@ -824,8 +831,13 @@ ggp<-ggp+  geom_hline(
 ggp<-ggp+  theme_bw() 
 ggp<-ggp+  theme(legend.position = "none")+
   scale_colour_manual(values = c("grey", "red")) 
+if(useadj){
 ggp<-ggp+  geom_text_repel(data=subset(df,abs(logFC) >= logFCthresh & p.adj < pthresh),
                   aes(logFC, -log10(p.adj), label = ORFs),size = 3, color="steelblue")
+}else{
+  ggp<-ggp+  geom_text_repel(data=subset(df,abs(logFC) >= logFCthresh & pvals < pthresh),
+                             aes(logFC, -log10(pvals), label = ORFs),size = 3, color="steelblue")
+}
 ggp<-ggp+ggtitle(paste(attr(df,"nme"),prefix))
 ggp
 }
@@ -890,91 +902,99 @@ ggp
   invisible(DE1)
 #  invisible(list(DE1=DE1, transcripts=transcripts))
 }
-.testIsoformsAll<-function(isoforms_i, n=5, test_func = chisq.test, 
+.testIsoformsAll<-function(df, isoforms_i, filenames,control_names, infected_names, n=5, test_func = chisq.test, 
                            adjust=getOption("np.adjustMethod","BH")
                          ){
-  
+  ORFs = as.character(df$ORFs)
+  dfn_ind = !is.na(df$Name)
+  ORFs[dfn_ind]=as.character(df$Name[dfn_ind])
+  grp=df$grp
   inds = attr(isoforms_i,"inds")
   if(length(inds)==0) return (NULL)
-  transcripts_i1 = transcripts_i[inds,!duplicated(names(transcripts_i)),drop=F]
-  
-  dfi =data.frame(t(data.frame(lapply(isoforms_i, .testIsoforms, n=n, test_func=test_func))))
-  names(dfi)=c("p","logFC")
-  p.adj = p.adjust(dfi$p,method=adjust)
-  result = data.frame(transcripts_i1, dfi,p.adj)
-  invisible(result)
+#  df1 = df[inds,!duplicated(names(df)),drop=F]
+  results = list();
+  pvm = matrix(NA, ncol = length(control_names), nrow=length(inds))
+  lfc=  matrix(NA, ncol = length(control_names), nrow=length(inds))
+  for(i  in 1:length(control_names)){
+    cols = c(grep(control_names[i], filenames),grep(infected_names[i], filenames))
+   dfi =data.frame(t(data.frame(lapply(isoforms_i, .testIsoforms1,cols,  n=2, test_func=test_func))))
+   names(dfi)=c("p","logFC")
+   p.adj = p.adjust(dfi$p,method=adjust)
+   pvm[,i] = dfi$p
+   lfc[,i] = dfi$logFC
+   results[[i]] = data.frame(ORFs = ORFs[inds], grp=grp[inds],p.adj= p.adj,pvals=dfi$p, "logFC" = dfi$logFC)
+  }
+  pcomb =  apply(pvm, 1,chisqCombine);
+  logfc_comb = apply(lfc, 1,mean, na.rm=T)
+  results[[length(results)+1]]= data.frame(ORFs= ORFs[inds], 
+                                           grp = grp[inds],pvals = pcomb, p.adj = p.adjust(pcomb, method=adjust), 
+                                           logFC=logfc_comb)
+  names(results)=c(apply(cbind(infected_names, control_names),1,function(x).largestPrefix(x[1],x[2])),"meta")
+for(i in 1:length(results)) attr(results[[i]], "nme") =names(results)
+  invisible(rev(results))
 }
 
-.testIsoforms<-function(x, n=5, test_func=chisq.test){
-  tb = x$counts
-  if(dim(tb)[[1]]>n){
-    tb[n,] = apply(tb[-(1:n),,drop=F],2,sum)
-    tb = tb[1:n,,drop=F]
+.testIsoforms1<-function(x, cols, n1=2, thresh = 10, test_func=chisq.test){
+  tb = x$counts[,cols,drop=F]
+  sums = apply(tb,2,sum)
+  if(min(sums)<thresh) return (c(NA,NA))
+  if(dim(tb)[[1]]>n1){
+    tb[n1,] = apply(tb[-(1:(n1-1)),,drop=F],2,sum)
+    tb = tb[1:n1,,drop=F]
   }
   ratio=apply(tb,2,function(x) x[1]/sum(x))
- # logfc = apply(ratio,1,function(x) log2(x[2]/x[1]))
   c(test_func(tb)$p.value, log2(ratio[2]/ratio[1]))
 }
 
 readIsoformH5<-function(transcripts_, h5file,  depth =1000){
-  .ext<-function(x) x[unique(c(0,which(x>0)))]
+  .ext<-function(x) paste(x[unique(c(0,which(x>0)))],collapse=",")
   header = h5read(h5file,"header")
   names = h5ls(h5file)$name
   inds = which(transcripts_$countTotal>depth)
   if(length(inds)==0) return (NULL)
-  
-  IDS = transcripts_[inds,,drop=F]$ID
-  IDS = IDS[which(IDS %in% names)]
-  trans = list()
+ 
+  IDS = lapply(transcripts_[inds,,drop=F]$ID,function(x) strsplit(x,"_")[[1]]);
+  IDS = lapply(IDS, function(x) x[which(x %in% names)])
+  inds1 = unlist(lapply(IDS, length))>0
+  IDS = IDS[inds1]
+  trans = vector("list", length = length(IDS))
   if(length(IDS)==0) return (NULL)
-  incl = rep(T, length(IDS))
   for(i in 1:length(IDS)){
-    ID = IDS[i]
-   # print(paste(i, ID))
-    
-    mat = t(h5read(h5file,as.character(ID)))
-    if(dim(mat)[[1]]==1){
-      next;
-      incl[i] = F
+    ID = IDS[[i]]
+    mats = lapply(ID, function(x) t(h5read(h5file, as.character(x) )))
+    lens = unlist(lapply(mats, function(x)dim(x)[[1]]))
+    cnts = array(dim = c(sum(lens),length(header)-1))
+    transi = rep("",dim(cnts)[[1]])
+    #rown = rep("" , dim(cnts)[[1]])
+    #print(ID)
+    start = 1;
+    for(j in 1:length(ID)){
+      mat = mats[[j]]
+      rowinds = start:(start+lens[j]-1)
+      start = start+lens[j]
+      cnts[rowinds,] = mat[,2:length(header),drop=F]
+      transi[rowinds] = apply(mat[,-(1:length(header)),drop=F],1,.ext)
     }
-    j = j+1;
-    cnts = data.frame(mat[,1:length(header)])
-    names(cnts) = header
-    dimnames(cnts) = list(cnts$subID, header)
-    cnts = cnts[,-1]
     cntT = apply(cnts,1,sum)
     ord = order(cntT, decreasing=T)
     cnts = cnts[ord,,drop=F]
-    mat = mat[ord,-(1:length(header))]
-    
-    transi = apply(mat,1,.ext)
-    names(transi) =dimnames(cnts)[[1]] #paste(ID,cnts$subID,sep='.')
-    trans[[j]] = list(breaks = transi, counts = cnts)
+      trans[[i]] = list(breaks = transi[ord], counts = cnts[ord,,drop=F])
   } 
-  names(trans) = names(IDS)[incl]
-  attr(trans, "inds")=which(transcripts_$ID %in% IDS)
-  trans[incl]
+  names(trans) = IDS
+  #trans = trans[unlist(lapply(trans, function(x) !is.null(dim(x))))]
+  inds2 = unlist(lapply(trans, function(x) dim(x$counts)[1]))>1
+  trans = trans[inds2]
+  
+  attr(trans, "inds")=inds[inds1][inds2] #which(transcripts_$ID %in% names(trans))
+  trans
   
 }
 
 
 
-.readH5All<-function(transcripts, attributes,filenames,  thresh,tokeepi =NULL, readH5_ = readH5_c){
+.readH5All<-function(transcripts, infile, attributes,filenames,  thresh,tokeepi =NULL, readH5_ = readH5_c){
   filenames=  attributes[which(names(attributes)=="info")][[1]]
-  chroms = c("0")
-  h5files =lapply(chroms, function (x)   infile = paste(x,"clusters.h5", sep="."))
-  depth_ls = lapply(h5files, function(infile) try(readH5_(infile, transcripts, filenames, thresh =thresh,tokeepi = tokeepi, log=F)))
- # depth=.combineTranscripts(depth_ls, attributes)
-  H5close();
-  lengs = unlist(lapply(depth_ls,function(x) if(is.null(x)) NA else dim(x)[2]))
-  inds = which(!is.na(lengs) & lengs>0)
-  chroms = chroms[inds]
-  #depths = depths[inds]
-  lengs = lengs[inds]
-  depth_ls = depth_ls[inds]
-  names(depth_ls) = chroms
- # header = names(depth_ls[[1]])
-  if(length(depth_ls)==0) return (NULL)
+  depth_ls = try(readH5_(infile, transcripts, filenames, thresh =thresh,tokeepi = tokeepi, log=F))
   return(.transferAttributes(depth_ls, attributes)[[1]])
 }
  

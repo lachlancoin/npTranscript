@@ -6,7 +6,7 @@ options("np.control"="control")
 options("np.case"='infected')
 options("np.exclude"="none")
 options("np.analysis"="betabinom")
-options("np.depth_thresh"="100")
+options("np.depth_thresh"="1000")
 options("np.prefix_keep"=NULL)
 options("np.prefix_remove"="^[0-9]{1,}\\.")
 options("np.prefix_sequins"="^R[0-9]_")
@@ -107,7 +107,7 @@ if(isVirus){
 }
 
 
-target= list( chrom="character", 
+target= list( chrom="character",
              span ="character",ORFs="character",start = "numeric", 
              end="numeric", ID="character" ,type_nme="character", countTotal="numeric")
 
@@ -125,8 +125,7 @@ nullind = grep('^-$',transcriptsl$span)
 transcriptsl$span[nullind] = .rename(transcriptsl[nullind,])
 attributes = attributes(transcriptsl)
 filenames = attr(transcriptsl,"info")
-transcriptsl_unm = transcriptsl
-transcriptsl =.mergeRows(transcriptsl,sum_names = filenames, colid="span")
+transcriptsl =.mergeRows(transcriptsl,sum_names = filenames,append_names = "ID", colid="span")
 transcriptsl = transcriptsl[,-which(names(transcriptsl)=="ORFs")]
 names(transcriptsl) = sub("span","ORFs",names(transcriptsl))
 control_names = unlist(lapply(control_names, grep, filenames, v=T));#  grep(control_names,filenames,v=T)
@@ -142,9 +141,6 @@ transcriptsl =  .processTranscripts(transcriptsl)
 
 remove_inds =  regexpr("^[0-9]{1,}\\.", as.character(transcriptsl$ORFs))>=0
 keep_inds = !remove_inds
-
-
-
   sequins_inds = regexpr(getOption("np.prefix_sequins"), transcriptsl$ORFs)>=0
 grp = rep(NA, dim(transcriptsl)[[1]])
 grp[!remove_inds]="genes"
@@ -180,7 +176,7 @@ volcanos = lapply(DE_list, .volcano, logFCthresh = 0.5, top=20, exclude=c())
 todo=.getAllPairwiseComparisons(names(DE_list), start=2)
 comparisonPlots = lapply(todo, function(x) .comparisonPlot(DE2,transcriptsl1 , inds  = x, excl=c()))
 
-pdf(paste(resdir, "/DE1.pdf",sep=""))
+pdf(paste(resdir, "/DE.pdf",sep=""))
 if(FALSE){
   for(i in 1:length(DE1)).qqplot(DE1[[i]]$p.adj, min.p= 1e-200,main=type,add=T, col=i+1)
 }
@@ -194,38 +190,51 @@ dev.off()
 
 print("####DEPTH ANALYSIS #### ")
 ##isoform analysis
-pdf(paste(resdir, "/isoDE.pdf",sep=""))
 isofile = grep("isoforms.h5" , dir(),v=T)
-isoforms_i=  readIsoformH5(transcriptsl_unmerged, isofile[1],depth=getOption("np.depth_thresh",100))
-pvs_all =  .testIsoformsAll(isoforms_i,n=getOption("np.maxIsoformGroups",5), test_func =chisq.test)
+isoforms_i=  readIsoformH5(transcriptsl1, isofile[1],depth=getOption("np.depth_thresh",1000))
+inds_i = attr(isoforms_i,"inds")
+pvs_all =  .testIsoformsAll(transcriptsl1, isoforms_i,filenames, control_names, infected_names, n=getOption("np.maxIsoformGroups",5), test_func =chisq.test)
 pvs_all = pvs_all[unlist(lapply(pvs_all, length))>0]
-for(i in 1:length(pvs_all)) attr(pvs_all[[i]],"nme") = names(pvs_all)[i]
-for(i in 1:length(pvs_all)) .qqplot1(pvs_all[[i]],"p", main = names(pvs_all)[[i]], add = i>1)
+pvs_all2 = data.frame(unlist(pvs_all,recursive=FALSE))
 
-volcanos = lapply(pvs_all, .volcano, pthresh = 1e-5, useadj = T)
+for(i in 1:length(pvs_all)) attr(pvs_all[[i]],"nme") = names(pvs_all)[i]
+
+volcanos =  lapply(pvs_all, .volcano, top=10, useadj = F, logFCthresh = 0.1)
+todo=.getAllPairwiseComparisons(names(pvs_all), start=2)
+comparisonPlots = lapply(todo, function(x) .comparisonPlot(pvs_all2,transcriptsl1[inds_i,] , inds  = x, excl=c()))
+
+pdf(paste(resdir, "/isoDE.pdf",sep=""))
+for(i in 1:length(pvs_all)) .qqplot1(pvs_all[[i]],"pvals", main = names(pvs_all)[[i]], add = i>1)
 lapply(volcanos, function(x) print(x))
+lapply(comparisonPlots, function(x) print(x[[1]]))
+lapply(comparisonPlots, function(x) print(x[[2]]))
 
 dev.off()
 h5createGroup(h5DE,"isoDE")
 lapply(pvs_all, function(x) h5write(x, h5DE,paste("isoDE",attr(x, "nme"),sep="/")))
 h5ls(h5DE)
-write_xlsx(lapply(pvs_all,function(x) x[order(x$p),,drop=F]), paste(resdir, "isoDE.xlsx",sep="/"))
+write_xlsx(pvs_all, paste(resdir, "isoDE.xlsx",sep="/"))
 
 #h5closeAll()
 
 ######
+transcripts_ = transcripts[transcriptsl_unmerged$countTotal>1000,,drop=F]
+depth_combined=  readH5_h("0.clusters.h5",transcripts_,filenames, thresh = 1000)
+
+DE2 =.processDM(depth_combined,  filenames, control_names ,infected_names, method=getOption("np.dm.test", "chisq.test"), thresh_min =100,plot=T,adjust="none")
+
+volcanos = lapply(DE2, .volcano, top=10,logFCthresh = 0.1)
+todo=.getAllPairwiseComparisons(names(DE2), start=2)
+DE3 = data.frame(unlist(DE2,recursive=FALSE))
+
+comparisonPlots = lapply(todo, function(x) .comparisonPlot(DE3,transcripts_ , inds  = x, excl=c()))
+
+
 pdf(paste(resdir,"DM_combined.pdf",sep="/"))
 
-depth_combined=lapply(transcripts_all,
-                      function(transcripts_)   .readH5All(transcripts_,attributes,filenames, thresh = 1000,  readH5_ = readH5_h))
-
-DE2 = lapply(depth_combined,.processDM,  1,2, method=getOption("np.dm.test", "chisq.test"), thresh =1000,plot=T,adjust="none")
-DE2 = DE2[unlist(lapply(DE2, function(x) !is.null(x) && dim(x)[[1]]))>0]
-for(i in 1:length(DE2)) attr(DE2[[i]],"nme") = names(DE2)[i]
-
-volcanos = lapply(DE2, .volcano, pthresh = 1e-4)
-
 lapply(volcanos, function(x) print(x))
+lapply(comparisonPlots, function(x) print(x[[1]]))
+lapply(comparisonPlots, function(x) print(x[[2]]))
 dev.off()
 
 h5createGroup(h5DE,"DM")
@@ -237,6 +246,7 @@ H5close()
 write_xlsx(lapply(DE2,.xlim,1e-2), paste(resdir, "DM_combined.xlsx",sep="/"))
 
 if(FALSE){
-fisher.test(.extractFromDepth(depth_combined[[1]], 1:2,"12.56159663")[1:2,,])
+  .extractFromDepth(depth_combined, 5:6,"MT.1047.0")
+fisher.test(.extractFromDepth(depth_combined, 1:2,"12.56159663")[1:2,,])
 }
 
