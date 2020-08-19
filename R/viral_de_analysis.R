@@ -9,14 +9,7 @@ count_names =  paste("count",info, sep="_")
 names(transcripts)[grep("count[0-9]", names(transcripts))] =count_names
 names(transcripts)[grep("errors[0-9]", names(transcripts))] = paste("errors",info, sep="_")
 names(transcripts)[grep("error_ratio[0-9]", names(transcripts))] = paste("error_ratio",info, sep="_")
-
-todo = list()
-for(i in 2:length(info)){
-  for(j in 1:(i-1)){
-    todo[[length(todo)+1]] = c(i,j)
-  }
-}
-names(todo) = unlist(lapply(todo, function(x) paste(info[x],collapse=" v ")))
+todo=.getAllPairwiseComparisons(info)
 
 
 ## first DE of expression

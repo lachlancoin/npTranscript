@@ -40,7 +40,7 @@ if(getOption("np.install","FALSE")=="TRUE"){
   }
 } 
 
-
+annotFile = "annotation.csv.gz"
 control_names = unlist(strsplit(getOption("np.control"),':'))
 infected_names = unlist(strsplit(getOption("np.case"),':'))
 type_names = c(control_names[1], infected_names[1])
@@ -99,20 +99,36 @@ if(isVirus){
 
 }
 
+.rename<-function(x) {
+  strand = rep("",length(x))
+  strand[regexpr("\\+$",x$ORFs)>=0]="+"
+  strand[regexpr("\\-$",x$ORFs)>=0]="-"
+  apply(cbind(x$chrs, x$start, x$end, strand),1,paste,collapse="_")
+}
 
 
 target= list( chrom="character", 
-             ORFs ="character",start = "numeric", 
+             span ="character",ORFs="character",start = "numeric", 
              end="numeric", ID="character" ,type_nme="character", countTotal="numeric")
 
 
-##READ TRANSCRIPT DATA
-infilesT = grep("transcripts.txt", dir(), v=T)
-transcriptsl = readTranscriptHostAll(infilesT, start_text = start_text,target = target,   filter = filter, 
-                                    combined_depth_thresh = getOption("np.depth_thresh",100))
 
+##READ TRANSCRIPT DATA
+
+infilesT = grep("transcripts.txt", dir(), v=T)
+transcriptsl_unmerged = readTranscriptHostAll(infilesT, start_text = start_text,target = target,   filter = filter, 
+                                    combined_depth_thresh = getOption("np.depth_thresh",100))[[1]]
+transcriptsl = transcriptsl_unmerged
+jointind = grep(';', transcriptsl$span)
+transcriptsl$span[jointind] = unlist(lapply(transcriptsl$span[jointind],function(x) strsplit(x,";")[[1]][1]))
+nullind = grep('^-$',transcriptsl$span)
+transcriptsl$span[nullind] = .rename(transcriptsl[nullind,])
 attributes = attributes(transcriptsl)
 filenames = attr(transcriptsl,"info")
+transcriptsl_unm = transcriptsl
+transcriptsl =.mergeRows(transcriptsl,sum_names = filenames, colid="span")
+transcriptsl = transcriptsl[,-which(names(transcriptsl)=="ORFs")]
+names(transcriptsl) = sub("span","ORFs",names(transcriptsl))
 control_names = unlist(lapply(control_names, grep, filenames, v=T));#  grep(control_names,filenames,v=T)
 infected_names = unlist(lapply(infected_names, grep, filenames, v=T))
 exclude_nme = getOption("np.exclude",'none')
@@ -122,57 +138,66 @@ for(i in 1:length(exclude_nme)){
 }
 
 if(length(control_names)!=length(infected_names)) error(" lengths different")
-transcriptsl = lapply(transcriptsl, .processTranscripts)
+transcriptsl =  .processTranscripts(transcriptsl)
 
-if(!is.null(getOption("np.prefix_remove",NULL))){
-  remove = lapply(transcriptsl,.filter, getOption("np.prefix_remove"), inv=F)
-  keep = lapply(transcriptsl,.filter, getOption("np.prefix_remove"), inv=T)
-}else {
-  remove = lapply(transcriptsl,.filter, getOption("np.prefix_keep","\\."), inv=T)
-  keep = lapply(transcriptsl,.filter, getOption("np.prefix_keep","\\."), inv=F)
-}
+remove_inds =  regexpr("^[0-9]{1,}\\.", as.character(transcriptsl$ORFs))>=0
+keep_inds = !remove_inds
 
-.rename<-function(x) {
-  strand = rep("",length(x))
-  strand[regexpr("\\+$",x$ORFs)>=0]="+"
-  strand[regexpr("\\-$",x$ORFs)>=0]="-"
-  apply(cbind(x$chrs, x$start, x$end, strand),1,paste,collapse="_")
-}
 
-##CHANGE NAME OF NOVEL ORFS TO BE MORE READABLE
-for(i in 1:length(remove)) remove[[i]]$ORFs = .rename(remove[[i]])
 
-if(!is.null(getOption("np.prefix_sequins",NULL))){
-  sequins = lapply(remove,.filter, getOption("np.prefix_sequins"), inv=F)
-  remove = lapply(remove,.filter, getOption("np.prefix_sequins"), inv=T)
-}else{
-  sequins = list();
-}
+  sequins_inds = regexpr(getOption("np.prefix_sequins"), transcriptsl$ORFs)>=0
+grp = rep(NA, dim(transcriptsl)[[1]])
+grp[!remove_inds]="genes"
+grp[remove_inds] = "unknown"
+grp[sequins_inds]="sequins"
+grp = as.factor(grp)
 
-transcripts_all = list(genes=keep, novel=remove, sequins = sequins)
-transcripts_all =  lapply(transcripts_all, .process, control_names, infected_names)
+#transcripts_all1 = lapply(transcripts_all, .mergeRows,sum_names= c(control_names, infected_names), colid="geneID" )
+dimnames(transcriptsl)[[1]] = transcriptsl$ID
+# 
+#info = attr(transcripts,'info')
+ transcriptsl1 =.addAnnotation(annotFile, transcriptsl,grp,  colid="geneID", nmes = c("chr" , "ID" , "Name" , "Description","biotype"))
 
-pdf(paste(resdir, "/DE.pdf",sep=""))
-DE_list = lapply(transcripts_all, .processDE, attributes, resdir, control_names, infected_names, type_names, type="known",plot=T)
-for(i in 1:length(DE_list)) attr(DE_list[[i]],"nme") = names(transcripts_all)[i]
 
+  DE_list =  .processDE(transcriptsl1, attributes, resdir, control_names, infected_names, type_names, type="")
+  
+#  DE2 = .transferAttributes(DE2, attributes)
+  
+ 
 ##OUTPUT FILE
 h5DE = paste(resdir,"DE.h5",sep="/")
 file.remove(h5DE)
 h5createFile(h5DE)
+h5write(transcriptsl1, h5DE, "transcripts")
 h5createGroup(h5DE,"DE")
-lapply(DE_list, function(x) h5write(x, h5DE,paste("DE",attr(x, "nme"),sep="/")))
-write_xlsx(lapply(DE_list,function(x) x[attr(x,"order"),,drop=F]), paste(resdir, "DE.xlsx",sep="/"))
-volcanos = lapply(DE_list, .volcano, pthresh = 1e-5)
+for(i in 1:length(DE_list)){
+  grpnme = paste("DE",names(DE_list)[i], sep="/")
+  h5write(DE_list[[i]], h5DE, grpnme)
+}
+DE2 = data.frame(unlist(DE_list,recursive=FALSE))
+write_xlsx(lapply(list(transcripts=transcriptsl1,DE=DE2),function(x) x[attr(x,"order"),,drop=F]), paste(resdir, "DE.xlsx",sep="/"))
+volcanos = lapply(DE_list, .volcano, logFCthresh = 0.5, top=20, exclude=c())
+todo=.getAllPairwiseComparisons(names(DE_list), start=2)
+comparisonPlots = lapply(todo, function(x) .comparisonPlot(DE2,transcriptsl1 , inds  = x, excl=c()))
+
+pdf(paste(resdir, "/DE1.pdf",sep=""))
+if(FALSE){
+  for(i in 1:length(DE1)).qqplot(DE1[[i]]$p.adj, min.p= 1e-200,main=type,add=T, col=i+1)
+}
 lapply(volcanos, function(x) print(x))
+lapply(comparisonPlots, function(x) print(x[[1]]))
+lapply(comparisonPlots, function(x) print(x[[2]]))
+
+
 dev.off()
 
 
 print("####DEPTH ANALYSIS #### ")
 ##isoform analysis
 pdf(paste(resdir, "/isoDE.pdf",sep=""))
-infilesAltT = grep("isoforms.h5" , dir(),v=T)
-pvs_all = lapply(transcripts_all, .testIsoformsAll, infilesAltT,n=getOption("np.maxIsoformGroups",5), test_func =chisq.test)
+isofile = grep("isoforms.h5" , dir(),v=T)
+isoforms_i=  readIsoformH5(transcriptsl_unmerged, isofile[1],depth=getOption("np.depth_thresh",100))
+pvs_all =  .testIsoformsAll(isoforms_i,n=getOption("np.maxIsoformGroups",5), test_func =chisq.test)
 pvs_all = pvs_all[unlist(lapply(pvs_all, length))>0]
 for(i in 1:length(pvs_all)) attr(pvs_all[[i]],"nme") = names(pvs_all)[i]
 for(i in 1:length(pvs_all)) .qqplot1(pvs_all[[i]],"p", main = names(pvs_all)[[i]], add = i>1)
