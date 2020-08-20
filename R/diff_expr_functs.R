@@ -30,6 +30,29 @@
   }
 res
 }
+
+.mergeDepthByPos<-function(depth){
+  ddim = dim(depth)
+  dimnames = dimnames(depth)
+  dn =dimnames(depth)[[2]]
+  duplicate = duplicated(dn)
+  if(length(which(duplicate))==0) return(depth)
+  duplicate_lev = levels(as.factor(dn[duplicate]))
+  duplicate_ = dn %in% duplicate_lev
+  duplicate_ind = which(duplicate_)
+  nonduplicate_ind = which(!duplicate_)
+  depth_dupl = depth[,duplicate_ind,]
+  dn_dupl = dimnames(depth_dupl)[[2]]
+  ddim[2] = length(duplicate_lev)
+  dimnames[[2]] = duplicate_lev
+  depth2 = array(NA, dim = ddim, dimnames = dimnames)
+  dn_dupl = dimnames(depth_dupl)[[2]]
+  for(i in 1:length(duplicate_lev)){
+    depth2[,i,] = apply(depth_dupl[,which(dn_dupl==duplicate_lev[i]),,drop=F],c(1,3),sum)
+  }
+  abind(depth[, nonduplicate_ind,,drop=F],depth2,along=2)
+}
+
 readH5_h<-function(h5file, df, filenames, thresh =100,tokeepi = NULL, log=F){
   IDS = df$ID
   chrs = df$chrs
@@ -353,8 +376,13 @@ chisqCombine<-function(pv,log=F){
   for(i in 1:length(control_names)){
     DE[[i]] = DEdepth(depth[,row_inds,], control_names[i], infected_names[i], tojoin=1:3, method=method1, adjust=adjust)
   }
-  DE[[length(DE)+1]] = DEdepth(depth[,row_inds,], control_names, infected_names, tojoin=1:3,method=method1, adjust=adjust)
-  names(DE) =  c(apply(cbind(infected_names, control_names),1,function(x).largestPrefix(x[1],x[2])),"meta")
+  nmes=apply(cbind(infected_names, control_names),1,function(x).largestPrefix(x[1],x[2]))
+  
+  if(length(control_names)>1){
+   DE[[length(DE)+1]] = DEdepth(depth[,row_inds,], control_names, infected_names, tojoin=1:3,method=method1, adjust=adjust)
+    nmes = c(nmes,"meta")
+  }
+  names(DE) =  nmes
 for(i in 1:length(DE))  attr(DE[[i]],"nme") = names(DE)[i]
     invisible(rev(DE))
 }
@@ -366,10 +394,10 @@ for(i in 1:length(DE))  attr(DE[[i]],"nme") = names(DE)[i]
   write.table(as.matrix(vals),out,row.names=T,col.names=F)
 }
 DEdepth<-function(df1,control_names, infected_names,tojoin=1:3, maxLogFC=10, method=chisq.test, adjust  = "none"){
- inds = which(dimnames(df)[[3]] %in%  c(control_names, infected_names))
+ inds = which(dimnames(df1)[[3]] %in%  c(control_names, infected_names))
 
   nme = dimnames(df1)[[3]]
-  pvs =data.frame(matrix(NA, ncol = 4*length(control_names), nrow = length(which(row_inds))))
+  pvs =data.frame(matrix(NA, ncol = 4*length(control_names), nrow = dim(df1)[[2]]))
   st_col = 1
   inds_all = c()
  # print(length(row_inds))
@@ -876,6 +904,7 @@ ggp
 
 .getAllPairwiseComparisons<-function(info,start=1){
   todo = list()
+  if(length(info)==1) return(todo)
   for(i in (start+1):length(info)){
     for(j in start:(i-1)){
       todo[[length(todo)+1]] = c(i,j)
@@ -925,12 +954,16 @@ ggp
    lfc[,i] = dfi$logFC
    results[[i]] = data.frame(ORFs = ORFs[inds], grp=grp[inds],p.adj= p.adj,pvals=dfi$p, "logFC" = dfi$logFC)
   }
+  nmes = apply(cbind(infected_names, control_names),1,function(x).largestPrefix(x[1],x[2]))
+  if(length(control_names)>1){
   pcomb =  apply(pvm, 1,chisqCombine);
   logfc_comb = apply(lfc, 1,mean, na.rm=T)
   results[[length(results)+1]]= data.frame(ORFs= ORFs[inds], 
                                            grp = grp[inds],pvals = pcomb, p.adj = p.adjust(pcomb, method=adjust), 
                                            logFC=logfc_comb)
-  names(results)=c(apply(cbind(infected_names, control_names),1,function(x).largestPrefix(x[1],x[2])),"meta")
+  nmes = c(nmes,"meta")
+  }
+  names(results)=nmes
 for(i in 1:length(results)) attr(results[[i]], "nme") =names(results)
   invisible(rev(results))
 }
