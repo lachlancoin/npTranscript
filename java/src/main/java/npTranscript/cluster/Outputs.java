@@ -458,7 +458,7 @@ public class Outputs{
 		
 		public static FastqWriter[][] getFqWriter(String chrom,String resdir, String[] in_nmes) {
 			// TODO Auto-generated method stub
-			String[] prefix = "primary:secondary:supplementary".split(":");
+			String[] prefix = "primary:secondary:supplementary:polyA".split(":");
 			FastqWriter[][] res = new FastqWriter[prefix.length][in_nmes.length]; //second row is for supplementary alignments, first for primary alignments
 			for(int j=0; j<prefix.length; j++){
 				for(int i=0; i<in_nmes.length; i++){
