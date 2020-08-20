@@ -255,7 +255,9 @@ public class GFFAnnotation extends Annotation{
 		String[] desc = str.split(";");
 		Arrays.fill(target, "");
 		for(int j=0; j<desc.length; j++){
-			String[] descj = desc[j].split(split);
+			String[] descj = desc[j].trim().split(split);
+			String key = descj[0].trim();
+			//System.err.println(key);
 			String val;
 			if(removeQ){
 				val = descj[1].substring(1,descj[1].length()-1);
@@ -263,12 +265,13 @@ public class GFFAnnotation extends Annotation{
 				String[] descjv = descj[1].split(":");
 				 val = descjv[descjv.length-1];
 			}
-			int ind =names.indexOf(descj[0]);
-			if(ind>=0){
-				if(ind==2){
-					 target[ind ] = descj[1].split("\\[")[0];
+			for(int k=0; k<names.size(); k++){
+			if(key.equals(names.get(k))){
+				if(k==2){
+					 target[k ] = descj[1].split("\\[")[0];
 				}
-				else target[ind ] = val;
+				else target[k ] = val;
+			}
 			}
 			
 		}
