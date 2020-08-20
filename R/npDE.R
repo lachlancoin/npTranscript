@@ -23,7 +23,9 @@ dir.create(libdir , recursive=T)
 .libPaths()
 #options("np.source"="../../R")
 args = commandArgs(trailingOnly=TRUE)
+args=c("--np.case=super","--np.control=control")
 if(length(args)>0){
+  args = gsub("--","",args)
   argv = (lapply(args, function(x) strsplit(x,"=")[[1]][2]))
   names(argv) = unlist(lapply(args, function(x) strsplit(x,"=")[[1]][1]))
   options(argv)
@@ -221,7 +223,7 @@ write_xlsx(pvs_all, paste(resdir, "isoDE.xlsx",sep="/"))
 transcripts_ = transcriptsl_unmerged[transcriptsl_unmerged$countTotal>1000,,drop=F]
 depth_combined=  readH5_h("0.clusters.h5",transcripts_,filenames, thresh = 1000)
 
-DE2 =.processDM(depth_combined,  filenames, control_names ,infected_names, method=getOption("np.dm.test", "chisq.test"), thresh_min =100,plot=T,adjust="none")
+DE2 =.processDM(depth_combined, f ilenames, control_names ,infected_names, method=getOption("np.dm.test", "chisq.test"), thresh_min =100,plot=T,adjust="none")
 
 volcanos = lapply(DE2, .volcano, top=10,logFCthresh = 0.1)
 todo=.getAllPairwiseComparisons(names(DE2), start=2)
