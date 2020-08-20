@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=npTranscript
+#SBATCH --job-name=COMBINED_HUMAN
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-node=1
@@ -33,10 +33,11 @@ bamfiles1=$(echo $bamfiles_ | sed 's/ /:/g')
 #reference="../Chlorocebus_sabaeus.ChlSab1.1.dna.toplevel.fa.gz"
 #coord_file="../Chlorocebus_sabaeus.ChlSab1.1.99.gff3.gz"
 reference="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/merged/human_virus_sequin_ensembl_pri_merged_genome.fasta"
-coord_file="../gencode.v28.annotation.gff3.gz"
+coord_file="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/human/ensembl/Homo_sapiens.GRCh38.100.gtf.gz"
+#coord_file="../gencode.v28.annotation.gff3.gz"
 ##FOLLOWING IS FEATURES IN GFF FILE.THIS MAY NEED TO BE CUSTOMISED
 ##IF uSING USE_eXONS=true, THEY SHOULD REFER TO GENE FEATURES, NOT EXON FEATURES
-GFF_features="--GFF_features=gene_name:description:ID:gene_type:Parent"
+GFF_features="--GFF_features=gene_name:description:gene_id:gene_biotype:gene_id"
 
 reference_virus="${npTranscript}/data/SARS-Cov2/VIC01/wuhan_coronavirus_australia.fasta.gz"
 coord_file_virus="${npTranscript}/data/SARS-Cov2/VIC01/Coordinates.csv"
