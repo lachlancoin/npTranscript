@@ -345,7 +345,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		String annot_file = cmdLine.getStringVal("annotation");
 		String chroms= cmdLine.getStringVal("chroms_to_include");
 		
-		boolean gff = annot_file !=null && (annot_file.contains(".gff") || annot_file.contains(".gtf"));
+		//boolean gff = annot_file !=null && (annot_file.contains(".gff") || annot_file.contains(".gtf"));
 		
 		File resDir = new File(resdir);
 		if(!resDir.exists())resDir.mkdir();
@@ -461,7 +461,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		String[] in_nmes  = new String[len];
 		ZipFile  anno  = null;
 		boolean writeDirect = true;
-		if(gffFile.getName().indexOf(".gff")>=0){
+		if(gffFile.getName().indexOf(".gff")>=0 || gffFile.getName().indexOf(".gtf")>=0){
 			if(gffFile.getName().endsWith(".zip")){
 				anno = new ZipFile(gffFile);
 			}
