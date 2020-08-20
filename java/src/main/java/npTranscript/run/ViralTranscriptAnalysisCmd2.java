@@ -345,7 +345,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		String annot_file = cmdLine.getStringVal("annotation");
 		String chroms= cmdLine.getStringVal("chroms_to_include");
 		
-		boolean gff = annot_file !=null && annot_file.contains(".gff");
+		boolean gff = annot_file !=null && (annot_file.contains(".gff") || annot_file.contains(".gtf"));
 		
 		File resDir = new File(resdir);
 		if(!resDir.exists())resDir.mkdir();
