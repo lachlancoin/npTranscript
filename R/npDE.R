@@ -120,6 +120,8 @@ infilesT = grep("transcripts.txt", dir(), v=T)
 transcriptsl_unmerged = readTranscriptHostAll(infilesT, start_text = start_text,target = target,   filter = filter, 
                                     combined_depth_thresh = getOption("np.depth_thresh",100))[[1]]
 transcriptsl = transcriptsl_unmerged
+
+
 jointind = grep(';', transcriptsl$span)
 transcriptsl$span[jointind] = unlist(lapply(transcriptsl$span[jointind],function(x) strsplit(x,";")[[1]][1]))
 nullind = grep('^-$',transcriptsl$span)
@@ -171,8 +173,12 @@ for(i in 1:length(DE_list)){
   grpnme = paste("DE",names(DE_list)[i], sep="/")
   h5write(DE_list[[i]], h5DE, grpnme)
 }
+towrite = lapply(DE_list,.xlim, pthresh = 1.0, col = "p.adj")
+#towrite[[length(towrite)+1]] = transcriptsl1
+#names(towrite)[length(towrite)] = "transcripts"
+write_xlsx(towrite,paste(resdir, "DE.xlsx",sep="/") )
 DE2 = data.frame(unlist(DE_list,recursive=FALSE))
-write_xlsx(lapply(list(transcripts=transcriptsl1,DE=DE2),function(x) x[attr(x,"order"),,drop=F]), paste(resdir, "DE.xlsx",sep="/"))
+#write_xlsx(lapply(list(transcripts=transcriptsl1,DE=DE2),function(x) x[attr(x,"order"),,drop=F]), paste(resdir, "DE.xlsx",sep="/"))
 volcanos = lapply(DE_list, .volcano, logFCthresh = 0.5, top=20, exclude=c())
 todo=.getAllPairwiseComparisons(names(DE_list), start=2)
 comparisonPlots = lapply(todo, function(x) .comparisonPlot(DE2,transcriptsl1 , inds  = x, excl=c()))
@@ -222,8 +228,8 @@ write_xlsx(pvs_all, paste(resdir, "isoDE.xlsx",sep="/"))
 transcripts_ = transcriptsl_unmerged[transcriptsl_unmerged$countTotal>1000,,drop=F]
 depth_combined=  readH5_h("0.clusters.h5",transcripts_,filenames, thresh = 1000)
 print(dim(depth_combined))
-depth_combined1 = .mergeDepthByPos(depth_combined)
-  print(dim(depth_combined1))
+depth_combined = .mergeDepthByPos(depth_combined)
+  print(dim(depth_combined))
 
 DE2 =.processDM(depth_combined1, filenames, control_names ,infected_names, method=getOption("np.dm.test", "chisq.test"), thresh_min =100,plot=T,adjust="none")
 
@@ -246,11 +252,17 @@ lapply(DE2, function(x) h5write(x, h5DE,paste("DM",attr(x, "nme"),sep="/")))
 h5ls(h5DE)
 H5close()
 #h5closeAll()
-
+ord=order(unlist(lapply(names(DE3),function(x) strsplit(x,"\\.")[[1]][2])))
 write_xlsx(lapply(DE2,.xlim,1e-2), paste(resdir, "DM_combined.xlsx",sep="/"))
+write_xlsx(lapply(list(DE3=DE3[,ord]),.xlim,pthresh=1e-2,col="meta.p.adj" ), paste(resdir, "DM_combined1.xlsx",sep="/"))
 
-if(FALSE){
+
+.if(FALSE){
   .extractFromDepth(depth_combined, 5:6,"MT.1047.0")
+  .extractFromDepth(depth_combined1, 5:6,"MT.2684")
+  
+  
+  .extractFromDepth(depth_combined, 5:6,"19.48966785")
 fisher.test(.extractFromDepth(depth_combined, 1:2,"12.56159663")[1:2,,])
 }
 

@@ -5,9 +5,10 @@
   
 }
 
-.xlim<-function(x, pthresh = 1e-5){
-  x1 = x[order(x$p.adj),]
-  x2 = x1[x1$p.adj<pthresh,]
+.xlim<-function(x, pthresh = 1e-5, col="p.adj"){
+  i = which(names(x)==col)[1]
+  x1 = x[order(x[,i]),]
+  x2 = x1[x1[,i]<=pthresh,]
   x2
 }
 
