@@ -710,7 +710,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		
 				
 				if(fqw!=null){
-					int sam_ind = sam.isSecondaryOrSupplementary() ? (sam.isSecondaryAlignment() ? 1:2) : 0;
+					
 					
 					// this assumes that minimap2 corrected the strand and we need to reverse complement neg strand to get it back to original 
 					boolean negStrand = sam.getReadNegativeStrandFlag();
@@ -723,7 +723,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 						}
 					}
 				//
-					
+					int sam_ind = sam.isSecondaryOrSupplementary() ? (sam.isSecondaryAlignment() ? 1:2) : 0;
+					if(polyA) sam_ind = 3;
 					String baseQL = sam.getBaseQualityString();
 					FastqRecord fqr= new FastqRecord(sam.getReadName(),
 							negStrand ? SequenceUtil.reverseComplement(sequence): sequence,
