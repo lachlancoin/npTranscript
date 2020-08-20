@@ -683,7 +683,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					}
 					int seqlen = chr.length();
 					Annotation annot  = null;
-					if(gffFile.getName().indexOf(".gff")>=0){
+					if(gffFile.getName().indexOf(".gff")>=0 || gffFile.getName().indexOf(".gtf")>=0){
 							annot = new GFFAnnotation(anno,chr.getName(), seqlen, annotation_pw);
 							
 					}else{

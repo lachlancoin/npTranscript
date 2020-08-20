@@ -249,13 +249,20 @@ public class GFFAnnotation extends Annotation{
 	public static String parent = "Parent";
 	static String emptyString = "";
 	
-	static void process(String str, String[] target, List<String> names){
+	
+	
+	static void process(String str, String[] target, List<String> names, String split, boolean removeQ){
 		String[] desc = str.split(";");
 		Arrays.fill(target, "");
 		for(int j=0; j<desc.length; j++){
-			String[] descj = desc[j].split("=");
-			String[] descjv = descj[1].split(":");
-			String val = descjv[descjv.length-1];
+			String[] descj = desc[j].split(split);
+			String val;
+			if(removeQ){
+				val = descj[1].substring(1,descj[1].length()-1);
+			}else{
+				String[] descjv = descj[1].split(":");
+				 val = descjv[descjv.length-1];
+			}
 			int ind =names.indexOf(descj[0]);
 			if(ind>=0){
 				if(ind==2){
@@ -263,6 +270,7 @@ public class GFFAnnotation extends Annotation{
 				}
 				else target[ind ] = val;
 			}
+			
 		}
 	}
 	
@@ -277,6 +285,8 @@ public class GFFAnnotation extends Annotation{
 		if(entry==null && chrom.startsWith("chr")) entry = zf.getEntry(chrom.substring(3));
 		if(entry==null) System.err.println("WARNING NO ANNOTATION FOR CHROM "+chrom);
 		BufferedReader br;
+		String split = zf.getName().indexOf(".gtf")>=0 ? " " : "=";
+		boolean removeQ = zf.getName().indexOf(".gtf")>=0  ? true : false;
 		if(entry!=null){
 			br = new BufferedReader(new InputStreamReader(zf.getInputStream(entry)));
 		
@@ -301,9 +311,7 @@ public class GFFAnnotation extends Annotation{
 			}
 			String chr = str[0];
 			int start = Integer.parseInt(str[3]);
-			int end = Integer.parseInt(str[3]);
-			
-			
+			int end = Integer.parseInt(str[4]);
 			char strand = str[6].charAt(0);
 		//	ncRNA_gene
 			//pseudogene
@@ -313,13 +321,13 @@ public class GFFAnnotation extends Annotation{
 				}
 				hasExon=false;
 				hasTranscript=false;
-				process(str[8], gene_vals, headers);
+				process(str[8], gene_vals, headers, split, removeQ);
 				String stri = chr+"\t"+gene_vals[0]+"\t"+gene_vals[1]+"\t"+gene_vals[2]+"\t"+gene_vals[3];//+"\t"+paren;
 				pw.println(stri);
 			//	biotypes.putIfAbsent(biot, biot);
 			}else if(type.endsWith("exon")){
 				hasExon = true;
-				process(str[8], exon_vals, headers);
+				process(str[8], exon_vals, headers, split,removeQ);
 				paren = exon_vals[4];
 				if(paren.equals(transcript_vals[0])){
 					paren = transcript_vals[4];
@@ -338,7 +346,7 @@ public class GFFAnnotation extends Annotation{
 			}else if(type.endsWith("transcript")|| type.endsWith("RNA")){
 				hasTranscript=true;
 					//else if(type.equals("transcript")){
-						process(str[8], transcript_vals, headers);
+						process(str[8], transcript_vals, headers,split,removeQ);
 					//}
 				//	System.err.println("treating as transcript "+Arrays.asList(transcript_vals));
 			}else if(type.equals("CDS") || type.endsWith("UTR") || type.indexOf("codon")>=0){
