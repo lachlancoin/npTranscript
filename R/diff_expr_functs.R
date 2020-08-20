@@ -346,6 +346,7 @@ chisqCombine<-function(pv,log=F){
   inf = dimnames(depth)[[3]]
   DE = list()
   method1 = if(method=="chisq.test") .chisq else if(method=="fisher.test") .exact else method
+  inds = which(filenames %in% c(control_names, infected_names))
 
   row_inds = apply(depth[1,,inds],1,min)>thresh_min
  # df1 = df[,row_inds,inds,drop=F]
