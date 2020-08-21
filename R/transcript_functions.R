@@ -90,7 +90,7 @@ getKmer<-function(base, pos,v = c(-1,0,1)){
   }
   names(ratio) =nme
   names(mixt) =paste(nme,"prop")
-  ratio2 = ratio[,seq(1,length(spi)*3,by=3)]
+  ratio2 = ratio[,seq(1,length(spi)*3,by=3),drop=F]
   names(ratio2) = type_nme
   annot = cbind(annot, ratio)
   if(!is.null(annot0)){

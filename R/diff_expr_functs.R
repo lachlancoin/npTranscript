@@ -341,10 +341,13 @@ chisqCombine<-function(pv,log=F){
   write.table(DE1[attr(DE1,"order"),],file=paste(resdir,filename,sep="/") , quote=F, row.names=F, sep="\t", col.names=T)
 }
 .exact<-function(v, nrow=2, ncol=2){
+  if(sum(v)==0) return (c(NA,NA,NA,NA))
+  
   f = fisher.test(v)
   c(f$p.value,f$estimate, v[2,1]/v[1,1], v[2,2]/v[1,2])
 }
 .chisq<-function(v, nrow=2,ncol=2){
+  if(sum(v)==0) return (c(NA,NA,NA,NA))
   f = chisq.test(matrix(v,nrow=nrow, ncol=ncol))
   c(f$p.value, NA,v[2,1]/v[1,1], v[2,2]/v[1,2])
 }
@@ -374,8 +377,9 @@ chisqCombine<-function(pv,log=F){
 
   row_inds = apply(depth[1,,inds],1,min)>thresh_min
  # df1 = df[,row_inds,inds,drop=F]
+  if(length(which(row_inds))<=0) return (DE)
   for(i in 1:length(control_names)){
-    DE[[i]] = DEdepth(depth[,row_inds,], control_names[i], infected_names[i], tojoin=1:3, method=method1, adjust=adjust)
+    DE[[i]] = DEdepth(depth[,row_inds,,drop=F], control_names[i], infected_names[i], tojoin=1:3, method=method1, adjust=adjust)
   }
   nmes=apply(cbind(infected_names, control_names),1,function(x).largestPrefix(x[1],x[2]))
   
@@ -1028,7 +1032,7 @@ readIsoformH5<-function(transcripts_, h5file,  depth =1000){
 
 
 .readH5All<-function(transcripts, infile, attributes,filenames,  thresh,tokeepi =NULL, readH5_ = readH5_c){
-  filenames=  attributes[which(names(attributes)=="info")][[1]]
+  #filenames=  attributes[which(names(attributes)=="info")][[1]]
   depth_ls = try(readH5_(infile, transcripts, filenames, thresh =thresh,tokeepi = tokeepi, log=F))
   return(.transferAttributes(depth_ls, attributes)[[1]])
 }
@@ -1045,8 +1049,10 @@ readIsoformH5<-function(transcripts_, h5file,  depth =1000){
 #extracts and rearranges depth
 .mergeDepth<-function(i,depths_combined_spliced){
   res =depths_combined_spliced[[1]][,,i,drop=F]
+  if(length(depths_combined_spliced)>1){
   for(k in 2:length(depths_combined_spliced)){
     res = abind(res,depths_combined_spliced[[k]][,,i,drop=F],along=3)
+  }
   }
   dimnames(res)[[3]] = names(depths_combined_spliced)
   res

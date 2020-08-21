@@ -29,7 +29,9 @@ args = commandArgs(trailingOnly=TRUE)
 if(length(args)>0){
 data_src = args[1]  ## location of fasta file and Coordinates file
 }else{
-data_src = c("C:/Users/LCOIN/github/npTranscript/data/SARS-Cov2/VIC01" ,"~/github/npTranscript/data/SARS-Cov2/VIC01","~/github/npTranscript/data/229E_CoV" )
+  data_src = c("~/github/npTranscript/data/SARS-Cov2/VIC01","~/github/npTranscript/data/229E_CoV" )
+  
+#data_src = c("C:/Users/LCOIN/github/npTranscript/data/SARS-Cov2/VIC01" ,"~/github/npTranscript/data/SARS-Cov2/VIC01","~/github/npTranscript/data/229E_CoV" )
 }
 
 
@@ -55,6 +57,7 @@ infilesAnnot = grep("annot.txt.gz$", dir(), v=T)
 infilesT = grep("transcripts.txt.gz$", dir(), v=T)
 infiles = grep("clusters.h5", dir(), v=T)
 infilesAltT = grep("isoforms.h5", dir(), v=T)
+infilesBr = grep("breakpoints.", dir(), v=T)
 print(infilesBr)
 print(infilesReads)
 print(infilesT)
@@ -156,7 +159,7 @@ for(i in 1:length(ml1_splice)){
 }
 
 if(length(infilesAnnot)>0){
-  annot0 = .readAnnotFile(.findFile(data_src, "0.annot.tsv"),plot=T, type_nme=c("Cell","Virion"), showEB=T,conf.level=0.95)
+#  annot0 = .readAnnotFile(.findFile(data_src, "0.annot.tsv"),plot=T, type_nme=c("Cell","Virion"), showEB=T,conf.level=0.95)
  
 #	annots = .readAnnotFile(infilesAnnot,plot=T, type_nme=type_nme, annot0 = annot0,conf.level=0.95,showEB=F)
 	annots = .readAnnotFile(infilesAnnot,plot=T, type_nme=type_nme, annot0 = NULL,conf.level=0.95,showEB=T)
