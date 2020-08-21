@@ -231,7 +231,7 @@ print(dim(depth_combined))
 depth_combined = .mergeDepthByPos(depth_combined)
   print(dim(depth_combined))
 
-DE2 =.processDM(depth_combined1, filenames, control_names ,infected_names, method=getOption("np.dm.test", "chisq.test"), thresh_min =100,plot=T,adjust="none")
+DE2 =.processDM(depth_combined, filenames, control_names ,infected_names, method=getOption("np.dm.test", "chisq.test"), thresh_min =100,plot=T,adjust="none")
 
 volcanos = lapply(DE2, .volcano, top=10,logFCthresh = 0.1)
 todo=.getAllPairwiseComparisons(names(DE2), start=2)
