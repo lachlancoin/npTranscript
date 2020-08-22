@@ -6,7 +6,7 @@ options("np.control"="control")
 options("np.case"='infected')
 #options("np.comparisons"=NULL)
 
-options("np.casecontrol" = NULL)
+options("np.casecontrol" = "casecontrol.txt")
 options("np.exclude"="none")
 options("np.virus"="FALSE")
 options("np.analysis"="betabinom")
@@ -140,8 +140,10 @@ for(i in 1:length(exclude_nme)){
 
 if(!is.null(getOption("np.casecontrol",NULL))){
   casecontrol = .readCaseControl(getOption("np.casecontrol",NULL))  
+  if(!is.null(casecontrol)){
   control_names = as.character(casecontrol$control)
   infected_names =as.character( casecontrol$case)
+  }
 }
 
 
@@ -182,11 +184,11 @@ for(i in 1:length(DE_list)){
   grpnme = paste("DE",names(DE_list)[i], sep="/")
   h5write(DE_list[[i]], h5DE, grpnme)
 }
-prefix = paste(control_names[1], infected_names[1], sep=" v " )
+prefix = "" #paste(control_names[1], infected_names[1], sep=" v " )
 towrite = lapply(DE_list,.xlim, pthresh = 1.0, col = "p.adj")
 #towrite[[length(towrite)+1]] = transcriptsl1
 #names(towrite)[length(towrite)] = "transcripts"
-write_xlsx(towrite,paste(resdir, "DE.xlsx",sep="/") )
+.write_xlsx1(towrite,paste(resdir, "DE.xlsx",sep="/") )
 DE2 = data.frame(unlist(DE_list,recursive=FALSE))
 #write_xlsx(lapply(list(transcripts=transcriptsl1,DE=DE2),function(x) x[attr(x,"order"),,drop=F]), paste(resdir, "DE.xlsx",sep="/"))
 volcanos = lapply(DE_list, .volcano, logFCthresh = 0.5, prefix=prefix, top=10, exclude=c())

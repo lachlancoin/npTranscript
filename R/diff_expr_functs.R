@@ -484,7 +484,8 @@ DEgenes<-function(df,control_names,infected_names,  type="lt", binom=F, log=F
     logFC = log(ratio1)/log(2)
     results[[i]] =  data.frame(ORFs=ORFs,grp = grp, pvals, p.adj, pvals1,pvals2, tpm_control, tpm_infected, ratio1,logFC, sum_control=x,sum_infected=y)
   }
-  names(results)=apply(cbind(infected_names, control_names),1,function(x).largestPrefix(x[1],x[2]))
+  names(results)=apply(cbind(infected_names, control_names),1,paste, collapse=" v ")
+                       #function(x).largestPrefix(x[1],x[2]))
  results
 }
 
@@ -658,6 +659,7 @@ findGenesByChrom<-function(DE,chrom="MT", thresh = 1e-10,nme2="chrs", nme="FDR1"
 }
 
 .readCaseControl<-function(f){
+  if(!file.exists(f)) return(NULL)
   gfft = read.table(f, sep="\t", header=F, fill=T)
   list(control = gfft[,1], case =gfft[,2])
 }
@@ -870,7 +872,9 @@ ggp<-ggp+  geom_hline(
     col = "red",
     linetype = "dotted",
     size = 1)
-ggp<-ggp+  theme_bw() 
+ggp<-ggp+  theme(
+  plot.title = element_text(size=8)
+)
 ggp<-ggp+  theme(legend.position = "none")+
   scale_colour_manual(values = c("grey", "red")) 
 if(useadj){
@@ -880,7 +884,7 @@ ggp<-ggp+  geom_text_repel(data=subset(df,abs(logFC) >= logFCthresh & p.adj < pt
   ggp<-ggp+  geom_text_repel(data=subset(df,abs(logFC) >= logFCthresh & pvals < pthresh),
                              aes(logFC, -log10(pvals), label = ORFs),size = 3, color="steelblue")
 }
-ggp<-ggp+ggtitle(paste(attr(df,"nme"),prefix))
+ggp<-ggp+ggtitle(sub(" v ","v \n", paste(attr(df,"nme"),prefix)))
 ggp
 }
 
@@ -929,7 +933,7 @@ ggp
 
 .processDE<-function(transcripts, attributes, resdir, control_names, infected_names,type_names=c("control","infected"), 
                      outp = "results.csv", type=""){
- print(cbind(control_names, infected_names))
+  print(cbind(control_names, infected_names))
    DE1 = try(DEgenes(transcripts, control_names, infected_names));
    if(length(DE1)>1){
      metaDE = .meta(DE1)
@@ -1046,14 +1050,27 @@ readIsoformH5<-function(transcripts_, h5file,  depth =1000){
 }
  
 
-.shorten<-function(str, len=31){
+.shorten<-function(str, len=31, split = NULL){
   str = gsub("_pass","",str)
   str = gsub("_","",str)
   str = gsub("vs","v",str)
-  if(nchar(str)>len)str = substr(str,1,len)
+  str = gsub("infected","inf",str)
+  str = gsub("control","ctrl",str)
+  
+  if(nchar(str)>len){
+    if(!is.null(split)){
+      strs = paste(unlist(lapply(strsplit(str, split)[[1]], function(x) substr(x,1,14))), collapse=" v ")
+      str = strs
+    }
+    str = substr(str,1,len)
+  }
   str
 }
-
+.write_xlsx1<-function(sheets, fn, split=" v ", len = 31){
+  names(sheets) = unlist(lapply(names(sheets), .shorten, len, split))
+  print(names(sheets))
+  write_xlsx(sheets, fn)
+}
 #extracts and rearranges depth
 .mergeDepth<-function(i,depths_combined_spliced){
   res =depths_combined_spliced[[1]][,,i,drop=F]
