@@ -43,7 +43,7 @@ echo $bamfiles_virus
 bash ${npTranscript}/scripts/run.sh ${bamfiles_virus}   --reference=${reference_virus} --annotation ${coord_file_virus} --resdir ${resdir_virus} ${opts} ${opts1} ${opts2} ${opts3}
 
 
-tag="secondary.fastq"
+tag=".secondary.fastq"
 resdir_virus="results_${tag}"
 bamfiles=$(wc -l *fastq | tr -s ' ' | grep -v ' 0 '  | cut -f 3 -d ' ' | grep ${tag}  |  xargs -I {} echo ${bamdir}/{})
 bamfiles_="--fastqFile=${bamfiles}"
@@ -51,7 +51,7 @@ bamfiles_virus=$(echo $bamfiles_ | sed 's/ /:/g')
 echo $bamfiles_virus
 bash ${npTranscript}/scripts/run.sh ${bamfiles_virus}   --reference=${reference_virus} --annotation ${coord_file_virus} --resdir ${resdir_virus} ${opts} ${opts1} ${opts2} ${opts3}
 
-tag="supplementary.fastq"
+tag=".supplementary.fastq"
 resdir_virus="results_${tag}"
 bamfiles=$(wc -l *fastq | tr -s ' ' | grep -v ' 0 '  | cut -f 3 -d ' ' | grep ${tag}  |  xargs -I {} echo ${bamdir}/{})
 bamfiles_="--fastqFile=${bamfiles}"
