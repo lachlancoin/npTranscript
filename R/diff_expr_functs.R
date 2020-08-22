@@ -457,9 +457,12 @@ DEgenes<-function(df,control_names,infected_names,  type="lt", binom=F, log=F
   lower.tail = T
   
   ORFs = as.character(df$ORFs)
+  if(!is.null(df$Name)){
   dfn_ind = !is.na(df$Name)
   ORFs[dfn_ind]=as.character(df$Name[dfn_ind])
+  }
   grp=df$grp
+
   control_inds = rep(NA, length(control_names))
   infected_inds = rep(NA, length(infected_names))
   results = list();

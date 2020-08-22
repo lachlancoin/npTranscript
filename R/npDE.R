@@ -5,6 +5,7 @@ options("np.results"="results")
 options("np.control"="control")
 options("np.case"='infected')
 options("np.exclude"="none")
+options("np.virus"="FALSE")
 options("np.analysis"="betabinom")
 options("np.depth_thresh"="1000")
 options("np.prefix_keep"=NULL)
@@ -87,18 +88,13 @@ optionFile = paste(resdir,"options.txt",sep="/")
 
 files = dir()
 chroms = NULL
-binsize = 1e5
-isVirus=  FALSE;
+isVirus=  getOption("np.virus","FALSE")=="TRUE"
 start_text = "start"
-mergeByPosAndGene = FALSE
 filter = NULL
-if(isVirus){
-  filter = list("type_nme"="5_3")
-  mergeByPosAndGene = TRUE
-  binsize = 100  #1e5 for euk
-  start_text ="endBreak"
+#if(isVirus){
+#  start_text ="endBreak"
 
-}
+#}
 
 .rename<-function(x) {
   strand = rep("",length(x))
@@ -120,17 +116,17 @@ infilesT = grep("transcripts.txt", dir(), v=T)
 transcriptsl_unmerged = readTranscriptHostAll(infilesT, start_text = start_text,target = target,   filter = filter, 
                                     combined_depth_thresh = getOption("np.depth_thresh",100))[[1]]
 transcriptsl = transcriptsl_unmerged
-
-
+attributes = attributes(transcriptsl)
+filenames = attr(transcriptsl,"info")
+if(!isVirus){
 jointind = grep(';', transcriptsl$span)
 transcriptsl$span[jointind] = unlist(lapply(transcriptsl$span[jointind],function(x) strsplit(x,";")[[1]][1]))
 nullind = grep('^-$',transcriptsl$span)
 transcriptsl$span[nullind] = .rename(transcriptsl[nullind,])
-attributes = attributes(transcriptsl)
-filenames = attr(transcriptsl,"info")
 transcriptsl =.mergeRows(transcriptsl,sum_names = filenames,append_names = "ID", colid="span")
 transcriptsl = transcriptsl[,-which(names(transcriptsl)=="ORFs")]
 names(transcriptsl) = sub("span","ORFs",names(transcriptsl))
+}
 control_names = unlist(lapply(control_names, grep, filenames, v=T));#  grep(control_names,filenames,v=T)
 infected_names = unlist(lapply(infected_names, grep, filenames, v=T))
 exclude_nme = getOption("np.exclude",'none')
@@ -142,21 +138,23 @@ for(i in 1:length(exclude_nme)){
 if(length(control_names)!=length(infected_names)) error(" lengths different")
 transcriptsl =  .processTranscripts(transcriptsl)
 
-remove_inds =  regexpr("^[0-9]{1,}\\.", as.character(transcriptsl$ORFs))>=0
-keep_inds = !remove_inds
+  remove_inds =  regexpr("^[0-9]{1,}\\.", as.character(transcriptsl$ORFs))>=0
+  keep_inds = !remove_inds
   sequins_inds = regexpr(getOption("np.prefix_sequins"), transcriptsl$ORFs)>=0
-grp = rep(NA, dim(transcriptsl)[[1]])
-grp[!remove_inds]="genes"
-grp[remove_inds] = "unknown"
-grp[sequins_inds]="sequins"
-grp = as.factor(grp)
-
+  grp = rep(NA, dim(transcriptsl)[[1]])
+  grp[!remove_inds]="genes"
+  grp[remove_inds] = "unknown"
+  grp[sequins_inds]="sequins"
+  grp = as.factor(grp)
 #transcripts_all1 = lapply(transcripts_all, .mergeRows,sum_names= c(control_names, infected_names), colid="geneID" )
-dimnames(transcriptsl)[[1]] = transcriptsl$ID
+  dimnames(transcriptsl)[[1]] = transcriptsl$ID
 # 
 #info = attr(transcripts,'info')
- transcriptsl1 =.addAnnotation(annotFile, transcriptsl,grp,  colid="geneID", nmes = c("chr" , "ID" , "Name" , "Description","biotype"))
-
+  if(!isVirus){
+  transcriptsl1 =.addAnnotation(annotFile, transcriptsl,grp,  colid="geneID", nmes = c("chr" , "ID" , "Name" , "Description","biotype"))
+}else{
+  transcriptsl1 = cbind(transcriptsl,grp)
+}
 
   DE_list =  .processDE(transcriptsl1, attributes, resdir, control_names, infected_names, type_names, type="")
   
@@ -179,13 +177,13 @@ towrite = lapply(DE_list,.xlim, pthresh = 1.0, col = "p.adj")
 write_xlsx(towrite,paste(resdir, "DE.xlsx",sep="/") )
 DE2 = data.frame(unlist(DE_list,recursive=FALSE))
 #write_xlsx(lapply(list(transcripts=transcriptsl1,DE=DE2),function(x) x[attr(x,"order"),,drop=F]), paste(resdir, "DE.xlsx",sep="/"))
-volcanos = lapply(DE_list, .volcano, logFCthresh = 0.5, top=20, exclude=c())
+volcanos = lapply(DE_list, .volcano, logFCthresh = 0.5, top=10, exclude=c())
 todo=.getAllPairwiseComparisons(names(DE_list), start=2)
 comparisonPlots = lapply(todo, function(x) .comparisonPlot(DE2,transcriptsl1 , inds  = x, excl=c()))
 
 pdf(paste(resdir, "/DE.pdf",sep=""))
-if(FALSE){
-  for(i in 1:length(DE1)).qqplot(DE1[[i]]$p.adj, min.p= 1e-200,main=type,add=T, col=i+1)
+if(TRUE){
+  for(i in 1:length(DE_list)).qqplot(DE_list[[i]]$pvals, min.p= 1e-200,main=type,add=i>1, col=i+1)
 }
 lapply(volcanos, function(x) print(x))
 lapply(comparisonPlots, function(x) print(x[[1]]))
@@ -226,10 +224,13 @@ write_xlsx(pvs_all, paste(resdir, "isoDE.xlsx",sep="/"))
 
 ######
 transcripts_ = transcriptsl_unmerged[transcriptsl_unmerged$countTotal>1000,,drop=F]
-depth_combined=  readH5_h("0.clusters.h5",transcripts_,filenames, thresh = 1000)
-print(dim(depth_combined))
-depth_combined = .mergeDepthByPos(depth_combined)
-  print(dim(depth_combined))
+if(isVirus){
+depth_combined =  readH5_c( "0.clusters.h5", transcripts_,  filenames, thresh = 1000)
+}else{
+  depth_combined=  readH5_h("0.clusters.h5",transcripts_,filenames, thresh = 1000)
+  depth_combined = .mergeDepthByPos(depth_combined)
+  
+}
 
 DE2 =.processDM(depth_combined, filenames, control_names ,infected_names, method=getOption("np.dm.test", "chisq.test"), thresh_min =100,plot=T,adjust="none")
 
@@ -258,6 +259,7 @@ write_xlsx(lapply(DE2,.xlim,1e-2), paste(resdir, "DM_combined.xlsx",sep="/"))
 
 
 .if(FALSE){
+  .extractFromDepth(depth_combined,1:8,"28782")[3,,]
   .extractFromDepth(depth_combined, 5:6,"MT.1047.0")
   .extractFromDepth(depth_combined1, 5:6,"MT.2684")
   
