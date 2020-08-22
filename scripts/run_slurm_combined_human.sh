@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=npTranscript
+#SBATCH --job-name=COMBINED_HUMAN
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-node=1
@@ -17,10 +17,6 @@ export JSA_MEM=30000m
 npTranscript=${HOME}/github/npTranscript
 dat=$(date +%Y%m%d%H%M%S)
 mm2_path="/sw/minimap2/current/minimap2"
-if [ ! $1 ]; then
-	echo "needs a parameter to define either combined or host"
-	exit;
-fi
 
 mode=$1
 shift
@@ -34,14 +30,15 @@ bamfiles_="--bamFile=${bamfiles}"
 bamfiles1=$(echo $bamfiles_ | sed 's/ /:/g')
 
 ##SPECIFY LOCATION OF COMBINED AND VIRUS ONLY DB
-reference="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/merged/monkey_virus_sequin_genome.fasta"
-coord_file="/DataOnline/Data/raw_external/Coronavirus/monkey/newdb/Chlorocebus_sabaeus.ChlSab1.1.99.gff3.gz"
-GFF_features="-GFF_features=Name:description:ID:biotype:Parent"
-#reference="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/merged/human_virus_sequin_ensembl_pri_merged_genome.fasta"
+#reference="../Chlorocebus_sabaeus.ChlSab1.1.dna.toplevel.fa.gz"
+#coord_file="../Chlorocebus_sabaeus.ChlSab1.1.99.gff3.gz"
+reference="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/merged/human_virus_sequin_ensembl_pri_merged_genome.fasta"
+coord_file="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/human/ensembl/Homo_sapiens.GRCh38.100.gtf.gz"
 #coord_file="../gencode.v28.annotation.gff3.gz"
-#GFF_features="gene_name:description:ID:gene_type:Parent"
 ##FOLLOWING IS FEATURES IN GFF FILE.THIS MAY NEED TO BE CUSTOMISED
 ##IF uSING USE_eXONS=true, THEY SHOULD REFER TO GENE FEATURES, NOT EXON FEATURES
+GFF_features="--GFF_features=gene_name:description:gene_id:gene_biotype:gene_id"
+
 reference_virus="${npTranscript}/data/SARS-Cov2/VIC01/wuhan_coronavirus_australia.fasta.gz"
 coord_file_virus="${npTranscript}/data/SARS-Cov2/VIC01/Coordinates.csv"
 cov_chr=$(zcat ${reference_virus} | head -n 1 | cut -f 1 -d ' ' | sed 's/>//g')
@@ -52,10 +49,9 @@ opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=8 --extra_thr
 #for dRNA datasets
 opts="${opts} --RNA=true"
 opts2="--fail_thresh=0  --chromsToRemap=${cov_chr}  --mm2_memory=10g --recordDepthByPosition=true"
-
 opts="${opts} $@"
 echo $opts
-bash ${npTranscript}/scripts/run.sh ${bamfiles1}   --reference=${reference} --annotation=${coord_file} --resdir=${resdir} ${opts} ${opts1} ${opts2} ${GFF_features}
+bash ${npTranscript}/scripts/run.sh ${bamfiles1}   --reference=${reference} --annotation=${coord_file} --resdir=${resdir} ${opts} ${opts1} ${opts2} ${opts3} ${GFF_features}
 
 
 
