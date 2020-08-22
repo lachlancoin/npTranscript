@@ -140,8 +140,8 @@ for(i in 1:length(exclude_nme)){
 
 if(!is.null(getOption("np.casecontrol",NULL))){
   casecontrol = .readCaseControl(getOption("np.casecontrol",NULL))  
-  control_names = casecontrol$control
-  infected_names = casecontrol$case
+  control_names = as.character(casecontrol$control)
+  infected_names =as.character( casecontrol$case)
 }
 
 
