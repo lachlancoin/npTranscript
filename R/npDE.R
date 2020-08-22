@@ -254,7 +254,7 @@ H5close()
 #h5closeAll()
 ord=order(unlist(lapply(names(DE3),function(x) strsplit(x,"\\.")[[1]][2])))
 write_xlsx(lapply(DE2,.xlim,1e-2), paste(resdir, "DM_combined.xlsx",sep="/"))
-write_xlsx(lapply(list(DE3=DE3[,ord]),.xlim,pthresh=1e-2,col="meta.p.adj" ), paste(resdir, "DM_combined1.xlsx",sep="/"))
+#write_xlsx(lapply(list(DE3=DE3[,ord]),.xlim,pthresh=1e-2,col="meta.p.adj" ), paste(resdir, "DM_combined1.xlsx",sep="/"))
 
 
 .if(FALSE){
