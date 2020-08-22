@@ -171,19 +171,20 @@ for(i in 1:length(DE_list)){
   grpnme = paste("DE",names(DE_list)[i], sep="/")
   h5write(DE_list[[i]], h5DE, grpnme)
 }
+prefix = paste(control_names[1], infected_names[1], sep=" v " )
 towrite = lapply(DE_list,.xlim, pthresh = 1.0, col = "p.adj")
 #towrite[[length(towrite)+1]] = transcriptsl1
 #names(towrite)[length(towrite)] = "transcripts"
 write_xlsx(towrite,paste(resdir, "DE.xlsx",sep="/") )
 DE2 = data.frame(unlist(DE_list,recursive=FALSE))
 #write_xlsx(lapply(list(transcripts=transcriptsl1,DE=DE2),function(x) x[attr(x,"order"),,drop=F]), paste(resdir, "DE.xlsx",sep="/"))
-volcanos = lapply(DE_list, .volcano, logFCthresh = 0.5, top=10, exclude=c())
+volcanos = lapply(DE_list, .volcano, logFCthresh = 0.5, prefix=prefix, top=10, exclude=c())
 todo=.getAllPairwiseComparisons(names(DE_list), start=2)
 comparisonPlots = lapply(todo, function(x) .comparisonPlot(DE2,transcriptsl1 , inds  = x, excl=c()))
 
 pdf(paste(resdir, "/DE.pdf",sep=""))
 if(TRUE){
-  for(i in 1:length(DE_list)).qqplot(DE_list[[i]]$pvals, min.p= 1e-200,main=type,add=i>1, col=i+1)
+  for(i in 1:length(DE_list)).qqplot(DE_list[[i]]$pvals, min.p= 1e-200,main="" ,add=i>1, col=i+1)
 }
 lapply(volcanos, function(x) print(x))
 lapply(comparisonPlots, function(x) print(x[[1]]))
@@ -204,7 +205,7 @@ pvs_all2 = data.frame(unlist(pvs_all,recursive=FALSE))
 
 for(i in 1:length(pvs_all)) attr(pvs_all[[i]],"nme") = names(pvs_all)[i]
 
-volcanos =  lapply(pvs_all, .volcano, top=10, useadj = F, logFCthresh = 0.1)
+volcanos =  lapply(pvs_all, .volcano, top=10, useadj = F, prefix =prefix,  logFCthresh = 0.1)
 todo=.getAllPairwiseComparisons(names(pvs_all), start=2)
 comparisonPlots = lapply(todo, function(x) .comparisonPlot(pvs_all2,transcriptsl1[inds_i,] , inds  = x, excl=c()))
 
@@ -234,7 +235,7 @@ depth_combined =  readH5_c( "0.clusters.h5", transcripts_,  filenames, thresh = 
 
 DE2 =.processDM(depth_combined, filenames, control_names ,infected_names, method=getOption("np.dm.test", "chisq.test"), thresh_min =100,plot=T,adjust="none")
 
-volcanos = lapply(DE2, .volcano, top=10,logFCthresh = 0.1)
+volcanos = lapply(DE2, .volcano, top=10,prefix=prefix, logFCthresh = 0.1)
 todo=.getAllPairwiseComparisons(names(DE2), start=2)
 DE3 = data.frame(unlist(DE2,recursive=FALSE))
 
@@ -258,7 +259,7 @@ write_xlsx(lapply(DE2,.xlim,1e-2), paste(resdir, "DM_combined.xlsx",sep="/"))
 #write_xlsx(lapply(list(DE3=DE3[,ord]),.xlim,pthresh=1e-2,col="meta.p.adj" ), paste(resdir, "DM_combined1.xlsx",sep="/"))
 
 
-.if(FALSE){
+if(FALSE){
   .extractFromDepth(depth_combined,1:8,"28782")[3,,]
   .extractFromDepth(depth_combined, 5:6,"MT.1047.0")
   .extractFromDepth(depth_combined1, 5:6,"MT.2684")
