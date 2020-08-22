@@ -4,6 +4,9 @@ options("np.libs_to_install"="")
 options("np.results"="results")
 options("np.control"="control")
 options("np.case"='infected')
+#options("np.comparisons"=NULL)
+
+options("np.casecontrol" = NULL)
 options("np.exclude"="none")
 options("np.virus"="FALSE")
 options("np.analysis"="betabinom")
@@ -134,6 +137,14 @@ for(i in 1:length(exclude_nme)){
   control_names = grep(exclude_nme[i], control_names, inv=T,v=T)
   infected_names = grep(exclude_nme[i], infected_names, inv=T,v=T)
 }
+
+if(!is.null(getOption("np.casecontrol",NULL))){
+  casecontrol = .readCaseControl(getOption("np.casecontrol",NULL))  
+  control_names = casecontrol$control
+  infected_names = casecontrol$case
+}
+
+
 
 if(length(control_names)!=length(infected_names)) error(" lengths different")
 transcriptsl =  .processTranscripts(transcriptsl)

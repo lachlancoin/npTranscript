@@ -657,6 +657,11 @@ findGenesByChrom<-function(DE,chrom="MT", thresh = 1e-10,nme2="chrs", nme="FDR1"
   cbind(transcript, geneID)
 }
 
+.readCaseControl<-function(f){
+  gfft = read.table(f, sep="\t", header=F, fill=T)
+  list(control = gfft[,1], case =gfft[,2])
+}
+
 .addAnnotation<-function(annotfile, transcripts,grp, colid="geneID",nmes = c("chr","ID" , "Name" , "Description","biotype")){
   match_ind = which(names(transcripts)==colid)[1]
   gfft = read.table(annotfile, sep="\t", header=F, fill=T, quote='\"')
