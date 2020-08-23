@@ -249,10 +249,8 @@ public class TranscriptUtils {
 					int end = st + polyAlign.getLength() - polyAlign.getGaps1();
 					if(st> 10){
 						String nme = readSeq.getName();
-					//	readSeq.setName(nme+".L");
 						profile.o.writePolyA(readSeq.subSequence(0, end),  nme+".L",
 								baseQ.length()==1 ? baseQ: baseQ.substring(0,end), sam.getReadNegativeStrandFlag(),source_index);
-					//	readSeq.setName(nme+".R");
 						profile.o.writePolyA(readSeq.subSequence( end+1, readSeq.length()),  nme+".R",
 								baseQ.length()==1 ? baseQ: baseQ.substring(end+1, readSeq.length()), sam.getReadNegativeStrandFlag(),source_index);
 						System.err.println("internal polyA 5´ ");

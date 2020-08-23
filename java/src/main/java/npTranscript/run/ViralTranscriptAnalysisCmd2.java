@@ -38,10 +38,10 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -333,10 +333,12 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		mm2_path = cmdLine.getStringVal("mm2_path");
 		mm2Preset = cmdLine.getStringVal("mm2Preset");
 		String reference = cmdLine.getStringVal("reference");
+		File refFile = new File(reference);
+		if(!refFile.exists()) throw new RuntimeException("ref file does not exist");
 		if(fastqFile!=null){
 			try{
 				//make a minimap index
-			mm2_index = SequenceUtils.minimapIndex(new File(reference), mm2_path, mm2_mem, false);
+			mm2_index = SequenceUtils.minimapIndex(refFile, mm2_path, mm2_mem, false);
 			}catch(Exception exc){
 				exc.printStackTrace();
 			}
@@ -408,19 +410,28 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		
 		Map<String, Integer> reads= new HashMap<String, Integer>();
 		if(readList.length>0 && readList[0].length()>0){
-		 if( readList[0].indexOf("readToCluster.txt.gz")>=0){
 			 Map<String, Collection<String>> map = new HashMap<String, Collection<String>>();
+			 int readind =0;
+			 int orfind = 1;
+			 int chromind = 2;
+			
 			 for(int i=0; i<readList.length; i++){
-			 BufferedReader br = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(new File(readList[i])))));
-				String st = br.readLine();
-				List<String> head = Arrays.asList(st.split("\\t"));
-				int readind = head.indexOf("readID");
-				int orfind = head.indexOf("ORFs");
-				int chromind = head.indexOf("chrom");
+				 InputStream is = new FileInputStream(new File(readList[i]));
+				 if(readList[i].endsWith(".gz")) is = new GZIPInputStream(is);
+			 BufferedReader br = new BufferedReader(new InputStreamReader(is));
+				String st;
+				if(readList[i].indexOf("readToCluster.txt.gz")>=0){
+					st = br.readLine();
+				
+					List<String> head = Arrays.asList(st.split("\\t"));
+					readind = head.indexOf("readID");
+					orfind = head.indexOf("ORFs");
+					chromind = head.indexOf("chrom");
+				}
 				while((st = br.readLine())!=null){
 					String[] str  = st.split("\\t");
 					String readId = str[readind];
-					String orfID = str[chromind]+";"+str[orfind];
+					String orfID = orfind>0 ? ((chromind>=0 ? str[chromind]+";" : "")+str[orfind]) : i+"";
 					Collection<String> l= map.get(orfID) ;
 					if(l==null) {
 						map.put(orfID, new HashSet<String>());
@@ -437,20 +448,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					reads.put(it.next(),i);
 				}
 			}
-		 }else{
-		// reads= new Collection[readList.length];
-		 for(int i=0; i<readList.length; i++){
-		//	reads[i] = new HashSet<String>();
-			BufferedReader br = new BufferedReader(new FileReader(new File(readList[i])));
-			String st;
-			while((st = br.readLine())!=null){
-				String st_ = st.split("\\s+")[0];
-				System.err.println(st_);
-				reads.put(st, i);
-			}
-			br.close();
-		 }
-		 }
+		 
+		 
 		}
 		if(reads.size()==0){
 			readList = null;
