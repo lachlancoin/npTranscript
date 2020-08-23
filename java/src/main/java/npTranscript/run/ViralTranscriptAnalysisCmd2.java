@@ -429,9 +429,9 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					chromind = head.indexOf("chrom");
 				}
 				while((st = br.readLine())!=null){
-					String[] str  = st.split("\\t");
+					String[] str  = st.split("\\s+");
 					String readId = str[readind];
-					String orfID = orfind>0 ? ((chromind>=0 ? str[chromind]+";" : "")+str[orfind]) : i+"";
+					String orfID = orfind>=0 && orfind < str.length ? ((chromind>=0  && chromind<str.length? str[chromind]+";" : "")+str[orfind]) : i+"";
 					Collection<String> l= map.get(orfID) ;
 					if(l==null) {
 						map.put(orfID, new HashSet<String>());
