@@ -64,17 +64,26 @@ opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=8 --extra_thr
 #for dRNA datasets
 opts="${opts} --RNA=true"
 opts2="--fail_thresh=0  --chromsToRemap=${cov_chr}  --mm2_memory=10g --recordDepthByPosition=true"
-
-opts="${opts} $@"
 echo $opts
 tag=".bam"
-bamfiles1=$(bash ${npTranscript}/scripts/getInputFiles.sh ${tag})
+bamfiles=$(find . -maxdepth 1 -type f,l -size +0b | grep "${tag}$" )
+bamfiles1="--bamFile=$(echo $bamfiles | sed 's/ /:/g')"
+
+#bamfiles1=$(bash ${npTranscript}/scripts/getInputFiles.sh ${tag})
+
 bash ${npTranscript}/scripts/run.sh ${bamfiles1}   --reference=${reference} --annotation=${coord_file} --resdir=${resdir} ${opts} ${opts1} ${opts2} ${GFF_features} $@
 
 cd ${resdir}
 
+##following reassigns any leftover portions of original reads
+bash run_slurm_leftover.sh $species
+
+
 if [ $mode == "combined" ]; then
-	bash ${npTranscript}/scripts/run_slurm_virus_fastq.sh
+	bash ${npTranscript}/scripts/run_slurm_virus_fastq.sh $species
+	
 fi
+
+
 
 
