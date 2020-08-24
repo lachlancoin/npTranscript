@@ -15,6 +15,9 @@
 ##tip - use symbolic link to put this in the directory with bam files
 export JSA_MEM=30000m
 
+if [ ! $npTranscript ] ; then
+export	npTranscript=${HOME}/github/npTranscript
+fi 
 if [ ! $reference_virus ]; then
   export reference_virus="${npTranscript}/data/SARS-Cov2/VIC01/wuhan_coronavirus_australia.fasta.gz"
   export coord_file_virus="${npTranscript}/data/SARS-Cov2/VIC01/Coordinates.csv"
@@ -42,9 +45,6 @@ fi
 echo $reference
 
 
-if [ ! $npTranscript ] ; then
-	npTranscript=${HOME}/github/npTranscript
-fi 
 
 dat=$(date +%Y%m%d%H%M%S)
 mm2_path="/sw/minimap2/current/minimap2"
@@ -55,16 +55,11 @@ if [ ! $mode ];then
  mode="combined"
 fi
 
-bamdir="."
-bamfiles=$(ls ${bamdir} | grep '.bam$' | xargs -I {} echo ${bamdir}/{})
-bamfiles_="--bamFile=${bamfiles}"
-bamfiles1=$(echo $bamfiles_ | sed 's/ /:/g')
-
 ##SPECIFY LOCATION OF COMBINED AND VIRUS ONLY DB
 cov_chr=$(zcat ${reference_virus} | head -n 1 | cut -f 1 -d ' ' | sed 's/>//g')
 echo "coronavirus chr id ${cov_chr}" 
 resdir="results_${dat}"
-opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=8 --extra_threshold=1000 --writePolyA=true --msaDepthThresh=1000 --doMSA=false --numExonsMSA=1:2:3:4:5 --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh 50"
+opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=8 --extra_threshold=500 --writePolyA=true --msaDepthThresh=1000 --doMSA=false --numExonsMSA=1:2:3:4:5 --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh 50"
 
 #for dRNA datasets
 opts="${opts} --RNA=true"
@@ -72,8 +67,14 @@ opts2="--fail_thresh=0  --chromsToRemap=${cov_chr}  --mm2_memory=10g --recordDep
 
 opts="${opts} $@"
 echo $opts
-bash ${npTranscript}/scripts/run.sh ${bamfiles1}   --reference=${reference} --annotation=${coord_file} --resdir=${resdir} ${opts} ${opts1} ${opts2} ${GFF_features}
+tag=".bam"
+bamfiles1=$(bash ${npTranscript}/scripts/getInputFiles.sh ${tag})
+bash ${npTranscript}/scripts/run.sh ${bamfiles1}   --reference=${reference} --annotation=${coord_file} --resdir=${resdir} ${opts} ${opts1} ${opts2} ${GFF_features} $@
 
 cd ${resdir}
 
-bash ${npTranscript}/scripts/run_slurm_virus_fastq.sh
+if [ $mode == "combined" ]; then
+	bash ${npTranscript}/scripts/run_slurm_virus_fastq.sh
+fi
+
+
