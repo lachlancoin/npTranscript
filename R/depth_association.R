@@ -30,10 +30,14 @@ names(res) =  c("pv_less","pv_more","ratio_control","ratio_case")?fie
 
 depths=.readH5All(transcripts,attributes,filenames, thresh = 1000, chrs=NULL)
 depth = .combineTranscripts(depths, attributes)
+
+#depth = depths[[1]]
 depth = .transferAttributes(depth, attributes)
+
+
 attr1 = attributes(depth)
 
-DE = DEdepth(depth, control_names, infected_names, tojoin=1:3)
+DE = DEdepth(depth, control_names, infected_names, tojoin=2)
 
 #DEs1 = DEdepth(depths[[1]], control_names, infected_names )
 #DEs =   lapply(depths, DEdepth, control_names, infected_names,tojoin=1:3)
@@ -47,8 +51,8 @@ outp="depth_association.csv"
 .write(DE ,resdir,outp, numeric_inds = which(!(names(DE)%in% c("IDS", "pos","base"))))
 par(mfrow = c(2,2))
 nme_ = grep("pv_", names(DE),v=T)
-for(k in (nme_)){
-.qqplot1(DE,k, min.p= 1e-200,main=k)
+for(i in length(nme_)){
+.qqplot1(DE,nme_[i], min.p= 1e-200,main=nme_[i])
 }
 
 .plot1<-function(DE, nme,log="", extra=0){

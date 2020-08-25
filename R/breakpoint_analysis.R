@@ -1,13 +1,30 @@
 ##BREAKPOINT ANALYSIS
-breakPs = list()
-for(i in 1:length(infilesBr))  breakPs[[i]] = readBreakPoints(infilesBr[i], i, addOne = FALSE)
+#infilesBr = grep("breakpoints.", dir(), v=T)
+infilesBr0 = paste("0.breakpoints.",type_nme,".0.txt.gz",sep="")
+infilesBr1 = paste("0.breakpoints.",type_nme,".1.txt.gz",sep="")
 
-if(length(breakPs)==length(type_nme)){
- names(breakPs) = type_nme[1:length(breakPs)] 
-}else{
- names(breakPs) = infilesBr
 
+breakPs = vector("list", length = length(infilesBr0))
+incl = rep(T, length(infilesBr0))
+for(i in 1:length(infilesBr0)) {
+  brP0 = try( readBreakPoints(infilesBr0[i], i, addOne = FALSE))
+  brP1 = try( readBreakPoints(infilesBr1[i], i, addOne = FALSE))
+  
+ 
+  if(inherits(brP0,"try-error") ){
+    incl[i] = F
+   # breakPs[[i]] = NULL
+  }else if(inherits(brP1,"try-error")){
+    breakPs[[i]] = brP0;
+  }  else{
+    breakPs[[i]] = .mergeBreak(list(brP0, brP1))
+  }
 }
+breakPs = breakPs[incl]
+names(breakPs) = sub("0.breakpoints.","",sub(".0.txt.gz" ,"" ,infilesBr0))[incl]
+
+
+
  total_reads = rep(1, length(breakPs))
 
 genes = grep("leader",grep("UTR", grep("none",t$gene[-2], inv=T, v=T), inv=T, v=T),v=T, inv=T)
@@ -46,13 +63,10 @@ special = data.frame(
 
 
 if(RUN_ALL){
-	
 	outfile3a = paste(resdir, "/expression1.pdf", sep="");
 	outfile3b = paste(resdir, "/expression2.pdf", sep="");
 	prot_file =  paste(resdir, "/expression.csv", sep="");
 	break_file =  paste(resdir, "/breaks.csv", sep="");
-	
-
 	print("special")
 	 plotAllHM(special, "full" , resdir,  breakPs, t, fimo, total_reads, type_nme = names(breakPs), log=T)	
 
@@ -76,11 +90,11 @@ print("endcs_2")
 	chrom = (rep(0, dim(br_all)[1]))
  write.table(cbind(chrom,br_all),break_file, quote=FALSE, row.names=F,col.names=T,sep=",")
 	if(length(type_nme)>1){
-		ml = plotHMClust1(hmClust_c, total_reads,type_nme, nudge_y = 0.0, nudge_x =0.25, logT = T, plotDepth = F)
-		ml2 = plotHMClust1(hmClust_c, total_reads,type_nme, nudge_y = 0.0, nudge_x =0.25, logT = T, plotDepth = T)
-		n = length(type_nme)
-		try(ggsave(outfile3a, plot=ml, width = 15, height = 15*(n+1)*(n/4), units = "cm"))
-		try(ggsave(outfile3b ,plot=ml2, width = 15, height = 15*(n+1)*(n/4), units = "cm"))
+		ml = plotHMClust1(hmClust_c, total_reads,names(breakPs), nudge_y = 0.0, nudge_x =0.25, logT = T, plotDepth = F)
+		ml2 = plotHMClust1(hmClust_c, total_reads,names(breakPs), nudge_y = 0.0, nudge_x =0.25, logT = T, plotDepth = T)
+		n = length(breakPs)
+		try(ggsave(outfile3a, plot=ml, width = 15, height = 15*(n+1)*(n/4), units = "cm",limitsize=F))
+		try(ggsave(outfile3b ,plot=ml2, width = 15, height = 15*(n+1)*(n/4), units = "cm", limitsize=F))
 	}
 	
 #	hmClust = getHMClust(breakPs, endcs_2)

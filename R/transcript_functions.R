@@ -13,6 +13,44 @@ getKmer<-function(base, pos,v = c(-1,0,1)){
   }
   apply(res,1,paste, collapse="")
 }
+.mergeMatr<-function(cols, cols1){
+  pos_c = unique(sort(c(cols$pos, cols1$pos)))
+  cols2 = data.frame(array(dim = c(length(pos_c), 4)))
+  names(cols2) = names(cols)
+  cols2$pos = pos_c
+  cols2$s_e = as.factor(rep("end", length(pos_c)))
+  cols2$type = as.factor(rep(1, length(pos_c)))
+  cols2$depth = rep(0, length(pos_c))
+  inds1 = match(cols1$pos, pos_c)
+  cols2$depth[inds1] = cols2$depth[inds1]  + cols1$depth 
+  inds = match(cols$pos, pos_c)
+  cols2$depth[inds] = cols2$depth[inds]  + cols$depth 
+  attr(cols2,"inds") = inds
+  attr(cols2,"inds1") = inds1
+  cols2
+}
+
+.mergeBreak<-function(brP){
+  heatm = brP[[1]]$heatm
+  rows = brP[[1]]$rows
+  cols = brP[[1]]$cols
+  if(length(brP)>1){
+    for(i in 2:length(brP)){
+       heatm1 = brP[[i]]$heatm
+       rows1 = brP[[i]]$rows
+       cols1 = brP[[i]]$cols
+      cols2 = .mergeMatr(cols, cols1)
+      rows2 = .mergeMatr(rows, rows1)
+       heatm2 = array(0,dim = c(dim(rows2)[[1]], dim(cols2)[[1]]), dimnames = list(rows2$pos, cols2$pos))
+      heatm2[attr(rows2,"inds"), attr(cols2,"inds")] =  heatm2[attr(rows2,"inds"), attr(cols2,"inds")] + heatm 
+      heatm2[attr(rows2,"inds1"), attr(cols2,"inds1")] =  heatm2[attr(rows2,"inds1"), attr(cols2,"inds1")] + heatm1 
+      heatm = heatm2
+      rows = rows2
+      cols=cols2
+    }
+  }
+  list(heatm =heatm, rows = rows, cols = cols)
+}
 
 .readAnnotFile<-function(fi, type_nme=NULL, plot=T, annot0 = NULL, conf.level=0.68, showEB = F){
   annot = read.table(fi, head=T)
@@ -52,7 +90,8 @@ getKmer<-function(base, pos,v = c(-1,0,1)){
   }
   names(ratio) =nme
   names(mixt) =paste(nme,"prop")
-  
+  ratio2 = ratio[,seq(1,length(spi)*3,by=3),drop=F]
+  names(ratio2) = type_nme
   annot = cbind(annot, ratio)
   if(!is.null(annot0)){
     #cellular_ratio = annot0$ratio1[annot0$ratio1$type=="Cell",,drop=F]
@@ -60,14 +99,19 @@ getKmer<-function(base, pos,v = c(-1,0,1)){
     ratio1 = rbind(annot0$ratio1, ratio1)
     annot = cbind(annot,mixt)
   }
+  ratio1$type=factor(ratio1$type,levels = names(sort(apply(ratio2,2,mean))))
+  
   ggp= NULL
   if(plot){
     ORF="ORF"
     ord="Start"
     x1 = paste("reorder(", ORF, ",", ord,")", sep="") 
-    ggp<-ggplot(ratio1)
-    ggp<-ggp+ geom_bar(aes_string(x=x1, y="Ratio", fill = "type", colour = "type"),stat="identity", position = "dodge")
-    if(showEB) ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="lower", ymax="upper"), width=.2)#, position="dodge")
+    ggp<-ggplot(ratio1, aes_string(x=x1,y="Ratio",fill="type", colour='type',ymin="lower" ,ymax="upper"))
+    ggp<-ggp+ geom_bar(position=position_dodge(), aes_string(y="Ratio"),stat="identity")
+      #geom_bar(aes_string(x=x1, y="Ratio", fill = "type", colour = "type"),stat="identity", position = "dodge")
+    if(showEB){
+      ggp<-ggp+geom_errorbar(position=position_dodge(width=0.9),colour="black")
+    } #ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="lower", ymax="upper"), width=.2)#, position="dodge")
    ggp<-ggp+scale_y_continuous(limits = c(0,1))
     if(!is.null(annot0)){
     ggp<-ggp +  geom_point(aes_string(x=x1, y="proportion"),stat="identity")
@@ -75,6 +119,7 @@ getKmer<-function(base, pos,v = c(-1,0,1)){
     ggp<-ggp+ scale_y_continuous(limits = c(0,1), sec.axis =sec_axis(~ . ))
     }
      ggp<-ggp+ggtitle("Percentage of ORF covering reads which are spliced to 5'")
+     ggp<-ggp+xlab("ORF")
     #ggp
   }
   list(annot= annot, ratio1 = ratio1,ggp = ggp)
@@ -1227,32 +1272,6 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
 
 
 
-readIsoformH5<-function(h5file,  transcripts_){
-.ext<-function(x) x[unique(c(0,which(x>0)))]
-header = h5read(h5file,"header")
- IDS = transcripts_$ID
-trans = list()
-  for(i in 1:length(IDS)){
-	ID = IDS[i]
-	mat = t(h5read(h5file,as.character(ID)))
-	cnts = data.frame(mat[,1:length(header)])
-	names(cnts) = header
-	dimnames(cnts) = list(cnts$subID, header)
-	cnts = cnts[,-1]
-	cntT = apply(cnts,1,sum)
-	ord = order(cntT, decreasing=T)
-	cnts = cnts[ord,,drop=F]
-	mat = mat[ord,-(1:length(header))]
-	
-	transi = apply(mat,1,.ext)
-	names(transi) =dimnames(cnts)[[1]] #paste(ID,cnts$subID,sep='.')
-	trans[[i]] = list(breaks = transi, counts = cnts)
-  } 
-names(trans) = IDS
-trans
-
-}
-
 
 readH5<-function(h5file, header, transcripts_, pos = NULL,  span =0.0, cumul= if(!is.null(pos)) F else T){
  dinds  = grep("depth", header)
@@ -1511,13 +1530,15 @@ transcripts
 
 .splitTranscripts<-function(transcripts, seqlen, nmes,splice = F){
 	transcripts_all = list()
+	break_ind = grep("num_", names(transcripts));
+	num_breaks = transcripts[,break_ind];
 	if(splice){
 		lead_inds =transcripts$ORFs %in% sort(unique( c(grep(";leader", transcripts$ORFs,v=T), grep("start", transcripts$ORFs,v=T))))
-		transcripts_all[[1]] = 	transcripts[transcripts$num_breaks==0,,drop=F]
-		transcripts_all[[2]] = 	transcripts[transcripts$num_breaks==1 & lead_inds,,drop=F]
-		transcripts_all[[3]] = 	transcripts[transcripts$num_breaks==1 & !lead_inds,,drop=F]
-		transcripts_all[[4]] = 	transcripts[transcripts$num_breaks>=2 & lead_inds,,drop=F]
-		transcripts_all[[5]] = 	transcripts[transcripts$num_breaks>=2 & !lead_inds,,drop=F]
+		transcripts_all[[1]] = 	transcripts[num_breaks==0,,drop=F]
+		transcripts_all[[2]] = 	transcripts[num_breaks==1 & lead_inds,,drop=F]
+		transcripts_all[[3]] = 	transcripts[num_breaks==1 & !lead_inds,,drop=F]
+		transcripts_all[[4]] = 	transcripts[num_breaks>=2 & lead_inds,,drop=F]
+		transcripts_all[[5]] = 	transcripts[num_breaks>=2 & !lead_inds,,drop=F]
 		names(transcripts_all) = c("unspliced","spliced1_leader","spliced1_noleader","spliced2_leader","spliced2_noleader");
 	
 	}else{
@@ -1532,15 +1553,17 @@ transcripts_all = transcripts_all[num_clusters>0]
 	transcripts_all
 }
 
-.getCompareVec<-function(type_nme){
+.getCompareVec<-function(type_nme, b=1){
 	if(length(type_nme)==1){
 		tocompare = list(c(1,1))
 	}else if(length(type_nme)==4){
-		tocompare = list(c(1,3), c(1,2),c(3,4))
+		tocompare = list(c(b,1), c(b,2),c(b,3), c(b,4))[-b]
 	}else{
 		tocompare = list();
-		for(i in 2:length(type_nme)){
-			tocompare[[i-1]] = c(1,i)
+		v = 1:length(type_nme)
+		v = v[-b]
+		for(i in 1:length(v)){
+			tocompare[[i]] = c(b,v[i])
 		}
 	}
 	return(tocompare)

@@ -8,6 +8,12 @@ The second part consists of R scripts which generate visualisation of outputs of
 
 ###INSTALLATION AND USAGE
 
+To install java tool, change into the java subdirectory and run 
+```
+bash install_mvn.sh
+mvn clean package install
+```
+
 A precompiled jar is provided in the distribution. 
 
 The script run_example.sh  provides an example of how you can run the java part of npTranscript.
