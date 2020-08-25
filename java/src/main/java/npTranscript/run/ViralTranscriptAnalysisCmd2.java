@@ -120,7 +120,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addString("annotation", null, "ORF annotation file or GFF file", false);
 		addBoolean("useExons", true, "wehether to use exons");
 		addString("readList", "", "List of reads", false);
-		
+		addInt("gffThresh",100, "threshold of total count for printing transcript in gff");
 			addString("annotType", null, "Type of annotation (only included if annotation is GFF file", false);
 		addString("chroms_to_include", "all", "Restrict to these chroms, colon delimited", false);
 		addString("bedChr", null, "Use this for the chrom in bed chr, e.g. NC_045512v2, false");
@@ -209,6 +209,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		int startThresh = cmdLine.getIntVal("startThresh");
 		int endThresh = cmdLine.getIntVal("endThresh");
 		int maxReads = cmdLine.getIntVal("maxReads");
+		Outputs.gffThresh = cmdLine.getIntVal("gffThresh");
 		Annotation.enforceStrand = cmdLine.getBooleanVal("RNA");
 		Outputs.executor=  cmdLine.getIntVal("maxThreads")==1 ? Executors.newSingleThreadExecutor():  Executors.newFixedThreadPool(cmdLine.getIntVal("maxThreads"));
 //		Outputs.executor=  ;
@@ -290,6 +291,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			System.err.println("running in coronavirus mode");
 			calcBreaks  = true; 
 			filterBy5_3 = true;
+			Outputs.writeGFF=true;
+			
 		//	Outputs.MSA_at_cluster = true;
 			TranscriptUtils.checkAlign = true;
 			TranscriptUtils.coronavirus = true;
@@ -303,7 +306,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		}else{
 		//	TranscriptUtils.reAlignExtra = false;
 		//	TranscriptUtils.findPolyA = false;
-		
+		Outputs.writeGFF = false;
 			TranscriptUtils.coronavirus = false;
 			TranscriptUtils.extra_threshold1 = 1000000;
 			//Outputs.writeUnSplicedFastq = false;
@@ -673,7 +676,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					chr5prime = TranscriptUtils.coronavirus ? chr.subSequence(0	, Math.min( primelen, chr.length())) : null;
 					 chr3prime = TranscriptUtils.coronavirus ? chr.subSequence(Math.max(0, chr.length()-primelen), chr.length()) : null;
 
-					outp.updateChrom(chr.getName(),currentIndex );
+					outp.updateChrom(chr,currentIndex );
 					if(doneChr.contains(chr.getName())){
 						try{
 							throw new RuntimeException("not sorted contains "+ chr.getName());

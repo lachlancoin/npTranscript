@@ -1,6 +1,6 @@
 package npTranscript.cluster;
 
-import java.util.ArrayList;
+import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import japsa.seq.Sequence;
+import japsa.seq.SequenceOutputStream;
 
 
 /**
@@ -61,10 +62,34 @@ public class CigarCluster  {
 			this.count = new int[num_sources];
 			count[src_index]=1;
 			this.id = id;
-			// TODO Auto-generated constructor stub
+
+		
 		}
 		private int id;
 		private int[] count;
+		
+		private double[]  true_breaks; //in 100kb
+		private static double divisor = 1e5;
+		public void addBreaks(List<Integer>breaks){
+			if(true_breaks==null) true_breaks =new double[breaks.size()];
+			if(true_breaks.length!=breaks.size()){
+				System.err.println("warning breaks have different lengths, so not updating");
+			}else{
+				for(int i=0; i<true_breaks.length; i++){
+					true_breaks[i] += breaks.get(i)/divisor;
+				}
+			}
+		}
+		public List<Integer> getBreaks(){
+			Integer[] res = new Integer[true_breaks.length];
+			int sum = this.sum();
+			double mult = (divisor/sum);
+			for(int i=0; i<res.length; i++){
+				res[i] = (int) Math.round(true_breaks[i]*mult);
+			}
+			return Arrays.asList(res);
+		}
+		
 		public void increment(int source_index) {
 			this.count[source_index] = this.count[source_index]+1;
 			
@@ -75,6 +100,13 @@ public class CigarCluster  {
 		public int id(){
 			return id;
 		}
+		public int sum() {
+			int sum = 0;
+			for(int i=0; i<count.length; i++){
+				sum+=count[i];
+			}
+			return sum;
+		}
 		
 	}
 		
@@ -82,16 +114,82 @@ public class CigarCluster  {
    	CigarHash2 breaks = new CigarHash2();
    	CigarHash breaks_hash = new CigarHash();
    	
-   	
+   	//chr1    HAVANA  gene    11869   14409   .       +       .       
+   	//ID=ENSG00000223972.5;gene_id=ENSG00000223972.5;gene_type=transcribed_unprocessed_pseudogene;gene_name=DDX11L1;level=2;havana_gene=OTTHUMG00000000961.2
+private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutputStream os,  String chr, 
+		String type,  String parent, String ID,  int start, int end, String type_nme, String secondKey, String geneID, char strand, Sequence seq){
+	//String secondKey = this.breaks_hash.secondKey;
+	 //char strand = '+';//secondKey.charAt(secondKey.length()-1);
+	 pw.print(chr);pw.print("\tnp\t"+type+"\t");
+	 pw.print(start);pw.print("\t"); pw.print(end);
+	 pw.print("\t.\t"); pw.print(strand);pw.print("\t.\t");
+	 pw.print("ID="); pw.print(ID);
+	 pw.print(";gene_id=");pw.print(geneID);
+	 pw.print(";gene_type=");pw.print(type_nme);
+	 pw.print(";type=ORF;");
+	 pw.print("gene_name=");pw.print(secondKey);
+	 if(parent!=null) {
+		 pw.print(";Parent=");pw.print(parent);
+	 }
+	 pw.println();
+	 if(breaks!=null){
+		StringBuffer sb = new StringBuffer(); 
+	for(int i=0; i<breaks.size();i+=2){
+		int starti = breaks.get(i);
+		int endi = breaks.get(i+1);
+		sb.append( seq.subSequence(starti, endi).toString());
+		 pw.print(chr);pw.print("\tnp\texon\t");
+		 pw.print(starti);pw.print("\t"); pw.print(endi);
+		 pw.print("\t.\t"); pw.print(strand);pw.print("\t.\t");
+		 pw.print("ID="); pw.print(ID);pw.print(".e."+i);
+		 pw.print(";Parent=");pw.print(ID);
+		 pw.println();
+	 }
+	  Sequence seq1 = new Sequence(seq.alphabet(), sb.toString(), ID);
+	  seq1.setDesc(chr+" "+breaks.toString()+" "+secondKey+" "+type_nme);
+	  try{
+	  seq1.writeFasta(os);
+	  }catch(Exception exc){
+		  exc.printStackTrace();
+	  }
+	 }
+}
 
+
+ public void writeGFF(PrintWriter pw, SequenceOutputStream os, String chr, double  iso_thresh, String type_nme, Sequence seq){
+	// String secondKey =  this.breaks_hash.secondKey;
+		if(this.readCountSum< Outputs.gffThresh) return;
+//if(!type_nme.equals("5_3")) return;
+	this.writeGFF1(null, pw, os, chr, "gene",  null, this.id, this.start, this.end, type_nme, this.breaks_hash.secondKey, this.id, strand, seq);
+	Iterator<Count> it = this.all_breaks.values().iterator();
+	double max = 0;
+
+	while(it.hasNext()){
+		int sum = it.next().sum();
+		if(sum>max){
+			max = sum;
+		}
+	}
+	double minv = iso_thresh * max-0.001;
+//	pw.print(breaks.get(0));pw.print("\t"); pw.print(breaks.get(breaks.size()));
+		 Iterator<Count> it1 = this.all_breaks.values().iterator();
+		for(int i=0; it1.hasNext();) {
+			Count br_next = it1.next();
+			List<Integer> br_ = br_next.getBreaks();
+			if(br_next.sum()>=minv){
+				writeGFF1(br_, pw, os ,chr, "transcript", this.id, this.id+".t"+i,  br_.get(0), br_.get(br_.size()-1), type_nme, this.breaks_hash.secondKey, this.id, strand,seq);
+			}
+		}
+ }
 	
 		
 		/*public void setBreaks(CigarHash2 breaks){
 			this.breaks.addAll(breaks);
 		}*/
 
-		public CigarCluster(String id,  int num_sources){
+		public CigarCluster(String id,  int num_sources, char strand){
 			this.id = id;
+			this.strand = strand;
 			this.readCount = new int[num_sources];
 			if(recordDepthByPosition){
 				map = new SparseVector();
@@ -109,8 +207,9 @@ public class CigarCluster  {
 			}
 		}
 		
-		public CigarCluster(String id,  int num_sources, CigarCluster c1, int source_index) throws NumberFormatException{
-			this(id, num_sources);
+		public CigarCluster(String id,  int num_sources, CigarCluster c1, int source_index, char strand) throws NumberFormatException{
+			this(id, num_sources,strand);
+			//this.strand = strand;
 			this.span.addAll(c1.span);
 			this.forward = c1.forward;
 			this.breakSt = c1.breakSt;
@@ -120,8 +219,9 @@ public class CigarCluster  {
 			this.breaks.addAllR(c1.breaks);
 			all_breaks = new HashMap<CigarHash2, Count>();
 			//if(all_breaks.size()>0) throw new RuntimeException("should be zero");
-			
-			this.all_breaks.put(breaks,new Count(num_sources, source_index,  0));
+			Count cnt =new Count(num_sources, source_index,  0);
+			if(Outputs.writeGFF) cnt.addBreaks(c1.breaks);
+			this.all_breaks.put(breaks,cnt);
 			this.breaks_hash.secondKey = c1.breaks_hash.secondKey;
 			addReadCount(source_index);
 			start = c1.start;
@@ -139,7 +239,7 @@ public class CigarCluster  {
 
 		private final SparseVector map;// = new SparseVector(); //coverage at high res
 		final private SparseVector[] maps, errors;
-
+final private char strand;
 		public void clear(int source_index) {
 			
 			
@@ -247,7 +347,7 @@ public class CigarCluster  {
 		}
 		
 		
-		int[][] exons;
+		//int[][] exons;
 		
 		void addZeros(int seqlen){
 			if(map==null) return;
@@ -322,6 +422,7 @@ public class CigarCluster  {
 			if(breakEnd2<0 || (c1.breakEnd2>=0 &  c1.breakEnd2 < breakEnd2)) breakEnd2 = c1.breakEnd2;
 			//int subID;
 			this.span.addAll(c1.span);
+			//this.strand = c1.strand;
 			if(c1.all_breaks!=null){
 				/*for(Iterator<CigarHash2> it = c1.all_breaks.keySet().iterator() ; it.hasNext();){
 					CigarHash2 nxt = it.next();
@@ -330,15 +431,18 @@ public class CigarCluster  {
 				}*/
 				throw new RuntimeException("!!");
 			}
-				
+			
 			CigarHash2 br = (CigarHash2) c1.breaks.clone(true);
 			Count	count = this.all_breaks.get(br);
 				if(count==null) {
 					count = new Count(num_sources, src_index, all_breaks.size());
+				
 					all_breaks.put(br, count);
 				}
-				else count.increment(src_index);
-			
+				else{
+				count.increment(src_index);
+				}
+			if(Outputs.writeGFF) count.addBreaks(c1.breaks);
 			for(int i=0; i<this.readCount.length;i++) {
 				readCount[i]+=c1.readCount[i];
 			}

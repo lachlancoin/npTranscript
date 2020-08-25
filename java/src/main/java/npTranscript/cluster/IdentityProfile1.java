@@ -38,7 +38,7 @@ public class IdentityProfile1 {
 	this.chrom_index = chrom_index;
 	this.type_nmes = in_nmes;
 		this.num_sources = in_nmes.length;
-		this.coRefPositions = new CigarCluster("-1",num_sources);
+		this.coRefPositions = new CigarCluster("-1",num_sources,'.');
 		this.genome = refSeq;
 		this.source_index = 0;		
 		this.o  = o;
@@ -198,7 +198,7 @@ public void update(Annotation annot){
 		
 		
 		
-		if(cluster_reads)  this.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources,  this.chrom_index, clusterID); // this also clears current cluster
+		if(cluster_reads)  this.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources,  this.chrom_index, clusterID, strand); // this also clears current cluster
 		else{
 		clusterID[0] = chrom_+".NA";
 		clusterID[1] = "NA";

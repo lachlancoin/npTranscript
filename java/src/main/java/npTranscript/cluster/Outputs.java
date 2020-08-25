@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -28,6 +29,7 @@ import htsjdk.samtools.fastq.FastqRecord;
 import htsjdk.samtools.fastq.FastqWriter;
 import htsjdk.samtools.fastq.FastqWriterFactory;
 import japsa.seq.Sequence;
+import japsa.seq.SequenceOutputStream;
 import npTranscript.cluster.CigarCluster.Count;
 import npTranscript.run.CompressDir;
 import npTranscript.run.SequenceOutputStream1;
@@ -37,6 +39,8 @@ public class Outputs{
 	public static  ExecutorService executor ;
 	
 	public static final FastqWriterFactory factory = new FastqWriterFactory();
+	public static int gffThresh = 10;
+	
 	
 	 class FOutp{
 		//String nme;
@@ -55,7 +59,7 @@ public class Outputs{
 				fastq = factory.newWriter(f);
 			}
 			else{
-				f = new File(resDir,genome_index+nme+".fasta"+(gz ? ".gz": ""));
+				f = new File(resDir,nme+".fasta"+(gz ? ".gz": ""));
 				OutputStream os1 = new FileOutputStream(f);
 				if(gz) os1 = new GZIPOutputStream(os1);
 				os =new OutputStreamWriter(os1);
@@ -78,17 +82,19 @@ public class Outputs{
 	public static boolean keepinputFasta = true;
 	public static boolean writePolyA = false;
 	public static boolean writeBed=false;
+	public static boolean writeGFF=true;
 	public static int minClusterEntries = 5;
 	public static Collection numExonsMSA = Arrays.asList(new Integer[0]); // numBreaks for MSA 
 	
 		public File transcripts_file;
 		public File reads_file; 
-		private final File  outfile2,  outfile4, outfile5,  outfile10, outfile11, bedoutput;
+		private final File  outfile2,  outfile4, outfile5,  outfile10, outfile11, bedoutput, gff_output;
 		//outfile9;
 		private final FOutp[] leftover_l, polyA;//, leftover_r, fusion_l, fusion_r;
 	
 	//	final int seqlen;
-		 PrintWriter transcriptsP,readClusters, annotP, bedW;
+		 PrintWriter transcriptsP,readClusters, annotP, bedW, gffW;
+		 SequenceOutputStream[] refOut;
 		 IHDF5SimpleWriter clusterW = null;
 		 IHDF5SimpleWriter altT = null;
 		File resDir;
@@ -98,7 +104,12 @@ public class Outputs{
 			transcriptsP.close();
 			readClusters.close();
 			if(bedW!=null) bedW.close();
-			
+			if(gffW!=null) gffW.close();
+			if(refOut!=null){
+				for(int i=0; i<refOut.length; i++){
+					refOut[i].close();
+				}
+			}
 			if(clusterW!=null) clusterW.close();
 			this.altT.close();
 			this.annotP.close();
@@ -120,11 +131,15 @@ public class Outputs{
 		String genome_index;
 		String chrom;
 		
-		public void updateChrom(String chr, int currentIndex) {
+		public void updateChrom(Sequence seq, int currentIndex) {
+			String chr = seq.getName();
 			// TODO Auto-generated method stub
 			this.chrom = chr;
 			this.chrom = ((chrom.startsWith("chr") || chrom.startsWith("NC")) ? chrom : "chr"+chrom).split("\\.")[0];
 			//this.genome_index = currentIndex;
+			if(this.gffW!=null){
+				gffW.println("##sequence-region "+chr+" "+0+" "+seq.length());
+			}
 		}
 		
 		public Outputs(File resDir,  String[] type_nmes, boolean overwrite,  boolean isoforms, boolean cluster_depth) throws IOException{
@@ -143,6 +158,8 @@ public class Outputs{
 			 outfile5 = new File(resDir,genome_index+ "clusters.fa.gz");
 			 outfile10 = new File(resDir,genome_index+"isoforms.h5");
 			 bedoutput = new File(resDir,genome_index+"bed.gz");
+			gff_output = new File(resDir,genome_index+"gff.gz");
+			
 			 outfile11 = new File(resDir, genome_index+"annot.txt.gz");
 		//	String prefix = readsF.getName().split("\\.")[0];
 			List<Integer> vals = new ArrayList<Integer>(new HashSet<Integer> (Outputs.msa_sources.values()));
@@ -188,6 +205,22 @@ public class Outputs{
 				 bedW = new PrintWriter(
 						new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.bedoutput))));
 				 bedW.println("track name=\""+"all"+"\" description=\""+"all"+"\" itemRgb=\"On\" ");
+			 }
+			 if(writeGFF){
+				 gffW= new PrintWriter(
+							new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.gff_output))));
+				 Date d = new Date();
+					gffW.println("##gff-version 3\n"+
+							"#description: \n"+
+							"#provider: \n"+
+							"#contact: \n"+
+							"#format: gff3\n"+
+							"#date: "+d.toGMTString()+"\n");
+					this.refOut =new SequenceOutputStream[Annotation.nmes.length];
+					for(int i=0; i<refOut.length; i++){
+						File ref_output = new File(resDir,Annotation.nmes[i]+".ref.fa");
+						refOut[i] =new SequenceOutputStream(new FileOutputStream(ref_output));
+					}
 			 }
 //			 readID  clusterId       subID   source  length  start_read      end_read   
 			 //type_nme        chrom   startPos        endPos  breakStart      breakEnd        errorRatio
@@ -313,6 +346,9 @@ public class Outputs{
 		static Color[] cols = new Color[] {Color.BLACK, Color.blue, Color.GREEN, Color.CYAN, Color.YELLOW, Color.red, Color.ORANGE, Color.MAGENTA, Color.pink};
 		static int col_len = cols.length;
 		static String[] col_str = new String[cols.length];
+
+		//public static boolean all_isoforms = false;
+		public static double isoThresh = 0.9;
 		static{
 			float[] f = new float[3];
 			for(int i=0; i<col_str.length; i++){
@@ -469,6 +505,8 @@ public class Outputs{
 			}
 			return res;
 		}
+
+		
 
 	
 

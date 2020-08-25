@@ -195,12 +195,16 @@ public class Annotation{
 			
 		}
 		public String getTypeNme(int start, int end, boolean forward) {
-			if(start <=TranscriptUtils.startThresh) return end >= seqlen -TranscriptUtils.endThresh ? nmes[0] : nmes[1];
-			else return end >= seqlen -TranscriptUtils.endThresh ? nmes[2] : nmes[3];
+			return nmes[getTypeInd(start,end, forward)];
+			//return null;
+		}
+		public int getTypeInd(int start, int end, boolean forward) {
+			if(start <=TranscriptUtils.startThresh) return end >= seqlen -TranscriptUtils.endThresh ? 0:1;
+			else return end >= seqlen -TranscriptUtils.endThresh ? 2:3;
 			//return null;
 		}
 
-		static String[] nmes = new String[] {"5_3", "5_no3", "no5_3", "no5_no3"};
+		public static String[] nmes = new String[] {"5_3", "5_no3", "no5_3", "no5_no3"};
 
 
 		public String getSpan(List<Integer>breaks, boolean forward, Collection<Integer> span, SortedSet<String> parents) {

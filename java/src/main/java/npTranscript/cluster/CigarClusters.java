@@ -60,11 +60,11 @@ public class CigarClusters {
 		
 	}
 	int rem_count =0;
-	public void matchCluster(CigarCluster c1,  int source_index, int num_sources, int chrom_index,String[] clusterIDs) throws NumberFormatException{
+	public void matchCluster(CigarCluster c1,  int source_index, int num_sources, int chrom_index,String[] clusterIDs, char strand) throws NumberFormatException{
 		String clusterID;
 		CigarHash2 subID ;
 		if(!l.containsKey(c1.breaks_hash)){
-			CigarCluster newc = new CigarCluster("ID"+chrom_index+"."+(l.keySet().size()+rem_count), num_sources, c1, source_index);
+			CigarCluster newc = new CigarCluster("ID"+chrom_index+"."+(l.keySet().size()+rem_count), num_sources, c1, source_index, strand);
 			clusterID = newc.id();
 			l.put(newc.breaks_hash, newc);
 			subID = newc.breaks;
@@ -113,13 +113,18 @@ public class CigarClusters {
 		}
 		
 	}
-	public void process1(CigarCluster cc,   Outputs o,String chrom,int chrom_index, boolean forward,SortedSet<String> geneNames ){
+	public void process1(CigarCluster cc,   Outputs o,Sequence seq, int chrom_index, boolean forward,SortedSet<String> geneNames ){
 		String read_count = TranscriptUtils.getString(cc.readCount);
+		String chrom = seq.getName();
 		boolean hasLeaderBreak = TranscriptUtils.coronavirus  ? (cc.breaks.size()>1 &&  annot.isLeader(cc.breaks.get(1)*CigarHash2.round)) : false;
 		geneNames.clear();
+		int type_ind = annot.getTypeInd(cc.start, cc.end, forward);
+		String type_nme = annot.nmes[type_ind];
 		String geneNme = annot.getString(cc.span, geneNames);
+	
+		cc.writeGFF(o.gffW, o.refOut[type_ind], chrom,  Outputs.isoThresh, type_nme, seq);
 		o.printTranscript(
-			cc.id()+"\t"+chrom+"\t"+cc.start+"\t"+cc.end+"\t"+annot.getTypeNme(cc.start, cc.end, forward)+"\t"+
+			cc.id()+"\t"+chrom+"\t"+cc.start+"\t"+cc.end+"\t"+type_nme+"\t"+
 	
 		cc.exonCount()+"\t"+cc.numBreaks()+"\t"+(hasLeaderBreak? 1: 0)+"\t"+cc.breaks_hash.secondKey+"\t"+geneNme+"\t"+
 		geneNames.size()+"\t"+
@@ -134,7 +139,7 @@ public class CigarClusters {
 		for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();){
 			CigarCluster cc = it.next();
 			if(cc.end<endThresh){
-				this.process1(cc, o, chrom.getName(), chrom_index, cc.forward, geneNames);
+				this.process1(cc, o, chrom, chrom_index, cc.forward, geneNames);
 				this.process(cc, o, chrom, chrom_index);
 				torem.add(cc.breaks_hash);
 			}
@@ -154,7 +159,7 @@ public class CigarClusters {
 		if(TranscriptUtils.writeAnnotP) this.annot.print(o.annotP);
 		for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();) {
 			CigarCluster cc = it.next();
-			this.process1(cc, o, chrom.getName(), chrom_index, cc.forward, geneNames);
+			this.process1(cc, o, chrom, chrom_index, cc.forward, geneNames);
 			this.process(cc, o, chrom, chrom_index);
 		}
 		
