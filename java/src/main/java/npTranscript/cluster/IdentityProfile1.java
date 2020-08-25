@@ -1,11 +1,10 @@
 package npTranscript.cluster;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.SortedSet;
+import java.util.Stack;
 import java.util.TreeSet;
 
 import htsjdk.samtools.SAMRecord;
@@ -278,6 +277,7 @@ public void update(Annotation annot){
 		//we add back in one here to convert it to a 1 based index
 		coRefPositions.add(position+1, this.source_index, match);
 	}
+
 
 	
 	final CigarCluster coRefPositions; // this is a temporary object used to store information for each read as it comes through 
