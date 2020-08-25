@@ -124,13 +124,14 @@ private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutpu
 	 pw.print(start);pw.print("\t"); pw.print(end);
 	 pw.print("\t.\t"); pw.print(strand);pw.print("\t.\t");
 	 pw.print("ID="); pw.print(ID);
-	 pw.print(";gene_id=");pw.print(geneID);
-	 pw.print(";gene_type=");pw.print(type_nme);
-	 pw.print(";type=ORF;");
-	 pw.print("gene_name=");pw.print(secondKey);
 	 if(parent!=null) {
 		 pw.print(";Parent=");pw.print(parent);
 	 }
+	 pw.print(";gene_id=");pw.print(geneID);
+	 pw.print(";gene_type=");pw.print(type_nme);
+	 pw.print(";type=ORF;");
+	 pw.print("gene_name=");pw.print(secondKey.replace(';','_'  ));
+	 
 	 pw.println();
 	 if(breaks!=null){
 		StringBuffer sb = new StringBuffer(); 
@@ -143,6 +144,9 @@ private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutpu
 		 pw.print("\t.\t"); pw.print(strand);pw.print("\t.\t");
 		 pw.print("ID="); pw.print(ID);pw.print(".e."+i);
 		 pw.print(";Parent=");pw.print(ID);
+		 pw.print(";gene_id=");pw.print(geneID);
+		 pw.print(";type=ORF;");
+		 pw.print("gene_name=");pw.print(secondKey.replace(';','_'  ));
 		 pw.println();
 	 }
 	  Sequence seq1 = new Sequence(seq.alphabet(), sb.toString(), ID);
