@@ -22,40 +22,47 @@ if [ ! $reference_virus ]; then
   export coord_file_virus="${npTranscript}/data/SARS-Cov2/VIC01/Coordinates.csv"
 fi
 
+#species only used for the leftover remapping
+species=$1
+shift;
+
+if [ ! $species ]; then
+	species="human"
+fi
+
 dat=$(date +%Y%m%d%H%M%S)
 mm2_path="/sw/minimap2/current/minimap2"
-
-du -h *fastq | grep  '^0 '  | cut -f 2 > deleted_empty_fastq.txt
-du -h *fastq | grep  '^0 '  | cut -f 2 | xargs -I {} rm -f {}
 
 
 ##VIRAL ANALYSIS ON VIRAL READS
 opts="--bin=100 --breakThresh=1000  --isoformDepthThresh=10000 --coverageDepthThresh=0 --extra_threshold=200 --msaDepthThresh=20 --doMSA=all:sep --reAlignExtra=true"
 opts2="--fail_thresh=0 --recordDepthByPosition=true"
 opts3="--mm2_path=${mm2_path}"
-bamdir="."
+
 tag=".primary.fastq"
 resdir_virus="results_${tag}"
-bamfiles=$(wc -l *fastq | tr -s ' ' | grep -v ' 0 '  | cut -f 3 -d ' ' | grep ${tag}  |  xargs -I {} echo ${bamdir}/{})
-bamfiles_="--fastqFile=${bamfiles}"
-bamfiles_virus=$(echo $bamfiles_ | sed 's/ /:/g')
-echo $bamfiles_virus
-bash ${npTranscript}/scripts/run.sh ${bamfiles_virus}   --reference=${reference_virus} --annotation ${coord_file_virus} --resdir ${resdir_virus} ${opts} ${opts1} ${opts2} ${opts3}
+#bamfiles_virus=$(bash ${npTranscript}/scripts/getInputFiles.sh ${tag})
+bamfiles=$(find . -maxdepth 1 -type f,l -size +0b | grep "${tag}$" )
+bamfiles_virus="--fastqFile=$(echo $bamfiles | sed 's/ /:/g')"
 
-
-tag=".secondary.fastq"
-resdir_virus="results_${tag}"
-bamfiles=$(wc -l *fastq | tr -s ' ' | grep -v ' 0 '  | cut -f 3 -d ' ' | grep ${tag}  |  xargs -I {} echo ${bamdir}/{})
-bamfiles_="--fastqFile=${bamfiles}"
-bamfiles_virus=$(echo $bamfiles_ | sed 's/ /:/g')
-echo $bamfiles_virus
 bash ${npTranscript}/scripts/run.sh ${bamfiles_virus}   --reference=${reference_virus} --annotation ${coord_file_virus} --resdir ${resdir_virus} ${opts} ${opts1} ${opts2} ${opts3}
+cd ${resdir_virus}
+bash run_slurm_leftover.sh $species
+cd ..
+
+#tag=".secondary.fastq"
+#resdir_virus="results_${tag}"
+#bamfiles_virus=$(bash ${npTranscript}/scripts/getInputFiles.sh ${tag})
+#bamfiles=$(find . -maxdepth 1 -type f,l -size +0b | grep "${tag}$" )
+#bamfiles_virus="--fastqFile=$(echo $bamfiles | sed 's/ /:/g')"
+#bash ${npTranscript}/scripts/run.sh ${bamfiles_virus}   --reference=${reference_virus} --annotation ${coord_file_virus} --resdir ${resdir_virus} ${opts} ${opts1} ${opts2} ${opts3}
 
 tag=".supplementary.fastq"
 resdir_virus="results_${tag}"
-bamfiles=$(wc -l *fastq | tr -s ' ' | grep -v ' 0 '  | cut -f 3 -d ' ' | grep ${tag}  |  xargs -I {} echo ${bamdir}/{})
-bamfiles_="--fastqFile=${bamfiles}"
-bamfiles_virus=$(echo $bamfiles_ | sed 's/ /:/g')
-echo $bamfiles_virus
+#bamfiles_virus=$(bash ${npTranscript}/scripts/getInputFiles.sh ${tag})
+bamfiles=$(find . -maxdepth 1 -type f,l -size +0b | grep "${tag}$" )
+bamfiles_virus="--fastqFile=$(echo $bamfiles | sed 's/ /:/g')"
 bash ${npTranscript}/scripts/run.sh ${bamfiles_virus}   --reference=${reference_virus} --annotation ${coord_file_virus} --resdir ${resdir_virus} ${opts} ${opts1} ${opts2} ${opts3}
-
+cd ${resdir_virus}
+bash run_slurm_leftover.sh $species
+cd ..
