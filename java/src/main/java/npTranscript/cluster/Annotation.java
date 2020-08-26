@@ -39,6 +39,7 @@ public class Annotation{
 		public static boolean enforceStrand = true;
 		
 		public void print(PrintWriter pw){
+			
 			int len = spliced_count.length;
 			pw.print("Gene\tStart\tEnd");
 			for(int j=0; j<len; j++){
@@ -46,16 +47,18 @@ public class Annotation{
 				pw.print("\tUnspliced_5_"+j);
 			}
 			pw.println();
-			for(int i=0; i<this.start.size(); i++){
-				pw.print(this.genes.get(i)+"\t"+start.get(i)+"\t"+end.get(i));
+			for(int i=0; i<start.size(); i++){
+				pw.print(genes.get(i)+"\t"+start.get(i)+"\t"+end.get(i));
 				for(int j=0; j<len; j++){
-					pw.print("\t"+this.spliced_count[j][i]);
-					pw.print("\t"+this.unspliced_count[j][i]);
+					pw.print("\t"+spliced_count[j][i]);
+					pw.print("\t"+unspliced_count[j][i]);
 				}
 				pw.println();
 			}
 			pw.flush();
-		}
+				}
+				
+			
 		
 		public String nextDownstream(int rightBreak, int chrom_index, boolean forward){
 			if(rightBreak<0) return null;
@@ -176,7 +179,7 @@ public class Annotation{
 			return seqlen;
 		}
 
-		public void adjust3UTR(int seqlen2) {
+		public synchronized void adjust3UTR(int seqlen2) {
 			if(end.size()==0) return ;
 			if(this.end.get(end.size()-1)>seqlen2 && this.start.get(end.size()-1) < seqlen2){
 				end.set(end.size()-1, seqlen2);

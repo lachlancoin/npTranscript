@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.zip.GZIPOutputStream;
 
 import org.apache.commons.math3.linear.SparseRealMatrix;
@@ -101,6 +102,9 @@ public class Outputs{
 		CompressDir[] clusters;
 		String[] type_nmes;
 		public void close() throws IOException{
+			//IdentityProfileHolder.waitOnThreads(100);
+			Outputs.waitOnThreads(100);
+			
 			transcriptsP.close();
 			readClusters.close();
 			if(bedW!=null) bedW.close();
@@ -131,7 +135,7 @@ public class Outputs{
 		String genome_index;
 		String chrom;
 		
-		public void updateChrom(Sequence seq, int currentIndex) {
+		public  void updateChrom(Sequence seq, int currentIndex) {
 			String chr = seq.getName();
 			// TODO Auto-generated method stub
 			this.chrom = chr;
@@ -285,16 +289,16 @@ public class Outputs{
 
 		
 		
-		public IHDF5SimpleWriter getH5Writer(){
+		/*public IHDF5SimpleWriter getH5Writer(){
 			
 			return clusterW;
-		}
+		}*/
 
 		
-		public void printTranscript(String str){
+		public synchronized void printTranscript(String str){
 			this.transcriptsP.println(str);
 		}
-		public void printRead(String string) {
+		public synchronized void printRead(String string) {
 			this.readClusters.println(string);
 			
 		}
@@ -358,7 +362,7 @@ public class Outputs{
 			}
 			//System.err.println(Arrays.asList(col_str));
 		}
-		public void printBed(List<Integer> breaks, String read_name, char strand, int source, String id, String subid, int num_exons, int span, String span_str){
+		public synchronized void printBed(List<Integer> breaks, String read_name, char strand, int source, String id, String subid, int num_exons, int span, String span_str){
 			if(bedW==null) return;
 			int col_id = source % col_len;
 		
@@ -373,7 +377,6 @@ public class Outputs{
 				block_sizes.append(comma+(breaks.get(i+1)-breaks.get(i)));
 				if(i==0) comma=",";
 			}
-			String chrom = TranscriptUtils.bedChr!=null ? TranscriptUtils.bedChr : this.chrom;
 			bedW.println(chrom+"\t"+startPos+"\t"+endPos+"\t"+read_name+"."+id+"\t"+span+"\t"+strand+"\t"+startPos+"\t"+endPos+"\t"
 					+col_str[col_id]+"\t"+num_exons+"\t"+block_sizes.toString()+"\t"+block_start.toString()+"\t"+span_str);
 
@@ -381,7 +384,7 @@ public class Outputs{
 
 		
 		
-		public void writeToCluster(String ID, String subID,  int i, Sequence seq, String baseQ,  String str, String name, char strand) throws IOException{
+		public synchronized void writeToCluster(String ID, String subID,  int i, Sequence seq, String baseQ,  String str, String name, char strand) throws IOException{
 			CompressDir cluster = this.getCluster(i);
 			if(strand=='-'){
 				seq = TranscriptUtils.revCompl(seq);
@@ -406,7 +409,7 @@ public class Outputs{
 			FastqWriter writer = leftover[source_index].fastq;
 			writeFastq(writer,subseq, baseQ, negStrand, source_index );
 		}
-			public void writeFastq(FastqWriter writer, Sequence subseq,String baseQ,  boolean negStrand, int source_index)  throws IOException{
+			public synchronized void  writeFastq(FastqWriter writer, Sequence subseq,String baseQ,  boolean negStrand, int source_index)  throws IOException{
 				if(writer==null) return;
 				Runnable run = new Runnable(){
 					@Override
@@ -418,24 +421,25 @@ public class Outputs{
 					}
 					
 				};
-			//	run.run();
-				executor.execute(run);
+				run.run();
+			//	if(executor==null) run.run();
+			//	else executor.execute(run);
 			}
 
 		
-		public void writePolyA(Sequence readseq, String nme, String baseQ, boolean negStrand, int source_index)  throws IOException{
+		public synchronized void writePolyA(Sequence readseq, String nme, String baseQ, boolean negStrand, int source_index)  throws IOException{
 			if(polyA==null || polyA[source_index]==null) return ;
 			FastqWriter writer = polyA[source_index].fastq;
 			writeFastq(writer,readseq, baseQ, negStrand, source_index );
 			
 		}
 		
-		public void writeIntMatrix(String id, int[][] matr) {
+		public synchronized void writeIntMatrix(String id, int[][] matr) {
 			this.clusterW.writeIntMatrix(id, matr);
 			
 		}
 		
-		private CompressDir getCluster(int source){
+		private synchronized CompressDir getCluster(int source){
 			if(clusters==null) return null;
 			return this.clusters[this.msa_sources.get(source)];
 			//return mergeSourceClusters? this.clusters[0] : this.clusters[source];
@@ -446,7 +450,7 @@ public class Outputs{
 		}
 
 		/** writes the isoform information */
-		public void writeString(String id, Map<CigarHash2, Count> all_breaks, int num_sources) {
+		public synchronized void writeString(String id, Map<CigarHash2, Count> all_breaks, int num_sources) {
 			int[][]str = new int[all_breaks.size()][];
 			{
 			Iterator<Entry<CigarHash2, Count>> it = all_breaks.entrySet().iterator();
@@ -504,6 +508,27 @@ public class Outputs{
 				}
 			}
 			return res;
+		}
+
+		public static void waitOnThreads(int sleep) {
+			if(executor==null) return ;
+			if(Outputs.executor instanceof ThreadPoolExecutor){
+		    	while(((ThreadPoolExecutor)Outputs.executor).getActiveCount()>0){
+		    		try{
+			    	System.err.println("OUTPUTS: awaiting completion "+((ThreadPoolExecutor)Outputs.executor).getActiveCount());
+			    	//Thread.currentThread();
+					Thread.sleep(sleep);
+		    		}catch(InterruptedException exc){
+		    			exc.printStackTrace();
+		    		}
+		    	}
+		    	}
+			
+		}
+
+		public static void shutDownExecutor() {
+			if(executor!=null) executor.shutdown();
+			
 		}
 
 		

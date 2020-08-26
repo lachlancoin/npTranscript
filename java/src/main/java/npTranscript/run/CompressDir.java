@@ -81,17 +81,8 @@ public class CompressDir {
 	    		}
 	    		currentStreams.clear();
 	    	}
-	    	if(Outputs.executor instanceof ThreadPoolExecutor){
-	    	while(((ThreadPoolExecutor)Outputs.executor).getActiveCount()>0){
-	    		try{
-		    	System.err.println("awaiting completion "+((ThreadPoolExecutor)Outputs.executor).getActiveCount());
-		    	//Thread.currentThread();
-				Thread.sleep(100);
-	    		}catch(InterruptedException exc){
-	    			exc.printStackTrace();
-	    		}
-	    	}
-	    	}
+	    	Outputs.waitOnThreads(100);
+	    	
 	    	
 	    	System.err.println("all done");
 	    		  	//}

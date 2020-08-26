@@ -166,7 +166,7 @@ private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutpu
 //if(!type_nme.equals("5_3")) return;
 	this.writeGFF1(null, pw, os, chr, "gene",  null, this.id, this.start, this.end, type_nme, this.breaks_hash.secondKey, this.id, strand, seq);
 	Iterator<Count> it = this.all_breaks.values().iterator();
-	double max = 0;
+	/*double max = 0;
 
 	while(it.hasNext()){
 		int sum = it.next().sum();
@@ -174,13 +174,13 @@ private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutpu
 			max = sum;
 		}
 	}
-	double minv = iso_thresh * max-0.001;
+	double minv = iso_thresh * max-0.001;*/
 //	pw.print(breaks.get(0));pw.print("\t"); pw.print(breaks.get(breaks.size()));
 		 Iterator<Count> it1 = this.all_breaks.values().iterator();
 		for(int i=0; it1.hasNext();) {
 			Count br_next = it1.next();
 			List<Integer> br_ = br_next.getBreaks();
-			if(br_next.sum()>=minv){
+			if(br_next.sum()>=Outputs.gffThresh){
 				writeGFF1(br_, pw, os ,chr, "transcript", this.id, this.id+".t"+i,  br_.get(0), br_.get(br_.size()-1), type_nme, this.breaks_hash.secondKey, this.id, strand,seq);
 			}
 		}
@@ -244,10 +244,8 @@ private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutpu
 		private final SparseVector map;// = new SparseVector(); //coverage at high res
 		final private SparseVector[] maps, errors;
 final private char strand;
-		public void clear(int source_index) {
-			
-			
-			span.clear();
+	   public void clear(){
+		   span.clear();
 			this.forward = null;
 			this.breakSt=-1;
 			this.breakEnd = -1;
@@ -261,7 +259,7 @@ final private char strand;
 				}
 			}
 			Arrays.fill(readCount, 0);
-			readCount[source_index]=1;
+			
 			readCountSum=1;
 			
 			this.prev_position = 0;
@@ -270,7 +268,9 @@ final private char strand;
 			this.breaks.clear();			
 			if(all_breaks!=null)this.all_breaks.clear();
 			this.breaks_hash.clear();
-		}
+	   }
+
+		
 	
 
 		public void add(int pos, int src_index, boolean match) {
@@ -280,7 +280,7 @@ final private char strand;
 				first = false; 
 				breaks.add(pos);
 			} else{	
-				if(pos-prev_position>TranscriptUtils.break_thresh){
+				if(pos-prev_position>IdentityProfile1.break_thresh){
 					this.breaks.add(prev_position);
 					this.breaks.add(pos);
 				}
