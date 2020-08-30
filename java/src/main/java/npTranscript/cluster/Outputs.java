@@ -445,17 +445,11 @@ public class Outputs{
 		
 		public void writeDepthH5(CigarCluster cc, CigarClusters cigarClusters, Sequence chrom, int chrom_index, int totalDepth) {
 			if(clusterW!=null && totalDepth>IdentityProfile1.writeCoverageDepthThresh){
-				Outputs.h5writer.execute( new Runnable(){
-				public void run() {
-					try{
+			
 				cc.addZeros(cigarClusters.seqlen); 
 				int[][] matr =cc.getClusterDepth(cigarClusters.num_sources, chrom);
 				clusterW.writeIntMatrix(cc.id(), matr);
-					}catch(Exception exc){
-						exc.printStackTrace();
-					}
-				}
-				});
+				
 			}
 		}
 		
