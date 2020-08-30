@@ -360,7 +360,7 @@ public class GFFAnnotation extends Annotation{
 		}
 		br.close();
 		}else{
-			System.err.println("didnt exist "+chrom);
+		//	System.err.println("didnt exist "+chrom);
 		}
 		pw.flush();
 	}

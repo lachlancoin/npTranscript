@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.zip.GZIPOutputStream;
 
@@ -37,12 +38,14 @@ import npTranscript.run.SequenceOutputStream1;
 
 public class Outputs{
 	
-	public static  ExecutorService executor ;
+	//public static  ExecutorService executor ;
 	
 	public static final FastqWriterFactory factory = new FastqWriterFactory();
 	public static int gffThresh = 10;
 	
-	
+	public static final ExecutorService writeCompressDirsExecutor  = Executors.newSingleThreadExecutor();
+	public static final ExecutorService fastQwriter = Executors.newSingleThreadExecutor();
+	public static final ExecutorService h5writer = Executors.newSingleThreadExecutor();
 	 class FOutp{
 		//String nme;
 		//boolean gz;
@@ -100,10 +103,13 @@ public class Outputs{
 		 IHDF5SimpleWriter altT = null;
 		File resDir;
 		CompressDir[] clusters;
+		
+		
+		
 		String[] type_nmes;
 		public void close() throws IOException{
 			//IdentityProfileHolder.waitOnThreads(100);
-			Outputs.waitOnThreads(100);
+			
 			
 			transcriptsP.close();
 			readClusters.close();
@@ -119,14 +125,20 @@ public class Outputs{
 			this.annotP.close();
 			//this.clusters.close();
 			for(int i=0; i<clusters.length; i++){
-				//if(so[i]!=null) this.so[i].close();
-				if(clusters[i]!=null) this.clusters[i].run(Outputs.minClusterEntries *2);
-				
+				if(clusters[i]!=null) this.clusters[i].run(Outputs.minClusterEntries *2, writeCompressDirsExecutor);
 			}
+			
 			for(int i=0; i<leftover_l.length; i++){
 				if(leftover_l[i]!=null) this.leftover_l[i].close();
 				if(polyA[i]!=null) this.polyA[i].close();
 			}
+			if(writeCompressDirsExecutor!=null){
+				Outputs.waitOnThreads(writeCompressDirsExecutor,100);
+				
+			}
+			writeCompressDirsExecutor.shutdown();
+			Outputs.fastQwriter.shutdown();
+			Outputs.h5writer.shutdown();
 		}
 			
 		
@@ -171,11 +183,11 @@ public class Outputs{
 			 //List<String>[] types = new ArrayList<String>[vals.size())]; 
 			 if(doMSA!=null && ( Outputs.msa_sources.size()==0)){
 				 clusters = new CompressDir[] {new CompressDir(new File(resDir,  genome_index+"clusters"), true)};
+				
 		//		 so =  new FOutp[] {new FOutp("consensus")};
 			 }else if(doMSA!=null &&  ( Outputs.msa_sources.size()>0)){
 				 clusters =  new CompressDir[vals.size()];
 			//	 this.so = new FOutp[type_nmes.length];
-				
 				 for(int i=0; i<clusters.length; i++){
 					 
 					 String nmei =  genome_index+vals.get(i)+".";
@@ -184,9 +196,7 @@ public class Outputs{
 				//	 so[i] = new FOutp(nmei+"consensus" );
 				 }
 			 }else{
-				 //no msa
 				clusters = new CompressDir[1];
-			//	so = new FOutp[1];
 			 }
 			 leftover_l = new FOutp[type_nmes.length];
 			 polyA = new FOutp[type_nmes.length];
@@ -408,6 +418,7 @@ public class Outputs{
 			//	fusion ? (left ? this.fusion_l : this.fusion_r) : (left ? this.leftover_l : this.leftover_r);
 			FastqWriter writer = leftover[source_index].fastq;
 			writeFastq(writer,subseq, baseQ, negStrand, source_index );
+					
 		}
 			public synchronized void  writeFastq(FastqWriter writer, Sequence subseq,String baseQ,  boolean negStrand, int source_index)  throws IOException{
 				if(writer==null) return;
@@ -421,9 +432,7 @@ public class Outputs{
 					}
 					
 				};
-				run.run();
-			//	if(executor==null) run.run();
-			//	else executor.execute(run);
+				Outputs.fastQwriter.execute(run);
 			}
 
 		
@@ -434,10 +443,23 @@ public class Outputs{
 			
 		}
 		
-		public synchronized void writeIntMatrix(String id, int[][] matr) {
-			this.clusterW.writeIntMatrix(id, matr);
-			
+		public void writeDepthH5(CigarCluster cc, CigarClusters cigarClusters, Sequence chrom, int chrom_index, int totalDepth) {
+			if(clusterW!=null && totalDepth>IdentityProfile1.writeCoverageDepthThresh){
+				Outputs.h5writer.execute( new Runnable(){
+				public void run() {
+					try{
+				cc.addZeros(cigarClusters.seqlen); 
+				int[][] matr =cc.getClusterDepth(cigarClusters.num_sources, chrom);
+				clusterW.writeIntMatrix(cc.id(), matr);
+					}catch(Exception exc){
+						exc.printStackTrace();
+					}
+				}
+				});
+			}
 		}
+		
+	
 		
 		private synchronized CompressDir getCluster(int source){
 			if(clusters==null) return null;
@@ -451,51 +473,75 @@ public class Outputs{
 
 		/** writes the isoform information */
 		public synchronized void writeString(String id, Map<CigarHash2, Count> all_breaks, int num_sources) {
-			int[][]str = new int[all_breaks.size()][];
-			{
-			Iterator<Entry<CigarHash2, Count>> it = all_breaks.entrySet().iterator();
-			int maxl =-1;
-			boolean all_equal  = true;
-			int extra = num_sources+1;
-			for(int i=0;  it.hasNext();i++){
-				Entry<CigarHash2,Count> ch = it.next();
-				CigarHash2 key = ch.getKey();
-				int len = key.size();
-				if(i==0) maxl = len;
-				else if(len>maxl) {
-					maxl = len;
-					all_equal = false;
-				}else if(len<maxl){
-					len = maxl;
-				}
-				str[i] = new int[len+extra];
-				str[i][0]  = ch.getValue().id();
-				System.arraycopy(ch.getValue().count(), 0, str[i], 1, num_sources);
-			//	str[i][1]  = ch.getValue().count();
-				for(int j=0; j<key.size(); j++){
-					str[i][j+extra] = key.get(j)*CigarHash2.round;
-				}
-				
-			}
-			if(!all_equal){
-				for(int i=0; i<str.length; i++){
-					if(str[i].length<maxl+extra){
-						int[] str1 = new int[maxl+extra];
-						System.arraycopy(str[i], 0, str1, 0, str[i].length);
-						str[i] = str1;
-					}
-				}
-			}
-			}
-			try{
-//			this.altT.writeCompoundArray(id,str);
-				this.altT.writeIntMatrix(id, str);
-			}catch(Exception exc){
-				exc.printStackTrace();
-			}
+						int[][]str = new int[all_breaks.size()][];
+						{
+						Iterator<Entry<CigarHash2, Count>> it = all_breaks.entrySet().iterator();
+						int maxl =-1;
+						boolean all_equal  = true;
+						int extra = num_sources+1;
+						for(int i=0;  it.hasNext();i++){
+							Entry<CigarHash2,Count> ch = it.next();
+							CigarHash2 key = ch.getKey();
+							int len = key.size();
+							if(i==0) maxl = len;
+							else if(len>maxl) {
+								maxl = len;
+								all_equal = false;
+							}else if(len<maxl){
+								len = maxl;
+							}
+							str[i] = new int[len+extra];
+							str[i][0]  = ch.getValue().id();
+							System.arraycopy(ch.getValue().count(), 0, str[i], 1, num_sources);
+						//	str[i][1]  = ch.getValue().count();
+							for(int j=0; j<key.size(); j++){
+								str[i][j+extra] = key.get(j)*CigarHash2.round;
+							}
+							
+						}
+						if(!all_equal){
+							for(int i=0; i<str.length; i++){
+								if(str[i].length<maxl+extra){
+									int[] str1 = new int[maxl+extra];
+									System.arraycopy(str[i], 0, str1, 0, str[i].length);
+									str[i] = str1;
+								}
+							}
+						}
+						}
+							altT.writeIntMatrix(id, str);
 			
 		}
 		
+		
+		
+		public void writeIsoforms(CigarCluster cc, CigarClusters cigarClusters, Sequence chrom, int chrom_index
+				, int totalDepth){
+			String id = cc.id();
+			
+			int[] rcount=cc.readCount;
+			
+			
+			if(altT!=null){
+				if(IdentityProfile1.writeIsoformDepthThresh.length==1){
+					if(totalDepth>=IdentityProfile1.writeIsoformDepthThresh[0]){
+						writeString(id, cc.all_breaks, cigarClusters.num_sources);
+					}
+				}else{
+					boolean write=false;
+					for(int j=0; j<rcount.length; j++){
+						if(rcount[j]>=IdentityProfile1.writeIsoformDepthThresh[j]){
+							write=true;
+						}
+					}
+					if(write){
+						writeString(id, cc.all_breaks, cigarClusters.num_sources);
+					}
+				}
+			}
+			
+		}
+
 		public static FastqWriter[][] getFqWriter(String chrom,String resdir, String[] in_nmes) {
 			// TODO Auto-generated method stub
 			String[] prefix = "primary:secondary:supplementary:polyA".split(":");
@@ -510,12 +556,12 @@ public class Outputs{
 			return res;
 		}
 
-		public static void waitOnThreads(int sleep) {
+		public static void waitOnThreads(ExecutorService executor, int sleep) {
 			if(executor==null) return ;
-			if(Outputs.executor instanceof ThreadPoolExecutor){
-		    	while(((ThreadPoolExecutor)Outputs.executor).getActiveCount()>0){
+			if(executor instanceof ThreadPoolExecutor){
+		    	while(((ThreadPoolExecutor) executor).getActiveCount()>0){
 		    		try{
-			    	System.err.println("OUTPUTS: awaiting completion "+((ThreadPoolExecutor)Outputs.executor).getActiveCount());
+			    	System.err.println("OUTPUTS: awaiting completion "+((ThreadPoolExecutor)executor).getActiveCount());
 			    	//Thread.currentThread();
 					Thread.sleep(sleep);
 		    		}catch(InterruptedException exc){
@@ -526,10 +572,12 @@ public class Outputs{
 			
 		}
 
-		public static void shutDownExecutor() {
-			if(executor!=null) executor.shutdown();
+		
+
+		//public static void shutDownExecutor() {
+		//	if(executor!=null) executor.shutdown();
 			
-		}
+	//	}
 
 		
 

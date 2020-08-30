@@ -10,7 +10,7 @@ import java.io.OutputStreamWriter;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ExecutorService;
 import java.util.zip.Adler32;
 import java.util.zip.CheckedOutputStream;
 import java.util.zip.ZipEntry;
@@ -33,6 +33,8 @@ public class CompressDir {
 			exc.printStackTrace();
 		}
 	} */
+	
+	
 	
 	public static boolean doTrim = false;
 	
@@ -72,7 +74,7 @@ public class CompressDir {
 	    }
 	    
 	    
-	    public void run(int  min_lines) throws IOException{
+	    public void run(int  min_lines, ExecutorService executor) throws IOException{
 	    	if(this.currentStreams.size()>0){
 	    		for(Iterator<Map.Entry<String, SequenceOutputStream1>> it = currentStreams.entrySet().iterator(); it.hasNext();){
 	    			Map.Entry<String, SequenceOutputStream1> so = it.next();
@@ -81,7 +83,7 @@ public class CompressDir {
 	    		}
 	    		currentStreams.clear();
 	    	}
-	    	Outputs.waitOnThreads(100);
+	    	Outputs.waitOnThreads( executor,100);
 	    	
 	    	
 	    	System.err.println("all done");

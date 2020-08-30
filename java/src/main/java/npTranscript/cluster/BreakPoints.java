@@ -40,7 +40,6 @@ public void refresh(int seqlen){
 	
 		 void printBreakPoints(Outputs o, int chrom_index)  {
 			 Runnable run = new Runnable(){
-				 
 			 public void run(){
 			for(int i=0; i<breakpoints.length; i++){
 				if(breakpoints[i]!=null && breakpoints[i][0]!=null){
@@ -57,7 +56,7 @@ public void refresh(int seqlen){
 			}
 			 }
 			 };
-			 Outputs.executor.execute(run);
+			 Outputs.h5writer.execute(run);
 		}
 	
 	

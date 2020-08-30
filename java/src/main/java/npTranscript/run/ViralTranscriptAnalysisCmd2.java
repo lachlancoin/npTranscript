@@ -156,7 +156,6 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addInt("startThresh", 100, "Threshold for having 5'");
 		addInt("endThresh", 100, "Threshold for having 3'");
 		addInt("maxThreads", 8, "max threads for processing");
-		addInt("max_threadsIO", 2, "max threads for io");
 		addInt("extra_threshold", 200, "Threshold saving umatched 3'or 5'parts of reads");
 		//addDouble("overlapThresh", 0.95, "Threshold for overlapping clusters");
 	//	addBoolean("coexpression", false, "whether to calc coexperssion matrices (large memory for small bin size)");
@@ -213,9 +212,9 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		int maxReads = cmdLine.getIntVal("maxReads");
 		Outputs.gffThresh = cmdLine.getIntVal("gffThresh");
 		Annotation.enforceStrand = cmdLine.getBooleanVal("RNA");
-		Outputs.executor=  
-				cmdLine.getIntVal("max_threadsIO")==1 ? 
-				Executors.newSingleThreadExecutor():  Executors.newFixedThreadPool(cmdLine.getIntVal("maxThreads"));
+	//	Outputs.executor=  
+	//			cmdLine.getIntVal("max_threadsIO")==1 ? 
+	//			Executors.newSingleThreadExecutor():  Executors.newFixedThreadPool(cmdLine.getIntVal("maxThreads"));
 		IdentityProfileHolder.executor=  cmdLine.getIntVal("maxThreads")==1 ? null:  Executors.newFixedThreadPool(cmdLine.getIntVal("maxThreads"));
 		IdentityProfile1.qual_thresh = cmdLine.getDoubleVal("qualThresh");
 		//ViralTranscriptAnalysisCmd2.combineOutput = cmdLine.getBooleanVal("combineOutput");
@@ -382,7 +381,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			});
 		}
 		run(cmdLine, bamFiles_, resdir, new File(annot_file),  chroms, fastq, reference);
-		Outputs.shutDownExecutor();
+	//	Outputs.shutDownExecutor();
 		IdentityProfileHolder.shutDownExecutor();
 		
 		double time1 = System.currentTimeMillis();
@@ -731,7 +730,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 						if(polyA) sam_ind = 3;
 						*/
 						final FastqWriter fqw_i = fqw[sam_ind][source_index];
-						Outputs.executor.execute(new Runnable(){
+						Outputs.fastQwriter.execute(new Runnable(){
 							public void run(){
 							String baseQL = sam.getBaseQualityString();
 							FastqRecord fqr= new FastqRecord(sam.getReadName(),

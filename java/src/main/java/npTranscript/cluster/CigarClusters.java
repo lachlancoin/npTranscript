@@ -86,35 +86,6 @@ public class CigarClusters {
 	//final Sequence  refseq;
 	final int seqlen;
 	final int num_sources;
-	public void process(CigarCluster cc,   Outputs o,Sequence chrom,int chrom_index){
-		String id = cc.id();
-		int totalDepth = cc.readCountSum();
-		int[] rcount=cc.readCount;
-		
-		if(o.clusterW!=null && totalDepth>IdentityProfile1.writeCoverageDepthThresh){
-			cc.addZeros(seqlen); 
-			int[][] matr =cc.getClusterDepth(num_sources, chrom);
-			o.writeIntMatrix(id, matr);
-		}
-		if(o.altT!=null){
-			if(IdentityProfile1.writeIsoformDepthThresh.length==1){
-				if(totalDepth>=IdentityProfile1.writeIsoformDepthThresh[0]){
-					o.writeString(id, cc.all_breaks, num_sources);
-				}
-			}else{
-				boolean write=false;
-				for(int j=0; j<rcount.length; j++){
-					if(rcount[j]>=IdentityProfile1.writeIsoformDepthThresh[j]){
-						write=true;
-					}
-				}
-				if(write){
-					o.writeString(id, cc.all_breaks, num_sources);
-				}
-			}
-		}
-		
-	}
 	public void process1(CigarCluster cc,   Outputs o,Sequence seq, int chrom_index, SortedSet<String> geneNames ){
 		String read_count = TranscriptUtils.getString(cc.readCount);
 		String chrom = seq.getName();
@@ -139,23 +110,19 @@ public class CigarClusters {
 	/** clears consensus up to certain start position.  This designed to keep memory foot print under control.  Assumes the bams are sorted */
 	public synchronized int clearUpTo(int endThresh, 	Outputs o, Sequence chrom, int chrom_index){
 		List<CigarHash> torem = new ArrayList<CigarHash>();
-		Runnable run = new Runnable(){
-			public void run(){
 				SortedSet<String> geneNames = new TreeSet<String>();
 				for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();){
 					CigarCluster cc = it.next();
 					if(cc.end<endThresh){
+						int totalDepth = cc.readCountSum();
 						process1(cc, o, chrom, chrom_index,  geneNames);
-						process(cc, o, chrom, chrom_index);
+						o.writeIsoforms(cc, this, chrom, chrom_index, totalDepth);
+						o.writeDepthH5(cc, this, chrom,chrom_index, totalDepth);
+						
+						
 						torem.add(cc.breaks_hash);
 					}
 				}
-			}
-		//System.err.println("removed "+torem.size() + " of "+l.size());
-		
-		};
-		run.run();
-//		Outputs.executor.execute(run);
 		rem_count+=torem.size();
 		for(int i=0; i<torem.size(); i++){
 			l.remove(torem.get(i));
@@ -173,23 +140,17 @@ public class CigarClusters {
 					annot.print(o.annotP);
 				}
 			};
-			Outputs.executor.execute(run);
+			Outputs.h5writer.execute(run);
 		}
-		Runnable run = new Runnable(){
-			public void run(){
+		
 			for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();) {
 				CigarCluster nxt = it.next();
 					process1(nxt, o, chrom, chrom_index, geneNames);
-					process(nxt, o, chrom, chrom_index);
+					int  totalDepth = nxt.readCountSum();
+					o.writeIsoforms(nxt, this, chrom, chrom_index, totalDepth);
+					o.writeDepthH5(nxt, this, chrom,chrom_index, totalDepth);
 			}
-			}
-		};
-		run.run();
-		//Outputs.executor.execute(run);
-//		Outputs.executor.execute(run);
-		
-		//Outputs.executor.execute(run2);
-		
+			
 	}
 
 	
