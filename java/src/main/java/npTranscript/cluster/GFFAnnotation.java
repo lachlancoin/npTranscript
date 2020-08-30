@@ -355,7 +355,7 @@ public class GFFAnnotation extends Annotation{
 			}else if(type.equals("CDS") || type.endsWith("UTR") || type.indexOf("codon")>=0){
 				
 			}else{
-				System.err.println("unknown "+type);
+				//System.err.println("unknown "+type);
 			}
 		}
 		br.close();
