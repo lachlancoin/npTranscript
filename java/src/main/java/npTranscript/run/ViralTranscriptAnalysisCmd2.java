@@ -469,6 +469,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		if(gffFile.getName().indexOf(".gff")>=0 || gffFile.getName().indexOf(".gtf")>=0){
 			if(gffFile.getName().endsWith(".zip")){
 				anno = new ZipFile(gffFile);
+				System.err.println(anno.getName());
 			}
 			else {
 				String out_nme = gffFile.getName();
@@ -577,9 +578,14 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			int numNotAligned = 0;
 			int numSecondary =0;
 			Iterator<SAMRecord> samIter= SequenceUtils.getCombined(samIters, sorted);
-			outer: for (; samIter.hasNext() ; ) {
+			float time0 = System.currentTimeMillis();//- tme0)/1000.0
+			outer: for (int ij=0; samIter.hasNext() ;ij++ ) {
 				final SAMRecord sam=samIter.next();
-				
+				if(ij>0 && ij % 10000==0){
+					float timediff = System.currentTimeMillis() - time0;
+					float timeperread = timediff/(float) ij;
+					System.err.println(timeperread+" milliseconds per read at "+ij);
+				}
 				
 				if (sam.getReadUnmappedFlag()) {
 					numNotAligned++;
@@ -684,7 +690,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					int seqlen = chr.length();
 					Annotation annot  = null;
 					if(gffFile.getName().indexOf(".gff")>=0 || gffFile.getName().indexOf(".gtf")>=0){
-							annot = new GFFAnnotation(anno,chr.getName(), seqlen, annotation_pw);
+							annot = new GFFAnnotation(anno,chr.getName(), seqlen, annotation_pw, gffFile.getName().indexOf(".gff")<0);
 							
 					}else{
 						annot = annot_file == null ? new EmptyAnnotation(chr.getName(), chr.getDesc(), seqlen, annotation_pw) : 

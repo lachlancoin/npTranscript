@@ -280,16 +280,16 @@ public class GFFAnnotation extends Annotation{
 	
 	
 	//chr1    HAVANA  exon    13453   13670   .       +       .       ID
-	public GFFAnnotation(ZipFile zf , String chrom,  int seqlen, PrintWriter pw) throws IOException{
+	public GFFAnnotation(ZipFile zf , String chrom,  int seqlen, PrintWriter pw, boolean gtf) throws IOException{
 		super(chrom, seqlen);
-		
 		ZipEntry entry = zf.getEntry(chrom);
 		if(entry==null && !chrom.startsWith("chr")) entry = zf.getEntry("chr"+chrom);
 		if(entry==null && chrom.startsWith("chr")) entry = zf.getEntry(chrom.substring(3));
 		if(entry==null) System.err.println("WARNING NO ANNOTATION FOR CHROM "+chrom);
 		BufferedReader br;
-		String split = zf.getName().indexOf(".gtf")>=0 ? " " : "=";
-		boolean removeQ = zf.getName().indexOf(".gtf")>=0  ? true : false;
+		String name = zf.getName();
+		String split = gtf ? " " : "=";
+		boolean removeQ = gtf ? true : false;
 		if(entry!=null){
 			br = new BufferedReader(new InputStreamReader(zf.getInputStream(entry)));
 		
@@ -297,6 +297,7 @@ public class GFFAnnotation extends Annotation{
 		String st = "";
 		//String genenme="";String desc = ""; String id = "";String biot = ""; String parentG=""; String parentT=""; //these properties of gene
 		String[] gene_vals = new String[5];
+		Map<String, String[] > gene_vals_map = new HashMap<String, String[]>();
 		String[] transcript_vals = new String[5];
 		String[] exon_vals = new String[5];
 		List<String> headers = Arrays.asList(new String[] {id, name, description, biotype, parent});
@@ -320,7 +321,7 @@ public class GFFAnnotation extends Annotation{
 			//pseudogene
 			if(type.endsWith("gene")){
 				if(!hasExon){
-					System.err.println( "no exon for gene "+ Arrays.asList(gene_vals)+ "  "+hasTranscript);
+				//	System.err.println( "no exon for gene "+ Arrays.asList(gene_vals)+ "  "+hasTranscript);
 				}
 				hasExon=false;
 				hasTranscript=false;
@@ -332,20 +333,21 @@ public class GFFAnnotation extends Annotation{
 				hasExon = true;
 				process(str[8], exon_vals, headers, split,removeQ);
 				paren = exon_vals[4];
-				if(paren.equals(transcript_vals[0])){
-					paren = transcript_vals[4];
-				}
-				if(paren.equals(gene_vals[0])){
+				//if(paren.equals(transcript_vals[0])){
+				//	paren = transcript_vals[4];
+				//}
+				//if(!paren.equals(gene_vals[0])) gene_vals = gene_vals_map.get(paren);
+				//if(paren.equals(gene_vals[0])){
 					this.start.add(start);
 					this.end.add(end);
 					this.strand.add(strand=='+');
 					//this hopefully saves memory by only keeping a pointer, rather than multiple copies.
-					genemap.putIfAbsent(gene_vals[0], gene_vals[0]);
-					genes.add(genemap.get(gene_vals[0]));
+					genemap.putIfAbsent(paren, paren);
+					genes.add(genemap.get(paren));
 					
-				}else{
-					System.err.println("missed "+st);
-				}
+				//}else{
+					//System.err.println("missed "+st);
+				//}
 			}else if(type.endsWith("transcript")|| type.endsWith("RNA")){
 				hasTranscript=true;
 					//else if(type.equals("transcript")){
