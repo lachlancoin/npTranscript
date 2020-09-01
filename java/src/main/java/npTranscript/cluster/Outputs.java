@@ -46,6 +46,15 @@ public class Outputs{
 	public static final ExecutorService writeCompressDirsExecutor  = Executors.newSingleThreadExecutor();
 	public static final ExecutorService fastQwriter = Executors.newSingleThreadExecutor();
 	public static final ExecutorService h5writer = Executors.newSingleThreadExecutor();
+	
+	public static void shutDownExecutor() {
+		if(writeCompressDirsExecutor!=null) writeCompressDirsExecutor.shutdown();
+		if(fastQwriter!=null) Outputs.fastQwriter.shutdown();
+		if(h5writer!=null) Outputs.h5writer.shutdown();
+		
+	}
+	
+	
 	 class FOutp{
 		//String nme;
 		//boolean gz;
@@ -136,10 +145,16 @@ public class Outputs{
 				Outputs.waitOnThreads(writeCompressDirsExecutor,100);
 				
 			}
-			writeCompressDirsExecutor.shutdown();
-			Outputs.fastQwriter.shutdown();
-			Outputs.h5writer.shutdown();
+			if(fastQwriter!=null){
+				Outputs.waitOnThreads(fastQwriter, 100);
+			}
+			if(h5writer!=null){
+				Outputs.waitOnThreads(h5writer, 100);
+			}
+			
 		}
+		
+		
 			
 		
 		boolean writeDirectToZip = false;
@@ -565,6 +580,8 @@ public class Outputs{
 		    	}
 			
 		}
+
+		
 
 		
 

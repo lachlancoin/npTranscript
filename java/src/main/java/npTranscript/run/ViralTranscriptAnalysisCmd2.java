@@ -381,7 +381,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			});
 		}
 		run(cmdLine, bamFiles_, resdir, new File(annot_file),  chroms, fastq, reference);
-	//	Outputs.shutDownExecutor();
+		System.err.println("shutting down executors");
+		Outputs.shutDownExecutor();
 		IdentityProfileHolder.shutDownExecutor();
 		
 		double time1 = System.currentTimeMillis();
