@@ -289,6 +289,7 @@ betaBinomialP<-function(x,y, binom=F, lower.tail=T,log=F){
   shape2 = size -y 
   proby = y/size;
   zeros = y==0 & x== 0
+
   sizex = ceiling(sum(x))
   shape1x = x 
   shape2x = sizex -x 
@@ -704,6 +705,7 @@ findGenesByChrom<-function(DE,chrom="MT", thresh = 1e-10,nme2="chrs", nme="FDR1"
   resu
 }
 
+###obsolete function
 readTranscriptHostAll<-function(infilesT, 
                                 combined_depth_thresh = 100,
                                 start_text = "start", 
@@ -1086,11 +1088,9 @@ readIsoformH5<-function(transcripts_, h5file,  depth =1000){
 .readTranscriptsHost<-function(infilesT1, 
                                filter = NULL,
                   target= list(chrom="character", leftGene="character", rightGene="character", start = "numeric", end="numeric", ID="character")
-              ,prefix="ENSC" ,combined_depth_thresh =100  , start_text = "start"                                
+              ,combined_depth_thresh =100                                 
   ){
 
-  names(target)[names(target)=="start"] = start_text
-  #print('h')
   header = names(read.table( infilesT1,sep="\t", head=T, nrows = 3, comment.char='#', fill=T))
   ncol = dim(read.table( infilesT1,sep="\t", head=F, nrows = 2,skip = 2, comment.char='#'))[2]
 #print(header)
@@ -1121,18 +1121,9 @@ names(transcripts) = header[1:(dim(transcripts)[2])]
       transcripts = transcripts[indsk,,drop=F]
     }
   }
-  names(transcripts)[names(transcripts)==start_text] = "start"
-  names(target)[names(target)==start_text] = "start"
-  #print(head(transcripts))
-  
-  
   header_inds1 = match(names(target),names(transcripts))
- # head_inds1 = grep("count[0-9]", names(transcripts));
-countT = as.numeric(transcripts$countTotal)
- # countT = apply(transcripts[,head_inds1,drop=F],1,function(x) sum(as.numeric(x)))
- #print(countT)
- 
-indsk = countT>=combined_depth_thresh
+  countT = as.numeric(transcripts$countTotal)
+  indsk = !is.na(countT) & countT>=combined_depth_thresh
   transcripts = transcripts [indsk,header_inds1, drop=F] 
   names(transcripts)  = sub("chrom", "chrs" ,names(transcripts))
   if(length(grep("#", inf))>0) inf = sub("#", "",inf)
