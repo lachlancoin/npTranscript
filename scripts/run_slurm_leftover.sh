@@ -1,10 +1,10 @@
 #!/bin/bash
 
-#SBATCH --job-name=npTr_comb
+#SBATCH --job-name=npTrLeftover
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --mem=31800 # mb
+#SBATCH --mem=8000 # mb
 #SBATCH --time=100:00:00
 #SBATCH --output=corona1.stdout
 #SBATCH --error=corona1.stderr
@@ -13,7 +13,7 @@
 
 ##script for running
 ##tip - use symbolic link to put this in the directory with bam files
-export JSA_MEM=30000m
+export JSA_MEM=7000m
 
 if [ ! $npTranscript ] ; then
 export  npTranscript=${HOME}/github/npTranscript
@@ -66,7 +66,7 @@ tag=".leftover.fastq.sorted.bam"
 bamfiles=$(find . -maxdepth 1 -type f,l -size +0b | grep "${tag}$" )
 bamfiles1="--bamFile=$(echo $bamfiles | sed 's/ /:/g')"
 resdir="results_${tag}"
-opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=8 --extra_threshold=500 --writePolyA=true --msaDepthThresh=1000 --doMSA=false --numExonsMSA=1:2:3:4:5 --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh 50"
+opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=8 --extra_threshold=1000 --writePolyA=true --msaDepthThresh=1000 --doMSA=false --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh 50"
 
 #for dRNA datasets
 opts="${opts} --RNA=true --readList=leftover_readIds.txt"
@@ -74,4 +74,5 @@ opts2="--fail_thresh=0  --recordDepthByPosition=true"
 opts1=""
 echo $opts $opts1 $opts2 $@
 bash ${npTranscript}/scripts/run.sh ${bamfiles1}   --reference=${reference} --annotation=${coord_file} --resdir=${resdir} ${opts} ${opts1} ${opts2} ${GFF_features} $@
+
 

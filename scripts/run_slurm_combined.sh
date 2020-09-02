@@ -13,6 +13,7 @@
 
 ##script for running 
 ##tip - use symbolic link to put this in the directory with bam files
+
 export JSA_MEM=30000m
 
 if [ ! $npTranscript ] ; then
@@ -31,13 +32,17 @@ if [ ! $species ]; then
 fi	
 if [ $species == "human" ]; then
 	reference="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/merged/human_virus_sequin_ensembl_pri_merged_genome.fasta"
-	coord_file="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/human/ensembl/Homo_sapiens.GRCh38.100.gtf.gz"
-#coord_file="/home/lcoin/Homo_sapiens.GRCh38.100.gtf.gz"
+#	coord_file="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/human/ensembl/Homo_sapiens.GRCh38.100.gtf.gz"
+	coord_file="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/merged/human_ensembl_sequin_merged.gtf"
 	GFF_features="--GFF_features=gene_name:description:gene_id:gene_biotype:gene_id"
 elif [ $species == "monkey" ]; then
 	reference="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/merged/monkey_virus_sequin_genome.fasta"
 	coord_file="/DataOnline/Data/raw_external/Coronavirus/monkey/newdb/Chlorocebus_sabaeus.ChlSab1.1.99.gff3.gz"
 	GFF_features="-GFF_features=Name:description:ID:biotype:Parent"
+elif [ $species == "human_only" ]; then
+	reference="/home/lcoin/HumanRNA/GRCh38_full_analysis_set_plus_decoy_hla.fa"
+	coord_file="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/human/ensembl/Homo_sapiens.GRCh38.100.gtf.gz"
+	GFF_features="--GFF_features=gene_name:description:gene_id:gene_biotype:gene_id"
 else 
 	echo "first option needs to be 'monkey'  or ' human' "
 	exit
@@ -59,7 +64,7 @@ fi
 cov_chr=$(zcat ${reference_virus} | head -n 1 | cut -f 1 -d ' ' | sed 's/>//g')
 echo "coronavirus chr id ${cov_chr}" 
 resdir="results_${dat}"
-opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=8 --extra_threshold=500 --writePolyA=true --msaDepthThresh=1000 --doMSA=false --numExonsMSA=1:2:3:4:5 --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh 50"
+opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=1 --extra_threshold=200 --writePolyA=true --msaDepthThresh=1000 --doMSA=false --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh 50"
 
 #for dRNA datasets
 opts="${opts} --RNA=true"
@@ -76,7 +81,7 @@ bash ${npTranscript}/scripts/run.sh ${bamfiles1}   --reference=${reference} --an
 cd ${resdir}
 
 ##following reassigns any leftover portions of original reads
-bash run_slurm_leftover.sh $species
+bash ${npTranscript}/scripts/run_slurm_leftover.sh $species
 
 
 if [ $mode == "combined" ]; then
