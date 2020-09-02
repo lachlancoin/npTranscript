@@ -184,12 +184,9 @@ public class SequenceOutputStream1 {
 
 
    boolean lock = false;  // is stream locked for closing
- // private boolean close = false; // should we close stream once finished
-   //default is to append
 public void printAll() throws IOException {
 	lock = true; 
 	Runnable run = new Runnable(){
-
 		@Override
 		public void run() {
 		//	System.err.println("launching "+target);
@@ -234,18 +231,15 @@ public void printAll() throws IOException {
 		}
 		
 	};
-	Outputs.executor.execute(run);
+	Outputs.writeCompressDirsExecutor.execute(run);
 }
 
   
   public void write(Sequence seq) throws IOException {
-	 // if(so!=null) writeFasta(seq);
-	  //else{
 		stack.push(seq);
 		if(stack.size()==thresh){
 			this.printAll();
 		}
-	  //}
 	}
 
 Stack<Sequence>  stack= new Stack();

@@ -1,5 +1,5 @@
 Name,Type,Minimum,Maximum,Length,Direction,gene
-leader,leader,14,75,61,forward,leader
+leader,leader,1,75,61,forward,leader
 ORF1ab gene,gene,266,21555,21289,forward,ORF1ab
 S gene,gene,21563,25384,3821,forward,S
 ORF3a gene,gene,25393,26220,827,forward,ORF3a

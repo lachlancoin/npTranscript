@@ -38,17 +38,25 @@ public void refresh(int seqlen){
 	}
  }
 	
-		 void printBreakPoints(Outputs o, int chrom_index)  throws IOException {
-			for(int i=0; i<this.breakpoints.length; i++){
+		 void printBreakPoints(Outputs o, int chrom_index)  {
+			 Runnable run = new Runnable(){
+			 public void run(){
+			for(int i=0; i<breakpoints.length; i++){
 				if(breakpoints[i]!=null && breakpoints[i][0]!=null){
 					for(int j=0 ; j<breakpoints[i].length; j++)
 					{
-				
-					o.printMatrix(this.breakpoints[i][j],this.breakSt[i][j], this.breakEnd[i][j], chrom_index, i, j);
+				try{
+					o.printMatrix(breakpoints[i][j],breakSt[i][j], breakEnd[i][j], chrom_index, i, j);
+				}catch(IOException exc){
+					exc.printStackTrace();
+				}
 					
 					}
 				}
 			}
+			 }
+			 };
+			 Outputs.h5writer.execute(run);
 		}
 	
 	

@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -18,6 +19,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.zip.GZIPOutputStream;
 
 import org.apache.commons.math3.linear.SparseRealMatrix;
@@ -28,15 +31,29 @@ import htsjdk.samtools.fastq.FastqRecord;
 import htsjdk.samtools.fastq.FastqWriter;
 import htsjdk.samtools.fastq.FastqWriterFactory;
 import japsa.seq.Sequence;
+import japsa.seq.SequenceOutputStream;
 import npTranscript.cluster.CigarCluster.Count;
 import npTranscript.run.CompressDir;
 import npTranscript.run.SequenceOutputStream1;
 
 public class Outputs{
 	
-	public static  ExecutorService executor ;
+	//public static  ExecutorService executor ;
 	
 	public static final FastqWriterFactory factory = new FastqWriterFactory();
+	public static int gffThresh = 10;
+	
+	public static final ExecutorService writeCompressDirsExecutor  = Executors.newSingleThreadExecutor();
+	public static final ExecutorService fastQwriter = Executors.newSingleThreadExecutor();
+	public static final ExecutorService h5writer = Executors.newSingleThreadExecutor();
+	
+	public static void shutDownExecutor() {
+		if(writeCompressDirsExecutor!=null) writeCompressDirsExecutor.shutdown();
+		if(fastQwriter!=null) Outputs.fastQwriter.shutdown();
+		if(h5writer!=null) Outputs.h5writer.shutdown();
+		
+	}
+	
 	
 	 class FOutp{
 		//String nme;
@@ -55,7 +72,7 @@ public class Outputs{
 				fastq = factory.newWriter(f);
 			}
 			else{
-				f = new File(resDir,genome_index+nme+".fasta"+(gz ? ".gz": ""));
+				f = new File(resDir,nme+".fasta"+(gz ? ".gz": ""));
 				OutputStream os1 = new FileOutputStream(f);
 				if(gz) os1 = new GZIPOutputStream(os1);
 				os =new OutputStreamWriter(os1);
@@ -78,41 +95,66 @@ public class Outputs{
 	public static boolean keepinputFasta = true;
 	public static boolean writePolyA = false;
 	public static boolean writeBed=false;
+	public static boolean writeGFF=true;
 	public static int minClusterEntries = 5;
 	public static Collection numExonsMSA = Arrays.asList(new Integer[0]); // numBreaks for MSA 
 	
 		public File transcripts_file;
 		public File reads_file; 
-		private final File  outfile2,  outfile4, outfile5,  outfile10, outfile11, bedoutput;
+		private final File  outfile2,  outfile4, outfile5,  outfile10, outfile11, bedoutput, gff_output;
 		//outfile9;
 		private final FOutp[] leftover_l, polyA;//, leftover_r, fusion_l, fusion_r;
 	
 	//	final int seqlen;
-		 PrintWriter transcriptsP,readClusters, annotP, bedW;
+		 PrintWriter transcriptsP,readClusters, annotP, bedW, gffW;
+		 SequenceOutputStream[] refOut;
 		 IHDF5SimpleWriter clusterW = null;
 		 IHDF5SimpleWriter altT = null;
 		File resDir;
 		CompressDir[] clusters;
+		
+		
+		
 		String[] type_nmes;
 		public void close() throws IOException{
+			//IdentityProfileHolder.waitOnThreads(100);
+			
+			
 			transcriptsP.close();
 			readClusters.close();
 			if(bedW!=null) bedW.close();
-			
+			if(gffW!=null) gffW.close();
+			if(refOut!=null){
+				for(int i=0; i<refOut.length; i++){
+					refOut[i].close();
+				}
+			}
 			if(clusterW!=null) clusterW.close();
 			this.altT.close();
 			this.annotP.close();
 			//this.clusters.close();
 			for(int i=0; i<clusters.length; i++){
-				//if(so[i]!=null) this.so[i].close();
-				if(clusters[i]!=null) this.clusters[i].run(Outputs.minClusterEntries *2);
-				
+				if(clusters[i]!=null) this.clusters[i].run(Outputs.minClusterEntries *2, writeCompressDirsExecutor);
 			}
+			
 			for(int i=0; i<leftover_l.length; i++){
 				if(leftover_l[i]!=null) this.leftover_l[i].close();
 				if(polyA[i]!=null) this.polyA[i].close();
 			}
+			if(writeCompressDirsExecutor!=null){
+				Outputs.waitOnThreads(writeCompressDirsExecutor,100);
+				
+			}
+			if(fastQwriter!=null){
+				Outputs.waitOnThreads(fastQwriter, 100);
+			}
+			if(h5writer!=null){
+				Outputs.waitOnThreads(h5writer, 100);
+			}
+			
 		}
+		
+		
 			
 		
 		boolean writeDirectToZip = false;
@@ -120,11 +162,15 @@ public class Outputs{
 		String genome_index;
 		String chrom;
 		
-		public void updateChrom(String chr, int currentIndex) {
+		public  void updateChrom(Sequence seq, int currentIndex) {
+			String chr = seq.getName();
 			// TODO Auto-generated method stub
 			this.chrom = chr;
 			this.chrom = ((chrom.startsWith("chr") || chrom.startsWith("NC")) ? chrom : "chr"+chrom).split("\\.")[0];
 			//this.genome_index = currentIndex;
+			if(this.gffW!=null){
+				gffW.println("##sequence-region "+chr+" "+0+" "+seq.length());
+			}
 		}
 		
 		public Outputs(File resDir,  String[] type_nmes, boolean overwrite,  boolean isoforms, boolean cluster_depth) throws IOException{
@@ -143,6 +189,8 @@ public class Outputs{
 			 outfile5 = new File(resDir,genome_index+ "clusters.fa.gz");
 			 outfile10 = new File(resDir,genome_index+"isoforms.h5");
 			 bedoutput = new File(resDir,genome_index+"bed.gz");
+			gff_output = new File(resDir,genome_index+"gff.gz");
+			
 			 outfile11 = new File(resDir, genome_index+"annot.txt.gz");
 		//	String prefix = readsF.getName().split("\\.")[0];
 			List<Integer> vals = new ArrayList<Integer>(new HashSet<Integer> (Outputs.msa_sources.values()));
@@ -150,11 +198,11 @@ public class Outputs{
 			 //List<String>[] types = new ArrayList<String>[vals.size())]; 
 			 if(doMSA!=null && ( Outputs.msa_sources.size()==0)){
 				 clusters = new CompressDir[] {new CompressDir(new File(resDir,  genome_index+"clusters"), true)};
+				
 		//		 so =  new FOutp[] {new FOutp("consensus")};
 			 }else if(doMSA!=null &&  ( Outputs.msa_sources.size()>0)){
 				 clusters =  new CompressDir[vals.size()];
 			//	 this.so = new FOutp[type_nmes.length];
-				
 				 for(int i=0; i<clusters.length; i++){
 					 
 					 String nmei =  genome_index+vals.get(i)+".";
@@ -163,9 +211,7 @@ public class Outputs{
 				//	 so[i] = new FOutp(nmei+"consensus" );
 				 }
 			 }else{
-				 //no msa
 				clusters = new CompressDir[1];
-			//	so = new FOutp[1];
 			 }
 			 leftover_l = new FOutp[type_nmes.length];
 			 polyA = new FOutp[type_nmes.length];
@@ -188,6 +234,22 @@ public class Outputs{
 				 bedW = new PrintWriter(
 						new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.bedoutput))));
 				 bedW.println("track name=\""+"all"+"\" description=\""+"all"+"\" itemRgb=\"On\" ");
+			 }
+			 if(writeGFF){
+				 gffW= new PrintWriter(
+							new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.gff_output))));
+				 Date d = new Date();
+					gffW.println("##gff-version 3\n"+
+							"#description: \n"+
+							"#provider: \n"+
+							"#contact: \n"+
+							"#format: gff3\n"+
+							"#date: "+d.toGMTString()+"\n");
+					this.refOut =new SequenceOutputStream[Annotation.nmes.length];
+					for(int i=0; i<refOut.length; i++){
+						File ref_output = new File(resDir,Annotation.nmes[i]+".ref.fa");
+						refOut[i] =new SequenceOutputStream(new FileOutputStream(ref_output));
+					}
 			 }
 //			 readID  clusterId       subID   source  length  start_read      end_read   
 			 //type_nme        chrom   startPos        endPos  breakStart      breakEnd        errorRatio
@@ -252,16 +314,16 @@ public class Outputs{
 
 		
 		
-		public IHDF5SimpleWriter getH5Writer(){
+		/*public IHDF5SimpleWriter getH5Writer(){
 			
 			return clusterW;
-		}
+		}*/
 
 		
-		public void printTranscript(String str){
+		public synchronized void printTranscript(String str){
 			this.transcriptsP.println(str);
 		}
-		public void printRead(String string) {
+		public synchronized void printRead(String string) {
 			this.readClusters.println(string);
 			
 		}
@@ -313,6 +375,9 @@ public class Outputs{
 		static Color[] cols = new Color[] {Color.BLACK, Color.blue, Color.GREEN, Color.CYAN, Color.YELLOW, Color.red, Color.ORANGE, Color.MAGENTA, Color.pink};
 		static int col_len = cols.length;
 		static String[] col_str = new String[cols.length];
+
+		//public static boolean all_isoforms = false;
+		public static double isoThresh = 0.9;
 		static{
 			float[] f = new float[3];
 			for(int i=0; i<col_str.length; i++){
@@ -322,7 +387,7 @@ public class Outputs{
 			}
 			//System.err.println(Arrays.asList(col_str));
 		}
-		public void printBed(List<Integer> breaks, String read_name, char strand, int source, String id, String subid, int num_exons, int span, String span_str){
+		public synchronized void printBed(List<Integer> breaks, String read_name, char strand, int source, String id, String subid, int num_exons, int span, String span_str){
 			if(bedW==null) return;
 			int col_id = source % col_len;
 		
@@ -337,7 +402,6 @@ public class Outputs{
 				block_sizes.append(comma+(breaks.get(i+1)-breaks.get(i)));
 				if(i==0) comma=",";
 			}
-			String chrom = TranscriptUtils.bedChr!=null ? TranscriptUtils.bedChr : this.chrom;
 			bedW.println(chrom+"\t"+startPos+"\t"+endPos+"\t"+read_name+"."+id+"\t"+span+"\t"+strand+"\t"+startPos+"\t"+endPos+"\t"
 					+col_str[col_id]+"\t"+num_exons+"\t"+block_sizes.toString()+"\t"+block_start.toString()+"\t"+span_str);
 
@@ -345,7 +409,7 @@ public class Outputs{
 
 		
 		
-		public void writeToCluster(String ID, String subID,  int i, Sequence seq, String baseQ,  String str, String name, char strand) throws IOException{
+		public synchronized void writeToCluster(String ID, String subID,  int i, Sequence seq, String baseQ,  String str, String name, char strand) throws IOException{
 			CompressDir cluster = this.getCluster(i);
 			if(strand=='-'){
 				seq = TranscriptUtils.revCompl(seq);
@@ -369,8 +433,9 @@ public class Outputs{
 			//	fusion ? (left ? this.fusion_l : this.fusion_r) : (left ? this.leftover_l : this.leftover_r);
 			FastqWriter writer = leftover[source_index].fastq;
 			writeFastq(writer,subseq, baseQ, negStrand, source_index );
+					
 		}
-			public void writeFastq(FastqWriter writer, Sequence subseq,String baseQ,  boolean negStrand, int source_index)  throws IOException{
+			public synchronized void  writeFastq(FastqWriter writer, Sequence subseq,String baseQ,  boolean negStrand, int source_index)  throws IOException{
 				if(writer==null) return;
 				Runnable run = new Runnable(){
 					@Override
@@ -382,24 +447,30 @@ public class Outputs{
 					}
 					
 				};
-			//	run.run();
-				executor.execute(run);
+				Outputs.fastQwriter.execute(run);
 			}
 
 		
-		public void writePolyA(Sequence readseq, String nme, String baseQ, boolean negStrand, int source_index)  throws IOException{
+		public synchronized void writePolyA(Sequence readseq, String nme, String baseQ, boolean negStrand, int source_index)  throws IOException{
 			if(polyA==null || polyA[source_index]==null) return ;
 			FastqWriter writer = polyA[source_index].fastq;
 			writeFastq(writer,readseq, baseQ, negStrand, source_index );
 			
 		}
 		
-		public void writeIntMatrix(String id, int[][] matr) {
-			this.clusterW.writeIntMatrix(id, matr);
+		public void writeDepthH5(CigarCluster cc, CigarClusters cigarClusters, Sequence chrom, int chrom_index, int totalDepth) {
+			if(clusterW!=null && totalDepth>IdentityProfile1.writeCoverageDepthThresh){
 			
+				cc.addZeros(cigarClusters.seqlen); 
+				int[][] matr =cc.getClusterDepth(cigarClusters.num_sources, chrom);
+				clusterW.writeIntMatrix(cc.id(), matr);
+				
+			}
 		}
 		
-		private CompressDir getCluster(int source){
+	
+		
+		private synchronized CompressDir getCluster(int source){
 			if(clusters==null) return null;
 			return this.clusters[this.msa_sources.get(source)];
 			//return mergeSourceClusters? this.clusters[0] : this.clusters[source];
@@ -410,52 +481,76 @@ public class Outputs{
 		}
 
 		/** writes the isoform information */
-		public void writeString(String id, Map<CigarHash2, Count> all_breaks, int num_sources) {
-			int[][]str = new int[all_breaks.size()][];
-			{
-			Iterator<Entry<CigarHash2, Count>> it = all_breaks.entrySet().iterator();
-			int maxl =-1;
-			boolean all_equal  = true;
-			int extra = num_sources+1;
-			for(int i=0;  it.hasNext();i++){
-				Entry<CigarHash2,Count> ch = it.next();
-				CigarHash2 key = ch.getKey();
-				int len = key.size();
-				if(i==0) maxl = len;
-				else if(len>maxl) {
-					maxl = len;
-					all_equal = false;
-				}else if(len<maxl){
-					len = maxl;
-				}
-				str[i] = new int[len+extra];
-				str[i][0]  = ch.getValue().id();
-				System.arraycopy(ch.getValue().count(), 0, str[i], 1, num_sources);
-			//	str[i][1]  = ch.getValue().count();
-				for(int j=0; j<key.size(); j++){
-					str[i][j+extra] = key.get(j)*CigarHash2.round;
-				}
-				
-			}
-			if(!all_equal){
-				for(int i=0; i<str.length; i++){
-					if(str[i].length<maxl+extra){
-						int[] str1 = new int[maxl+extra];
-						System.arraycopy(str[i], 0, str1, 0, str[i].length);
-						str[i] = str1;
-					}
-				}
-			}
-			}
-			try{
-//			this.altT.writeCompoundArray(id,str);
-				this.altT.writeIntMatrix(id, str);
-			}catch(Exception exc){
-				exc.printStackTrace();
-			}
+		public synchronized void writeString(String id, Map<CigarHash2, Count> all_breaks, int num_sources) {
+						int[][]str = new int[all_breaks.size()][];
+						{
+						Iterator<Entry<CigarHash2, Count>> it = all_breaks.entrySet().iterator();
+						int maxl =-1;
+						boolean all_equal  = true;
+						int extra = num_sources+1;
+						for(int i=0;  it.hasNext();i++){
+							Entry<CigarHash2,Count> ch = it.next();
+							CigarHash2 key = ch.getKey();
+							int len = key.size();
+							if(i==0) maxl = len;
+							else if(len>maxl) {
+								maxl = len;
+								all_equal = false;
+							}else if(len<maxl){
+								len = maxl;
+							}
+							str[i] = new int[len+extra];
+							str[i][0]  = ch.getValue().id();
+							System.arraycopy(ch.getValue().count(), 0, str[i], 1, num_sources);
+						//	str[i][1]  = ch.getValue().count();
+							for(int j=0; j<key.size(); j++){
+								str[i][j+extra] = key.get(j)*CigarHash2.round;
+							}
+							
+						}
+						if(!all_equal){
+							for(int i=0; i<str.length; i++){
+								if(str[i].length<maxl+extra){
+									int[] str1 = new int[maxl+extra];
+									System.arraycopy(str[i], 0, str1, 0, str[i].length);
+									str[i] = str1;
+								}
+							}
+						}
+						}
+							altT.writeIntMatrix(id, str);
 			
 		}
 		
+		
+		
+		public void writeIsoforms(CigarCluster cc, CigarClusters cigarClusters, Sequence chrom, int chrom_index
+				, int totalDepth){
+			String id = cc.id();
+			
+			int[] rcount=cc.readCount;
+			
+			
+			if(altT!=null){
+				if(IdentityProfile1.writeIsoformDepthThresh.length==1){
+					if(totalDepth>=IdentityProfile1.writeIsoformDepthThresh[0]){
+						writeString(id, cc.all_breaks, cigarClusters.num_sources);
+					}
+				}else{
+					boolean write=false;
+					for(int j=0; j<rcount.length; j++){
+						if(rcount[j]>=IdentityProfile1.writeIsoformDepthThresh[j]){
+							write=true;
+						}
+					}
+					if(write){
+						writeString(id, cc.all_breaks, cigarClusters.num_sources);
+					}
+				}
+			}
+			
+		}
+
 		public static FastqWriter[][] getFqWriter(String chrom,String resdir, String[] in_nmes) {
 			// TODO Auto-generated method stub
 			String[] prefix = "primary:secondary:supplementary:polyA".split(":");
@@ -469,6 +564,33 @@ public class Outputs{
 			}
 			return res;
 		}
+
+		public static void waitOnThreads(ExecutorService executor, int sleep) {
+			if(executor==null) return ;
+			if(executor instanceof ThreadPoolExecutor){
+		    	while(((ThreadPoolExecutor) executor).getActiveCount()>0){
+		    		try{
+			    	System.err.println("OUTPUTS: awaiting completion "+((ThreadPoolExecutor)executor).getActiveCount());
+			    	//Thread.currentThread();
+					Thread.sleep(sleep);
+		    		}catch(InterruptedException exc){
+		    			exc.printStackTrace();
+		    		}
+		    	}
+		    	}
+			
+		}
+
+		
+
+		
+
+		//public static void shutDownExecutor() {
+		//	if(executor!=null) executor.shutdown();
+			
+	//	}
+
+		
 
 	
 

@@ -16,11 +16,17 @@
 
 consensus_ref=$5
 if [ ! $5 ] ; then
-	consensus_ref="/DataOnline/Data/raw_external/Coronavirus/rerio_basecalled/double-splice/results_Taiaroa/0.Taiaroa.consensus/wuhan_coronavirus_australia" ;
+	consensus_ref="/DataOnline/Data/raw_external/Coronavirus/rerio_basecalled/double-splice/results_Taiaroa/0.0.consensus/wuhan_coronavirus_australia" ;
 fi
 
 #store parameters
 echo ${@} > $4_params.txt
+
+#make directories. raw_dir for final, resquiggled fast5s, tmp_dir for fast5s being worked on
+raw_dir="$4"_fast5
+mkdir $raw_dir
+tmp_dir=$(mktemp -d)
+echo $tmp_dir
 
 #list of target ORF clusters
 transcripts=($(unzip -l $2 | awk '{print $4}'| grep 'leader;leader,[A-Z]*[0-9]*[a-z]*;end'))
@@ -28,34 +34,38 @@ transcripts=($(unzip -l $2 | awk '{print $4}'| grep 'leader;leader,[A-Z]*[0-9]*[
 uniq_ORFs=(`echo ${transcripts[@]} | awk 'BEGIN{FS=";";RS=" "} {print $2}' | sort | uniq`)
 echo ${uniq_ORFs[@]}
 
-echo 'seqtk sample'
 cat_readfile=$4_subseq.fq
-for uo in ${uniq_ORFs[@]}; do target_files=(`grep $uo <(echo ${transcripts[@]} | sed 's/ /\n/g') `) ;
-#subseq_readfile=subseq_$uo_"$4".fastq;
-#uniq_cluster[$uo]=$subseq_readfile ;
-echo ${target_files[@]} >> "$4"_uotargets.txt ;
-unzip -p $2 ${target_files[@]} | awk 'BEGIN{RS=">"} {print $1}' | shuf -n 100 - | tee "$4"_sampled_seqs.txt | seqtk subseq $3 - ;
-samps=$(wc -l "$4"_sampled_seqs.txt | cut -d " " -f 1); if [ $samps -lt 100 ]
+
+#START LOOP
+for uo in ${uniq_ORFs[@]}; do echo $uo;
+echo 'seqtk subseq';
+target_files=(`grep $uo <(echo ${transcripts[@]} | sed 's/ /\n/g') `) ;
+echo ${target_files[@]} > "$4"_uotargets.txt ;
+unzip -p $2 ${target_files[@]} | awk 'BEGIN{RS=">"} {print $1}' | shuf -n 1000 - | tee "$4"_sampled_seqs.txt | seqtk subseq $3 - | tee "$cat_readfile" > /dev/null ;
+samps=$(wc -l "$4"_sampled_seqs.txt | cut -d " " -f 1); if [ $samps -lt 1000 ]
 	then printf "$uo\t$samps\n" >> $4_null_samples.txt 
 fi ;
-done >> $cat_readfile
+#done > $cat_readfile
 
 #fetch matching fast5 files
-echo 'fast5 fetcher'
-raw_dir="$4"_fast5
-mkdir $raw_dir
+echo 'fast5 fetcher';
 
 python3 ~/TEST_squiggle/SquiggleKit/fast5_fetcher_multi.py -q $cat_readfile  \
--s $(dirname $3)/sequencing_summary* -o $raw_dir -m $1
+-s $(dirname $3)/sequencing_summary* -o $tmp_dir -m $1;
 
-echo 'tombo preprocess'
-tombo preprocess annotate_raw_with_fastqs --overwrite --fast5-basedir $raw_dir --fastq-filenames $cat_readfile
+echo 'tombo preprocess';
+tombo preprocess annotate_raw_with_fastqs --overwrite --fast5-basedir $tmp_dir --fastq-filenames $cat_readfile ;
 
-echo 'tombo resquiggle'
-for transcript in ${uniq_ORFs[@]}; do
-cat `find $consensus_ref -name *$transcript";end"*.ref.fa | head -n 1` ; done >> $4_tombo_reference.fa
-grep '>' $4_tombo_reference.fa
-tombo resquiggle --rna --overwrite --ignore-read-locks $raw_dir $4_tombo_reference.fa
+echo 'tombo resquiggle';
+cat `find $consensus_ref -name "*${uo};end*.ref.fa" | sort | head -n 1` | tee $4_current_reference.fa >> $4_tombo_reference.fa;
+#ref coords are wrong
+#grep '>' $4_tombo_reference.fa | cut -d ':' -f 2 | sort | uniq > ref_coords.txt
+
+tombo resquiggle --rna --overwrite --ignore-read-locks $tmp_dir $4_current_reference.fa;
+mv $tmp_dir/* $raw_dir;
+done
+rm -d $tmp_dir
+#END LOOP
 
 echo 'tombo detect modifications'
 tombo detect_modifications alternative_model --rna --fast5-basedirs $raw_dir --statistics-file-basename $4 --alternate-bases 5mC
