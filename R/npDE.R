@@ -10,6 +10,7 @@ options("np.casecontrol" = "casecontrol.txt")
 options("np.exclude"="none")
 options("np.virus"="FALSE")
 options("np.analysis"="betabinom")
+options("np.combined_depth_thresh"="100")
 options("np.depth_thresh"="1000")
 options("np.prefix_keep"=NULL)
 options("np.prefix_remove"="^[0-9]{1,}\\.")
@@ -119,7 +120,9 @@ target= list( chrom="character",
 ##READ TRANSCRIPT DATA
 
 infilesT = grep("transcripts.txt", dir(), v=T)
-transcriptsl_unmerged = try(.readTranscriptsHost(infilesT,target=target,filter = filter, combined_depth_thresh = combined_depth_thresh))
+combined_depth_thresh = as.numeric(getOption("np.combined_depth_thresh","100"))
+transcriptsl_unmerged = try(.readTranscriptsHost(infilesT,target=target,filter = filter, 
+                                                 combined_depth_thresh = combined_depth_thresh))
 
 transcriptsl = transcriptsl_unmerged
 attributes = attributes(transcriptsl)
