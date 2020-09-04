@@ -390,7 +390,7 @@ chisqCombine<-function(pv,log=F){
   }
   names(DE) =  nmes
 for(i in 1:length(DE))  attr(DE[[i]],"nme") = names(DE)[i]
-  if(length(DE)==1) return(DE[[1]])
+ # if(length(DE)==1) return(DE[[1]])
     invisible(rev(DE))
 }
 
@@ -673,7 +673,8 @@ findGenesByChrom<-function(DE,chrom="MT", thresh = 1e-10,nme2="chrs", nme="FDR1"
   names(gfft) = nmes
   ID_ind = which(nmes=="ID")
   #gfft[,1] = gsub("transcript:", "", as.character(gfft[,1]))
-  gfft = gfft[match(as.character(transcripts[,match_ind]), as.character(gfft$ID)),]
+  mi = match(as.character(transcripts[,match_ind]), as.character(gfft$ID))
+  gfft = gfft[mi,]
   gfft$ID = transcripts$ID
   transcripts = cbind(transcripts,grp,gfft[,-c(chrind,ID_ind)])
   return(transcripts)
@@ -929,7 +930,7 @@ ggp
    }
    for(i in 1:length(DE1)) attr(DE1[[i]], "nme") = names(DE1)[[i]]
   #.write(DE1 ,resdir,outp)
- if(length(DE1)==1) return (DE1[[1]])
+ #if(length(DE1)==1) return (DE1[[1]])
   #.vis(DE1,i=1,min.p=1e-50)
   # .vis(DE1,i=2,min.p=1e-50)
   invisible(DE1)

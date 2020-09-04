@@ -1,6 +1,5 @@
-
 options("np.install"="FALSE")
-options("np.libs_to_install"="")
+options("np.libs_to_install"="rhdf5,VGAM,ggplot2,writexl,ggrepel,abind");
 options("np.results"="results")
 options("np.control"="control")
 options("np.case"='infected')
@@ -22,6 +21,16 @@ options("np.adjustMethod"="BH");
 ##specific options for running on windows machine
 #options("np.source"="../../R")
 #options("np.libdir"="C:/Users/LCOIN/R-4.0.2/library")
+
+args = commandArgs(trailingOnly=TRUE)
+if(length(args)>0){
+  args = gsub("--","",args)
+  argv = (lapply(args, function(x) strsplit(x,"=")[[1]][2]))
+  names(argv) = unlist(lapply(args, function(x) strsplit(x,"=")[[1]][1]))
+  options(argv)
+}
+
+
 print(.libPaths())
 vers = R.Version()
 version=paste(vers$major,vers$minor,sep=".")
@@ -30,18 +39,9 @@ dir.create(libdir , recursive=T)
 .libPaths(libdir)
 .libPaths()
 #options("np.source"="../../R")
-args = commandArgs(trailingOnly=TRUE)
-if(length(args)>0){
-  args = gsub("--","",args)
-  argv = (lapply(args, function(x) strsplit(x,"=")[[1]][2]))
-  names(argv) = unlist(lapply(args, function(x) strsplit(x,"=")[[1]][1]))
-  options(argv)
-}
+
 libs_to_install = unlist(strsplit(getOption("np.libs_to_install"),","))
 if(getOption("np.install","FALSE")=="TRUE"){
-  if(length(libs_to_install)==0){
-    libs_to_install = c("rhdf5","VGAM","ggplot2","biomaRt","edgeR","writexl","ggrepel","abind")
-  }
   install.packages("BiocManager", lib=libdir, repos="https://cran.ms.unimelb.edu.au/")
   library("BiocManager")
   for(i in libs_to_install){
