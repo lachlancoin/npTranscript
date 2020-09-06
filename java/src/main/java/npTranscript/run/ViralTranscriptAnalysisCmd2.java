@@ -66,10 +66,10 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.fastq.BasicFastqWriter;
 import htsjdk.samtools.fastq.FastqRecord;
 import htsjdk.samtools.fastq.FastqWriter;
 import htsjdk.samtools.util.SequenceUtil;
-import japsa.bio.np.barcode.SWGAlignment;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
@@ -582,10 +582,11 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			float time0 = System.currentTimeMillis();//- tme0)/1000.0
 			outer: for (int ij=0; samIter.hasNext() ;ij++ ) {
 				final SAMRecord sam=samIter.next();
-				if(ij>0 && ij % 10000==0){
+				if(ij>0 && ij % 100000==0){
 					float timediff = System.currentTimeMillis() - time0;
 					float timeperread = timediff/(float) ij;
 					System.err.println(timeperread+" milliseconds per read at "+ij);
+					time0 = System.currentTimeMillis();
 				}
 				
 				if (sam.getReadUnmappedFlag()) {
@@ -709,6 +710,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					
 					
 					if(fqw!=null){
+						Outputs.waitOnThreads(Outputs.fastQwriter, 100); //make sure the fastqWriter has finished. 
 						for(int i=0; i<fqw.length; i++) {
 							for(int j=0; j<fqw[i].length; j++) fqw[i][j].close();
 						}
@@ -746,7 +748,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 											"",
 											negStrand ?(new StringBuilder(baseQL)).reverse().toString(): baseQL
 													);
-							fqw_i.write(fqr);
+							((BasicFastqWriter)fqw_i).write(fqr);
 						}
 					});
 					continue outer;
@@ -780,14 +782,16 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				profile.getConsensus();
 				
 			}
+			if(outp!=null) outp.close();
 			if(fqw!=null) {
+				Outputs.waitOnThreads(Outputs.fastQwriter, 100); //make sure the fastqWriter has finished. 
+
 				for(int i=0; i<fqw.length; i++) {
 					for(int j=0; j<fqw[i].length; j++) fqw[i][j].close();
 				}
 			}
 				
 				
-		if(outp!=null) outp.close();
 	if(anno!=null) anno.close();
 		if(annotation_pw!=null) annotation_pw.close();
 	}

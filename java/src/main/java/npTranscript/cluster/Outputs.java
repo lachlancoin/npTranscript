@@ -48,6 +48,7 @@ public class Outputs{
 	public static final ExecutorService h5writer = Executors.newSingleThreadExecutor();
 	
 	public static void shutDownExecutor() {
+		System.err.println("shutting down output executors");
 		if(writeCompressDirsExecutor!=null){
 			waitOnThreads(writeCompressDirsExecutor,100);
 			writeCompressDirsExecutor.shutdown();
@@ -129,7 +130,16 @@ public class Outputs{
 		String[] type_nmes;
 		public void close() throws IOException{
 			//IdentityProfileHolder.waitOnThreads(100);
-			
+			if(writeCompressDirsExecutor!=null){
+				Outputs.waitOnThreads(writeCompressDirsExecutor,100);
+				
+			}
+			if(fastQwriter!=null){
+				Outputs.waitOnThreads(fastQwriter, 100);
+			}
+			if(h5writer!=null){
+				Outputs.waitOnThreads(h5writer, 100);
+			}
 			
 			transcriptsP.close();
 			readClusters.close();
@@ -152,16 +162,7 @@ public class Outputs{
 				if(leftover_l[i]!=null) this.leftover_l[i].close();
 				if(polyA[i]!=null) this.polyA[i].close();
 			}
-			if(writeCompressDirsExecutor!=null){
-				Outputs.waitOnThreads(writeCompressDirsExecutor,100);
-				
-			}
-			if(fastQwriter!=null){
-				Outputs.waitOnThreads(fastQwriter, 100);
-			}
-			if(h5writer!=null){
-				Outputs.waitOnThreads(h5writer, 100);
-			}
+			
 			
 		}
 		

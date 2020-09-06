@@ -150,7 +150,7 @@ public class IdentityProfileHolder {
 	
 	public static void shutDownExecutor() {
 		if(executor!=null) {
-			waitOnThreads(100);
+			waitOnThreads(10);
 			executor.shutdown();
 		}
 		
