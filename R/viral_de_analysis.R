@@ -16,6 +16,7 @@ todo=.getAllPairwiseComparisons(info)
 ## first DE of expression
 pdf(paste(resdir,"DE.pdf",sep="/"))
 DE1 = lapply(todo, function(x) .processDE1(transcripts, count_names,x[1],x[2], resdir, top=5, pthresh=1e-2,plot=F))
+if(length(DE1)==1) DE1 = DE1[[1]]
 volcanos = lapply(DE1, .volcano, top=10)
 lapply(volcanos, function(x) print(x))
 dev.off()
@@ -38,9 +39,9 @@ lapply(volcanos, function(x) print(x))
 dev.off()
 write_xlsx(.joinSS(lapply(DE2,.xlim,1e-5), sort=T), paste(resdir, "DM_combined.xlsx",sep="/"))
 
-ggp  = .plotError(depth_combined,t,range = 28000:29000, method="bayes", ci=0.95, thresh = 200, diff_thresh =0.2, pval_thresh = 1e-6,lower_thresh =  0.2 )
+ggp  = .plotError(depth_combined,t,extend=F,range =28250:30000, method="bayes", ci=0.995, thresh = 1000, adj=T, diff_thresh =0.2, pval_thresh = 1e-6,lower_thresh =  0.2 )
 outfile1 = paste(resdir, "/error_profiles.pdf", sep="");
-try(ggsave(outfile1, plot=ggp, width = 40, height = 30, units = "cm"))
+try(ggsave(outfile1, plot=ggp, width = 60, height = 20, units = "cm"))
 }
 
 ##ALL TRANSCRIPTS AND ALL POSITIONS COMPARED BETWEEN SAMPLES
@@ -74,8 +75,8 @@ depths_combined_spliced=
 depth_spliced = lapply(1:length(info), .mergeDepth, depths_combined_spliced)
 names(depth_spliced)= info
 
-ggp  = .plotError(depth_spliced[[1]][,,1:2],t,extend=T,log=F, range = 25000:30000, method="bayes", ci=0.95, 
-                  thresh = 500, diff_thresh =0.1, lower_thresh =  0.2, pval_thresh = 1e-6 )
+ggp  = .plotError(depth_spliced[[1]][,,1:2],t,extend=T,log=F, range = 28100:28350, method="bayes", ci=0.95, 
+                  thresh = 500, diff_thresh =0.1, lower_thresh =  0.2, pval_thresh = 1e-6, adj=T )
 
 if(TRUE){
 nme_spl = names(transcripts_all_splice)
@@ -91,7 +92,7 @@ for(k in 1:length(depth_spliced)){
   depthk = depth_spliced[[k]]
   fn = dimnames(depth_spliced[[k]])[[3]]
 
-  DE2_split = lapply(todo2, function(x) .processDM(depth_spliced[[k]], fn, fn[x[1]],fn[x[2]], method=".chisq", thresh_min =10000,plot=F))
+  DE2_split = lapply(todo2, function(x) .processDM(depth_spliced[[k]], fn, fn[x[1]],fn[x[2]], method="fisher.test", thresh_min =10000,plot=F))
   names(DE2_split) = lapply(DE2_split, function(x) .shorten(paste(names(depth_spliced)[k],attr(x,"nme"),sep=":")))
   DE2_split = DE2_split[unlist(lapply(DE2_split, function(x) dim(x)[[1]]))>0]
   volcanos_split = lapply(DE2_split, .volcano, top=10, prefix =names(depth_spliced)[k] )
@@ -108,16 +109,17 @@ write_xlsx(lapply(DE2_split_all,.xlim,1e-5), paste(resdir, "DE_splicing.xlsx",se
 
 if(TRUE){
   ##src_i refers to which entry in info
-depth_split=readH5_s("0.clusters.h5",transcripts[1:20,],filenames, thresh = 10,  src_i = 1)
+depth_split=readH5_s("0.clusters.h5",transcripts[,1:2],filenames, thresh = 10,  src_i = 1)
 todo1 = lapply(2:length(dimnames(depth_split)[[3]]), function(x) c(1,x))
 names(todo1) = dimnames(depth_split)[[3]][-1]
 fn = dimnames(depth_split)[[3]]
-DE2_split = lapply(todo1, function(x) .processDM(depth_split, fn, fn[x[1]],fn[x[2]], method=".chisq", thresh_min =0))
-volcanos_split = lapply(DE2_split, .volcano, top=10)
+DE2_split = lapply(todo1, function(x) .processDM(depth_split, fn, fn[x[1]],fn[x[2]], method=".exact", thresh_min =0)[[1]])
+#if(length(DE2_split)==1) DE2_split = DE2_split[[1]]
+volcanos_split = lapply(DE2_split, .volcano, top=10, logFCthresh = 1)
 pdf(paste(resdir,"DM_split.pdf",sep="/"))
 lapply(volcanos_split, function(x) print(x))
 dev.off()
-ggp  = .plotError(depth_split,t,extend=T, range = 25000:30000, method="bayes", ci=0.95, thresh = 200, diff_thresh =0.2, lower_thresh =  0.2 )
+ggp  = .plotError(depth_split,t,extend=F, range = 28250:30000, method="bayes", ci=0.995, thresh = 200, diff_thresh =0.2, lower_thresh =  0.2 )
 outfile1 = paste(resdir, "/error_profiles.pdf", sep="");
 try(ggsave(outfile1, plot=ggp, width = 40, height = 30, units = "cm"))
 }
