@@ -52,7 +52,7 @@ public class CigarCluster  {
 			this.readCountSum++;
 			
 		}
-
+/** returns average break point position */
 	public static class Count{
 		public Count(int[] count, int id){
 			this.count = count;
@@ -164,20 +164,9 @@ private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutpu
 	// String secondKey =  this.breaks_hash.secondKey;
 		if(this.readCountSum< Outputs.gffThresh) return;
 //if(!type_nme.equals("5_3")) return;
-	this.writeGFF1(null, pw, os, chr, "gene",  null, this.id, this.start, this.end, type_nme, this.breaks_hash.secondKey, this.id, strand, seq);
-	Iterator<Count> it = this.all_breaks.values().iterator();
-	/*double max = 0;
-
-	while(it.hasNext()){
-		int sum = it.next().sum();
-		if(sum>max){
-			max = sum;
-		}
-	}
-	double minv = iso_thresh * max-0.001;*/
-//	pw.print(breaks.get(0));pw.print("\t"); pw.print(breaks.get(breaks.size()));
+	writeGFF1(null, pw, os, chr, "gene",  null, this.id, this.start, this.end, type_nme, this.breaks_hash.secondKey, this.id, strand, seq);
 		 Iterator<Count> it1 = this.all_breaks.values().iterator();
-		for(int i=0; it1.hasNext();) {
+		for(int i=0; it1.hasNext(); i++) {
 			Count br_next = it1.next();
 			List<Integer> br_ = br_next.getBreaks();
 			if(br_next.sum()>=Outputs.gffThresh){
@@ -220,13 +209,14 @@ private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutpu
 			this.breakEnd = c1.breakEnd;
 			this.breakSt2 = c1.breakSt2;
 			this.breakEnd2 = c1.breakEnd2;
-			this.breaks.addAllR(c1.breaks);
+			this.breaks.addAllR(c1.breaks,0);
 			all_breaks = new HashMap<CigarHash2, Count>();
 			//if(all_breaks.size()>0) throw new RuntimeException("should be zero");
 			Count cnt =new Count(num_sources, source_index,  0);
 			if(Outputs.writeGFF) cnt.addBreaks(c1.breaks);
-			this.all_breaks.put(breaks,cnt);
-			this.breaks_hash.secondKey = c1.breaks_hash.secondKey;
+			this.all_breaks.put(IdentityProfile1.includeStart  ? breaks : breaks.clone(true, 1),cnt);
+			this.breaks_hash.setSecondKey(c1.breaks_hash.secondKey, c1.breaks_hash.end);
+			
 			addReadCount(source_index);
 			start = c1.start;
 			end = c1.end;
@@ -436,7 +426,7 @@ final private char strand;
 				throw new RuntimeException("!!");
 			}
 			
-			CigarHash2 br = (CigarHash2) c1.breaks.clone(true);
+			CigarHash2 br = (CigarHash2) c1.breaks.clone(true,IdentityProfile1.includeStart ? 0 : 1);
 			Count	count = this.all_breaks.get(br);
 				if(count==null) {
 					count = new Count(num_sources, src_index, all_breaks.size());
@@ -465,8 +455,8 @@ final private char strand;
 	
 		
 
-		public int numBreaks() {
-			return (int)Math.round(((double)this.breaks.size()-2.0)/2.0);
+		public int numIsoforms() {
+			return all_breaks==null ? 0 : (int)Math.round(((double)this.all_breaks.size()-2.0)/2.0);
 		}
 
 		public String exonCount(){

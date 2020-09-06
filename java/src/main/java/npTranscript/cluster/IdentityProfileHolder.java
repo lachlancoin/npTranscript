@@ -111,6 +111,7 @@ public class IdentityProfileHolder {
 	}
 	SortedSet<String> geneNames = new TreeSet<String>();
 	public void getConsensus() throws IOException {
+		//waitOnThreads(100);
 		this.all_clusters.getConsensus( o, this.genome, this.chrom_index, this.geneNames);
 		
 }
@@ -148,7 +149,10 @@ public class IdentityProfileHolder {
 	}	
 	
 	public static void shutDownExecutor() {
-		if(executor!=null) executor.shutdown();
+		if(executor!=null) {
+			waitOnThreads(100);
+			executor.shutdown();
+		}
 		
 	}
 	

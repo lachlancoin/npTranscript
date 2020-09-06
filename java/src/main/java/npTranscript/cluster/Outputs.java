@@ -48,9 +48,20 @@ public class Outputs{
 	public static final ExecutorService h5writer = Executors.newSingleThreadExecutor();
 	
 	public static void shutDownExecutor() {
-		if(writeCompressDirsExecutor!=null) writeCompressDirsExecutor.shutdown();
-		if(fastQwriter!=null) Outputs.fastQwriter.shutdown();
-		if(h5writer!=null) Outputs.h5writer.shutdown();
+		if(writeCompressDirsExecutor!=null){
+			waitOnThreads(writeCompressDirsExecutor,100);
+			writeCompressDirsExecutor.shutdown();
+		}
+		if(fastQwriter!=null){
+			waitOnThreads(fastQwriter,100);
+
+			Outputs.fastQwriter.shutdown();
+		}
+		if(h5writer!=null){
+			waitOnThreads(h5writer,100);
+
+			Outputs.h5writer.shutdown();
+		}
 		
 	}
 	
@@ -274,10 +285,14 @@ public class Outputs{
 				 }
 			 }
 			 transcriptsP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(transcripts_file))));
-				String transcriptP_header = "ID\tchrom\tstart\tend\ttype_nme\tisoforms\tnum_exons\tleader_break\tORFs\tspan\tspan_length"
-					+"\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true)
+				String transcriptP_header = "ID\tchrom\tstart\tend\ttype_nme\tnum_exons\tisoforms\tleader_break\tORFs\tspan\tspan_length"
+					+"\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true);
+				if(cluster_depth){
+					
+				transcriptP_header = transcriptP_header
 				+"\t"+TranscriptUtils.getString("depth", num_sources, true)+"\t"+TranscriptUtils.getString("errors", num_sources, true)
 				+"\t"+TranscriptUtils.getString("error_ratio", num_sources, true);
+				}
 				StringBuffer nme_info = new StringBuffer();
 				for(int i=0; i<type_nmes.length; i++) nme_info.append(type_nmes[i]+"\t");
 				transcriptsP.println("#"+nme_info.toString());
@@ -320,8 +335,9 @@ public class Outputs{
 		}*/
 
 		
-		public synchronized void printTranscript(String str){
-			this.transcriptsP.println(str);
+		public synchronized void printTranscript(String str, String depth_str){
+			this.transcriptsP.print(str);
+			transcriptsP.println(depth_str);
 		}
 		public synchronized void printRead(String string) {
 			this.readClusters.println(string);

@@ -235,7 +235,7 @@ public class IdentityProfile1 {
 		//coRefPositions.breaks.adjustBreaks(annot);
 		// need to group by start position if we annotating by break pos,e.g. so 5'mapping reads map together
 		String secondKeySt = secondKey.toString();
-		coRefPositions.breaks_hash.setSecondKey(secondKeySt);
+		coRefPositions.breaks_hash.setSecondKey(secondKeySt, endPos);
 		
 		
 		
@@ -247,7 +247,7 @@ public class IdentityProfile1 {
 		int  span = geneNames.size();
 		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"+start_read+"\t"+end_read+"\t"
 		+type_nme+"\t"+chrom_+"\t"
-		+startPos+"\t"+endPos+"\t"+(forward? "+":"-")+"\t"+coRefPositions.numBreaks()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
+		+startPos+"\t"+endPos+"\t"+(forward? "+":"-")+"\t"+coRefPositions.numIsoforms()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
 		+coRefPositions.getError(src_index)+"\t"+secondKeySt+"\t"+strand+"\t"+breakSt+"\t"+span_str+"\t"+geneNames.size();
 		parent.o.printRead(str);
 		int num_exons =(int) Math.floor( (double)  coRefPositions.breaks.size()/2.0);

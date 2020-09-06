@@ -382,9 +382,9 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		}
 		run(cmdLine, bamFiles_, resdir, new File(annot_file),  chroms, fastq, reference);
 		System.err.println("shutting down executors");
-		Outputs.shutDownExecutor();
-		IdentityProfileHolder.shutDownExecutor();
 		
+		IdentityProfileHolder.shutDownExecutor();
+		Outputs.shutDownExecutor();
 		double time1 = System.currentTimeMillis();
 		System.err.println((time1-tme0)/(1000)+ " seconds");
 		// paramEst(bamFile, reference, qual);
@@ -656,8 +656,9 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				if (refIndex != currentIndex) {
 					System.err.println("new chrom "+refIndex + ((double)System.currentTimeMillis()- tme0)/1000.0+" secs");
 					//make sure all current threads finished
-					IdentityProfileHolder.waitOnThreads(100);
 					if( profile!=null && currentIndex>=0){
+						IdentityProfileHolder.waitOnThreads(100);
+
 						profile.printBreakPoints();
 						profile.getConsensus();
 						doneChr.add(chr.getName());
@@ -774,6 +775,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		
 		
 			if(profile!=null){
+				IdentityProfileHolder.waitOnThreads(100);
 				profile.printBreakPoints();
 				profile.getConsensus();
 				

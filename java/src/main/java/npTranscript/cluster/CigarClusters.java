@@ -2,11 +2,11 @@ package npTranscript.cluster;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
+import java.util.SortedMap;
 import java.util.SortedSet;
+import java.util.TreeMap;
 import java.util.TreeSet;
 
 import japsa.seq.Sequence;
@@ -52,7 +52,7 @@ public class CigarClusters {
 		this.annot = annot;
 	}*/
 	
-	Map<CigarHash, CigarCluster> l = new HashMap<CigarHash, CigarCluster>();
+	SortedMap<CigarHash, CigarCluster> l = new TreeMap<CigarHash, CigarCluster>();
 
 	
 	
@@ -101,16 +101,21 @@ public class CigarClusters {
 		o.printTranscript(
 			cc.id()+"\t"+chrom+"\t"+cc.start+"\t"+cc.end+"\t"+type_nme+"\t"+
 	
-		cc.exonCount()+"\t"+cc.numBreaks()+"\t"+(hasLeaderBreak? 1: 0)+"\t"+cc.breaks_hash.secondKey+"\t"+geneNme+"\t"+
+		cc.exonCount()+"\t"+cc.numIsoforms()+"\t"+(hasLeaderBreak? 1: 0)+"\t"+cc.breaks_hash.secondKey+"\t"+geneNme+"\t"+
 		geneNames.size()+"\t"+
-		cc.totLen+"\t"+cc.readCountSum()+"\t"+read_count
-				+"\t"+cc.getTotDepthSt(true)+"\t"+cc.getTotDepthSt(false)+"\t"+cc.getErrorRatioSt());
+		cc.totLen+"\t"+cc.readCountSum()+"\t"+read_count,
+				CigarCluster.recordDepthByPosition ?  cc.getTotDepthSt(true)+"\t"+cc.getTotDepthSt(false)+"\t"+cc.getErrorRatioSt(): "");
 	}
-	
+	CigarHash fromKey = new CigarHash("",0);
 	/** clears consensus up to certain start position.  This designed to keep memory foot print under control.  Assumes the bams are sorted */
 	public synchronized int clearUpTo(int endThresh, 	Outputs o, Sequence chrom, int chrom_index){
+		fromKey.end = endThresh;
+		SortedMap<CigarHash, CigarCluster> tm = l.headMap(fromKey);
+		if(tm.size()==0) return 0;
 		List<CigarHash> torem = new ArrayList<CigarHash>();
 				SortedSet<String> geneNames = new TreeSet<String>();
+			//	l.tailMap(fromKey)
+			
 				for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();){
 					CigarCluster cc = it.next();
 					if(cc.end<endThresh){
@@ -144,7 +149,7 @@ public class CigarClusters {
 		}
 		
 			for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();) {
-				CigarCluster nxt = it.next();
+					CigarCluster nxt = it.next();
 					process1(nxt, o, chrom, chrom_index, geneNames);
 					int  totalDepth = nxt.readCountSum();
 					o.writeIsoforms(nxt, this, chrom, chrom_index, totalDepth);

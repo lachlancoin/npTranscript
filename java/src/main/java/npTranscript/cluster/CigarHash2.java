@@ -11,19 +11,25 @@ public class CigarHash2 extends ArrayList<Integer> {
 	
 	//public static boolean subclusterBasedOnStEnd = false;
 	
-	public CigarHash2 clone(boolean round){
+	public CigarHash2 clone(boolean round, int start){
 		CigarHash2 obj =new CigarHash2();
-		if(round) obj.addAllR(this);
-		else obj.addAll(this);
+		if(round) obj.addAllR(this,start);
+		else obj.addAll(this, start);
 		return obj;
 	}
 	
-	public void addAllR(CigarHash2 obj) {
+	private void addAll(CigarHash2 cigarHash2, int start) {
+		for(int i= start; i<cigarHash2.size(); i++){
+			add(cigarHash2.get(i));
+		}
+	}
+
+	public void addAllR(CigarHash2 obj, int start) {
 		/*if(subclusterBasedOnStEnd){
 			addR(obj.get(0));
 			addR(obj.get(obj.size()-1));
 		}else{*/
-			for(int i=0; i<obj.size(); i++){
+			for(int i=start; i<obj.size(); i++){
 				addR(obj.get(i));
 			}
 		//}
