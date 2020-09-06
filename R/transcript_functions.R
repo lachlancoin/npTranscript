@@ -137,7 +137,7 @@ getKmer<-function(base, pos,v = c(-1,0,1)){
 }
 .plotError<-function(depth,t1, range = 1:dim(depth)[2], method="bayes",
                      pval_thresh = 1e-5, ci=0.95, thresh = 1000, extend=T, log=F, adj=T, lower_thresh = 0.25, diff_thresh = 0.5){
-  inds1 = apply(depth[1,range,],1,max)>thresh
+  inds1 = apply(depth[1,range,],1,min)>thresh
   range = range[inds1]
   if(!is.null(t1)){
     kinds = which(names(t1)%in% c("Minimum","Maximum"))
@@ -149,7 +149,7 @@ getKmer<-function(base, pos,v = c(-1,0,1)){
      range = min(range,min(t[,kinds])):max(range,max(t[,kinds]))
     }
   }
-  inds1 = apply(depth[1,range,],1,max)>thresh
+  inds1 = apply(depth[1,range,],1,min)>thresh
   range = range[inds1]
   dfs = list()
   pos = as.numeric(dimnames(depth)[[2]][range])
@@ -187,9 +187,11 @@ getKmer<-function(base, pos,v = c(-1,0,1)){
   ggp<-ggp+ geom_point(position=position_dodge(), aes(y=mean),stat="identity")
  ggp<-ggp+geom_errorbar(position=position_dodge(width=0.0),colour="black")
   ggp<-ggp+ggtitle(paste("Error rate by position (",ci*100,"% binomial CI) ",sep=""))
+  ggp<-ggp+ylab("error rate")
   if(log) ggp<-ggp+scale_y_continuous(trans='log10')
   ggp<-ggp+geom_text_repel(data=subset(df,pval < pval_thresh & diff>0),
-                  aes(pos,upper , label = pos),size = 3, color=if(type==ty[1]) "red" else "steelblue")
+                  aes(pos,upper , label = sprintf("%5.3g" ,pval)),size = 3, color=if(type==ty[1]) "red" else "steelblue")
+  ##can use pos instead of pval
   if(!extend) ggp<-ggp+xlim(min(range), max(range))
   if(!is.null(t) && !is.null(t$sideCols)){
     ggp<-ggp+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols)

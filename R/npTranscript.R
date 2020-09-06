@@ -85,7 +85,7 @@ if(length(infilesBr)!=length(type_nme)){
 }
 print(type_nme)
 }
-src = c("~/github/npTranscript/R", "C:/Users/LCOIN/github/npTranscript/R")
+#src = c("~/github/npTranscript/R", "C:/Users/LCOIN/github/npTranscript/R")
 #data_src =  # c(".","..","~/github/npTranscript/data/SARS-Cov2" )
 print("#PRELIMINARIES ....")  
 source(.findFile(getOption("np.source","~/github/npTranscript/R"), "diff_expr_functs.R"))
@@ -216,7 +216,7 @@ if(length(infilesBr)>=1 && length(infiles)>=1){
 }
 
 
-if(TRUE){
+if(length(info)>1 && FALSE){
   ##DE analysis
   source(.findFile(src, "viral_de_analysis.R"))
   
