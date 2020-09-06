@@ -99,7 +99,7 @@ getKmer<-function(base, pos,v = c(-1,0,1)){
     ratio1 = rbind(annot0$ratio1, ratio1)
     annot = cbind(annot,mixt)
   }
-  ratio1$type=factor(ratio1$type,levels = names(sort(apply(ratio2,2,mean))))
+  ratio1$type=factor(ratio1$type,levels = names(sort(apply(ratio2,2,mean,na.rm=T))))
   
   ggp= NULL
   if(plot){
@@ -124,6 +124,79 @@ getKmer<-function(base, pos,v = c(-1,0,1)){
   }
   list(annot= annot, ratio1 = ratio1,ggp = ggp)
 }
+
+
+.calcConf<-function(v, conf.level=0.95, method="bayes"){
+  #print(conf.level)
+  res = binom.confint(x=v[2],n=v[1],conf.level=conf.level, method=method)
+  as.numeric( c(res$lower,res$mean,res$upper))
+  
+}
+.overl<-function(x,y){
+  min(x[2]-y[1], y[2] - x[1])
+}
+.plotError<-function(depth,t1, range = 1:dim(depth)[2], method="bayes",
+                     pval_thresh = 1e-5, ci=0.95, thresh = 1000, extend=T, log=F, adj=T, lower_thresh = 0.25, diff_thresh = 0.5){
+  inds1 = apply(depth[1,range,],1,max)>thresh
+  range = range[inds1]
+  if(!is.null(t1)){
+    kinds = which(names(t1)%in% c("Minimum","Maximum"))
+    midp = (t1$Maximum+t1$Minimum)/2
+    rp = c(min(range),max(range))
+    inds2 = which(apply(t1[,kinds],1,.overl,rp)>=0)
+    t = t1[inds2,,drop=F]
+    if(dim(t)[1]>0 && extend){
+     range = min(range,min(t[,kinds])):max(range,max(t[,kinds]))
+    }
+  }
+  inds1 = apply(depth[1,range,],1,max)>thresh
+  range = range[inds1]
+  dfs = list()
+  pos = as.numeric(dimnames(depth)[[2]][range])
+  pval = apply(depth[,range,],2, function(x) chisq.test(x)$p.value)
+  if(adj)pval = p.adjust(pval, method="BH")
+  for(i in 1:dim(depth)[[3]]){
+    print(i)
+    dfc = t(apply(depth[,range,i,drop=F],2,.calcConf, method=method,conf.level=ci))
+    
+    dimnames(dfc) = list(pos,c("lower","mean","upper"))
+    type = rep(dimnames(depth)[[3]][i],length(pos))
+    if(i==1){
+      diffc = rep(0, length(pos))
+    }else{
+      dj = cbind(dfc[,2], dfs[[i-1]][,2])
+      diffc = apply(dj,1,function(x) x[1]-x[2]) 
+      
+    }
+    
+    dfs[[i]] = data.frame(dfc,type,pos,pval, diff=diffc)
+    if(i==2){
+      dfs[[1]]$diff = -1*dfs[[2]]$diff
+    }
+  }
+  df = NULL
+  
+  for(i in 1:length(dfs)){
+    df = if(is.null(df)) dfs[[i]] else rbind(df, dfs[[i]])
+    
+  }
+  posy = max(df$upper)
+ df$type=as.factor(df$type)
+  ty = levels(df$type)
+  ggp<-ggplot(df, aes(x=pos,y=mean,fill=type, colour=type,ymin=lower ,ymax=upper))
+  ggp<-ggp+ geom_point(position=position_dodge(), aes(y=mean),stat="identity")
+ ggp<-ggp+geom_errorbar(position=position_dodge(width=0.0),colour="black")
+  ggp<-ggp+ggtitle(paste("Error rate by position (",ci*100,"% binomial CI) ",sep=""))
+  if(log) ggp<-ggp+scale_y_continuous(trans='log10')
+  ggp<-ggp+geom_text_repel(data=subset(df,pval < pval_thresh & diff>0),
+                  aes(pos,upper , label = pos),size = 3, color=if(type==ty[1]) "red" else "steelblue")
+  if(!extend) ggp<-ggp+xlim(min(range), max(range))
+  if(!is.null(t) && !is.null(t$sideCols)){
+    ggp<-ggp+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols)
+    ggp<-ggp+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols)
+  }
+}
+
 
 writeFasta<-function(kmer10, file){
   write(">seq1", file)
@@ -1424,10 +1497,11 @@ findBreaks<-function(row, mult=10){
 readCoords<-function(coords_file){
   ###COREF ANALYSIS (heatmap)
   t = read.csv(coords_file)
-  levs = levels(t$gene)
+  levs = levels(as.factor(t$gene))
   mygroup<-1:length(levs)
   cols = brewer.pal(length(mygroup), "Set3")
   sideCols = cols[match(t$gene, levs)]
+  
   t = cbind(t, sideCols)
   t
 }

@@ -147,7 +147,7 @@ readH5_c<-function(h5file, df, filenames, thresh=0, log=F,tokeepi = NULL, seqlen
 }
 
 # split into transcripts
-readH5_s<-function(h5file, df, filenames, thresh=0, log=F, tokeepi=1 ,seqlen=30000){
+readH5_s<-function(h5file, df, filenames, thresh=0, log=F, src_i=1 ,seqlen=30000){
   IDS = df$ID
   chrs = df$chrs
   header = h5read(h5file,"header")
@@ -157,8 +157,8 @@ readH5_s<-function(h5file, df, filenames, thresh=0, log=F, tokeepi=1 ,seqlen=300
 #  tokeepi = grep(grep("depth_",grep(tokeep, header,v=T),v=T),header)
   dinds  = grep("depth", header)
   einds  = grep("error", header)
-  header[dinds] = paste("depth",filenames,sep="_")
-  header[einds] =  paste("error",filenames,sep="_")
+ # header[dinds] = paste("depth",filenames,sep="_")
+#  header[einds] =  paste("error",filenames,sep="_")
   #countT = apply(df[,grep("count[0-9]", names(df)),drop=F],1,min)
   pos_ind = which(header=="pos")
   names = h5ls(h5file)$name
@@ -174,8 +174,8 @@ readH5_s<-function(h5file, df, filenames, thresh=0, log=F, tokeepi=1 ,seqlen=300
       chr =  as.character(chrs[inds[i]])
       if(is.null(chr) || length(chr)==0) chr = as.character(df$ORFs[inds[i]])
       mat = t(h5read(h5file,as.character(ID)))
-      mat_all[1,mat[,1],i] =  mat[,dinds[tokeepi]]
-      mat_all[2,mat[,1],i] =  mat[,einds[tokeepi]]
+      mat_all[1,mat[,1],i] =  mat[,dinds[src_i]]
+      mat_all[2,mat[,1],i] =  mat[,einds[src_i]]
     } 
   }
   mat_all
@@ -289,6 +289,7 @@ betaBinomialP<-function(x,y, binom=F, lower.tail=T,log=F){
   shape2 = size -y 
   proby = y/size;
   zeros = y==0 & x== 0
+
   sizex = ceiling(sum(x))
   shape1x = x 
   shape2x = sizex -x 
@@ -342,8 +343,8 @@ chisqCombine<-function(pv,log=F){
 }
 .exact<-function(v, nrow=2, ncol=2){
   if(sum(v)==0) return (c(NA,NA,NA,NA))
-  
-  f = fisher.test(v)
+ # print(v)
+  f = fisher.test(matrix(v,nrow=nrow,ncol=ncol))
   c(f$p.value,f$estimate, v[2,1]/v[1,1], v[2,2]/v[1,2])
 }
 .chisq<-function(v, nrow=2,ncol=2){
@@ -389,6 +390,7 @@ chisqCombine<-function(pv,log=F){
   }
   names(DE) =  nmes
 for(i in 1:length(DE))  attr(DE[[i]],"nme") = names(DE)[i]
+ # if(length(DE)==1) return(DE[[1]])
     invisible(rev(DE))
 }
 
@@ -455,13 +457,13 @@ DEdepth<-function(df1,control_names, infected_names,tojoin=1:3, maxLogFC=10, met
 DEgenes<-function(df,control_names,infected_names,  type="lt", binom=F, log=F
                   ){
   lower.tail = T
-  
   ORFs = as.character(df$ORFs)
   if(!is.null(df$Name)){
   dfn_ind = !is.na(df$Name)
   ORFs[dfn_ind]=as.character(df$Name[dfn_ind])
   }
   grp=df$grp
+  if(is.null(grp)) grp = df$type_nme
 
   control_inds = rep(NA, length(control_names))
   infected_inds = rep(NA, length(infected_names))
@@ -671,7 +673,8 @@ findGenesByChrom<-function(DE,chrom="MT", thresh = 1e-10,nme2="chrs", nme="FDR1"
   names(gfft) = nmes
   ID_ind = which(nmes=="ID")
   #gfft[,1] = gsub("transcript:", "", as.character(gfft[,1]))
-  gfft = gfft[match(as.character(transcripts[,match_ind]), as.character(gfft$ID)),]
+  mi = match(as.character(transcripts[,match_ind]), as.character(gfft$ID))
+  gfft = gfft[mi,]
   gfft$ID = transcripts$ID
   transcripts = cbind(transcripts,grp,gfft[,-c(chrind,ID_ind)])
   return(transcripts)
@@ -704,6 +707,7 @@ findGenesByChrom<-function(DE,chrom="MT", thresh = 1e-10,nme2="chrs", nme="FDR1"
   resu
 }
 
+###obsolete function
 readTranscriptHostAll<-function(infilesT, 
                                 combined_depth_thresh = 100,
                                 start_text = "start", 
@@ -826,28 +830,11 @@ if(inherits(dfi,"try-error")) {
   infected_names = count_names[i2]
   outp = paste("results", info[i1], info[i2], "csv",sep=".")
   type_names = c(control_names[1], infected_names[1])
-  res_keep3 = .processDE(transcripts,attributes(transcripts), resdir, control_names, infected_names, type_names = type_names, outp= outp, 
-                         type=gsub("count_","",paste(type_names,collapse=" vs ")), plot=plot)
-  indsk = c(2,5,6,7,8,9,13)
-  print("order1")
-  resk1 = res_keep3$DE1[attr(res_keep3$DE1,"order1"),]
-  resk1 = resk1[!is.na(resk1$p.adj1) & resk1$p.adj1<pthresh,indsk]
-  resk2 = res_keep3$DE1[attr(res_keep3$DE1,"order2"),]
-  resk2 = resk2[!is.na(resk1$p.adj2) &resk2$p.adj2<pthresh,indsk]
-  n1 = dim(resk1)[[1]]
-  n2 = dim(resk2)[[2]]
-  n1 = min(top,n1)
-  n2 = min(top,n2)
-  print(paste(n1,n2))
-  print(resk1[1:n1,])
-  print("order2")
-  print(resk2[1:n2,])
-  ord = attr(res_keep3$DE1,"order")
-  attr(res_keep3$DE1,"nme") = gsub("count_","",paste(type_names,collapse=" v "))
-  invisible(res_keep3$DE1[ord,])
+ .processDE(transcripts,attributes(transcripts), resdir, control_names, infected_names, type_names = type_names, outp= outp, 
+                         type=gsub("count_","",paste(type_names,collapse=" vs ")))
 }
 
-.volcano<-function(df, logFCthresh = 0.5, top=10, prefix="", useadj=TRUE,exclude=NULL){
+.volcano<-function(df, logFCthresh = 1.0, top=10, prefix="", useadj=TRUE,exclude=NULL){
   if(dim(df)[[1]]==0) return(NULL)
   if(!is.null(exclude)){
     df = df[!(df$grp %in% exclude),,drop=F]
@@ -884,7 +871,7 @@ ggp<-ggp+  geom_text_repel(data=subset(df,abs(logFC) >= logFCthresh & p.adj < pt
   ggp<-ggp+  geom_text_repel(data=subset(df,abs(logFC) >= logFCthresh & pvals < pthresh),
                              aes(logFC, -log10(pvals), label = ORFs),size = 3, color="steelblue")
 }
-ggp<-ggp+ggtitle(sub(" v ","v \n", paste(attr(df,"nme"),prefix)))
+ggp<-ggp+ggtitle(sub(" v "," vs ", paste(attr(df,"nme"),prefix)))
 ggp
 }
 
@@ -924,7 +911,7 @@ ggp
   if(length(info)==1) return(todo)
   for(i in (start+1):length(info)){
     for(j in start:(i-1)){
-      todo[[length(todo)+1]] = c(i,j)
+      todo[[length(todo)+1]] = c(j,i)
     }
   }
   names(todo) = unlist(lapply(todo, function(x) paste(info[x],collapse=" v ")))
@@ -943,7 +930,7 @@ ggp
    }
    for(i in 1:length(DE1)) attr(DE1[[i]], "nme") = names(DE1)[[i]]
   #.write(DE1 ,resdir,outp)
- 
+ #if(length(DE1)==1) return (DE1[[1]])
   #.vis(DE1,i=1,min.p=1e-50)
   # .vis(DE1,i=2,min.p=1e-50)
   invisible(DE1)
@@ -1086,11 +1073,9 @@ readIsoformH5<-function(transcripts_, h5file,  depth =1000){
 .readTranscriptsHost<-function(infilesT1, 
                                filter = NULL,
                   target= list(chrom="character", leftGene="character", rightGene="character", start = "numeric", end="numeric", ID="character")
-              ,prefix="ENSC" ,combined_depth_thresh =100  , start_text = "start"                                
+              ,combined_depth_thresh =100                                 
   ){
 
-  names(target)[names(target)=="start"] = start_text
-  #print('h')
   header = names(read.table( infilesT1,sep="\t", head=T, nrows = 3, comment.char='#', fill=T))
   ncol = dim(read.table( infilesT1,sep="\t", head=F, nrows = 2,skip = 2, comment.char='#'))[2]
 #print(header)
@@ -1121,18 +1106,9 @@ names(transcripts) = header[1:(dim(transcripts)[2])]
       transcripts = transcripts[indsk,,drop=F]
     }
   }
-  names(transcripts)[names(transcripts)==start_text] = "start"
-  names(target)[names(target)==start_text] = "start"
-  #print(head(transcripts))
-  
-  
   header_inds1 = match(names(target),names(transcripts))
- # head_inds1 = grep("count[0-9]", names(transcripts));
-countT = as.numeric(transcripts$countTotal)
- # countT = apply(transcripts[,head_inds1,drop=F],1,function(x) sum(as.numeric(x)))
- #print(countT)
- 
-indsk = countT>=combined_depth_thresh
+  countT = as.numeric(transcripts$countTotal)
+  indsk = !is.na(countT) & countT>=combined_depth_thresh
   transcripts = transcripts [indsk,header_inds1, drop=F] 
   names(transcripts)  = sub("chrom", "chrs" ,names(transcripts))
   if(length(grep("#", inf))>0) inf = sub("#", "",inf)

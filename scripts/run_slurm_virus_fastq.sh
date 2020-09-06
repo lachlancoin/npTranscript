@@ -35,7 +35,7 @@ mm2_path="/sw/minimap2/current/minimap2"
 
 
 ##VIRAL ANALYSIS ON VIRAL READS
-opts="--bin=100 --breakThresh=1000  --isoformDepthThresh=10000 --coverageDepthThresh=0 --extra_threshold=200 --msaDepthThresh=20 --doMSA=all:sep --reAlignExtra=true"
+opts="--bin=100 --breakThresh=1000 --gffThresh=100  --isoformDepthThresh=10000 --coverageDepthThresh=0 --extra_threshold=200 --msaDepthThresh=20 --doMSA=all:sep --reAlignExtra=true"
 opts2="--fail_thresh=0 --recordDepthByPosition=true"
 opts3="--mm2_path=${mm2_path}"
 
@@ -47,7 +47,7 @@ bamfiles_virus="--fastqFile=$(echo $bamfiles | sed 's/ /:/g')"
 
 bash ${npTranscript}/scripts/run.sh ${bamfiles_virus}   --reference=${reference_virus} --annotation ${coord_file_virus} --resdir ${resdir_virus} ${opts} ${opts1} ${opts2} ${opts3}
 cd ${resdir_virus}
-bash run_slurm_leftover.sh $species
+bash ${npTranscript}/scripts/run_slurm_leftover.sh $species
 cd ..
 
 #tag=".secondary.fastq"
@@ -64,5 +64,5 @@ bamfiles=$(find . -maxdepth 1 -type f,l -size +0b | grep "${tag}$" )
 bamfiles_virus="--fastqFile=$(echo $bamfiles | sed 's/ /:/g')"
 bash ${npTranscript}/scripts/run.sh ${bamfiles_virus}   --reference=${reference_virus} --annotation ${coord_file_virus} --resdir ${resdir_virus} ${opts} ${opts1} ${opts2} ${opts3}
 cd ${resdir_virus}
-bash run_slurm_leftover.sh $species
+bash ${npTranscript}/scripts/run_slurm_leftover.sh $species
 cd ..

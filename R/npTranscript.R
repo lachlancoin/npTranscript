@@ -1,21 +1,40 @@
-#should run this in  subdirectory with results from java program
-INSTALL = FALSE
-if(INSTALL){
-  if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-	BiocManager::install("rhdf5")
-	BiocManager::install("ggplot2")
 
-	BiocManager::install("RColorBrewer")
-	BiocManager::install("gplots")
-	BiocManager::install("seqinr")
-	BiocManager::install("binom")
-	BiocManager::install("writexl")
-	BiocManager::install("gridExtra")
-	BiocManager::install("ggrepel")
-	
+options("np.install"="FALSE")
+options("np.libs_to_install"="binom,VGAM,ggplot2,writexl,ggrepel,grDevices,gridExtra,abind,seqinr,RColorBrewer,gplots,seqinr,rhdf5");
+options("np.datasource"="~/github/npTranscript/data/SARS-Cov2/VIC01")
+options("np.source"="~/github/npTranscript/R" );
+options("np.datasource"="~/github/npTranscript/data/SARS-Cov2/VIC01" );
+options("np.depth_thresh" = "100" );
+#options("np.source"="../../R")
+#options("np.datasource"="../../data/SARS-Cov2/VIC01")
+#options("np.libdir"="C:/Users/LCOIN/R-4.0.2/library")
+
+
+args = commandArgs(trailingOnly=TRUE)
+if(length(args)>0){
+  args = gsub("--","",args)
+  argv = (lapply(args, function(x) strsplit(x,"=")[[1]][2]))
+  names(argv) = unlist(lapply(args, function(x) strsplit(x,"=")[[1]][1]))
+  options(argv)
 }
 
+print(.libPaths())
+vers = R.Version()
+version=paste(vers$major,vers$minor,sep=".")
+libdir=getOption("np.libdir", paste("~/R/lib",version,sep="/"))
+dir.create(libdir , recursive=T)
+.libPaths(libdir)
+.libPaths()
+#options("np.source"="../../R")
+
+libs_to_install = unlist(strsplit(getOption("np.libs_to_install"),","))
+if(getOption("np.install","FALSE")=="TRUE"){
+  install.packages("BiocManager", lib=libdir, repos="https://cran.ms.unimelb.edu.au/")
+  library("BiocManager")
+  for(i in libs_to_install){
+    BiocManager::install(i, update=F, ask=F, lib=libdir)
+  }
+} 
 
 library(binom)
 library(ggplot2)
@@ -25,15 +44,8 @@ library(gplots)
 library(seqinr)
 library(rhdf5)
 library(VGAM)
-args = commandArgs(trailingOnly=TRUE)
-if(length(args)>0){
-data_src = args[1]  ## location of fasta file and Coordinates file
-}else{
-  data_src = c("~/github/npTranscript/data/SARS-Cov2/VIC01","~/github/npTranscript/data/229E_CoV" )
-  
-#data_src = c("C:/Users/LCOIN/github/npTranscript/data/SARS-Cov2/VIC01" ,"~/github/npTranscript/data/SARS-Cov2/VIC01","~/github/npTranscript/data/229E_CoV" )
-}
 
+data_src = getOption("np.datasource");
 
 #SHOULD BE RUN IN data/ subdirectory
 .findFile<-function(path, file, exact = T){
@@ -76,8 +88,9 @@ print(type_nme)
 src = c("~/github/npTranscript/R", "C:/Users/LCOIN/github/npTranscript/R")
 #data_src =  # c(".","..","~/github/npTranscript/data/SARS-Cov2" )
 print("#PRELIMINARIES ....")  
-source(.findFile(src, "diff_expr_functs.R"))    
-source(.findFile(src, "transcript_functions.R"))
+source(.findFile(getOption("np.source","~/github/npTranscript/R"), "diff_expr_functs.R"))
+source(.findFile(getOption("np.source","~/github/npTranscript/R"), "transcript_functions.R"))
+
 resdir = "results"
 dir.create(resdir);
 t = readCoords(.findFile(data_src, "Coordinates.csv"))
@@ -203,7 +216,7 @@ if(length(infilesBr)>=1 && length(infiles)>=1){
 }
 
 
-if(FALSE){
+if(TRUE){
   ##DE analysis
   source(.findFile(src, "viral_de_analysis.R"))
   
