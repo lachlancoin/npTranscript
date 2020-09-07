@@ -400,6 +400,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			int[] writeIsoformDepthThresh, int writeCoverageDepthThresh, double probInclude, boolean fastq, String[] chromsToRemap) throws IOException {
 		boolean cluster_reads = true;
 		CigarHash2.round = round;
+		Annotation.tolerance = round;
 		
 		IdentityProfile1.annotByBreakPosition = annotByBreakPosition;
 		CigarHash.cluster_by_annotation =true;// cluster_by_annotation;
@@ -492,7 +493,10 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		System.err.println("reading genomes " + (System.currentTimeMillis()- tme0)/1000+" secs");
 		ArrayList<Sequence> genomes = SequenceReader.readAll(refFile, Alphabet.DNA());
 		System.err.println("done reading genomes" + (System.currentTimeMillis()- tme0)/1000+" secs");
-		
+		Map<String, Integer>chrNameToIndex = new HashMap<String, Integer>();
+		for(int i=0; i<genomes.size(); i++){
+				chrNameToIndex.put(genomes.get(i).getName(),i);
+		}
 		
 		// get the first chrom
 		File resDir =  new File(resdir);
@@ -580,14 +584,11 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			int numSecondary =0;
 			Iterator<SAMRecord> samIter= SequenceUtils.getCombined(samIters, sorted);
 			float time0 = System.currentTimeMillis();//- tme0)/1000.0
-			outer: for (int ij=0; samIter.hasNext() ;ij++ ) {
+			int cnt0=0;
+			int ij=0;
+			outer: for ( ij=0; samIter.hasNext() ;ij++ ) {
 				final SAMRecord sam=samIter.next();
-				if(ij>0 && ij % 100000==0){
-					float timediff = System.currentTimeMillis() - time0;
-					float timeperread = timediff/(float) ij;
-					System.err.println(timeperread+" milliseconds per read at "+ij);
-					time0 = System.currentTimeMillis();
-				}
+			
 				
 				if (sam.getReadUnmappedFlag()) {
 					numNotAligned++;
@@ -651,13 +652,20 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				}
 				
 				// int refPos = sam.getAlignmentStart() - 1;//convert to 0-based index
-				int refIndex = sam.getReferenceIndex();
-				
+				String refname = sam.getReferenceName();
+				Integer refIndex = refname==null ? sam.getReferenceIndex() : chrNameToIndex.get(refname);
+				if(refIndex==null) refIndex=sam.getReferenceIndex();
 				// if move to another chrom, get that chrom
 				if (refIndex != currentIndex) {
 					System.err.println("new chrom "+refIndex + ((double)System.currentTimeMillis()- tme0)/1000.0+" secs");
 					//make sure all current threads finished
 					if( profile!=null && currentIndex>=0){
+						{
+							double timeperread = (double) ( System.currentTimeMillis() - time0)/(double) (ij-cnt0);
+							System.err.println(timeperread+" milliseconds per read at "+ij);
+							time0 = System.currentTimeMillis();
+							cnt0= ij;
+						}
 						IdentityProfileHolder.waitOnThreads(100);
 
 						profile.printBreakPoints();
@@ -693,7 +701,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					int seqlen = chr.length();
 					Annotation annot  = null;
 					if(gffFile.getName().indexOf(".gff")>=0 || gffFile.getName().indexOf(".gtf")>=0){
-							annot = new GFFAnnotation(anno,chr.getName(), seqlen, annotation_pw, gffFile.getName().indexOf(".gff")<0);
+						String chrn = refname;
+							annot = new GFFAnnotation(anno,chrn, seqlen, annotation_pw, gffFile.getName().indexOf(".gff")<0);
 							
 					}else{
 						annot = annot_file == null ? new EmptyAnnotation(chr.getName(), chr.getDesc(), seqlen, annotation_pw) : 
@@ -770,6 +779,13 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 						exc.printStackTrace();
 					}
 			}//samIter.hasNext()
+			{
+				double timeperread = (double) ( System.currentTimeMillis() - time0)/(double) (ij-cnt0);
+				System.err.println(timeperread+" milliseconds per read at "+ij);
+				time0 = System.currentTimeMillis();
+				//cnt0= ij;
+			}
+			
 			for(int ii=0; ii<samReaders.length; ii++){
 			if(samReaders[ii] !=null) samReaders[ii].close();
 			}

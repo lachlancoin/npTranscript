@@ -120,7 +120,7 @@ public class GFFAnnotation extends Annotation{
 	    	}
 	    	return st;
 	    }
-	static int tolerance =10;
+	//static int tolerance =10;
 	static int tolerance1 = 5;
 	static Comparator<Entry<String, Set<Integer>>> c = new Comparator<Entry<String, Set<Integer>>>(){
 
@@ -291,9 +291,7 @@ public class GFFAnnotation extends Annotation{
 		String split = gtf ? " " : "=";
 		boolean removeQ = gtf ? true : false;
 		if(entry!=null){
-			br = new BufferedReader(new InputStreamReader(zf.getInputStream(entry)));
-		
-		
+		br = new BufferedReader(new InputStreamReader(zf.getInputStream(entry)));
 		String st = "";
 		//String genenme="";String desc = ""; String id = "";String biot = ""; String parentG=""; String parentT=""; //these properties of gene
 		String[] gene_vals = new String[5];
