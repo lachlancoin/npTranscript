@@ -773,7 +773,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 						
 						String pool = readList==null || readList.length==0 ||  poolID<0 ? "" : (readList[poolID]+"|");
 						
-						profile.identity1(readSeq, sam, source_index, cluster_reads,  pool);
+						profile.identity1(readSeq, sam, source_index, cluster_reads,  pool, q1);
 					}catch(NumberFormatException exc){
 						System.err.println(readSeq.getName());
 						exc.printStackTrace();

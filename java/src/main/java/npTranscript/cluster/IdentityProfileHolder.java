@@ -126,7 +126,7 @@ public class IdentityProfileHolder {
 		currentStart.put(startPos, v==null ? 1 : v+1);
 	}
 	public void identity1(Sequence readSeq, SAMRecord sam,
-			int source_index, boolean cluster_reads,  String pool) {
+			int source_index, boolean cluster_reads,  String pool, double qval) {
 		// TODO Auto-generated method stub
 		final int start = sam.getStart();
 		addStart(start);
@@ -137,7 +137,7 @@ public class IdentityProfileHolder {
 			public void run(){
 				final IdentityProfile1 profile = get();
 				if(profile.coRefPositions.breaks.size()>0) throw new RuntimeException("this is not clear");
-				profile.identity1(genome, chr5prime,chr3prime, readSeq, sam, source_index, cluster_reads,  pool);
+				profile.identity1(genome, chr5prime,chr3prime, readSeq, sam, source_index, cluster_reads,  pool, qval);
 				replace(profile);
 				removeStart(start);
 			}

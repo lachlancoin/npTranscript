@@ -119,7 +119,7 @@ public class IdentityProfile1 {
 	public String processRefPositions(SAMRecord sam, String id, boolean cluster_reads, Sequence refSeq, int src_index , Sequence readSeq, String baseQ, 
 			int start_read, int end_read, char strand, SWGAlignment align5prime, SWGAlignment align3prime,
 			SWGAlignment align3primeRev,
-			int offset_3prime, int polyAlen, String pool
+			int offset_3prime, int polyAlen, String pool, double q_value
 			) throws IOException, NumberFormatException{
 		
 		startPos = sam.getAlignmentStart()+1; // transfer to one based
@@ -248,7 +248,7 @@ public class IdentityProfile1 {
 		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"+start_read+"\t"+end_read+"\t"
 		+type_nme+"\t"+chrom_+"\t"
 		+startPos+"\t"+endPos+"\t"+(forward? "+":"-")+"\t"+coRefPositions.numIsoforms()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
-		+coRefPositions.getError(src_index)+"\t"+secondKeySt+"\t"+strand+"\t"+breakSt+"\t"+span_str+"\t"+geneNames.size();
+		+coRefPositions.getError(src_index)+"\t"+secondKeySt+"\t"+strand+"\t"+breakSt+"\t"+span_str+"\t"+geneNames.size()+"\t"+String.format("%5.3g", q_value).trim();
 		parent.o.printRead(str);
 		int num_exons =(int) Math.floor( (double)  coRefPositions.breaks.size()/2.0);
 
@@ -375,7 +375,7 @@ public class IdentityProfile1 {
 	 * @return
 	 */
 	public  void identity1(Sequence refSeq, Sequence fivePrimeRefSeq, Sequence threePrimeRefSeq,   Sequence readSeq, SAMRecord sam, 
-			int source_index, boolean cluster_reads,  String poolID) throws NumberFormatException{
+			int source_index, boolean cluster_reads,  String poolID, double qval) throws NumberFormatException{
 		int readPos = 0;// start from 0
 		int seqlen = refSeq.length();
 		IdentityProfile1 profile = this;
@@ -564,7 +564,7 @@ public class IdentityProfile1 {
 			}
 			 
 			String secondKey= profile.processRefPositions(sam, id, cluster_reads, 
-					refSeq, source_index, readSeq,baseQ, st_r, end_r, strand, align_5prime, align_3prime,align_3primeRev, offset_3prime, polyAlen, poolID);
+					refSeq, source_index, readSeq,baseQ, st_r, end_r, strand, align_5prime, align_3prime,align_3primeRev, offset_3prime, polyAlen, poolID, qval);
 			//String ID = profile.clusterID
 			diff_r = readSeq.length() - profile.readEn;
 			seq11[0]=  profile.readSt; seq11[1] = profile.readEn; 
