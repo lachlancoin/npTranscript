@@ -288,11 +288,11 @@ public class Outputs{
 			 transcriptsP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(transcripts_file))));
 				String transcriptP_header = "ID\tchrom\tstart\tend\ttype_nme\tnum_exons\tisoforms\tleader_break\tORFs\tspan\tspan_length"
 					+"\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true);
-				if(cluster_depth){
+				/*if(cluster_depth){
 					transcriptP_header = transcriptP_header
-							+"\t"+TranscriptUtils.getString("depth", num_sources, true)+"\t"+TranscriptUtils.getString("errors", num_sources, true)
-							+"\t"+TranscriptUtils.getString("error_ratio", num_sources, true);
-				}
+							+"\t"+TranscriptUtils.getString("depth", num_sources, true)+"\t"+TranscriptUtils.getString("errors", num_sources, true);
+							//+"\t"+TranscriptUtils.getString("error_ratio", num_sources, true);
+				}*/
 				StringBuffer nme_info = new StringBuffer();
 				for(int i=0; i<type_nmes.length; i++) nme_info.append(type_nmes[i]+"\t");
 				transcriptsP.println("#"+nme_info.toString());

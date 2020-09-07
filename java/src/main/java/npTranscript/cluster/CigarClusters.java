@@ -103,8 +103,8 @@ public class CigarClusters {
 	
 		cc.exonCount()+"\t"+cc.numIsoforms()+"\t"+(hasLeaderBreak? 1: 0)+"\t"+cc.breaks_hash.secondKey+"\t"+geneNme+"\t"+
 		geneNames.size()+"\t"+
-		cc.totLen+"\t"+cc.readCountSum()+"\t"+read_count,
-				CigarCluster.recordDepthByPosition ?  cc.getTotDepthSt(true)+"\t"+cc.getTotDepthSt(false)+"\t"+cc.getErrorRatioSt(): "");
+		cc.totLen+"\t"+cc.readCountSum()+"\t"+read_count,"");
+//				CigarCluster.recordDepthByPosition ?  cc.getTotDepthSt(true)+"\t"+cc.getTotDepthSt(false): "");
 	}
 	CigarHash fromKey = new CigarHash("",0);
 	/** clears consensus up to certain start position.  This designed to keep memory foot print under control.  Assumes the bams are sorted */
