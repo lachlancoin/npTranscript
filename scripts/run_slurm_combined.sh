@@ -8,7 +8,7 @@
 #SBATCH --time=100:00:00
 #SBATCH --output=corona1.stdout
 #SBATCH --error=corona1.stderr
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=16
 
 
 ##script for running 
@@ -64,11 +64,11 @@ fi
 cov_chr=$(zcat ${reference_virus} | head -n 1 | cut -f 1 -d ' ' | sed 's/>//g')
 echo "coronavirus chr id ${cov_chr}" 
 resdir="results_${dat}"
-opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=1 --extra_threshold=200 --writePolyA=true --msaDepthThresh=1000 --doMSA=false --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh 50"
+opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=13 --extra_threshold=2000 --writePolyA=false --msaDepthThresh=1000 --doMSA=false --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh 50"
 
 #for dRNA datasets
 opts="${opts} --RNA=true"
-opts2="--fail_thresh=0  --chromsToRemap=${cov_chr}  --mm2_memory=10g --recordDepthByPosition=true"
+opts2="--fail_thresh=5  --chromsToRemap=${cov_chr}  --mm2_memory=10g --recordDepthByPosition=true"
 echo $opts
 tag=".bam"
 bamfiles=$(find . -maxdepth 1 -type f,l -size +0b | grep "${tag}$" )
@@ -81,7 +81,7 @@ bash ${npTranscript}/scripts/run.sh ${bamfiles1}   --reference=${reference} --an
 cd ${resdir}
 
 ##following reassigns any leftover portions of original reads
-bash ${npTranscript}/scripts/run_slurm_leftover.sh $species
+#bash ${npTranscript}/scripts/run_slurm_leftover.sh $species
 
 
 if [ $mode == "combined" ]; then
