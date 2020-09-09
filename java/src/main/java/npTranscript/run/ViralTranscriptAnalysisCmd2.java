@@ -607,10 +607,10 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				byte[] b = sam.getBaseQualities();
 				double sump = 0;
 				for(int i=0; i<b.length; i++){
-					sump+= Math.pow(10, -b[i]/10);
+					sump+= Math.pow(10, -b[i]/10.0);
 				}
-				sump = sump/b.length;
-				double q1 = -10*Math.log10(sump);
+				sump = sump/(double) b.length;
+				double q1 = -10.0*Math.log10(sump);
 				
 				if(q1 < fail_thresh) {
 					//System.err.println(q1);
