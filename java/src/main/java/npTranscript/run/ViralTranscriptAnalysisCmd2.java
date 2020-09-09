@@ -127,7 +127,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 	//	addString("bedChr", null, "Use this for the chrom in bed chr, e.g. NC_045512v2, false");
 
 		addString("resdir", "results"+System.currentTimeMillis(), "results directory");
-		addString("GFF_features", "Name:description:ID:biotype:Parent", "GFF feature names");
+		addString("GFF_features", "gene_name:description:gene_id:gene_biotype:gene_id", "GFF feature names");
 		addBoolean("RNA", false, "If is direct RNA");
 		addBoolean("recordDepthByPosition", false, "whether to store position specific depth (high memory");
 

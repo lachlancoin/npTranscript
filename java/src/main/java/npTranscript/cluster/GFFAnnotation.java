@@ -287,7 +287,7 @@ public class GFFAnnotation extends Annotation{
 		if(entry==null && chrom.startsWith("chr")) entry = zf.getEntry(chrom.substring(3));
 		if(entry==null) System.err.println("WARNING NO ANNOTATION FOR CHROM "+chrom);
 		BufferedReader br;
-		String name = zf.getName();
+		//String name = zf.getName();
 		String split = gtf ? " " : "=";
 		boolean removeQ = gtf ? true : false;
 		if(entry!=null){
