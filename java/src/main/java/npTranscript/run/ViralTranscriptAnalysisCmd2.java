@@ -121,9 +121,11 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addString("annotation", null, "ORF annotation file or GFF file", false);
 		addBoolean("useExons", true, "wehether to use exons");
 		addString("readList", "", "List of reads", false);
-		addInt("gffThresh",10, "threshold of total count for printing transcript in gff");
+		addString("gffThresh","10:10", "gene and transcript threshold for including in annotation.");
+		addInt("maxTranscriptsPerGeneInGFF",1,"Maximum number of transcripts per gene (highest abundance first");
 			addString("annotType", null, "Type of annotation (only included if annotation is GFF file", false);
 		addString("chroms_to_include", "all", "Restrict to these chroms, colon delimited", false);
+		addString("chroms_to_ignore", "none", "Ignore these chroms", false);
 	//	addString("bedChr", null, "Use this for the chrom in bed chr, e.g. NC_045512v2, false");
 
 		addString("resdir", "results"+System.currentTimeMillis(), "results directory");
@@ -196,7 +198,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 	}
 	public static int mm2_threads;
 	public static String mm2_path, mm2_mem, mm2_index, mm2Preset, mm2_splicing;
- public static void run(CommandLine cmdLine, String[] bamFiles, String resDir,File anno, String chrs, boolean fastq, String reference) throws IOException{
+ public static void run(CommandLine cmdLine, String[] bamFiles, String resDir,File anno, String chrs, String chrsToIgnore,  boolean fastq, String reference) throws IOException{
 		
 		int qual = cmdLine.getIntVal("qual");
 		int bin = cmdLine.getIntVal("bin");
@@ -210,7 +212,10 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		int startThresh = cmdLine.getIntVal("startThresh");
 		int endThresh = cmdLine.getIntVal("endThresh");
 		int maxReads = cmdLine.getIntVal("maxReads");
-		Outputs.gffThresh = cmdLine.getIntVal("gffThresh");
+		String[] gffThresh_ = cmdLine.getStringVal("gffThresh").split(":");
+		Outputs.gffThreshGene = Integer.parseInt(gffThresh_[0]);
+		Outputs.gffThreshTranscript = Integer.parseInt(gffThresh_[1]);
+		Outputs.maxTranscriptsPerGeneInGFF = cmdLine.getIntVal("maxTranscriptsPerGeneInGFF");
 		Annotation.enforceStrand = cmdLine.getBooleanVal("RNA");
 	//	Outputs.executor=  
 	//			cmdLine.getIntVal("max_threadsIO")==1 ? 
@@ -318,7 +323,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		}
 			errorAnalysis(bamFiles, reference, annotFile,readList,annotationType, 
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  
-				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, overwrite, isoformDepthThresh, coverageDepthThresh, probInclude, fastq, chromsToRemap==null ? null: chromsToRemap.split(":"));
+				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, chrsToIgnore, overwrite, isoformDepthThresh, coverageDepthThresh, probInclude, fastq, chromsToRemap==null ? null: chromsToRemap.split(":"));
 	}
  static boolean sorted = true;
  static double tme0;
@@ -349,7 +354,9 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		
 		String resdir = cmdLine.getStringVal("resdir");
 		String annot_file = cmdLine.getStringVal("annotation");
+		
 		String chroms= cmdLine.getStringVal("chroms_to_include");
+		String chroms_ignore= cmdLine.getStringVal("chroms_to_ignore");
 		
 		//boolean gff = annot_file !=null && (annot_file.contains(".gff") || annot_file.contains(".gtf"));
 		
@@ -380,7 +387,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				
 			});
 		}
-		run(cmdLine, bamFiles_, resdir, new File(annot_file),  chroms, fastq, reference);
+		run(cmdLine, bamFiles_, resdir, new File(annot_file),  chroms, chroms_ignore, fastq, reference);
 		System.err.println("shutting down executors");
 		
 		IdentityProfileHolder.shutDownExecutor();
@@ -396,7 +403,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 	 */
 	static void errorAnalysis(String[] bamFiles_, String refFile, String annot_file, String[] readList,    String annotationType, String resdir, String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads, 
-			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,File gffFile, String chrToInclude, boolean overwrite,
+			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,File gffFile, String chrToInclude, String chrToIgnore, boolean overwrite,
 			int[] writeIsoformDepthThresh, int writeCoverageDepthThresh, double probInclude, boolean fastq, String[] chromsToRemap) throws IOException {
 		boolean cluster_reads = true;
 		CigarHash2.round = round;
@@ -543,9 +550,17 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				chromsToInclude.put(str[0], vals);
 			}
 		}
+		
 		if(chromsToInclude.size()==0){
 			for(int k=0; k<genomes.size(); k++){
 				chromsToInclude.put(genomes.get(k).getName(), new int[] {0,Integer.MAX_VALUE});
+			}
+		}
+		
+		if(chrToIgnore!=null && chrToIgnore.equals("none")){
+			String[] chri = chrToIgnore.split(":");
+			for(int i=0; i<chri.length; i++){
+				chromsToInclude.remove(chri[i]);
 			}
 		}
 		

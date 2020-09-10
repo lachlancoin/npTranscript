@@ -41,7 +41,9 @@ public class Outputs{
 	//public static  ExecutorService executor ;
 	
 	public static final FastqWriterFactory factory = new FastqWriterFactory();
-	public static int gffThresh = 10;
+	public static int gffThreshGene = 10;
+	public static int gffThreshTranscript = 10;
+	public static int maxTranscriptsPerGeneInGFF = Integer.MAX_VALUE;
 	
 	public static final ExecutorService writeCompressDirsExecutor  = Executors.newSingleThreadExecutor();
 	public static final ExecutorService fastQwriter = Executors.newSingleThreadExecutor();
@@ -113,12 +115,13 @@ public class Outputs{
 	
 		public File transcripts_file;
 		public File reads_file; 
+		public File feature_counts_file;
 		private final File  outfile2,  outfile4, outfile5,  outfile10, outfile11, bedoutput, gff_output;
 		//outfile9;
 		private final FOutp[] leftover_l, polyA;//, leftover_r, fusion_l, fusion_r;
 	
 	//	final int seqlen;
-		 PrintWriter transcriptsP,readClusters, annotP, bedW, gffW;
+		 PrintWriter transcriptsP,readClusters, annotP, bedW, gffW, featureCP;
 		 SequenceOutputStream[] refOut;
 		 IHDF5SimpleWriter clusterW = null;
 		 IHDF5SimpleWriter altT = null;
@@ -142,6 +145,7 @@ public class Outputs{
 			}
 			
 			transcriptsP.close();
+			this.featureCP.close();
 			readClusters.close();
 			if(bedW!=null) bedW.close();
 			if(gffW!=null) gffW.close();
@@ -272,6 +276,7 @@ public class Outputs{
 			 readClusters.println(header); //\tbreakStart\tbreakEnd\tbreakStart2\tbreakEnd2\tstrand\tbreaks");
 		
 			 transcripts_file = new File(resDir,genome_index+ "transcripts.txt.gz");
+			 feature_counts_file = new File(resDir,genome_index+ "transcripts.fc.txt.gz");
 			//	newReadCluster(genome_index);
 
 			 File[] f = new File[] { outfile2,  outfile10, transcripts_file};
@@ -285,6 +290,9 @@ public class Outputs{
 					 throw new RuntimeException("will not overwrite file "+f[i].getAbsolutePath());
 				 }
 			 }
+			 featureCP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.feature_counts_file))));
+			 String featureCP_header = "Geneid\tChr\tStart\tEnd\tStrand\tLength";
+ 
 			 transcriptsP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(transcripts_file))));
 				String transcriptP_header = "ID\tchrom\tstart\tend\ttype_nme\tnum_exons\tisoforms\tleader_break\tORFs\tspan\tspan_length"
 					+"\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true);
@@ -297,6 +305,9 @@ public class Outputs{
 				for(int i=0; i<type_nmes.length; i++) nme_info.append(type_nmes[i]+"\t");
 				transcriptsP.println("#"+nme_info.toString());
 				transcriptsP.println(transcriptP_header);
+				featureCP.println("#npTranscript output");
+				featureCP.println(featureCP_header+"\t"+nme_info.toString());
+				
 				this.annotP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.outfile11))));
 			List<String> str = new ArrayList<String>();
 			str.add("subID"); //str.add("ẗype"); 
@@ -338,6 +349,9 @@ public class Outputs{
 		public synchronized void printTranscript(String str, String depth_str){
 			this.transcriptsP.print(str);
 			transcriptsP.println(depth_str);
+		}
+		public synchronized void printFC(String str){
+			this.featureCP.println(str);
 		}
 		public synchronized void printRead(String string) {
 			this.readClusters.println(string);

@@ -1,8 +1,10 @@
 package npTranscript.cluster;
 
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -53,7 +55,7 @@ public class CigarCluster  {
 			
 		}
 /** returns average break point position */
-	public static class Count{
+	public static class Count implements Comparable{
 		public Count(int[] count, int id){
 			this.count = count;
 			this.id = id;
@@ -81,6 +83,7 @@ public class CigarCluster  {
 			}
 		}
 		public List<Integer> getBreaks(){
+			if(true_breaks==null) return null;
 			Integer[] res = new Integer[true_breaks.length];
 			int sum = this.sum();
 			double mult = (divisor/sum);
@@ -89,6 +92,7 @@ public class CigarCluster  {
 			}
 			return Arrays.asList(res);
 		}
+		
 		
 		public void increment(int source_index) {
 			this.count[source_index] = this.count[source_index]+1;
@@ -107,6 +111,11 @@ public class CigarCluster  {
 			}
 			return sum;
 		}
+		@Override
+		public int compareTo(Object o) {
+			return Integer.compare(this.sum(), ((Count)o).sum());
+		}
+		
 		
 	}
 		
@@ -152,7 +161,7 @@ private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutpu
 		 pw.println();
 	 }
 	  Sequence seq1 = new Sequence(seq.alphabet(), sb.toString(), ID);
-	  seq1.setDesc(chr+" "+breaks.toString()+" "+secondKey+" "+type_nme+" "+tpmstr);
+	  seq1.setDesc(chr+" "+breaks.toString()+" "+type_nme+" "+tpmstr);
 	  try{
 	  seq1.writeFasta(os);
 	  }catch(Exception exc){
@@ -164,27 +173,31 @@ private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutpu
 
  public void writeGFF(PrintWriter pw, SequenceOutputStream os, String chr, double  iso_thresh, String type_nme, Sequence seq){
 	// String secondKey =  this.breaks_hash.secondKey;
-		if(this.readCountSum< Outputs.gffThresh) return;
+		if(this.readCountSum< Outputs.gffThreshGene) return;
 //if(!type_nme.equals("5_3")) return;
 	//double tpm = (double) this.readCountSum() / (double) mapped_read_count;
-	writeGFF1(null, pw, os, chr, "gene",  null, this.id, this.start, this.end, type_nme, this.breaks_hash.secondKey, this.id, strand, seq, this.readCountSum);
+	writeGFF1(null, pw, os, chr, "gene",  null, this.breaks_hash.secondKey, this.start, this.end, type_nme, this.breaks_hash.secondKey, this.id, strand, seq, this.readCountSum);
 	if(all_breaks.size()==0) throw new RuntimeException("no transcripts");
-		 Iterator<Count> it1 = this.all_breaks.values().iterator();
-		 int max_cnt=0;
-		 for(int i=0; it1.hasNext(); i++) {
-				Count br_next = it1.next();
-				if(br_next.sum()>max_cnt)max_cnt = br_next.sum();
-		 }
-		 it1 = this.all_breaks.values().iterator();
+	List<Count> counts= new ArrayList<Count>(all_breaks.values());
+	Collections.sort(counts);
+	int max_cnt = counts.get(counts.size()-1).sum();
+	int min_cnt = counts.get(0).sum();
+	//System.err.println(min_cnt+" "+max_cnt+" "+counts.size());
+		 if(min_cnt >max_cnt) throw new RuntimeException();
+	
 		 //double thresh1 = Math.min(Outputs.gffThresh, b)
-		for(int i=0; it1.hasNext(); i++) {
-			Count br_next = it1.next();
+		inner: for(int i=counts.size()-1; i>=counts.size()-Outputs.maxTranscriptsPerGeneInGFF; i--) {
+			Count br_next = counts.get(i);
+			String gene_id =Outputs.maxTranscriptsPerGeneInGFF==1 ?  this.breaks_hash.secondKey:this.breaks_hash.secondKey +".t"+i;
+			if(br_next.sum() < Outputs.gffThreshTranscript) break inner;
+			
 			List<Integer> br_ = br_next.getBreaks();
-			if(br_next.sum()>=max_cnt-1){
 				writeGFF1(br_, pw, os ,chr, "transcript", 
-						this.id, this.id+".t"+i,  br_.get(0),
+						this.id, gene_id,  br_.get(0),
 						br_.get(br_.size()-1), type_nme, this.breaks_hash.secondKey, this.id, strand,seq,  br_next.sum() );
-			}
+				
+				
+			
 		}
  }
 	
@@ -228,7 +241,7 @@ private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutpu
 			Count cnt =new Count(num_sources, source_index,  0);
 			if(Outputs.writeGFF) cnt.addBreaks(c1.breaks);
 			this.all_breaks.put(IdentityProfile1.includeStart  ? breaks : breaks.clone(true, 1),cnt);
-			this.breaks_hash.setSecondKey(c1.breaks_hash.secondKey, c1.breaks_hash.end);
+			this.breaks_hash.setSecondKey(c1.breaks_hash.secondKey);
 			
 			addReadCount(source_index);
 			start = c1.start;
@@ -471,7 +484,21 @@ final private char strand;
 		public int numIsoforms() {
 			return all_breaks==null ? 0 : (int)Math.round(((double)this.all_breaks.size()-2.0)/2.0);
 		}
-
+		public List<Integer> getBreaks() {
+			int max=0;
+			Count maxv = null;
+			for(Iterator<Count> it = this.all_breaks.values().iterator();it.hasNext();){
+				Count br = it.next();
+				if(br.sum()>max){
+					max = br.sum();
+					maxv = br;
+				}
+			}
+			if(maxv!=null){
+				return maxv.getBreaks();
+			}
+			else return null;
+		}
 		public String exonCount(){
 			Set<Integer>s = new TreeSet<Integer>();
 			
@@ -492,6 +519,9 @@ final private char strand;
 			String st = sb.toString();
 			return st;
 		}
+
+
+		
 		
 		
 	}

@@ -275,6 +275,7 @@ public class GFFAnnotation extends Annotation{
 			}
 			
 		}
+		if(target[2].length()==0) target[2] = target[0];
 	}
 	
 	
@@ -324,6 +325,7 @@ public class GFFAnnotation extends Annotation{
 				hasExon=false;
 				hasTranscript=false;
 				process(str[8], gene_vals, headers, split, removeQ);
+			
 				String stri = chr+"\t"+gene_vals[0]+"\t"+gene_vals[1]+"\t"+gene_vals[2]+"\t"+gene_vals[3];//+"\t"+paren;
 				pw.println(stri);
 			//	biotypes.putIfAbsent(biot, biot);

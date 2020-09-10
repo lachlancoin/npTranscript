@@ -5,14 +5,14 @@ package npTranscript.cluster;
  *
  */
 
-public class CigarHash implements Comparable {
+public class CigarHash  {
 	
 	
 	
 	public static boolean cluster_by_annotation = true;
 	public CigarHash(String string, int i) {
 		this.secondKey = string;
-		this.end = i;
+		//this.end = i;
 	}
 
 
@@ -61,23 +61,24 @@ public class CigarHash implements Comparable {
 	
 
 	String secondKey="";
-	Integer  end;
-	public void setSecondKey(String string, Integer end) {
+//	Integer  end;
+	public void setSecondKey(String string) {
 		// TODO Auto-generated method stub
-		this.end = end;
+	//	this.end = end;
 		this.secondKey = string;
 	}
 
 
 
-	@Override
+	/*@Override
 	public int compareTo(Object o) {
 		// TODO Auto-generated method stub
+		if(((CigarHash)o).secondKey.equals(this.secondKey)) return 0;
 		int res = end.compareTo(((CigarHash)o).end);
 		if(res==0){ // we may not need this, it might be ok if two hashes are equal under compare, but to be sure
 			//secondKey.com
 			return Integer.compare(secondKey.hashCode(), ((CigarHash)o).hashCode());
 		}
 		return res;
-	}
+	}*/
 	}

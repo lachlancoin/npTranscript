@@ -6,10 +6,10 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
-import java.util.SortedMap;
+import java.util.Map;
 import java.util.SortedSet;
-import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 
 import japsa.seq.Sequence;
 
@@ -54,8 +54,8 @@ public class CigarClusters {
 		this.annot = annot;
 	}*/
 	
-	SortedMap<CigarHash, CigarCluster> l = new TreeMap<CigarHash, CigarCluster>();
-
+	//SortedMap<CigarHash, CigarCluster> l = new TreeMap<CigarHash, CigarCluster>();
+	Map<CigarHash, CigarCluster> l = new ConcurrentHashMap<CigarHash, CigarCluster>();
 	
 	
 	/*public void clear() {
@@ -67,13 +67,15 @@ public class CigarClusters {
 	public synchronized void matchCluster(CigarCluster c1,  int source_index, int num_sources, int chrom_index,String[] clusterIDs, char strand) throws NumberFormatException{
 		String clusterID;
 		CigarHash2 subID ;
-		if(!l.containsKey(c1.breaks_hash)){
+		CigarCluster clust = l.get(c1.breaks_hash);
+		if(clust==null){
+			
 			CigarCluster newc = new CigarCluster("ID"+chrom_index+"."+(l.keySet().size()+rem_count), num_sources, c1, source_index, strand);
 			clusterID = newc.id();
 			l.put(newc.breaks_hash, newc);
 			subID = newc.breaks;
 		}else{
-			CigarCluster clust = l.get(c1.breaks_hash);
+			
 			subID = clust.merge(c1, num_sources, source_index);
 			clusterID = clust.id();
 		}
@@ -105,15 +107,39 @@ public class CigarClusters {
 		cc.exonCount()+"\t"+cc.numIsoforms()+"\t"+(hasLeaderBreak? 1: 0)+"\t"+cc.breaks_hash.secondKey+"\t"+geneNme+"\t"+
 		geneNames.size()+"\t"+
 		cc.totLen+"\t"+cc.readCountSum()+"\t"+read_count,"");
+		List<Integer> br = cc.getBreaks();
+	
+		StringBuffer starts = new StringBuffer();
+		StringBuffer ends = new StringBuffer();
+		StringBuffer chroms = new StringBuffer();
+		StringBuffer strand = new StringBuffer();
+			int len =0;
+			if(br!=null){
+			for(int i=0; i<br.size(); i+=2){
+				len += br.get(i+1) - br.get(i);
+				String ext = i<br.size()-2 ? ";" : "";
+				starts.append(br.get(i)+ext); ends.append(br.get(i+1)+ext);
+				strand.append("+"+ext); chroms.append(chrom+ext);
+			}
+			}else{
+				starts.append(cc.start); ends.append(cc.end); chroms.append(cc.end); strand.append("+");
+			}
+			
+		
+		o.printFC(cc.breaks_hash.secondKey+"\t"+chroms.toString()+"\t"+starts.toString()+"\t"+ends.toString()+"\t"+"+;+\t"+len+"\t"+read_count);
+	//	Geneid  Chr     Start   End     Strand  Length  /DataOnline/Data/Projects/corona_invitro/host_analysis/direct_cDNA/vero/vero_24hpi/merged/genome/infected/mo
+	//	ID0.0   MT007544.1;MT007544.1   14;27385        66;29860        +;+     2529    0       0       0       0       0       0
+		//I
 //				CigarCluster.recordDepthByPosition ?  cc.getTotDepthSt(true)+"\t"+cc.getTotDepthSt(false): "");
 	}
 	CigarHash fromKey = new CigarHash("",0);
 	/** clears consensus up to certain start position.  This designed to keep memory foot print under control.  Assumes the bams are sorted */
 	public synchronized int clearUpTo(int endThresh, 	Outputs o, Sequence chrom, int chrom_index){
-		fromKey.end = endThresh;
-		SortedMap<CigarHash, CigarCluster> tm = l.headMap(fromKey);
-		if(tm.size()==0) return 0;
-		List<CigarHash> torem = new ArrayList<CigarHash>();
+		//fromKey.end = endThresh;
+	//	SortedMap<CigarHash, CigarCluster> tm = ((SortedMap)l).headMap(fromKey);
+	//	if(tm.size()==0) return 0;
+		int rem_count =0;
+	//	List<CigarHash> torem = new ArrayList<CigarHash>();
 				SortedSet<String> geneNames = new TreeSet<String>();
 			//	l.tailMap(fromKey)
 			
@@ -124,16 +150,18 @@ public class CigarClusters {
 						process1(cc, o, chrom, chrom_index,  geneNames);
 						o.writeIsoforms(cc, this, chrom, chrom_index, totalDepth);
 						o.writeDepthH5(cc, this, chrom,chrom_index, totalDepth);
+						rem_count++;
+						l.remove(cc.breaks_hash);
+						//l.put(cc.breaks_hash, null); //set as null.  If we remove it creates a potential problem with threading
 						
-						
-						torem.add(cc.breaks_hash);
+						//torem.add(cc.breaks_hash);
 					}
 				}
-		rem_count+=torem.size();
+		/*rem_count+=torem.size();
 		for(int i=0; i<torem.size(); i++){
 			l.remove(torem.get(i));
-		}
-		return torem.size();
+		}*/
+		return rem_count;//torem.size();
 	}
 	
 	

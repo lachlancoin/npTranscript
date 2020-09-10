@@ -104,8 +104,8 @@ public class IdentityProfile1 {
 	
 
 
-
-
+static char delim = '_'; // delim for second key
+static char delim1 = ',';
 
 	static double break_round = 10.0;
 	static String NAstring = "NA";
@@ -191,15 +191,15 @@ public class IdentityProfile1 {
 		int maxg_ind2 =-1; 
 		boolean hasLeaderBreak = TranscriptUtils.coronavirus? (breaks.size()>1 &&  annot.isLeader(breaks.get(1))) : false;
 		if(includeStart){
-			secondKey.append(annot.nextUpstream(startPos,chrom_index, forward)+";");
+			secondKey.append(annot.nextUpstream(startPos,chrom_index, forward)+delim);
 		}
 		if(annotByBreakPosition){
 			
 			for(int i=1; i<breaks.size()-1; i+=2){
 				int gap = breaks.get(i+1)-breaks.get(i);
 				String upst = annot.nextUpstream(breaks.get(i), chrom_index,forward);
-				secondKey.append(upst+",");
-				secondKey.append(annot.nextDownstream(breaks.get(i+1), chrom_index,forward)+";");
+				secondKey.append(upst+delim1);
+				secondKey.append(annot.nextDownstream(breaks.get(i+1), chrom_index,forward)+delim);
 				if(gap > break_thresh){
 					if(annot.isLeader(breaks.get(i))){
 						parent.addBreakPoint(source_index, 0, breaks.get(i), breaks.get(i+1));
@@ -235,7 +235,7 @@ public class IdentityProfile1 {
 		//coRefPositions.breaks.adjustBreaks(annot);
 		// need to group by start position if we annotating by break pos,e.g. so 5'mapping reads map together
 		String secondKeySt = secondKey.toString();
-		coRefPositions.breaks_hash.setSecondKey(secondKeySt, endPos);
+		coRefPositions.breaks_hash.setSecondKey(secondKeySt);//, endPos);
 		
 		
 		
