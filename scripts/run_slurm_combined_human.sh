@@ -34,6 +34,7 @@ bamfiles1=$(echo $bamfiles_ | sed 's/ /:/g')
 #coord_file="../Chlorocebus_sabaeus.ChlSab1.1.99.gff3.gz"
 reference="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/merged/human_virus_sequin_ensembl_pri_merged_genome.fasta"
 coord_file="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/human/ensembl/Homo_sapiens.GRCh38.100.gtf.gz"
+coord_file="/home/lcoin/Homo_sapiens.GRCh38.100.gtf.gz"
 #coord_file="../gencode.v28.annotation.gff3.gz"
 ##FOLLOWING IS FEATURES IN GFF FILE.THIS MAY NEED TO BE CUSTOMISED
 ##IF uSING USE_eXONS=true, THEY SHOULD REFER TO GENE FEATURES, NOT EXON FEATURES

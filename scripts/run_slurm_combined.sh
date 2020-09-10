@@ -34,15 +34,12 @@ if [ $species == "human" ]; then
 	reference="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/merged/human_virus_sequin_ensembl_pri_merged_genome.fasta"
 #	coord_file="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/human/ensembl/Homo_sapiens.GRCh38.100.gtf.gz"
 	coord_file="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/merged/human_ensembl_sequin_merged.gtf"
-	GFF_features="--GFF_features=gene_name:description:gene_id:gene_biotype:gene_id"
 elif [ $species == "monkey" ]; then
 	reference="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/merged/monkey_virus_sequin_genome.fasta"
 	coord_file="/DataOnline/Data/raw_external/Coronavirus/monkey/newdb/Chlorocebus_sabaeus.ChlSab1.1.99.gff3.gz"
-	GFF_features="-GFF_features=Name:description:ID:biotype:Parent"
 elif [ $species == "human_only" ]; then
 	reference="/home/lcoin/HumanRNA/GRCh38_full_analysis_set_plus_decoy_hla.fa"
 	coord_file="/DataOnline/Data/Projects/corona_invitro/host_analysis/db/human/ensembl/Homo_sapiens.GRCh38.100.gtf.gz"
-	GFF_features="--GFF_features=gene_name:description:gene_id:gene_biotype:gene_id"
 else 
 	echo "first option needs to be 'monkey'  or ' human' "
 	exit
@@ -50,6 +47,7 @@ fi
 echo $reference
 
 
+	GFF_features="--GFF_features=gene_name:description:gene_id:gene_biotype:gene_id"
 
 dat=$(date +%Y%m%d%H%M%S)
 mm2_path="/sw/minimap2/current/minimap2"
@@ -68,7 +66,7 @@ opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=13 --extra_th
 
 #for dRNA datasets
 opts="${opts} --RNA=true"
-opts2="--fail_thresh=5  --chromsToRemap=${cov_chr}  --mm2_memory=10g --recordDepthByPosition=true"
+opts2="--fail_thresh=5  --chromsToRemap=${cov_chr}  --mm2_memory=10g --recordDepthByPosition=false"
 echo $opts
 tag=".bam"
 bamfiles=$(find . -maxdepth 1 -type f,l -size +0b | grep "${tag}$" )
