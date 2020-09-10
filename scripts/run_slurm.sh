@@ -1,13 +1,13 @@
 #!/bin/bash
 
-#SBATCH --job-name=corona2_analysis
+#SBATCH --job-name=corona3_analysis
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=15000 # mb
 #SBATCH --time=200:00:00
-#SBATCH --output=corona1.stdout
-#SBATCH --error=corona1.stderr
+#SBATCH --output=corona3.stdout
+#SBATCH --error=corona3.stderr
 #SBATCH --cpus-per-task=8
 
 
@@ -38,12 +38,13 @@ dat=$(date +%Y%m%d%H%M%S)
 echo $dat
 resdir="results_${dat}"
 ##note that to do separate msa for multiple input bams you type --doMsa=5_3:sep
-opts="--bin=100 --RNA true --breakThresh=1000  --isoformDepthThresh=10000 --coverageDepthThresh=0 --extra_threshold=200 --msaDepthThresh=20 --doMSA=all:sep --reAlignExtra=true --bedChr=NC_045512v2"
-opts2="--fail_thresh=7 --recordDepthByPosition=true" 
+#opts="--bin=100 --RNA true --breakThresh=1000  --isoformDepthThresh=10000 --coverageDepthThresh=0 --extra_threshold=200 --msaDepthThresh=20 --doMSA=all:sep --reAlignExtra=true"
+opts="--bin=100 --RNA true --breakThresh=1000  --isoformDepthThresh=10000 --coverageDepthThresh=0 --extra_threshold=200 --msaDepthThresh=20 --doMSA=none --reAlignExtra=true"
+opts2="-gffThresh=10:10 --fail_thresh=7 --recordDepthByPosition=false --maxThreads=1" 
 #opts="${opts} --maxReads 10000"
 bash ${npTranscript}/scripts/run.sh ${bamfiles1}   --reference=${reference} --annotation ${coord_file} --resdir ${resdir} ${opts} ${opts1} ${opts2}
 
-#cd ${resdir}
+cd ${resdir}
 #bash ${npTranscript}/scripts/consensus.sh 0
 #echo "now running R script"
-#Rscript ~/github/npTranscript/R/npTranscript.R  ~/github/npTranscript/data/SARS-Cov2/VIC01
+Rscript ~/github/npTranscript/R/npTranscript.R  ~/github/npTranscript/data/SARS-Cov2/VIC01
