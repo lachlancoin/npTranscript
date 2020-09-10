@@ -121,7 +121,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addString("annotation", null, "ORF annotation file or GFF file", false);
 		addBoolean("useExons", true, "wehether to use exons");
 		addString("readList", "", "List of reads", false);
-		addInt("gffThresh",100, "threshold of total count for printing transcript in gff");
+		addInt("gffThresh",10, "threshold of total count for printing transcript in gff");
 			addString("annotType", null, "Type of annotation (only included if annotation is GFF file", false);
 		addString("chroms_to_include", "all", "Restrict to these chroms, colon delimited", false);
 	//	addString("bedChr", null, "Use this for the chrom in bed chr, e.g. NC_045512v2, false");

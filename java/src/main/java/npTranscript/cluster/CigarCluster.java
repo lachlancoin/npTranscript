@@ -117,7 +117,7 @@ public class CigarCluster  {
    	//chr1    HAVANA  gene    11869   14409   .       +       .       
    	//ID=ENSG00000223972.5;gene_id=ENSG00000223972.5;gene_type=transcribed_unprocessed_pseudogene;gene_name=DDX11L1;level=2;havana_gene=OTTHUMG00000000961.2
 private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutputStream os,  String chr, 
-		String type,  String parent, String ID,  int start, int end, String type_nme, String secondKey, String geneID, char strand, Sequence seq){
+		String type,  String parent, String ID,  int start, int end, String type_nme, String secondKey, String geneID, char strand, Sequence seq,  int count){
 	//String secondKey = this.breaks_hash.secondKey;
 	 //char strand = '+';//secondKey.charAt(secondKey.length()-1);
 	 pw.print(chr);pw.print("\tnp\t"+type+"\t");
@@ -131,7 +131,9 @@ private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutpu
 	 pw.print(";gene_type=");pw.print(type_nme);
 	 pw.print(";type=ORF;");
 	 pw.print("gene_name=");pw.print(secondKey.replace(';','_'  ));
-	 
+	 String tpmstr = count+"";//String.format("%5.3g", "tpm");
+	 pw.print(";count=");pw.print(tpmstr);
+
 	 pw.println();
 	 if(breaks!=null){
 		StringBuffer sb = new StringBuffer(); 
@@ -150,7 +152,7 @@ private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutpu
 		 pw.println();
 	 }
 	  Sequence seq1 = new Sequence(seq.alphabet(), sb.toString(), ID);
-	  seq1.setDesc(chr+" "+breaks.toString()+" "+secondKey+" "+type_nme);
+	  seq1.setDesc(chr+" "+breaks.toString()+" "+secondKey+" "+type_nme+" "+tpmstr);
 	  try{
 	  seq1.writeFasta(os);
 	  }catch(Exception exc){
@@ -164,13 +166,24 @@ private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutpu
 	// String secondKey =  this.breaks_hash.secondKey;
 		if(this.readCountSum< Outputs.gffThresh) return;
 //if(!type_nme.equals("5_3")) return;
-	writeGFF1(null, pw, os, chr, "gene",  null, this.id, this.start, this.end, type_nme, this.breaks_hash.secondKey, this.id, strand, seq);
+	//double tpm = (double) this.readCountSum() / (double) mapped_read_count;
+	writeGFF1(null, pw, os, chr, "gene",  null, this.id, this.start, this.end, type_nme, this.breaks_hash.secondKey, this.id, strand, seq, this.readCountSum);
+	if(all_breaks.size()==0) throw new RuntimeException("no transcripts");
 		 Iterator<Count> it1 = this.all_breaks.values().iterator();
+		 int max_cnt=0;
+		 for(int i=0; it1.hasNext(); i++) {
+				Count br_next = it1.next();
+				if(br_next.sum()>max_cnt)max_cnt = br_next.sum();
+		 }
+		 it1 = this.all_breaks.values().iterator();
+		 //double thresh1 = Math.min(Outputs.gffThresh, b)
 		for(int i=0; it1.hasNext(); i++) {
 			Count br_next = it1.next();
 			List<Integer> br_ = br_next.getBreaks();
-			if(br_next.sum()>=Outputs.gffThresh){
-				writeGFF1(br_, pw, os ,chr, "transcript", this.id, this.id+".t"+i,  br_.get(0), br_.get(br_.size()-1), type_nme, this.breaks_hash.secondKey, this.id, strand,seq);
+			if(br_next.sum()>=max_cnt-1){
+				writeGFF1(br_, pw, os ,chr, "transcript", 
+						this.id, this.id+".t"+i,  br_.get(0),
+						br_.get(br_.size()-1), type_nme, this.breaks_hash.secondKey, this.id, strand,seq,  br_next.sum() );
 			}
 		}
  }

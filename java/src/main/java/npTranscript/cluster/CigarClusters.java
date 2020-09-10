@@ -2,6 +2,8 @@ package npTranscript.cluster;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.SortedMap;
@@ -80,7 +82,6 @@ public class CigarClusters {
 	clusterIDs[1] = subID.toString(CigarHash2.round, 1, subID.size()-1).hashCode()+"";
 		//return clusterID;
 	}
-
 	
 	final Annotation annot;
 	//final Sequence  refseq;
@@ -147,8 +148,24 @@ public class CigarClusters {
 			};
 			Outputs.h5writer.execute(run);
 		}
-		
-			for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();) {
+		Iterator<CigarCluster> it;
+		if(TranscriptUtils.coronavirus ){
+		Comparator<CigarCluster> comp = new Comparator<CigarCluster>(){
+
+			@Override
+			public int compare(CigarCluster o1, CigarCluster o2) {
+				// TODO Auto-generated method stub
+			return -1*Integer.compare(o1.readCountSum(), o2.readCountSum());
+			}
+			
+		};
+		List<CigarCluster> ss = new ArrayList<CigarCluster>(l.values());
+		Collections.sort(ss, comp);
+			it = ss.iterator();
+		}else{
+			it = l.values().iterator();
+		}
+			while(  it.hasNext()) {
 					CigarCluster nxt = it.next();
 					process1(nxt, o, chrom, chrom_index, geneNames);
 					int  totalDepth = nxt.readCountSum();
