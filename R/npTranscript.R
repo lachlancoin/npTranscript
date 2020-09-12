@@ -46,6 +46,7 @@ library(rhdf5)
 library(VGAM)
 
 data_src = getOption("np.datasource");
+src = getOption("np.source");
 
 #SHOULD BE RUN IN data/ subdirectory
 .findFile<-function(path, file, exact = T){
