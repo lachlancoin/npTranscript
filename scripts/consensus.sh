@@ -15,7 +15,7 @@
 export JSA_MEM=8000m
 abpoa='/sw/abpoa/v1.0.1/abpoa'
 npTranscript=${HOME}/github/npTranscript
-
+max_seqs_per_cluster=10000
 chrom=$1
 reference=$2
 if [ ! $1 ]; then
@@ -59,7 +59,7 @@ outfile="${outdir}/${ID1}.fasta"
 	if [ $annot_file != '1' ]; then 
 		echo "filtering"
 #filter to improve consensus  ## sd_thresh tolerance min_seqs
-		bash ${npTranscript}/scripts/run_filter.sh   $tmpfile 1.0 5 1
+		bash ${npTranscript}/scripts/run_filter.sh   $tmpfile 1.0 5 1 ${max_seqs_per_cluster}
 	fi
 	${abpoa} $tmpfile | sed "s/Consensus_sequence/${entryname} ${firstline} ${count}/" >> $outfile
 	#rm -f $tmpfile
