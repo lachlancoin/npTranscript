@@ -8,8 +8,9 @@ fi
 npTranscript=$HOME/github/npTranscript
 classp=$(ls ${npTranscript}/libs | xargs -I {} echo ${npTranscript}/libs/{} )
 classpath=$(echo $classp | sed 's/ /:/g')
-JSA_CP=${npTranscript}/npTranscript.jar:${classpath}
+#JSA_CP=${npTranscript}/npTranscript.jar:${classpath}
 #echo $JSA_CP
+JSA_CP=${npTranscript}/java/target/npTranscript-1.0.jar 
 
 
 
