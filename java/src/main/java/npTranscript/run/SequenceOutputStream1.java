@@ -46,6 +46,8 @@ public class SequenceOutputStream1 {
 			SequenceOutputStream1.se_thresh = Double.parseDouble(args[1]);
 			SequenceOutputStream1.tolerance = Integer.parseInt(args[2]);
 			int minseqs = Integer.parseInt(args[3]);
+			int maxseqs = Integer.parseInt(args[4]);
+			SequenceOutputStream1.max_seqs_per_cluster = maxseqs;
 		//	SequenceOutputStream1.keepOriginalName = true;
 		//	Pattern p = Pattern.compile(args[0]);
 			File[] f = new File[] {new File(args[0])};
@@ -165,10 +167,11 @@ public class SequenceOutputStream1 {
 	}
 	
 	static double perc_target = 0.5; // more means greater truncation
-  
+  public static int max_seqs_per_cluster = 100000;
  private  File target ;
   //boolean append;
   int thresh = 10;
+  int seqs_printed=0;
   
   public SequenceOutputStream1(File out) {
 	
@@ -192,7 +195,7 @@ public void printAll() throws IOException {
 		//	System.err.println("launching "+target);
 			try{
 			 OutputStreamWriter	so = new OutputStreamWriter(new FileOutputStream(target, true));
- 			while(stack.size()>0){
+ 			while(stack.size()>0 && seqs_printed < max_seqs_per_cluster){
 				
 				 Sequence seq = stack.pop();
 				 String[] sequ1 = new String[] {seq.toString()};
@@ -215,11 +218,13 @@ public void printAll() throws IOException {
 						}
 						}
 					}
+					seqs_printed++;
 				 
 				 
 				
 				
 			}
+ 			stack.clear();
 		
 			 so.close();
 			//	System.err.println("done.. "+target+" ");
@@ -236,10 +241,12 @@ public void printAll() throws IOException {
 
   
   public void write(Sequence seq) throws IOException {
+	  if(seqs_printed < max_seqs_per_cluster){
 		stack.push(seq);
 		if(stack.size()==thresh){
 			this.printAll();
 		}
+	  }
 	}
 
 Stack<Sequence>  stack= new Stack();
