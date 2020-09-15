@@ -144,6 +144,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addInt("qual", 0, "Minimum quality required");
 		addInt("bin", 1, "Bin size for numerical hashing");
 		addString("numExonsMSA", "none", "number of exons For  MSA");
+		addInt("max_seqs_per_cluster",100000,"max sequences in MSA files");
 		addInt("breakThresh", 1000, "Thresh for break points to match clusters.  If bigger than genome size then no break points");
 		addBoolean("includeStart", true, "Whether to include start position in the cluster hash");
 		addString("chromsToRemap", "", "names of chromosomes (entries in reference) which should be remapped (colon delimited) .  Will produce fastq output files for each chrom with mapping reads");
@@ -244,7 +245,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		IdentityProfile1.includeStart = cmdLine.getBooleanVal("includeStart");
 		GFFAnnotation.setGFFFeatureNames(cmdLine.getStringVal("GFF_features").split(":"));
 		GFFAnnotation.span_only = cmdLine.getStringVal("span").equals("all") ?new ArrayList<String>() :   Arrays.asList(cmdLine.getStringVal("span").split(":"));
-		
+		SequenceOutputStream1.max_seqs_per_cluster = cmdLine.getIntVal("max_seqs_per_cluster");
 		boolean coronavirus = cmdLine.getBooleanVal("coronavirus");
 		String[] msaOpts = cmdLine.getStringVal("doMSA").split(":"); //e.g 5_3:sep or all:sep
 		String msa_source = cmdLine.getStringVal("msa_source");
