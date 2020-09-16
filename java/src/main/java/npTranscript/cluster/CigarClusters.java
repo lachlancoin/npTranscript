@@ -99,7 +99,7 @@ public class CigarClusters {
 		String type_nme = annot.nmes[type_ind];
 		String geneNme = annot.getString(cc.span, geneNames);
 	if(Outputs.writeGFF){
-		cc.writeGFF(o.gffW, o.refOut[type_ind], chrom,  Outputs.isoThresh, type_nme, seq);
+		cc.writeGFF(o.gffW, o.refOut[type_ind], o.bedW,chrom,  Outputs.isoThresh, type_nme, seq);
 	}
 		o.printTranscript(
 			cc.id()+"\t"+chrom+"\t"+cc.start+"\t"+cc.end+"\t"+type_nme+"\t"+

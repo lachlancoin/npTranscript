@@ -116,12 +116,13 @@ public class Outputs{
 		public File transcripts_file;
 		public File reads_file; 
 		public File feature_counts_file;
-		private final File  outfile2,  outfile4, outfile5,  outfile10, outfile11, bedoutput, gff_output;
+		private final File  outfile2,  outfile4, outfile5,  outfile10, outfile11,  gff_output;
 		//outfile9;
 		private final FOutp[] leftover_l, polyA;//, leftover_r, fusion_l, fusion_r;
 	
 	//	final int seqlen;
-		 PrintWriter transcriptsP,readClusters, annotP, bedW, gffW, featureCP;
+		 PrintWriter transcriptsP,readClusters, annotP,  gffW, featureCP;
+		 PrintWriter[] bedW;
 		 SequenceOutputStream[] refOut;
 		 IHDF5SimpleWriter clusterW = null;
 		 IHDF5SimpleWriter altT = null;
@@ -147,7 +148,9 @@ public class Outputs{
 			transcriptsP.close();
 			this.featureCP.close();
 			readClusters.close();
-			if(bedW!=null) bedW.close();
+			if(bedW!=null){
+				for(int i=0; i<bedW.length; i++) bedW[i].close();
+			}
 			if(gffW!=null) gffW.close();
 			if(refOut!=null){
 				for(int i=0; i<refOut.length; i++){
@@ -204,7 +207,7 @@ public class Outputs{
 			 outfile4 = new File(resDir,genome_index+ "exons.txt.gz");
 			 outfile5 = new File(resDir,genome_index+ "clusters.fa.gz");
 			 outfile10 = new File(resDir,genome_index+"isoforms.h5");
-			 bedoutput = new File(resDir,genome_index+"bed.gz");
+			
 			gff_output = new File(resDir,genome_index+"gff.gz");
 			
 			 outfile11 = new File(resDir, genome_index+"annot.txt.gz");
@@ -247,9 +250,14 @@ public class Outputs{
 			 readClusters = new PrintWriter(
 					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(reads_file))));
 			 if(writeBed){
-				 bedW = new PrintWriter(
-						new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.bedoutput))));
-				 bedW.println("track name=\""+"all"+"\" description=\""+"all"+"\" itemRgb=\"On\" ");
+				 bedW = new PrintWriter[type_nmes.length];
+				 for(int k=0 ;k<bedW.length; k++){
+				
+					File  bedoutput = new File(resDir,genome_index+k+".bed.gz");
+					 bedW[k] = new PrintWriter(
+						new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(bedoutput))));
+				 bedW[k].println("track name=\""+type_nmes[k]+"\" description=\""+type_nmes[k]+"\" itemRgb=\"On\" ");
+				 }
 			 }
 			 if(writeGFF){
 				 gffW= new PrintWriter(
@@ -417,26 +425,7 @@ public class Outputs{
 			}
 			//System.err.println(Arrays.asList(col_str));
 		}
-		public synchronized void printBed(List<Integer> breaks, String read_name, char strand, int source, String id, String subid, int num_exons, int span, String span_str){
-			if(bedW==null) return;
-			int col_id = source % col_len;
 		
-			int startPos = breaks.get(0)-1;
-			int endPos = breaks.get(breaks.size()-1)-1;
-			StringBuffer block_sizes = new StringBuffer();
-			StringBuffer block_start = new StringBuffer();
-			String comma = "";
-			
-			for(int i=0; i<breaks.size(); i+=2){
-				block_start.append(comma+(breaks.get(i)-1-startPos));
-				block_sizes.append(comma+(breaks.get(i+1)-breaks.get(i)));
-				if(i==0) comma=",";
-			}
-			bedW.println(chrom+"\t"+startPos+"\t"+endPos+"\t"+read_name+"."+id+"\t"+span+"\t"+strand+"\t"+startPos+"\t"+endPos+"\t"
-					+col_str[col_id]+"\t"+num_exons+"\t"+block_sizes.toString()+"\t"+block_start.toString()+"\t"+span_str);
-
-		}
-
 		
 		
 		public synchronized void writeToCluster(String ID, String subID,  int i, Sequence seq, String baseQ,  String str, String name, char strand) throws IOException{

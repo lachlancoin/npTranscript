@@ -168,7 +168,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addBoolean("attempt3rescue", true, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
 		addBoolean("writePolyA", false, "whether write reads with poly								qqq	A in middle");
 		addBoolean("coronavirus", true, "whether to run in coronavirus mode (necessary to do breakpoint analysis, but takes more memory)");
-		
+		addBoolean("writeGFF", false, "whether to output gff ");
 		addString("mm2_path", "/sw/minimap2/current/minimap2",  "minimap2 path", false);
 		addString("mm2Preset", "splice",  "preset for minimap2", false);
 		addBoolean("writeBed", false, "whether to write bed",false);
@@ -296,7 +296,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			System.err.println("running in coronavirus mode");
 			calcBreaks  = true; 
 			filterBy5_3 = true;
-			Outputs.writeGFF=true;
+		//	Outputs.writeGFF=true;
 			
 		//	Outputs.MSA_at_cluster = true;
 			TranscriptUtils.checkAlign = true;
@@ -311,7 +311,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		}else{
 		//	TranscriptUtils.reAlignExtra = false;
 		//	TranscriptUtils.findPolyA = false;
-		Outputs.writeGFF = false;
+		//Outputs.writeGFF = false;
 			TranscriptUtils.coronavirus = false;
 			IdentityProfile1.extra_threshold1 = 1000000;
 			//Outputs.writeUnSplicedFastq = false;
@@ -337,6 +337,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		
 		
 		Outputs.writeBed  = cmdLine.getBooleanVal("writeBed");
+		Outputs.writeGFF = cmdLine.getBooleanVal("writeGFF");
 		mm2_threads = cmdLine.getIntVal("mm2_threads");
 		mm2_mem = cmdLine.getStringVal("mm2_mem");
 		mm2_path = cmdLine.getStringVal("mm2_path");
