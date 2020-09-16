@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +27,8 @@ public class CigarCluster  {
 		
 		
 		static int round2 = 100;
-		public static boolean recordDepthByPosition = false; 
+		public static boolean recordDepthByPosition = false;
+		public static int annotationToRemoveFromGFF = -1;
 		int breakSt = -1;
 		int breakEnd = -1;
 		int breakSt2 = -1;
@@ -129,7 +131,10 @@ private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutpu
 		String type,  String parent, String ID,  int start, int end, String type_nme, String secondKey, String geneID, char strand, Sequence seq,  int []counts){
 	//String secondKey = this.breaks_hash.secondKey;
 	 //char strand = '+';//secondKey.charAt(secondKey.length()-1);
-	 pw.print(chr);pw.print("\tnp\t"+type+"\t");
+	 int count_ref= CigarCluster.annotationToRemoveFromGFF>=0  ? counts[annotationToRemoveFromGFF]:0;
+		if(count_ref>0) return;// do not print if count ref greater than zero;
+
+	pw.print(chr);pw.print("\tnp\t"+type+"\t");
 	 pw.print(start);pw.print("\t"); pw.print(end);
 	 pw.print("\t.\t"); pw.print(strand);pw.print("\t.\t");
 	 pw.print("ID="); pw.print(ID);
@@ -141,8 +146,10 @@ private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutpu
 	 pw.print(";type=ORF;");
 	 pw.print("gene_name=");pw.print(secondKey.replace(';','_'  ));
 	 int count =0 ;
+	
 	 for(int i=0 ; i<counts.length; i++){
 		 count+=counts[i];
+		
 	 }
 	 String tpmstr = count+"";//String.format("%5.3g", "tpm");
 	 pw.print(";count=");pw.print(tpmstr);
@@ -209,7 +216,8 @@ public static  synchronized void printBed(PrintWriter bedW, String chrom, List<I
 		if(this.readCountSum< Outputs.gffThreshGene) return;
 //if(!type_nme.equals("5_3")) return;
 	//double tpm = (double) this.readCountSum() / (double) mapped_read_count;
-	writeGFF1(null, pw, os,null, chr, "gene",  null, this.breaks_hash.secondKey, this.start, this.end, type_nme, this.breaks_hash.secondKey, this.id, strand, seq,this.readCount);
+	writeGFF1(null, pw, os,null, chr, "gene",  null, this.breaks_hash.secondKey, this.start, this.end, type_nme, this.breaks_hash.secondKey, 
+			this.id, strand, seq,this.readCount);
 	if(all_breaks.size()==0) throw new RuntimeException("no transcripts");
 	List<Count> counts= new ArrayList<Count>(all_breaks.values());
 	Collections.sort(counts);

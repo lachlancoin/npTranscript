@@ -132,7 +132,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addString("GFF_features", "gene_name:description:gene_id:gene_biotype:gene_id", "GFF feature names");
 		addBoolean("RNA", false, "If is direct RNA");
 		addBoolean("recordDepthByPosition", false, "whether to store position specific depth (high memory");
-
+		addString("annotationToRemoveFromGFF",null, "annotation to remove from GFF , BED and ref files");
 		addInt("maxReads", Integer.MAX_VALUE, "ORF annotation file");
 		addDouble("probInclude", 1.0, "probability of including each read");
 		addInt("minClusterEntries",10,"threshold for consensus");
@@ -171,7 +171,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addBoolean("writeGFF", false, "whether to output gff ");
 		addString("mm2_path", "/sw/minimap2/current/minimap2",  "minimap2 path", false);
 		addString("mm2Preset", "splice",  "preset for minimap2", false);
-		addBoolean("writeBed", false, "whether to write bed",false);
+	//	addBoolean("writeBed", false, "whether to write bed",false);
 		//addString("mm2Preset", "map-ont",  "preset for minimap2", false);
 		addString("mm2_memory", (Runtime.getRuntime().maxMemory()-1000000000)+"",  "minimap2 memory", false);
 		addInt("mm2_threads", 4, "threads for mm2", false);
@@ -237,6 +237,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 	IdentityProfile1.attempt5rescue = cmdLine.getBooleanVal("attempt5rescue");
 	IdentityProfile1.attempt3rescue = cmdLine.getBooleanVal("attempt3rescue");
 		fail_thresh = cmdLine.getDoubleVal("fail_thresh");
+		
 		Pattern patt = Pattern.compile(":");
 		Outputs.numExonsMSA = cmdLine.getStringVal("numExonsMSA")=="none"  ?  Arrays.asList(new Integer[0]) : 
 				patt.splitAsStream(cmdLine.getStringVal("numExonsMSA"))
@@ -336,7 +337,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		String fastqFile = cmdLine.getStringVal("fastqFile");
 		
 		
-		Outputs.writeBed  = cmdLine.getBooleanVal("writeBed");
+		//Outputs.writeBed  = cmdLine.getBooleanVal("writeBed");
 		Outputs.writeGFF = cmdLine.getBooleanVal("writeGFF");
 		mm2_threads = cmdLine.getIntVal("mm2_threads");
 		mm2_mem = cmdLine.getStringVal("mm2_mem");
@@ -388,6 +389,15 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				}
 				
 			});
+		}
+		String annotToRem = cmdLine.getStringVal("annotationToRemoveFromGFF");
+		if(annotToRem!=null){
+				inner: for(int j=0; j<bamFiles_.length; j++){
+					if(bamFiles_[j].indexOf(annotToRem)>=0){
+						CigarCluster.annotationToRemoveFromGFF=j;
+						break inner;
+					}
+				}
 		}
 		run(cmdLine, bamFiles_, resdir, new File(annot_file),  chroms, chroms_ignore, fastq, reference);
 		System.err.println("shutting down executors");

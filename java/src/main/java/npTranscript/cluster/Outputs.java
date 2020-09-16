@@ -108,7 +108,7 @@ public class Outputs{
 	public static boolean keepAlignment = true;
 	public static boolean keepinputFasta = true;
 	public static boolean writePolyA = false;
-	public static boolean writeBed=false;
+	//public static boolean writeBed=false;
 	public static boolean writeGFF=true;
 	public static int minClusterEntries = 5;
 	public static Collection numExonsMSA = Arrays.asList(new Integer[0]); // numBreaks for MSA 
@@ -249,7 +249,7 @@ public class Outputs{
 			 reads_file = new File(resDir,genome_index+ "readToCluster.txt.gz");
 			 readClusters = new PrintWriter(
 					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(reads_file))));
-			 if(writeBed){
+			 if(writeGFF){
 				 bedW = new PrintWriter[type_nmes.length];
 				 for(int k=0 ;k<bedW.length; k++){
 				
