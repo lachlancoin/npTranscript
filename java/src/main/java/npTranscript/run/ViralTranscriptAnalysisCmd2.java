@@ -132,7 +132,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addString("GFF_features", "gene_name:description:gene_id:gene_biotype:gene_id", "GFF feature names");
 		addBoolean("RNA", false, "If is direct RNA");
 		addBoolean("recordDepthByPosition", false, "whether to store position specific depth (high memory");
-		addString("annotationToRemoveFromGFF",null, "annotation to remove from GFF , BED and ref files");
+		addString("annotToRemoveFromGFF",null, "annotation to remove from GFF , BED and ref files");
 		addInt("maxReads", Integer.MAX_VALUE, "ORF annotation file");
 		addDouble("probInclude", 1.0, "probability of including each read");
 		addInt("minClusterEntries",10,"threshold for consensus");
