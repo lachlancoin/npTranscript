@@ -390,7 +390,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				
 			});
 		}
-		String annotToRem = cmdLine.getStringVal("annotationToRemoveFromGFF");
+		String annotToRem = cmdLine.getStringVal("annotToRemoveFromGFF");
 		if(annotToRem!=null){
 				inner: for(int j=0; j<bamFiles_.length; j++){
 					if(bamFiles_[j].indexOf(annotToRem)>=0){
@@ -622,7 +622,9 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					continue;
 				}
 				
-				if(chrom_indices_to_include!=null && !chrom_indices_to_include.containsKey(sam.getReferenceIndex())){
+				if(chrom_indices_to_include!=null && !chrom_indices_to_include.containsKey(sam.getReferenceIndex())
+						&& (chromToRemap !=null && !chromToRemap.contains(sam.getReferenceName())
+						)){
 					continue;
 				}
 				int poolID = 0;
