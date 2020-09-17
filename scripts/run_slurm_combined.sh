@@ -61,9 +61,10 @@ fi
 ##SPECIFY LOCATION OF COMBINED AND VIRUS ONLY DB
 cov_chr=$(zcat ${reference_virus} | head -n 1 | cut -f 1 -d ' ' | sed 's/>//g')
 echo "coronavirus chr id ${cov_chr}" 
-chroms_to_include="chrIS" 
+chroms_to_include="chrIS:${cov_chr}"  ##to include use all
+chroms_to_ignore="none"   ##
 resdir="results_${dat}"
-opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=13 --extra_threshold=2000 --writePolyA=false --msaDepthThresh=1000 --doMSA=false --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh 50 --chroms_to_include=${chroms_to_include}"
+opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=13 --extra_threshold=2000 --writePolyA=false --msaDepthThresh=1000 --doMSA=false --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh 50 --chroms_to_ignore=${chroms_to_ignore} --chroms_to_include=${chroms_to_include}"
 
 #for dRNA datasets
 opts="${opts} --RNA=true"
