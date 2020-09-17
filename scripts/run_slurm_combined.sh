@@ -13,7 +13,8 @@
 
 ##script for running 
 ##tip - use symbolic link to put this in the directory with bam files
-
+#run as sbatch run_slurm_combined.sh human combined --RNA=true
+#  sbatch run_slurm_combined.sh human combined --RNA=false
 export JSA_MEM=30000m
 
 if [ ! $npTranscript ] ; then
@@ -61,13 +62,14 @@ fi
 ##SPECIFY LOCATION OF COMBINED AND VIRUS ONLY DB
 cov_chr=$(zcat ${reference_virus} | head -n 1 | cut -f 1 -d ' ' | sed 's/>//g')
 echo "coronavirus chr id ${cov_chr}" 
-chroms_to_include="chrIS:${cov_chr}"  ##to include use all
+chroms_to_include="chrIS:${cov_chr}" 
+#chroms_to_include="all" ## this includes all chromosomes 
 chroms_to_ignore="none"   ##
 resdir="results_${dat}"
 opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=13 --extra_threshold=2000 --writePolyA=false --msaDepthThresh=1000 --doMSA=false --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh 50 --chroms_to_ignore=${chroms_to_ignore} --chroms_to_include=${chroms_to_include}"
 
 #for dRNA datasets
-opts="${opts} --RNA=true"
+#opts="${opts} --RNA=true"
 opts2="--fail_thresh=7  --chromsToRemap=${cov_chr}  --mm2_memory=10g --recordDepthByPosition=false"
 echo $opts
 tag=".bam"
@@ -85,7 +87,7 @@ cd ${resdir}
 
 
 if [ $mode == "combined" ]; then
-	bash ${npTranscript}/scripts/run_slurm_virus_fastq.sh $species
+	bash ${npTranscript}/scripts/run_slurm_virus_fastq.sh $species $@
 	
 fi
 
