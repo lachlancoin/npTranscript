@@ -548,7 +548,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				samIters[ii] = SequenceUtils.getSAMIteratorFromFastq(bam, mm2_index, mm2_path, mm2_threads,  mm2Preset, mm2_mem, mm2_splicing);
 			}
 		}
-		Map<Integer, int[]> chrom_indices_to_include = new HashMap<Integer, int[]>();
+	//	Map<Integer, int[]> chrom_indices_to_include = new HashMap<Integer, int[]>();
 		Map<String, int[]> chromsToInclude = new HashMap<String, int[]>();
 		if(chrToInclude!=null && !chrToInclude.equals("all")){
 			String[] chri = chrToInclude.split(":");
@@ -577,13 +577,13 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		}
 		
 		
-		for(int key=0; key<genomes.size();key++){
+		/*for(int key=0; key<genomes.size();key++){
 			if( chromsToInclude.containsKey(genomes.get(key).getName()))
 				chrom_indices_to_include.put(key, chromsToInclude.get(key));
 		}
-		System.err.println("chrom indices to include");
-		System.err.println(chrom_indices_to_include);
-		if(chrom_indices_to_include.size()==0) chrom_indices_to_include=null;
+		System.err.println("chrom indices to include");*/
+		//System.err.println(chrom_indices_to_include);
+		//if(chrom_indices_to_include.size()==0) chrom_indices_to_include=null;
 		Collection<String> chromToRemap = Arrays.asList(chromsToRemap);
 		
 		
@@ -622,7 +622,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					continue;
 				}
 				
-				if(chrom_indices_to_include!=null && !chrom_indices_to_include.containsKey(sam.getReferenceIndex())
+				if(chromsToInclude!=null && !chromsToInclude.containsKey(sam.getReferenceName())
 						&& (chromToRemap !=null && !chromToRemap.contains(sam.getReferenceName())
 						)){
 					continue;
