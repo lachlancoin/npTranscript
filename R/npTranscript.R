@@ -1,6 +1,6 @@
 
 options("np.install"="FALSE")
-options("np.libs_to_install"="binom,VGAM,ggplot2,writexl,ggrepel,grDevices,gridExtra,abind,seqinr,RColorBrewer,gplots,seqinr,rhdf5");
+options("np.libs_to_install"="VGAM,ggplot2,writexl,ggrepel,grDevices,gridExtra,abind,seqinr,RColorBrewer,gplots,seqinr,rhdf5");
 options("np.datasource"="~/github/npTranscript/data/SARS-Cov2/VIC01")
 options("np.source"="~/github/npTranscript/R" );
 options("np.datasource"="~/github/npTranscript/data/SARS-Cov2/VIC01" );
