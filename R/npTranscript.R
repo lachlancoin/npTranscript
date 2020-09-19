@@ -21,7 +21,8 @@ if(length(args)>0){
 print(.libPaths())
 vers = R.Version()
 version=paste(vers$major,vers$minor,sep=".")
-libdir=getOption("np.libdir", paste("~/R/lib",version,sep="/"))
+np.libdir = getOption("np.libdir", "~/R/lib")
+libdir=paste(np.libdir,version,sep="/")
 dir.create(libdir , recursive=T)
 .libPaths(libdir)
 .libPaths()
@@ -36,7 +37,7 @@ if(getOption("np.install","FALSE")=="TRUE"){
   }
 } 
 
-library(binom)
+#library(binom)
 library(ggplot2)
 library(gridExtra)
 library(RColorBrewer)
