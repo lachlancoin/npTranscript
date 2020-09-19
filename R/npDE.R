@@ -43,7 +43,7 @@ dir.create(libdir , recursive=T)
 
 libs_to_install = unlist(strsplit(getOption("np.libs_to_install"),","))
 if(getOption("np.install","FALSE")=="TRUE"){
- # install.packages("BiocManager", lib=libdir, repos="https://cran.ms.unimelb.edu.au/")
+  install.packages("BiocManager", lib=libdir, repos="https://cran.ms.unimelb.edu.au/")
   library("BiocManager")
   for(i in libs_to_install){
     BiocManager::install(i, update=F, ask=F, lib=libdir)
