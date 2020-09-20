@@ -552,16 +552,18 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				try{
 				samIters[ii] = SequenceUtils.getSAMIteratorFromFastq(bam, mm2_index, mm2_path, mm2_threads,  mm2Preset, mm2_mem, mm2_splicing);
 				}catch(Exception exc){
-					System.err.println("could not open file "+bam.getAbsolutePath());
-					continue inner;
+					System.err.println(exc.getMessage());
+					System.err.println(exc.getStackTrace());
+					throw new RuntimeException("could not process "+bam.getAbsolutePath());
+					//continue inner;
 				}
 				
 			}
 			allNull = false;
 		}
-		if(allNull){
-			throw new RuntimeException("No input files available "+Arrays.asList(bamFiles_));
-		}
+//		if(allNull){
+	//		throw new RuntimeException("No input files available "+Arrays.asList(bamFiles_));
+	//	}
 	//	Map<Integer, int[]> chrom_indices_to_include = new HashMap<Integer, int[]>();
 		Map<String, int[]> chromsToInclude = new HashMap<String, int[]>();
 		if(chrToInclude!=null && !chrToInclude.equals("all")){
