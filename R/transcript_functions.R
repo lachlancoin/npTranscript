@@ -683,7 +683,7 @@ getGeneBP<-function(t, genes, left, right, left_buffer = 10){
 
 
 readBreakPoints<-function(f, type, addOne = F){
-	if (length(scan(f,n=2))==0) return (NULL)
+	if (length(scan(f,n=2, what="raw"))==0) return (NULL)
   aa = try(read.table(f, sep=",", skip=2))
   nme  = read.table(f, sep=",",nrows = 2 )
   if(dim(nme)[2]<dim(aa)[2]) nme = cbind(c(NA, NA), nme)

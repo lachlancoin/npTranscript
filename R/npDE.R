@@ -23,6 +23,11 @@ options("np.adjustMethod"="BH");
 #options("np.libdir"="C:/Users/LCOIN/R-4.0.2/library")
 
 args = commandArgs(trailingOnly=TRUE)
+
+args = c("np.libdir=/data/gpfs/projects/punim1068/Rlib",  "np.source=/data/gpfs/projects/punim1068/npTranscript/R",
+		"np.datasource=/data/gpfs/projects/punim1068/npTranscript/data/SARS-Cov2/VIC01",
+		"np.control"= "24hpi", "np.case"="48hpi");
+
 if(length(args)>0){
   args = gsub("--","",args)
   argv = (lapply(args, function(x) strsplit(x,"=")[[1]][2]))
