@@ -1,16 +1,22 @@
-
+rm(list = ls())
 options("np.install"="FALSE")
 options("np.libs_to_install"="VGAM,ggplot2,writexl,ggrepel,grDevices,gridExtra,abind,seqinr,RColorBrewer,gplots,seqinr,rhdf5");
 options("np.datasource"="~/github/npTranscript/data/SARS-Cov2/VIC01")
 options("np.source"="~/github/npTranscript/R" );
 options("np.datasource"="~/github/npTranscript/data/SARS-Cov2/VIC01" );
 options("np.depth_thresh" = "100" );
+
 #options("np.source"="../../R")
 #options("np.datasource"="../../data/SARS-Cov2/VIC01")
 #options("np.libdir"="C:/Users/LCOIN/R-4.0.2/library")
 
 
+
 args = commandArgs(trailingOnly=TRUE)
+
+args = c("np.libdir=/data/gpfs/projects/punim1068/Rlib",  "np.source=/data/gpfs/projects/punim1068/npTranscript/R",
+		"np.datasource=/data/gpfs/projects/punim1068/npTranscript/data/SARS-Cov2/VIC01");
+
 if(length(args)>0){
   args = gsub("--","",args)
   argv = (lapply(args, function(x) strsplit(x,"=")[[1]][2]))
@@ -31,13 +37,13 @@ dir.create(libdir , recursive=T)
 libs_to_install = unlist(strsplit(getOption("np.libs_to_install"),","))
 if(getOption("np.install","FALSE")=="TRUE"){
   install.packages("BiocManager", lib=libdir, repos="https://cran.ms.unimelb.edu.au/")
-  library("BiocManager")
+  library("BiocManager", lib.loc=libdir)
   for(i in libs_to_install){
     BiocManager::install(i, update=F, ask=F, lib=libdir)
   }
 } 
 
-#library(binom)
+library(binom)
 library(ggplot2)
 library(gridExtra)
 library(RColorBrewer)
