@@ -152,7 +152,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addString("isoformDepthThresh", "10", "Threshhold for printing out all isoforms");
 		addDouble("msaDepthThresh", 10, "Threshhold for running MSA per subcluster");
 		addDouble("qualThresh", 20, "Quality thresh for leftover seqs");
-		addDouble("fail_thresh", 7, "Pass threshold");
+		addString("fail_thresh", "7:14", "Pass threshold (first all reads and second for reads which do not contain any existing annotation");
 		addString("doMSA", "false" , "Options: 5_3 or all or span=0 ");
 		addString("msa_source", null , "indicates how to group msa, e.g 0,1,2;3,4,5 ");
 		//addString("aligner", "kalign" , "Options: kalign3, poa, spoa, abpoa");
@@ -236,8 +236,10 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 	IdentityProfile1.reAlignExtra = cmdLine.getBooleanVal("reAlignExtra");
 	IdentityProfile1.attempt5rescue = cmdLine.getBooleanVal("attempt5rescue");
 	IdentityProfile1.attempt3rescue = cmdLine.getBooleanVal("attempt3rescue");
-		fail_thresh = cmdLine.getDoubleVal("fail_thresh");
-		
+	String[]	fail_thresh = cmdLine.getStringVal("fail_thresh").split(":");
+	ViralTranscriptAnalysisCmd2.fail_thresh = Double.parseDouble(fail_thresh[0]);
+	ViralTranscriptAnalysisCmd2.fail_thresh1 = fail_thresh.length>1 ? Double.parseDouble(fail_thresh[1]) : Double.parseDouble(fail_thresh[0]);
+
 		Pattern patt = Pattern.compile(":");
 		Outputs.numExonsMSA = cmdLine.getStringVal("numExonsMSA")=="none"  ?  Arrays.asList(new Integer[0]) : 
 				patt.splitAsStream(cmdLine.getStringVal("numExonsMSA"))
@@ -410,6 +412,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 	}
 //public static boolean combineOutput = false;
 	public static double fail_thresh = 7.0;
+	public static double fail_thresh1 = 14.0;
 	/**
 	 * Error analysis of a bam file. Assume it has been sorted
 	 */
@@ -535,6 +538,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		
 		final Iterator<SAMRecord>[] samIters = new Iterator[len];
 		SamReader[] samReaders = new SamReader[len];
+		boolean allNull = true;
 		for (int ii = 0; ii < len; ii++) {
 			String bamFile = bamFiles_[ii];
 			File bam = new File( bamFile);
@@ -545,8 +549,16 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			}else{
 				//(File inFile, File mm2Index, String mm2_path, 
 			//	int mm2_threads, String mm2Preset, String mm2_mem)
+				try{
 				samIters[ii] = SequenceUtils.getSAMIteratorFromFastq(bam, mm2_index, mm2_path, mm2_threads,  mm2Preset, mm2_mem, mm2_splicing);
+				}catch(Exception exc){
+					System.err.println("could not open file "+bam.getAbsolutePath());
+				}
+				if(samIters[ii]!=null) allNull = false;
 			}
+		}
+		if(allNull){
+			throw new RuntimeException("No input files available "+Arrays.asList(bamFiles_));
 		}
 	//	Map<Integer, int[]> chrom_indices_to_include = new HashMap<Integer, int[]>();
 		Map<String, int[]> chromsToInclude = new HashMap<String, int[]>();
