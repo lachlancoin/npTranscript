@@ -14,6 +14,7 @@ import htsjdk.samtools.SAMRecord;
 import japsa.bio.np.barcode.SWGAlignment;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
+import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 /**
  * @author Lachlan Coin
@@ -231,6 +232,10 @@ static char delim1 = ',';
 		String type_nme = annot.getTypeNme( startPos, endPos, forward); //coRefPositions.getTypeNme(seqlen);
 		geneNames.clear();
 		String span_str = annot.getSpan(coRefPositions.breaks, forward,  coRefPositions.span, geneNames);
+		int  span = geneNames.size();
+		if(span==0 && q_value < ViralTranscriptAnalysisCmd2.fail_thresh1){
+			return secondKey.toString();
+		}
 		String breakSt = coRefPositions.breaks.toString();
 		//coRefPositions.breaks.adjustBreaks(annot);
 		// need to group by start position if we annotating by break pos,e.g. so 5'mapping reads map together
@@ -244,7 +249,7 @@ static char delim1 = ',';
 		clusterID[0] = chrom_+".NA";
 		clusterID[1] = "NA";
 		}
-		int  span = geneNames.size();
+	
 		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"+start_read+"\t"+end_read+"\t"
 		+type_nme+"\t"+chrom_+"\t"
 		+startPos+"\t"+endPos+"\t"+(forward? "+":"-")+"\t"+coRefPositions.numIsoforms()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
