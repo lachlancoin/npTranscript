@@ -247,13 +247,12 @@ if(inherits(isoforms_i,"try-error")) {
 #h5closeAll()
 
 ######
+if(file.exists("0.clusters.h5")){
 transcripts_ = transcriptsl_unmerged[transcriptsl_unmerged$countTotal>1000,,drop=F]
 if(isVirus){
 depth_combined =  try(readH5_c( "0.clusters.h5", transcripts_,  filenames, thresh = 1000))
 }else{
   depth_combined=  try(readH5_h("0.clusters.h5",transcripts_,filenames, thresh = 1000))
-  
-  
 }
 if(inherits(depth_combined,"try-error")) {
  print(" skipping error analysis ") 
@@ -285,6 +284,7 @@ if(inherits(depth_combined,"try-error")) {
   ord=order(unlist(lapply(names(DE3),function(x) strsplit(x,"\\.")[[1]][2])))
   write_xlsx(lapply(DE2,.xlim,1e-2), paste(resdir, "DM_combined.xlsx",sep="/"))
 #write_xlsx(lapply(list(DE3=DE3[,ord]),.xlim,pthresh=1e-2,col="meta.p.adj" ), paste(resdir, "DM_combined1.xlsx",sep="/"))
+}
 }
 
 if(FALSE){
