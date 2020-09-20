@@ -169,12 +169,11 @@ public class CigarClusters {
 			Outputs o, Sequence chrom, int chrom_index,SortedSet<String> geneNames
 			) throws IOException{
 		if(TranscriptUtils.writeAnnotP) {
-			Runnable run = new Runnable(){
-				public void run(){
+		
+				
 					annot.print(o.annotP);
-				}
-			};
-			Outputs.h5writer.execute(run);
+				
+			
 		}
 		Iterator<CigarCluster> it;
 		if(TranscriptUtils.coronavirus ){
