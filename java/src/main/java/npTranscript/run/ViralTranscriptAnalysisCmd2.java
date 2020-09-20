@@ -539,7 +539,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		final Iterator<SAMRecord>[] samIters = new Iterator[len];
 		SamReader[] samReaders = new SamReader[len];
 		boolean allNull = true;
-		for (int ii = 0; ii < len; ii++) {
+		inner: for (int ii = 0; ii < len; ii++) {
 			String bamFile = bamFiles_[ii];
 			File bam = new File( bamFile);
 			SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
@@ -553,9 +553,11 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				samIters[ii] = SequenceUtils.getSAMIteratorFromFastq(bam, mm2_index, mm2_path, mm2_threads,  mm2Preset, mm2_mem, mm2_splicing);
 				}catch(Exception exc){
 					System.err.println("could not open file "+bam.getAbsolutePath());
+					continue inner;
 				}
-				if(samIters[ii]!=null) allNull = false;
+				
 			}
+			allNull = false;
 		}
 		if(allNull){
 			throw new RuntimeException("No input files available "+Arrays.asList(bamFiles_));
