@@ -11,10 +11,10 @@ for(i in 1:length(infilesBr0)) {
   brP1 = try( readBreakPoints(infilesBr1[i], i, addOne = FALSE))
   
  
-  if(inherits(brP0,"try-error") ){
+  if(is.null(brP0) ){
     incl[i] = F
    # breakPs[[i]] = NULL
-  }else if(inherits(brP1,"try-error")){
+  }else if(is.null(brP1)){
     breakPs[[i]] = brP0;
   }  else{
     breakPs[[i]] = .mergeBreak(list(brP0, brP1))
