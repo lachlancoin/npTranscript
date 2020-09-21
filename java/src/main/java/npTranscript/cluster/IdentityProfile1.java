@@ -233,7 +233,7 @@ static char delim1 = ',';
 		geneNames.clear();
 		String span_str = annot.getSpan(coRefPositions.breaks, forward,  coRefPositions.span, geneNames);
 		int  span = geneNames.size();
-		if(span==0 && q_value < ViralTranscriptAnalysisCmd2.fail_thresh1){
+		if(!TranscriptUtils.coronavirus && span==0 && q_value < ViralTranscriptAnalysisCmd2.fail_thresh1){
 			return secondKey.toString();
 		}
 		String breakSt = coRefPositions.breaks.toString();

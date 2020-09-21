@@ -152,7 +152,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addString("isoformDepthThresh", "10", "Threshhold for printing out all isoforms");
 		addDouble("msaDepthThresh", 10, "Threshhold for running MSA per subcluster");
 		addDouble("qualThresh", 20, "Quality thresh for leftover seqs");
-		addString("fail_thresh", "7:14", "Pass threshold (first all reads and second for reads which do not contain any existing annotation");
+		addString("fail_thresh", "0:0", "Pass threshold (first all reads and second for reads which do not contain any existing annotation");
 		addString("doMSA", "false" , "Options: 5_3 or all or span=0 ");
 		addString("msa_source", null , "indicates how to group msa, e.g 0,1,2;3,4,5 ");
 		//addString("aligner", "kalign" , "Options: kalign3, poa, spoa, abpoa");
