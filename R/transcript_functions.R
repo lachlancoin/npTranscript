@@ -114,8 +114,8 @@ getKmer<-function(base, pos,v = c(-1,0,1)){
     } #ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="lower", ymax="upper"), width=.2)#, position="dodge")
    ggp<-ggp+scale_y_continuous(limits = c(0,1))
     if(!is.null(annot0)){
-    ggp<-ggp +  geom_point(aes_string(x=x1, y="proportion"),stat="identity")
-    ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="prop_lower", ymax="prop_upper"), width=.2, position="dodge")
+    ggp<-ggp +  geom_point(position=position_dodge(width=0.9), aes_string(x=x1, y="proportion"),stat="identity")
+    ggp<-ggp+geom_errorbar(position=position_dodge(width=0.9), aes_string(x=x1,ymin="prop_lower", ymax="prop_upper"), width=.2, position="dodge")
     ggp<-ggp+ scale_y_continuous(limits = c(0,1), sec.axis =sec_axis(~ . ))
     }
      ggp<-ggp+ggtitle("Percentage of ORF covering reads which are spliced to 5'")
