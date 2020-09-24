@@ -14,7 +14,14 @@
 ##script for running 
 ##tip - use symbolic link to put this in the directory with bam files
 export JSA_MEM=8000m
-npTranscript=${HOME}/github/npTranscript
+
+module load R
+module load java
+
+loc=`scontrol show job $SLURM_JOBID | awk -F= '/Command=/{print $2}'`
+echo $loc
+npTranscript=`echo $loc | sed 's/\(npTranscript\).*/\1/'  `
+echo ${npTranscript}
 
 #bamfiles=bins/allreads_fq.bam:virion/sorted.virion_refmap.bam
 bamdir="."
@@ -47,4 +54,4 @@ bash ${npTranscript}/scripts/run.sh ${bamfiles1}   --reference=${reference} --an
 cd ${resdir}
 #bash ${npTranscript}/scripts/consensus.sh 0
 #echo "now running R script"
-Rscript ~/github/npTranscript/R/npTranscript.R  ~/github/npTranscript/data/SARS-Cov2/VIC01
+Rscript ${npTranscript}/R/npTranscript.R  ${npTranscript}/data/SARS-Cov2/VIC01
