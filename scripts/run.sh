@@ -5,7 +5,8 @@ if [ ! $JSA_MEM ] ; then
 fi
 
 
-npTranscript=$HOME/github/npTranscript
+loc=`readlink -f $0` 
+npTranscript=`echo $loc | sed 's/\(npTranscript\).*/\1/'  `
 #classp=$(ls ${npTranscript}/libs | xargs -I {} echo ${npTranscript}/libs/{} )
 #classpath=$(echo $classp | sed 's/ /:/g')
 JSA_CP=${npTranscript}/java/target/npTranscript-1.0.jar 
