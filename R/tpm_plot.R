@@ -3,6 +3,8 @@
 library(reshape2)
 library(ggplot2)
 library(tidyr)
+source('~/github/npTranscript/R/transcript_functions.R')
+
 
 transcripts <- .readTranscripts('0.transcripts.txt.gz')
 experiments <- attr(transcripts, 'info')
@@ -16,7 +18,7 @@ exp_vec <- c('vero','calu','caco')
 
 #calculate tpm
 tpm <- props*1e-6
-tpm <- cbind(ID=transcripts[,1],tpm)
+tpm <- cbind(ID=transcripts$ORFs,tpm)
 
 #prep tpm_df
 as.data.frame(tpm, stringsAsFactors=F) %>% melt(id.vars='ID', measure.vars=experiments, value.name = 'TPM') %>%
@@ -24,8 +26,7 @@ as.data.frame(tpm, stringsAsFactors=F) %>% melt(id.vars='ID', measure.vars=exper
 	transform( TPM = as.numeric(TPM), experiment = factor(experiment), time = factor(time, levels = time_vec)) -> tpm_df
 
 #input IDs in vector to plot
-ggplot(subset(tpm_df, ID %in% c("ID0.1", "ID0.2")), aes(x=time, y=TPM, group=interaction(experiment, ID), color = ID, shape = experiment)) + geom_line() + scale_y_log10()
+ggplot(subset(tpm_df, ID %in% c("leader_leader,N_end+", "leader_leader,ORF7a_end+")), aes(x=time, y=TPM, group=interaction(experiment, ID), color = ID)) + geom_line() + scale_y_log10() + geom_point(inherit.aes=T, aes(shape = experiment))
 
 #split_by <- function(to_split, time_vec, exp_vec) {
-#would need to loop over patterns rather than loop through rows	
-
+#would need to loop over patterns rather than loop through rows }	
