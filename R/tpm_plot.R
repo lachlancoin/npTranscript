@@ -18,15 +18,15 @@ exp_vec <- c('vero','calu','caco')
 
 #calculate tpm
 tpm <- props*1e-6
-tpm <- cbind(ID=transcripts$ORFs,tpm)
+tpm <- cbind(ID=as.character(transcripts$ORFs),tpm)
 
 #prep tpm_df
-as.data.frame(tpm, stringsAsFactors=F) %>% melt(id.vars='ID', measure.vars=experiments, value.name = 'TPM') %>%
-	separate(variable, c('experiment', 'time'), sep='_', remove = T) %>%
-	transform( TPM = as.numeric(TPM), experiment = factor(experiment), time = factor(time, levels = time_vec)) -> tpm_df
+as.data.frame(tpm) %>% melt(id.vars='ID', measure.vars=experiments, value.name = 'TPM') %>%
+	separate(variable, c('molecule_type', 'cell', 'time'), sep='_', remove = T) %>%
+	transform( TPM = as.numeric(TPM), molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time, levels = time_vec)) -> tpm_df
 
 #input IDs in vector to plot
-ggplot(subset(tpm_df, ID %in% c("leader_leader,N_end+", "leader_leader,ORF7a_end+")), aes(x=time, y=TPM, group=interaction(experiment, ID), color = ID)) + geom_line() + scale_y_log10() + geom_point(inherit.aes=T, aes(shape = experiment))
+ggplot(subset(tpm_df, ID %in% c("leader_leader,N_end+", "leader_leader,ORF7a_end+")), aes(x=time, y=TPM, group=interaction(molecule_type, cell, ID), color = ID, linetype=molecule_type)) + geom_line() + scale_y_log10() + geom_point(inherit.aes=T,aes(shape = cell))
 
 #split_by <- function(to_split, time_vec, exp_vec) {
 #would need to loop over patterns rather than loop through rows }	
