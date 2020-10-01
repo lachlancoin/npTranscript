@@ -66,7 +66,6 @@ public class CigarCluster  {
 			this.count = new int[num_sources];
 			count[src_index]=1;
 			this.id = id;
-
 		
 		}
 		private int id;
@@ -298,8 +297,8 @@ public static  synchronized void printBed(PrintWriter bedW, String chrom, List<I
 			}
 		}
 
-		private final SparseVector map;// = new SparseVector(); //coverage at high res
-		final private SparseVector[] maps, errors;
+		 final SparseVector map;// = new SparseVector(); //coverage at high res
+		final  SparseVector[] maps, errors;
 final private char strand;
 	   public void clear(){
 		   span.clear();
@@ -368,11 +367,13 @@ final private char strand;
 		
 		
 		
-		void getDepthSt(Integer i, int[] row, int start_pos, boolean match) {
+		void getDepthSt(Integer i, int[] row,   int[] col_inds, int offset) {
 			//StringBuffer sb = new StringBuffer();
 			if(maps==null) return ;
 			for(int src_index=0; src_index<maps.length; src_index++){
-				row[start_pos+src_index] = match?  this.maps[src_index].getDepth(i) : this.errors[src_index].getDepth(i) ;
+				int i1 =offset+2*(col_inds[src_index]-offset );
+				row[i1] =  this.maps[src_index].getDepth(i) ;
+				row[i1+1]	=	this.errors[src_index].getDepth(i) ;
 			}
 		}
 		
@@ -429,28 +430,21 @@ final private char strand;
 			
 		}
 		
-		public int[][] getClusterDepth(int num_sources, Sequence ref) {
-			//numPos =0;
+		public void getClusterDepth(int[][] matr, List<Integer> keys,   int[] col_inds, int offset) {
 			totLen =0;
-			int seqlen = ref.length();
-			int numcols = 1 + num_sources * 2 + 1; 
-		//	boolean prev0 = start>1;
-			//boolean printPrev = false;
-			List<Integer> keys = this.map.keys(IdentityProfile1.writeCoverageDepthThresh);
-			int[][] matr = new int[keys.size()][numcols];
 			 int keysize = keys.size();
 			
 			for(int i=0; i<keysize; i++){
 				Integer pos = keys.get(i);
 				int[] row = matr[i];
 				row[0] = pos;
-				row[1] = pos <= ref.length() ? (int) ref.getBase(pos-1) : -1; // because sequence is in 0 in index
+			//	row[1] = pos <= ref.length() ? (int) ref.getBase(pos-1) : -1; // because sequence is in 0 in index
 				//System.err.println(ref.charAt(pos-1)+" -> " + row[1]);
 				//A =, C = 1, G = 2. T = 3
-				getDepthSt(pos, row,2, true);
-				getDepthSt(pos, row,2 + num_sources, false);
+				getDepthSt(pos, row, col_inds, offset);
+			//	getDepthSt(pos, row,1 + num_sources, false);
 			}
-			return matr;
+			//return matr;
 			//TranscriptUtils.printedLines[index]+=keys.size();
 		}
 		

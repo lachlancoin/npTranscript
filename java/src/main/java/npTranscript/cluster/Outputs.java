@@ -18,6 +18,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -27,6 +29,7 @@ import org.apache.commons.math3.linear.SparseRealMatrix;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
 import ch.systemsx.cisd.hdf5.IHDF5SimpleWriter;
+import ch.systemsx.cisd.hdf5.IHDF5Writer;
 import htsjdk.samtools.fastq.FastqRecord;
 import htsjdk.samtools.fastq.FastqWriter;
 import htsjdk.samtools.fastq.FastqWriterFactory;
@@ -45,6 +48,7 @@ public class Outputs{
 	public static int gffThreshTranscript = 10;
 	public static int maxTranscriptsPerGeneInGFF = Integer.MAX_VALUE;
 	
+	public static File library = new File("./");
 	public static final ExecutorService writeCompressDirsExecutor  = Executors.newSingleThreadExecutor();
 	public static final ExecutorService fastQwriter = Executors.newSingleThreadExecutor();
 	public static final ExecutorService h5writer = Executors.newSingleThreadExecutor();
@@ -125,7 +129,7 @@ public class Outputs{
 		 PrintWriter[] bedW;
 		 SequenceOutputStream[] refOut;
 		 IHDF5SimpleWriter clusterW = null;
-		 IHDF5SimpleWriter altT = null;
+		 IHDF5Writer altT = null;
 		File resDir;
 		CompressDir[] clusters;
 		
@@ -191,8 +195,12 @@ public class Outputs{
 				gffW.println("##sequence-region "+chr+" "+0+" "+seq.length());
 			}
 		}
+	
 		
-		public Outputs(File resDir,  String[] type_nmes, boolean overwrite,  boolean isoforms, boolean cluster_depth) throws IOException{
+		 int[] col_inds, col_inds_depth;  // this is the col_inds for writing count information in h5 library
+		 int new_max_cols, new_max_cols_depth;
+		
+		public Outputs(File resDir,  String[] type_nmes, boolean isoforms, boolean cluster_depth) throws IOException{
 			this.type_nmes = type_nmes;
 		//	this.genome_index= currentIndex;
 			genome_index = "0.";
@@ -202,11 +210,11 @@ public class Outputs{
 			 int num_sources = type_nmes.length;
 		//	 outfile = new File(resDir,genome_index+ ".txt");
 		//	 outfile1 = new File(resDir, genome_index+ "coref.txt");
-			 outfile2 = new File(resDir, genome_index+"clusters.h5");
+			 outfile2 = new File(library, genome_index+"clusters.h5");
 			
 			 outfile4 = new File(resDir,genome_index+ "exons.txt.gz");
 			 outfile5 = new File(resDir,genome_index+ "clusters.fa.gz");
-			 outfile10 = new File(resDir,genome_index+"isoforms.h5");
+			 outfile10 = new File(library,genome_index+"isoforms.h5");
 			
 			gff_output = new File(resDir,genome_index+"gff.gz");
 			
@@ -285,19 +293,7 @@ public class Outputs{
 		
 			 transcripts_file = new File(resDir,genome_index+ "transcripts.txt.gz");
 			 feature_counts_file = new File(resDir,genome_index+ "transcripts.fc.txt.gz");
-			//	newReadCluster(genome_index);
-
-			 File[] f = new File[] { outfile2,  outfile10, transcripts_file};
-
-			 for(int i=0; i<f.length; i++){
-				 if(overwrite && f[i].exists()){
-					 System.err.println("deleteing "+f[i].getAbsolutePath());
-					 f[i].delete();
-				 }
-				 else if(f[i].exists()){
-					 throw new RuntimeException("will not overwrite file "+f[i].getAbsolutePath());
-				 }
-			 }
+			
 			 featureCP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.feature_counts_file))));
 			 String featureCP_header = "Geneid\tChr\tStart\tEnd\tStrand\tLength";
  
@@ -318,42 +314,68 @@ public class Outputs{
 				
 				this.annotP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.outfile11))));
 			List<String> str = new ArrayList<String>();
-			str.add("subID"); //str.add("ẗype"); 
+			//str.add("subID"); //str.add("ẗype"); 
 			for(int j=0; j<num_sources; j++){
-				str.add("depth"+j);
+				str.add(this.type_nmes[j]);
 			}
-			if(isoforms){
-			altT = 
-					 HDF5Factory.open(outfile10);
-			altT.writeStringArray("header", str.toArray(new String[0]));
-			}
+			this.col_inds = new int[this.type_nmes.length];
+			altT = HDF5Factory.open(outfile10);
+			writeStringArray(altT, "header", str.toArray(new String[0]),this.col_inds,0);
+			this.new_max_cols = Arrays.stream(col_inds) .max() .getAsInt()+1;
+				     
+				     
+					
+			
 			str .clear();
 			str.add("pos"); //str.add("ẗype"); 
-			str.add("base");
+		//	str.add("base");
 			for(int j=0; j<num_sources; j++){
-				str.add("depth"+j);
-			}
-			str.set(0, "pos");
-			
-			for(int j=0; j<num_sources; j++){
-				str.add("errors"+j);
+				str.add(type_nmes[j]);
 			}
 			if(cluster_depth){
-			clusterW = 
-					 HDF5Factory.open(outfile2);
-			clusterW.writeStringArray("header", str.toArray(new String[0]));
+			clusterW = 	 HDF5Factory.open(outfile2);
+			col_inds_depth =new int[num_sources];
+			writeStringArray(clusterW, "header", str.toArray(new String[0]),col_inds_depth,1);
+			this.new_max_cols_depth = Arrays.stream(col_inds_depth) .max() .getAsInt()+1;
 			}
+			
 		//	clusterW.writeStringArray("header", str.toArray(new String[0]));
 		}
 
 		
 		
+		
+
+
+
 		/*public IHDF5SimpleWriter getH5Writer(){
 			
 			return clusterW;
 		}*/
 
 		
+		private static void writeStringArray(IHDF5SimpleWriter altT2, String string, String[] array, int[] inds,  int start) {
+			boolean exists = altT2.exists("header");
+			List<String> newh= new ArrayList<String>();
+			if(exists){
+				String[] existing =altT2.readStringArray("header");
+				newh.addAll(Arrays.asList(existing));
+			}
+			else{
+				newh.addAll(Arrays.asList(array));
+			}
+			for(int i=start; i<array.length; i++){
+			if(newh.contains(array[i])){
+				if(inds!=null) inds[i-start] = newh.indexOf(array[i]);
+			}else {
+						
+					if(inds!=null)		inds[i-start] = newh.size();
+							newh.add(array[i]);
+						}
+				}
+			altT2.writeStringArray(string, newh.toArray(new String[0]));
+		}
+
 		public synchronized void printTranscript(String str, String depth_str){
 			this.transcriptsP.print(str);
 			transcriptsP.println(depth_str);
@@ -478,11 +500,34 @@ public class Outputs{
 		}
 		
 		public void writeDepthH5(CigarCluster cc, CigarClusters cigarClusters, Sequence chrom, int chrom_index, int totalDepth) {
+			int offset=1;
 			if(clusterW!=null && totalDepth>IdentityProfile1.writeCoverageDepthThresh){
-			
+				String  key = "depth/"+cc.breaks_hash.secondKey;
 				cc.addZeros(cigarClusters.seqlen); 
-				int[][] matr =cc.getClusterDepth(cigarClusters.num_sources, chrom);
-				clusterW.writeIntMatrix(cc.id(), matr);
+				List<Integer> keys = cc.map.keys(IdentityProfile1.writeCoverageDepthThresh);
+				int[][]matr; //int[][] matr_err;
+				if(clusterW.exists(key)){
+					int[][]  matr1 = clusterW.readIntMatrix(key);
+					for(int i=0; i<matr1.length; i++){
+						if(!keys.contains(matr1[i][0])){
+							keys.add(matr1[i][0]);
+						}
+					}
+					Collections.sort(keys);
+					matr = new int[keys.size()][2*(new_max_cols_depth-offset)+offset];
+					for(int i=0; i<matr1.length; i++){
+						int ind = keys.indexOf(matr1[i][0]);
+						System.arraycopy(matr1[i], 0, matr[ind], 0, matr1[i].length);
+					}
+					
+				}else{
+					matr = new int[keys.size()][2*(new_max_cols_depth-offset)+offset];
+				}
+				cc.getClusterDepth(matr, keys,  this.col_inds_depth, offset);
+			//	cc.getClusterDepth(matr, keys, false, this.col_inds_depth);
+
+				clusterW.writeIntMatrix(key, matr);
+
 				
 			}
 		}
@@ -499,61 +544,145 @@ public class Outputs{
 		//	return mergeSourceClusters ? Arrays.stream(val.count()).sum()  : val.count()[source];
 		}
 
+		
+		
+		static class HDFObj  {
+			public HDFObj(){
+				
+			}
+			public HDFObj(List<Integer>l1, List<Integer>l2, int[] count) {
+				nme = CigarHash2.getString(l1);
+				if(l2!=null){
+					br = new int[l2.size()];
+					
+					for(int i=0; i<l2.size(); i++){
+						br[i] = l2.get(i);
+					}
+				}
+				cnts = count;
+			}
+			String nme; int[]  br; int[] cnts;
+			/*@Override
+			public int compareTo(Object o) {
+				return nme.compareTo(((HDFObj)o).nme);
+			}*/
+			public void expand(int new_num_cols) {
+				int[] cnts_old = cnts;
+				cnts = new int[new_num_cols];
+				System.arraycopy(cnts_old, 0, cnts, 0, cnts_old.length);
+			}
+		}
+		static class HDFObjT  {
+			String key; int[] cnts;
+			String chrom; int start; int end; String type_nme; String exon_count; int span; String genes;
+		
+			public HDFObjT(){
+				
+			}
+			public HDFObjT(String key, int[] count) {
+				this.key = key;
+				cnts = count;
+			}
+			
+			public void expand(int new_num_cols) {
+				int[] cnts_old = cnts;
+				cnts = new int[new_num_cols];
+				System.arraycopy(cnts_old, 0, cnts, 0, cnts_old.length);
+			}
+		}
+		
+	//	String[] transcript_info  = new String[12];
+		SortedSet<String> geneNames = new TreeSet<String>();
+		
+		
+		
 		/** writes the isoform information */
-		public synchronized void writeString(String id, Map<CigarHash2, Count> all_breaks, int num_sources) {
-						int[][]str = new int[all_breaks.size()][];
-						{
+		public synchronized void writeString(String id_, CigarCluster cc, CigarClusters cigarClusters) {
+			Map<String, HDFObj> m = null;
+			int num_sources = cigarClusters.num_sources;
+			Map<CigarHash2, Count> all_breaks=cc.all_breaks;
+			String id = "isoforms/"+id_;
+			String id2 = "transcripts/"+id_;
+			String id3 = "counts/"+id_;
+			/*if(altT.exists(id3)){
+				
+			}else{
+				altT.writeString(id2, cigarClusters.infoString(cc, transcript_info, geneNames));
+
+			}
+			*/
+			HDFObjT  obj;
+			if(altT.exists(id2)){
+				 obj = altT.readCompound(id2, HDFObjT.class);
+				obj.expand(this.new_max_cols);
+				
+			}else{
+				int[] cnts = new int[this.new_max_cols];
+				obj = new HDFObjT(cc.breaks_hash.secondKey,cnts);
+				cigarClusters.infoString(cc, obj, geneNames, chrom);
+			}
+			for(int i=0; i<this.col_inds.length; i++){
+				obj.cnts[col_inds[i]] = cc.readCount[i];
+			}
+			altT.writeCompound(id2, obj);
+			//int existing_cols=0;
+			if(altT.exists(id)){
+				m = new HashMap<String, HDFObj>();
+				HDFObj[] objs1 = altT.readCompoundArray(id, HDFObj.class);
+				//existing_cols = objs1[0].cnts.length;
+				for(int i=0; i<objs1.length; i++){
+					objs1[i].expand(this.new_max_cols);
+					m.put(objs1[i].nme, objs1[i]);
+				}
+			}
+				List<HDFObj> objs = new ArrayList<HDFObj>();
 						Iterator<Entry<CigarHash2, Count>> it = all_breaks.entrySet().iterator();
-						int maxl =-1;
-						boolean all_equal  = true;
-						int extra = num_sources+1;
 						for(int i=0;  it.hasNext();i++){
 							Entry<CigarHash2,Count> ch = it.next();
 							CigarHash2 key = ch.getKey();
-							int len = key.size();
-							if(i==0) maxl = len;
-							else if(len>maxl) {
-								maxl = len;
-								all_equal = false;
-							}else if(len<maxl){
-								len = maxl;
+							Count cnt = ch.getValue();
+							List<Integer> br = cnt.getBreaks();
+							int[] cnts = ch.getValue().count();
+							HDFObj obj_i = m==null ? null : m.get(key.toString());
+							if(obj_i==null){
+								obj_i = new HDFObj(key, br, new int[this.new_max_cols]);
 							}
-							str[i] = new int[len+extra];
-							str[i][0]  = ch.getValue().id();
-							System.arraycopy(ch.getValue().count(), 0, str[i], 1, num_sources);
-						//	str[i][1]  = ch.getValue().count();
-							for(int j=0; j<key.size(); j++){
-								str[i][j+extra] = key.get(j)*CigarHash2.round;
+							for(int j=0; j<col_inds.length; j++){
+								obj_i.cnts[col_inds[j]] = cnts[j];
 							}
+							objs.add(obj_i);
 							
 						}
-						if(!all_equal){
-							for(int i=0; i<str.length; i++){
-								if(str[i].length<maxl+extra){
-									int[] str1 = new int[maxl+extra];
-									System.arraycopy(str[i], 0, str1, 0, str[i].length);
-									str[i] = str1;
-								}
-							}
-						}
-						}
-							altT.writeIntMatrix(id, str);
+					
+					//    altT.compound().writeA
+						altT.compound().writeArray(id,  objs.toArray(new HDFObj[0]));;
+						//altT.writeCompoundArray(id, objs.toArray(new HDFObj[0]));
 			
 		}
 		
 		
 		
+		private void writeIntMatrix(IHDF5SimpleWriter altT2, String id, int[][] str) {
+			if(altT2.exists(id)){
+				int[][] matrix = altT2.readIntMatrix(id);
+			//	int[][] str1 = merge(matrix, str);
+				altT2.writeIntMatrix(id, str);
+			}else{
+				altT2.writeIntMatrix(id, str);
+			}
+			
+		}
+
 		public void writeIsoforms(CigarCluster cc, CigarClusters cigarClusters, Sequence chrom, int chrom_index
 				, int totalDepth){
-			String id = cc.id();
-			
+			String id = cc.breaks_hash.secondKey;
 			int[] rcount=cc.readCount;
 			
-			
 			if(altT!=null){
+				
 				if(IdentityProfile1.writeIsoformDepthThresh.length==1){
 					if(totalDepth>=IdentityProfile1.writeIsoformDepthThresh[0]){
-						writeString(id, cc.all_breaks, cigarClusters.num_sources);
+						writeString(id, cc, cigarClusters);
 					}
 				}else{
 					boolean write=false;
@@ -563,7 +692,7 @@ public class Outputs{
 						}
 					}
 					if(write){
-						writeString(id, cc.all_breaks, cigarClusters.num_sources);
+						writeString(id, cc, cigarClusters);
 					}
 				}
 			}

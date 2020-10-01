@@ -154,6 +154,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addDouble("qualThresh", 20, "Quality thresh for leftover seqs");
 		addString("fail_thresh", "0:0", "Pass threshold (first all reads and second for reads which do not contain any existing annotation");
 		addString("doMSA", "false" , "Options: 5_3 or all or span=0 ");
+		addString("library",".","library for h5 files");
 		addString("msa_source", null , "indicates how to group msa, e.g 0,1,2;3,4,5 ");
 		//addString("aligner", "kalign" , "Options: kalign3, poa, spoa, abpoa");
 		addInt("startThresh", 100, "Threshold for having 5'");
@@ -162,7 +163,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addInt("extra_threshold", 200, "Threshold saving umatched 3'or 5'parts of reads");
 		//addDouble("overlapThresh", 0.95, "Threshold for overlapping clusters");
 	//	addBoolean("coexpression", false, "whether to calc coexperssion matrices (large memory for small bin size)");
-		addBoolean("overwrite", false, "whether to overwrite existing results files");
+	//	addBoolean("overwrite", false, "whether to overwrite existing results files");
 		addBoolean("keepAlignment", false, "whether to keep alignment for MSA");
 		addBoolean("attempt5rescue", true, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
 		addBoolean("attempt3rescue", true, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
@@ -209,12 +210,13 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		String[] readList = cmdLine.getStringVal("readList").split(":");
 		//String genesToInclude = cmdLine.getStringVal("genesToInclude");
 		String  annotationType = getAnnotationsToInclude(cmdLine.getStringVal("annotType"), cmdLine.getBooleanVal("useExons"));
-		boolean overwrite  = cmdLine.getBooleanVal("overwrite");
+		//boolean overwrite  = cmdLine.getBooleanVal("overwrite");
 		int startThresh = cmdLine.getIntVal("startThresh");
 		int endThresh = cmdLine.getIntVal("endThresh");
 		int maxReads = cmdLine.getIntVal("maxReads");
 		String[] gffThresh_ = cmdLine.getStringVal("gffThresh").split(":");
 		Outputs.gffThreshGene = Integer.parseInt(gffThresh_[0]);
+		Outputs.library = new File(cmdLine.getStringVal("library"));
 		Outputs.gffThreshTranscript = Integer.parseInt(gffThresh_[1]);
 		Outputs.maxTranscriptsPerGeneInGFF = cmdLine.getIntVal("maxTranscriptsPerGeneInGFF");
 		Annotation.enforceStrand = cmdLine.getBooleanVal("RNA");
@@ -327,7 +329,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		}
 			errorAnalysis(bamFiles, reference, annotFile,readList,annotationType, 
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  
-				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, chrsToIgnore, overwrite, isoformDepthThresh, coverageDepthThresh, probInclude, fastq, chromsToRemap==null ? null: chromsToRemap.split(":"));
+				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, chrsToIgnore,  isoformDepthThresh, coverageDepthThresh, probInclude, fastq, chromsToRemap==null ? null: chromsToRemap.split(":"));
 	}
  static boolean sorted = true;
  static double tme0;
@@ -418,7 +420,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 	 */
 	static void errorAnalysis(String[] bamFiles_, String refFile, String annot_file, String[] readList,    String annotationType, String resdir, String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads, 
-			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,File gffFile, String chrToInclude, String chrToIgnore, boolean overwrite,
+			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,File gffFile, String chrToInclude, String chrToIgnore, 
 			int[] writeIsoformDepthThresh, int writeCoverageDepthThresh, double probInclude, boolean fastq, String[] chromsToRemap) throws IOException {
 		boolean cluster_reads = true;
 		CigarHash2.round = round;
@@ -613,7 +615,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			FastqWriter[][] fqw = null;//chromToRemap.contains(chr.getName()) ? Outputs.getFqWriter(chr.getName(), resdir) : null;
 				// first row is primary , second is supplementary
 			
-			Outputs 	outp = new Outputs(resDir,  in_nmes, overwrite,  true, CigarCluster.recordDepthByPosition); 
+			Outputs 	outp = new Outputs(resDir,  in_nmes,   true, CigarCluster.recordDepthByPosition); 
 			
 			IdentityProfileHolder profile = null;
 			//boolean updateProfile = true;

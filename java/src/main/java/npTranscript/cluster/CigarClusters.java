@@ -12,6 +12,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
 import japsa.seq.Sequence;
+import npTranscript.cluster.Outputs.HDFObjT;
 
 
 /**
@@ -89,6 +90,36 @@ public class CigarClusters {
 	//final Sequence  refseq;
 	final int seqlen;
 	final int num_sources;
+	
+	public static String getString(Object[] l){
+		StringBuffer sb = new StringBuffer();
+		for(int i=0; i<l.length; i++){
+			if(i>0) sb.append(",");
+			sb.append(l[i].toString());
+		}
+		return sb.toString();
+	}
+	
+	public void infoString(CigarCluster cc, HDFObjT obj, SortedSet<String> geneNames, String chrom){
+		//String chrom = seq.getName();
+		//String chrom = "";
+		boolean forward = cc.forward;
+		boolean hasLeaderBreak = TranscriptUtils.coronavirus  ? (cc.breaks.size()>1 &&  annot.isLeader(cc.breaks.get(1)*CigarHash2.round)) : false;
+		geneNames.clear();
+		int type_ind = annot.getTypeInd(cc.start, cc.end, forward);
+		String type_nme = annot.nmes[type_ind];
+		String geneNme = annot.getString(cc.span, geneNames);
+		//obj[0] = cc.id(); 
+		obj.chrom=chrom; obj.start = cc.start; obj.end = cc.end; obj.type_nme = type_nme;
+		obj.exon_count = cc.exonCount(); obj.span = geneNames.size(); obj.genes = geneNme;
+			
+		 //obj[4] =type_nme;
+		//obj[5] = cc.exonCount(); obj[6] = cc.numIsoforms()+""; obj[7] = cc.breaks_hash.secondKey; obj[8] = geneNme;
+		//obj[9] = geneNames.size()+""; obj[10] = cc.totLen+""; obj[11] = cc.readCountSum()+"";
+		geneNames.clear();
+		//return getString(obj);
+	}
+	
 	public void process1(CigarCluster cc,   Outputs o,Sequence seq, int chrom_index, SortedSet<String> geneNames ){
 		String read_count = TranscriptUtils.getString(cc.readCount);
 		String chrom = seq.getName();
