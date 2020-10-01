@@ -59,7 +59,11 @@ shinyServer(function(input, output) {
 	output$distPlot <- renderPlot({
 	    input$plotButton
 	      #result = loadData();
-	  datafile="../data/shiny/0.transcripts.txt.gz"
+	  if(length(input$datafile)>0){
+	   datafile=input$datafile$datapath[[1]]
+	  }else{
+	   datafile="../data/shiny/0.transcripts.txt.gz"
+	  }
 	      if(file.exists(datafile)){
   	      toplot = isolate(input$toplot)
   	      toplot1 = isolate(input$toplot1)

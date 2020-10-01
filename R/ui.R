@@ -12,7 +12,7 @@ shinyUI(pageWithSidebar(
   
   # Sidebar with a slider input for number of observations
   sidebarPanel(
-   # fileInput("datafile", "Transcripts file", multiple = FALSE, accept = NULL),
+    fileInput("datafile", "Transcripts file", multiple = FALSE, accept = NULL),
    selectInput("toplot", label = "Transcript 1", choices=choices, selected=choices[2]),
    selectInput("toplot1", label = "Transcript 2", choices=choices, selected=choices[1]),
    selectInput("toplot2", label = "Transcript 3", choices=choices, selected=choices[1]),
