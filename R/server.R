@@ -3,17 +3,6 @@ library(reshape2)
 library(ggplot2)
 library(tidyr)
 
-options("np.install"="FALSE")
-options("np.libs_to_install"="VGAM,ggplot2,writexl,ggrepel,grDevices,gridExtra,abind,seqinr,RColorBrewer,gplots,seqinr,rhdf5");
-options("np.datasource"="~/github/npTranscript/data/SARS-Cov2/VIC01")
-options("np.source"="~/github/npTranscript/R" );
-options("np.datasource"="~/github/npTranscript/data/SARS-Cov2/VIC01" );
-options("np.depth_thresh" = "100" );
-
-
-options("np.source"="../../R")
-options("np.datasource"="../../data/SARS-Cov2/VIC01")
-options("np.libdir"="C:/Users/LCOIN/R-4.0.2/library")
 
 
 source( "transcript_functions.R")
@@ -61,42 +50,25 @@ loadData <- function() {
 ##OUTPUT IS PASSED TO THE UI
 ##INPUT PASSES IN INFORMATION
 shinyServer(function(input, output) {
-
-	## THIS RUNS FSPLS TRAINING.   IT IS REACTIVE ON PRESSING THE TRAIN BUTTON
-	allresults<-reactive({
-		input$trainButton
-		family = isolate(input$family)
-		debug = isolate(input$debug)
-		options("debug"= debug);
-		text = family;
-		 datafile = isolate(input$datafile$datapath[[1]])
-		result = NULL
-	    if(family!='NA' && !is.null(datafile)){
-	   	t = read.table(datafile, sep=",", header=T)
-		result = run_analy(t,  family)
-	    }
-	    result
-  	 })
-
-
-	
-
 	output$instructions <- renderPrint({
-		print("Some text");
+		print("Upload 0.transcripts.txt.gz file produced by npTranscript");
 	})
-
-
 
 	#THIS JUST EXAMPLE FOR RENDERING A PLOT
 	#REACTIVE ON PLOT BUTTON
 	output$distPlot <- renderPlot({
 	    input$plotButton
 	      #result = loadData();
-	      dir="../data/results_20200928213742/"
-	      toplot = isolate(input$toplot)
-	      transcripts <- .readTranscripts(paste(dir,'0.transcripts.txt.gz',sep="/"))
-	  
-	      run_analy(transcripts,  toplot)
+	  datafile="../data/shiny/0.transcripts.txt.gz"
+	      if(file.exists(datafile)){
+  	      toplot = isolate(input$toplot)
+  	      toplot1 = isolate(input$toplot1)
+  	      toplot2 = isolate(input$toplot2)
+  	      
+  	      transcripts <- .readTranscripts(datafile)
+  	  
+  	      run_analy(transcripts,  c(toplot, toplot1, toplot2))
+	      }
 	   
 	 })
 
