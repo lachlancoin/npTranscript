@@ -1,6 +1,5 @@
 library(shiny)
 library(reshape2)
-library(ggplot2)
 library(tidyr)
 
 source( "transcript_functions.R")
