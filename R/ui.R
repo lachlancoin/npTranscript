@@ -2,8 +2,15 @@ library(shiny)
 source( "transcript_functions.R")
 
 datafile="../data/shiny/0.transcripts.txt.gz"
-transcripts <- .readTranscripts(datafile)
-choices=c("-",sort(as.character(transcripts$ORFs)))
+tpm_df = .readTPM(datafile)
+
+choices=c("-",as.character(attr(tpm_df,"ORFs")))
+molecules=levels(tpm_df$molecule_type)
+molecules1 = as.list(1:length(molecules))
+names(molecules1) = molecules
+cells = levels(tpm_df$cell)
+cells1 = as.list(1:length(cells))
+names(cells1) = cells
 
 # Define UI for application that plots random distributions 
 shinyUI(pageWithSidebar(
@@ -18,6 +25,10 @@ shinyUI(pageWithSidebar(
    selectInput("toplot", label = "Transcript 1", choices=choices, selected=choices[2]),
    selectInput("toplot1", label = "Transcript 2", choices=choices, selected=choices[1]),
    selectInput("toplot2", label = "Transcript 3", choices=choices, selected=choices[1]),
+   checkboxGroupInput("molecules", label = h3("Molecules"),  choices =molecules, selected = molecules),
+   checkboxGroupInput("cells", label = h3("Molecules"),  choices = cells, selected = cells),
+   
+                     
 	actionButton("plotButton", "Generate plots")
   ),
   

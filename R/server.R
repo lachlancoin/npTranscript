@@ -6,48 +6,14 @@ library(tidyr)
 
 
 source( "transcript_functions.R")
+datafile="../data/shiny/0.transcripts.txt.gz"
 
-
-run_analy<-function(transcripts, toplot=c("leader_leader,N_end+", "leader_leader,ORF7a_end+")){
-  experiments <- attr(transcripts, 'info')
-  count_idx <- which(grepl(pattern = 'count[0-9]', x = colnames(transcripts)))
-  props <- prop.table(x = as.matrix(transcripts[,count_idx]), margin = 2)
-  colnames(props) <- experiments
-  
-  #for use in 'split_by', if I can get it to work
-  time_vec <- c('2hpi','24hpi','48hpi')
-  exp_vec <- c('vero','calu','caco')
-  
-  #calculate tpm
-  tpm <- props*1e-6
-  tpm <- cbind(ID=as.character(transcripts$ORFs),tpm)
-  
-  
-  #prep tpm_df
-  as.data.frame(tpm, stringsAsFactors=F) %>% melt(id.vars='ID', measure.vars=experiments, value.name = 'TPM') %>%
-    separate(variable, c('molecule' ,'experiment', 'time'), sep='_', remove = T) %>%
-    transform( TPM = as.numeric(TPM), experiment = factor(experiment), time = factor(time, levels = time_vec)) -> tpm_df
-  
-  #input IDs in vector to plot
-  ggplot(subset(tpm_df, ID %in% toplot), aes(x=time, y=TPM, group=interaction(experiment, ID), color = ID)) + geom_line() + scale_y_log10() + geom_point(inherit.aes=T, aes(shape = experiment))
-}
+tpm_df = .readTPM(datafile)
 
 
 
-.readIso<-function(x, isofile, header){
-len  = length(header)
-cnts = h5read(isofile, paste("transcripts", x,sep="/"), compoundAsDataFrame=F)$cnts
-c(cnts, rep(0,len -length(cnts)))
-}
-.readTotalIso<-function(isofile){
-	names = h5ls(isofile)
- 	isoheader = h5read(isofile,"header")
-	total_reads = apply(allcnts,2,sum)
-	trans = names[grep("transcript",names$group),]$name
- 	allcnts = t(data.frame(lapply(trans, .readIso, isofile, isoheader)))
- 	dimnames(allcnts) = list(trans, isoheader)
-	allcnts
-}
+
+
 
 run_depth<-function(h5file,   toplot=c("leader_leader,N_end"), span = 0.01, sumAll=F, logy=T){
 	header = h5read(h5file,"header")
@@ -86,38 +52,20 @@ shinyServer(function(input, output) {
 	output$distPlot <- renderPlot({
 	    input$plotButton
 	      #result = loadData();
-	  if(length(input$datafile)>0){
-	   datafile=input$datafile$datapath[[1]]
-	  }else{
-	   datafile="../data/shiny/0.transcripts.txt.gz"
-	  }
-	      if(file.exists(datafile)){
-  	      toplot = isolate(input$toplot)
-  	      toplot1 = isolate(input$toplot1)
-  	      toplot2 = isolate(input$toplot2)
-  	      
-  	      transcripts <- .readTranscripts(datafile)
-  	  
-  	      run_analy(transcripts,  c(toplot, toplot1, toplot2))
-	      }
-	   
+  	      toplot = c(isolate(input$toplot),isolate(input$toplot1),isolate(input$toplot2))
+  	     molecules <-  input$molecules 
+  	     cells <- input$cells 
+  	    
+  	      ggplot(subset(tpm_df, ID %in% toplot & molecule_type %in% molecules & cell %in% cells), aes(x=time, y=TPM, group=interaction(molecule_type, cell, ID), color = ID, linetype=molecule_type)) + geom_line() + scale_y_log10() + geom_point(inherit.aes=T,aes(shape = cell))
 	 })
 
 	output$depthPlot <- renderPlot({
 	    input$plotButton
 	      #result = loadData();
-            
-	  if(length(input$datafile)>0){
-	   h5file=input$datafile$datapath[[1]]
-	  }else{
-		dir="../data/shiny/"
-	   	h5file=paste(dir, "0.clusters.h5",sep="/")
- 		#isofile=paste(dir, "0.isoforms.h5",sep="/")
-	  }
-	      if(file.exists(datafile)){
-  	    	toplot = isolate(input$toplot)
-  	      	toplot1 = isolate(input$toplot1)
-  	      	toplot2 = isolate(input$toplot2)
+	  h5file="../data/shiny/1.clusters.h5"      
+	  
+	      if(file.exists(h5file)){
+  	   	
   		run_depth(h5file,c(toplot, toplot1, toplot2)) 
   		#run_depth(h5file,toplot=c("leader_leader,N_end")) 
 	      }

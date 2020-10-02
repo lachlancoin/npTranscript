@@ -1,4 +1,39 @@
 
+.readTPM<-function(datafile){
+  transcripts <- .readTranscripts(datafile)
+  experiments <- attr(transcripts, 'info')
+  experiments
+  count_idx <- which(grepl(pattern = 'count[0-9]', x = colnames(transcripts)))
+  props <- prop.table(x = as.matrix(transcripts[,count_idx]), margin = 2)
+  colnames(props) <- experiments
+  #for use in 'split_by', if I can get it to work
+  time_vec <- c('2hpi','24hpi','48hpi')
+  exp_vec <- c('vero','calu','caco')
+  #calculate tpm
+  tpm <- props*1e6
+  tpm <- cbind(ID=as.character(transcripts$ORFs),tpm)
+  #prep tpm_df
+  
+  as.data.frame(tpm) %>% melt(id.vars='ID', measure.vars=experiments, value.name = 'TPM') %>%
+    separate(variable, c('molecule_type', 'cell', 'time'), sep='_', remove = T) %>%
+    transform( TPM = as.numeric(TPM), molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time, levels = time_vec)) -> tpm_df
+ attr(tpm_df,"ORFs")<-transcripts$ORFs
+   tpm_df
+}
+.readIso<-function(x, isofile, header){
+  len  = length(header)
+  cnts = h5read(isofile, paste("transcripts", x,sep="/"), compoundAsDataFrame=F)$cnts
+  c(cnts, rep(0,len -length(cnts)))
+}
+.readTotalIso<-function(isofile){
+  names = h5ls(isofile)
+  isoheader = h5read(isofile,"header")
+  total_reads = apply(allcnts,2,sum)
+  trans = names[grep("transcript",names$group),]$name
+  allcnts = t(data.frame(lapply(trans, .readIso, isofile, isoheader)))
+  dimnames(allcnts) = list(trans, isoheader)
+  allcnts
+}
 
 
 getKmer<-function(base, pos,v = c(-1,0,1)){
