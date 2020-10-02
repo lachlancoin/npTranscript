@@ -25,7 +25,7 @@ run_analy<-function(transcripts, toplot=c("leader_leader,N_end+", "leader_leader
   
   #prep tpm_df
   as.data.frame(tpm, stringsAsFactors=F) %>% melt(id.vars='ID', measure.vars=experiments, value.name = 'TPM') %>%
-    separate(variable, c('experiment', 'time'), sep='_', remove = T) %>%
+    separate(variable, c('molecule' ,'experiment', 'time'), sep='_', remove = T) %>%
     transform( TPM = as.numeric(TPM), experiment = factor(experiment), time = factor(time, levels = time_vec)) -> tpm_df
   
   #input IDs in vector to plot
