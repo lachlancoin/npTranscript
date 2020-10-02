@@ -1,4 +1,8 @@
 library(shiny)
+library(reshape2)
+library(ggplot2)
+library(tidyr)
+
 source( "transcript_functions.R")
 
 datafile="../data/shiny/0.transcripts.txt.gz"
@@ -35,7 +39,7 @@ shinyUI(pageWithSidebar(
     # verbatimTextOutput("variables"),
     # verbatimTextOutput("validation"),
      plotOutput("distPlot", height=500)
-    # plotOutput("depthPlot", height=500)
+#    plotOutput("depthPlot", height=500)
   )
 ))
 

@@ -6,7 +6,9 @@ library(tidyr)
 
 
 source( "transcript_functions.R")
+datafile="../data/shiny/0.transcripts.txt.gz"
 
+tpm_df = .readTPM(datafile)
 
 
 
@@ -53,15 +55,14 @@ shinyServer(function(input, output) {
   	      toplot = c(isolate(input$toplot),isolate(input$toplot1),isolate(input$toplot2))
   	     molecules <-  input$molecules 
   	     cells <- input$cells 
-  	     datafile="../data/shiny/0.transcripts.txt.gz"
-  	     tpm_df = .readTPM(datafile)
+  	    
   	      ggplot(subset(tpm_df, ID %in% toplot & molecule_type %in% molecules & cell %in% cells), aes(x=time, y=TPM, group=interaction(molecule_type, cell, ID), color = ID, linetype=molecule_type)) + geom_line() + scale_y_log10() + geom_point(inherit.aes=T,aes(shape = cell))
 	 })
 
 	output$depthPlot <- renderPlot({
 	    input$plotButton
 	      #result = loadData();
-	  h5file="../data/shiny/1.clusters.h5"      
+	  h5file="../data/shiny/0.clusters.h5"      
 	  
 	      if(file.exists(h5file)){
   	   	
