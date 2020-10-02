@@ -6,11 +6,8 @@ tpm_df = .readTPM(datafile)
 
 choices=c("-",as.character(attr(tpm_df,"ORFs")))
 molecules=levels(tpm_df$molecule_type)
-molecules1 = as.list(1:length(molecules))
-names(molecules1) = molecules
+
 cells = levels(tpm_df$cell)
-cells1 = as.list(1:length(cells))
-names(cells1) = cells
 
 # Define UI for application that plots random distributions 
 shinyUI(pageWithSidebar(
@@ -37,8 +34,8 @@ shinyUI(pageWithSidebar(
     # verbatimTextOutput("instructions"),
     # verbatimTextOutput("variables"),
     # verbatimTextOutput("validation"),
-     plotOutput("distPlot", height=500),
-     plotOutput("depthPlot", height=500)
+     plotOutput("distPlot", height=500)
+    # plotOutput("depthPlot", height=500)
   )
 ))
 
