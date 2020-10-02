@@ -3,7 +3,7 @@ source( "transcript_functions.R")
 
 datafile="../data/shiny/0.transcripts.txt.gz"
 transcripts <- .readTranscripts(datafile)
-choices=c("-",as.character(transcripts$ORFs))
+choices=c("-",sort(as.character(transcripts$ORFs)))
 
 # Define UI for application that plots random distributions 
 shinyUI(pageWithSidebar(
