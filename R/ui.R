@@ -1,4 +1,6 @@
 library(shiny)
+source( "transcript_functions.R")
+
 datafile="../data/shiny/0.transcripts.txt.gz"
 transcripts <- .readTranscripts(datafile)
 choices=c("-",as.character(transcripts$ORFs))
