@@ -33,26 +33,53 @@ run_analy<-function(transcripts, toplot=c("leader_leader,N_end+", "leader_leader
 }
 
 
-#SAVE TRAINED RESULTS
-saveData <- function(result) {
-  savedResults <<-result
+
+.readIso<-function(x, isofile, header){
+len  = length(header)
+cnts = h5read(isofile, paste("transcripts", x,sep="/"), compoundAsDataFrame=F)$cnts
+c(cnts, rep(0,len -length(cnts)))
+}
+.readTotalIso<-function(isofile){
+	names = h5ls(isofile)
+ 	isoheader = h5read(isofile,"header")
+	total_reads = apply(allcnts,2,sum)
+	trans = names[grep("transcript",names$group),]$name
+ 	allcnts = t(data.frame(lapply(trans, .readIso, isofile, isoheader)))
+ 	dimnames(allcnts) = list(trans, isoheader)
+	allcnts
 }
 
-#LOAD TRAIN RESULTS
-loadData <- function() {
-  if (exists("savedResults")) {
-    savedResults
-  }
+run_depth<-function(h5file,   toplot=c("leader_leader,N_end"), span = 0.01, sumAll=F, logy=T){
+	header = h5read(h5file,"header")
+	dinds  = 2*(2:length(header)-2)+2
+	t = NULL; fimo=NULL;
+	type_nme = attr(transcripts,"info")
+   	clusters_ = readH5(h5file, header, toplot, dinds = dinds, pos =NULL, span = span, cumul=F, sumAll=sumAll)
+	if(sumAll) type_nme = "all"
+	#mat=t(h5read(h5file,paste("depth", toplot[1],sep="/")))
+rawdepth = T
+leg_size1=10
+show=T
+fill=F
+k = 1
+linetype="clusterID"
+colour="sampID"
+if(sumAll){
+colour="clusterID"
+linetype="sampID"
 }
+ plotClusters(clusters_, 2,  1, t, fimo, rawdepth = rawdepth, linetype=linetype, colour=colour,  xlim = NULL,  title ="depth", logy=logy, leg_size =leg_size1, show=show, fill =fill)
+}
+
 
 
 # HERE IS THE SERVER PART
 ##OUTPUT IS PASSED TO THE UI
 ##INPUT PASSES IN INFORMATION
 shinyServer(function(input, output) {
-	output$instructions <- renderPrint({
-		print("Upload 0.transcripts.txt.gz file produced by npTranscript");
-	})
+	#output$instructions <- renderPrint({
+	#	print("Upload 0.transcripts.txt.gz file produced by npTranscript");
+	#})
 
 	#THIS JUST EXAMPLE FOR RENDERING A PLOT
 	#REACTIVE ON PLOT BUTTON
@@ -72,6 +99,27 @@ shinyServer(function(input, output) {
   	      transcripts <- .readTranscripts(datafile)
   	  
   	      run_analy(transcripts,  c(toplot, toplot1, toplot2))
+	      }
+	   
+	 })
+
+	output$depthPlot <- renderPlot({
+	    input$plotButton
+	      #result = loadData();
+            
+	  if(length(input$datafile)>0){
+	   h5file=input$datafile$datapath[[1]]
+	  }else{
+		dir="../data/shiny/"
+	   	h5file=paste(dir, "0.clusters.h5",sep="/")
+ 		#isofile=paste(dir, "0.isoforms.h5",sep="/")
+	  }
+	      if(file.exists(datafile)){
+  	    	toplot = isolate(input$toplot)
+  	      	toplot1 = isolate(input$toplot1)
+  	      	toplot2 = isolate(input$toplot2)
+  		run_depth(h5file,c(toplot, toplot1, toplot2)) 
+  		#run_depth(h5file,toplot=c("leader_leader,N_end")) 
 	      }
 	   
 	 })

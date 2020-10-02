@@ -555,7 +555,7 @@ split1<-function(fi) strsplit(fi,"_")[[1]][1]
 
 
 
-plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = F, title = "",  logy=F, leg_size = 6, xlim  = NULL, show=F, updatenmes = F, fill = F){
+plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = F, linetype="sampID", colour="clusterID", title = "",  logy=F, leg_size = 6, xlim  = NULL, show=F, updatenmes = F, fill = F){
   if(!is.factor(df$clusterID)) df$clusterID = as.factor(df$clusterID)  #types[df$type]
  # names(df)[3] = "depth"
   #ids =  as.character(rel_count$ID)
@@ -567,7 +567,7 @@ plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = F, title = ""
     #}
     df[,k1]  = df[,k1]*(1e6/totalReadCount)
   }
-  ggp<-ggplot(df, aes_string(x="pos", fill="clusterID", colour = "clusterID", y = names(df)[k1])) +theme_bw()+geom_line() 
+  ggp<-ggplot(df, aes_string(x="pos", fill="clusterID", colour = colour, linetype=linetype, y = names(df)[k1])) +theme_bw()+geom_line() 
 if(fill) ggp<-ggp+geom_area()
   ggp<-ggp+ggtitle(title)+labs(y= if(rawdepth)  "depth" else "TPM");
   if(logy) ggp<-ggp+scale_y_continuous(trans='log10')
@@ -645,21 +645,19 @@ loess_smooth<-function(clusters,  inds,span = 0.05){
 
 
 
-makeCovPlots<-function(clusters_,  header, total_reads, t, type_nme,  leg_size=6, logy=F, rawdepth = T, xlim = list(NULL),   show=F, fill=F,
-count_indf = grep("count[0-9]", names(transcripts_))){
+makeCovPlots<-function(clusters_,  header, total_reads, t, type_nme,  leg_size=6, logy=F, rawdepth = T, xlim = list(NULL),   show=F, fill=F
+){
  dinds  = grep("depth", header)
   ggps = list()
   for(j in 1:length(xlim)){
 	leg_size1 = if(j==1) leg_size else  0
-    for( k in 1:length(count_indf)){
+    for( k in 1:length(type_nme)){
       ggps[[length(ggps)+1]] = plotClusters(clusters_, dinds[k],  total_reads[k], t, fimo, xlim = xlim[[j]], rawdepth = rawdepth,  
                                             title =type_nme[k], logy=logy, leg_size =leg_size1, show=show, fill =fill)
     }
   }
   
-  
-  
-  ml<-marrangeGrob(ggps,nrow = length(count_indf), ncol=length(xlim)) 
+  ml<-marrangeGrob(ggps,nrow = length(type_nme), ncol=length(xlim)) 
   
   invisible(ml)
 }
@@ -1346,19 +1344,20 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
 
 
 
-readH5<-function(h5file, header, transcripts_, pos = NULL,  span =0.0, cumul= if(!is.null(pos)) F else T){
- dinds  = grep("depth", header)
- pos_ind = which(header=="pos")
+readH5<-function(h5file, header, toplot, pos = NULL, dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
+ pos_ind = 1
  names = h5ls(h5file)$name
- inds = which(transcripts_$ID %in% names)
+ inds = which(toplot %in% names)
  if(length(inds)==0) return (NULL)
- IDS = transcripts_$ID[inds]
- clusters_ = matrix(NA, nrow =0, ncol = length(header)+1)
-  mat_prev = NULL
+ IDS = toplot[inds]
 
+ clusters_ = matrix(NA, nrow =0, ncol = 4)
+  mat_prev = NULL
+dimnames(clusters_)[[2]] = c("pos", "depth", "clusterID", "sampID")
   for(i in 1:length(IDS)){
 	ID = IDS[i]
-	mat = t(h5read(h5file,as.character(ID)))
+	mat = t(h5read(h5file,paste("depth",as.character(ID),sep="/")))
+	mat = mat[,c(1,dinds)]
 
 	if(!is.null(pos)) {
 		mat2 = matrix(0, nrow = length(pos), ncol  = dim(mat)[2])
@@ -1367,22 +1366,32 @@ readH5<-function(h5file, header, transcripts_, pos = NULL,  span =0.0, cumul= if
 		mat2[match(mat[,1],pos),-1] =mat[,-1]
 		mat = mat2
 	}
+	
 	mat = data.frame(mat)
 	names(mat) = header
-	
+	if(sumAll){
+		mat[,2] = apply(mat[,-1],1,sum)
+		mat = mat[,1:2]
+		names(mat)[2] = "all"
+	}
 	if( !is.null(mat_prev) && !is.null(pos) && cumul) {
-		mat[,dinds]	 = mat[,dinds] + mat_prev[,dinds]
+		mat[,-1]	 = mat[,-1] + mat_prev[,-1]
+		
 	}
 	if(!is.null(pos)) mat_prev = mat
-	mat1 = loess_smooth(mat, dinds, span)
-	cname = transcripts_$ORFs[i]  #paste(ID, transcripts_$leftGene[i], transcripts_$rightGene[i], sep=".")
+	mat1 = loess_smooth(mat, 2:dim(mat)[2], span)
+	cname = toplot[i]  #paste(ID, transcripts_$leftGene[i], transcripts_$rightGene[i], sep=".")
 	clusterID = rep(cname, dim(mat1)[1])
-	mat1 = cbind(mat1,clusterID )
-	clusters_ = rbind(clusters_,mat1)
-	
+	header1 = names(mat)
+	for( k in 1:(length(header1)-1)){
+		#print(k)
+		sampID = rep(header1[k+1], dim(mat1)[1])
+		mat2 = cbind(mat1[,c(1,k+1)],clusterID ,sampID)
+		dimnames(mat2)[[2]] = dimnames(clusters_)[[2]]
+		clusters_ = rbind(clusters_,mat2)
+	}
   } 
 clusters_
-
 }
 plotHeatmap<-function(h5file, header,  transcripts1, jk, logHeatmap = F,xlim = list(c(1,max(clusters$pos+1))),featureName = "depth", 
                       max_h=0 ,title = ""){
