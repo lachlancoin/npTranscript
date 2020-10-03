@@ -1,23 +1,46 @@
+.calcPropCI<-function(x, conf.int=0.95,  method="prop.test"){
+  v = round(binom.confint(x[1], x[2], method=method, conf.int=conf.int)[4:6] *(1e6))
+unlist(v)
+}
 
+.getORFs<-function(datafile){
+  time_vec <- c('2hpi','24hpi','48hpi')
+  exp_vec <- c('vero','calu','caco')
+  transcripts <- .readTranscripts(datafile)
+  num_breaks = transcripts$num_exons
+  type_name = transcripts$type_nme
+  experiments <- data.frame(experiments=attr(transcripts, 'info'))
+  ORFs=data.frame(ORFs=transcripts$ORFs, type_name=as.factor(type_name), num_breaks=as.factor(num_breaks))
+  attr(ORFs,"experiments")<-  separate(experiments,1, c('molecule_type', 'cell', 'time'), sep='_', remove = T) %>%
+    transform(  molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time, levels = time_vec)) 
+  
+  ORFs
+}
 .readTPM<-function(datafile){
   transcripts <- .readTranscripts(datafile)
   experiments <- attr(transcripts, 'info')
   experiments
   count_idx <- which(grepl(pattern = 'count[0-9]', x = colnames(transcripts)))
-  props <- prop.table(x = as.matrix(transcripts[,count_idx]), margin = 2)
-  colnames(props) <- experiments
+  total_reads = apply(transcripts[,count_idx],2,sum)
+  names(total_reads)= experiments
+  #if(!is.null(method)){}
+   tpm= transcripts[,count_idx]
+  
+  #props <- prop.table(x = as.matrix(transcripts[,count_idx]), margin = 2)
+  # tpm=props*1e6
+  colnames(tpm) <- experiments
   #for use in 'split_by', if I can get it to work
   time_vec <- c('2hpi','24hpi','48hpi')
   exp_vec <- c('vero','calu','caco')
   #calculate tpm
-  tpm <- props*1e6
+  #tpm <- props*1e6
   tpm <- cbind(ID=as.character(transcripts$ORFs),tpm)
   #prep tpm_df
-  
-  as.data.frame(tpm) %>% melt(id.vars='ID', measure.vars=experiments, value.name = 'TPM') %>%
+  #separate(TPM1, c('TPM', 'lower', 'upper'), sep=',', remove = T) %>%
+  as.data.frame(tpm) %>% melt(id.vars='ID', measure.vars=experiments, value.name = 'count') %>%
     separate(variable, c('molecule_type', 'cell', 'time'), sep='_', remove = T) %>%
-    transform( TPM = as.numeric(TPM), molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time, levels = time_vec)) -> tpm_df
- attr(tpm_df,"ORFs")<-transcripts$ORFs
+    transform( count=as.numeric(count), molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time, levels = time_vec)) -> tpm_df
+   attr(tpm_df,"total_reads") = total_reads
    tpm_df
 }
 .readIso<-function(x, isofile, header){
@@ -609,7 +632,7 @@ if(fill) ggp<-ggp+geom_area()
   if(leg_size==0  || length(levels(as.factor(as.character(df$type))))>20){
     ggp<-ggp+theme(legend.position="none")
   }else{
-    ggp<-ggp+theme(plot.title = element_text(size = 12, face = "bold"),legend.position="left",
+    ggp<-ggp+theme(plot.title = element_text(size = 12, face = "bold"),legend.position="right",
 legend.title=element_text(size=leg_size), legend.text=element_text(size=leg_size))
   }
   #
