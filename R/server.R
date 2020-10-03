@@ -4,6 +4,7 @@ library(ggplot2)
 library(tidyr)
 library(rhdf5)
 library(RColorBrewer)
+library(binom)
 
 
 source( "transcript_functions.R")
