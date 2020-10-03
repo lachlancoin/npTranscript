@@ -14,6 +14,12 @@ choices = lapply(levels(ORFs$num_breaks), function(x) as.character(ORFs$ORFs[ORF
 names(choices) = levels(ORFs$num_breaks)
 choices[[4]] = as.character(unlist(choices[-(1:3)]))
 choices = choices[1:4]
+names(choices)[[1]] = "zero junctions"
+names(choices)[[2]] = "one junction"
+names(choices)[[3]] = "two junctions"
+names(choices)[[4]] = "three or more junctions"
+
+
 molecules=levels(exps$molecule_type)
 times = levels(exps$time)
 
