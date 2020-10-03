@@ -2,6 +2,7 @@ library(shiny)
 library(reshape2)
 library(tidyr)
 library(rhdf5)
+library(RColorBrewer)
 
 
 source( "transcript_functions.R")
