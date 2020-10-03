@@ -1,6 +1,8 @@
 library(shiny)
 library(reshape2)
 library(tidyr)
+library(rhdf5)
+
 
 source( "transcript_functions.R")
 
@@ -9,6 +11,7 @@ tpm_df = .readTPM(datafile)
 
 choices=c("-",as.character(attr(tpm_df,"ORFs")))
 molecules=levels(tpm_df$molecule_type)
+times = levels(tpm_df$time)
 
 cells = levels(tpm_df$cell)
 
@@ -25,9 +28,9 @@ shinyUI(pageWithSidebar(
    selectInput("toplot", label = "Transcript 1", choices=choices, selected=choices[2]),
    selectInput("toplot1", label = "Transcript 2", choices=choices, selected=choices[1]),
    selectInput("toplot2", label = "Transcript 3", choices=choices, selected=choices[1]),
-   checkboxGroupInput("molecules", label = h3("Molecules"),  choices =molecules, selected = molecules),
-   checkboxGroupInput("cells", label = h3("Molecules"),  choices = cells, selected = cells),
-   
+   checkboxGroupInput("molecules", label = h3("Molecule type"),  choices =molecules, selected = molecules),
+   checkboxGroupInput("cells", label = h3("Cell type"),  choices = cells, selected = cells),
+   checkboxGroupInput("times", label = h3("Time points"),  choices = times, selected = times),
                      
 	actionButton("plotButton", "Generate plots")
   ),
@@ -37,8 +40,8 @@ shinyUI(pageWithSidebar(
     # verbatimTextOutput("instructions"),
     # verbatimTextOutput("variables"),
     # verbatimTextOutput("validation"),
-     plotOutput("distPlot", height=500)
-#    plotOutput("depthPlot", height=500)
+     plotOutput("distPlot", height=500),
+   plotOutput("depthPlot", height=500)
   )
 ))
 

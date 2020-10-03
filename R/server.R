@@ -2,6 +2,7 @@ library(shiny)
 library(reshape2)
 library(ggplot2)
 library(tidyr)
+library(rhdf5)
 
 
 
@@ -9,18 +10,22 @@ source( "transcript_functions.R")
 datafile="../data/shiny/0.transcripts.txt.gz"
 
 tpm_df = .readTPM(datafile)
+h5file="../data/shiny/0.clusters.h5"      
 
 
 
 
 
 
-run_depth<-function(h5file,   toplot=c("leader_leader,N_end"), span = 0.01, sumAll=F, logy=T){
+run_depth<-function(h5file,   toplot=c("leader_leader,N_end"),molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), span = 0.01, sumAll=F, logy=T){
 	header = h5read(h5file,"header")
 	dinds  = 2*(2:length(header)-2)+2
 	t = NULL; fimo=NULL;
-	type_nme = attr(transcripts,"info")
-   	clusters_ = readH5(h5file, header, toplot, dinds = dinds, pos =NULL, span = span, cumul=F, sumAll=sumAll)
+	type_nme = header[-1]
+  types_=data.frame(t(data.frame(strsplit(type_nme,"_"))))
+  names(types_) = c("molecules","cell","time")
+ inds1 =  which(types_$molecules %in% molecules & types_$cell %in% cells & types_$time %in% times)
+   	clusters_ = readH5(h5file, c("pos",header[inds1]), toplot, dinds = dinds[inds1], pos =NULL, span = span, cumul=F, sumAll=sumAll)
 	if(sumAll) type_nme = "all"
 	#mat=t(h5read(h5file,paste("depth", toplot[1],sep="/")))
 rawdepth = T
@@ -56,17 +61,16 @@ shinyServer(function(input, output) {
   	     molecules <-  input$molecules 
   	     cells <- input$cells 
   	    
-  	      ggplot(subset(tpm_df, ID %in% toplot & molecule_type %in% molecules & cell %in% cells), aes(x=time, y=TPM, group=interaction(molecule_type, cell, ID), color = ID, linetype=molecule_type)) + geom_line() + scale_y_log10() + geom_point(inherit.aes=T,aes(shape = cell))
+  	      ggplot(subset(tpm_df, ID %in% toplot & molecule_type %in% molecules & cell %in% cells & time %in% input$times), aes(x=time, y=TPM, group=interaction(molecule_type, cell, ID), color = ID, linetype=molecule_type)) + geom_line() + scale_y_log10() + geom_point(inherit.aes=T,aes(shape = cell))
 	 })
 
 	output$depthPlot <- renderPlot({
 	    input$plotButton
 	      #result = loadData();
-	  h5file="../data/shiny/0.clusters.h5"      
 	  
 	      if(file.exists(h5file)){
-  	   	
-  		run_depth(h5file,c(toplot, toplot1, toplot2)) 
+	        toplot = c(isolate(input$toplot),isolate(input$toplot1),isolate(input$toplot2))
+  		run_depth(h5file,toplot, molecules=input$molecules, cells=input$cells, times = input$times) 
   		#run_depth(h5file,toplot=c("leader_leader,N_end")) 
 	      }
 	   
