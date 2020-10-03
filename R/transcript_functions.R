@@ -1378,17 +1378,17 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
 
 
 
-
-readH5<-function(h5file, header, toplot, pos = NULL, dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
+readH5<-function(h5file, header, toplot, pos = NULL,id_cols = c("molecule","cell","time"), dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
  pos_ind = 1
+ ncols = length(id_cols)
  names = h5ls(h5file)$name
  inds = which(toplot %in% names)
  if(length(inds)==0) return (NULL)
  IDS = toplot[inds]
 
- clusters_ = matrix(NA, nrow =0, ncol = 4)
+ clusters_ = matrix(NA, nrow =0, ncol = 4+ncols)
   mat_prev = NULL
-dimnames(clusters_)[[2]] = c("pos", "depth", "clusterID", "sampID")
+dimnames(clusters_)[[2]] = c("pos", "depth", "clusterID",'sampleID', id_cols)
   for(i in 1:length(IDS)){
 	ID = IDS[i]
 	mat = t(h5read(h5file,paste("depth",as.character(ID),sep="/")))
@@ -1418,11 +1418,22 @@ dimnames(clusters_)[[2]] = c("pos", "depth", "clusterID", "sampID")
 	cname = toplot[i]  #paste(ID, transcripts_$leftGene[i], transcripts_$rightGene[i], sep=".")
 	clusterID = rep(cname, dim(mat1)[1])
 	header1 = names(mat)
+	nrows = dim(mat1)[1]
+	mat2 = data.frame(matrix(nrow = nrows, ncol = dim(clusters_)[2]))
+	dimnames(mat2)[[2]] = dimnames(clusters_)[[2]]
+	
 	for( k in 1:(length(header1)-1)){
 		#print(k)
-		sampID = rep(header1[k+1], dim(mat1)[1])
-		mat2 = cbind(mat1[,c(1,k+1)],clusterID ,sampID)
-		dimnames(mat2)[[2]] = dimnames(clusters_)[[2]]
+	  samp = header1[k+1]
+	 sampID= strsplit(samp,"_")[[1]]
+	 mat2[,1:2] =mat1[,c(1,k+1)] 
+	 mat2[,3] = clusterID
+	 mat2[,4] = samp
+	 for(kj in 1:ncols){
+	  mat2[,4+kj] = sampID[kj]
+	 }
+	#	sampID = rep(samp, dim(mat1)[1])
+	#	mat2 = cbind(,clusterID ,sampID)
 		clusters_ = rbind(clusters_,mat2)
 	}
   } 

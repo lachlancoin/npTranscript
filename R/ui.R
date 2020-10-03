@@ -14,7 +14,7 @@ molecules=levels(tpm_df$molecule_type)
 times = levels(tpm_df$time)
 
 cells = levels(tpm_df$cell)
-
+options=c("show_depth", "logy")
 # Define UI for application that plots random distributions 
 shinyUI(pageWithSidebar(
  
@@ -31,7 +31,7 @@ shinyUI(pageWithSidebar(
    checkboxGroupInput("molecules", label = h3("Molecule type"),  choices =molecules, selected = molecules),
    checkboxGroupInput("cells", label = h3("Cell type"),  choices = cells, selected = cells),
    checkboxGroupInput("times", label = h3("Time points"),  choices = times, selected = times),
-                     
+   checkboxGroupInput("options", label = "Plotting options", choices = options, selected=options[options!="show_depth1"])    ,
 	actionButton("plotButton", "Generate plots")
   ),
   
