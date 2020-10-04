@@ -26,12 +26,15 @@ public class CigarClusters {
 	
 	
 //	final double thresh;
-	
+	final int[] totalCounts;
+	final String chr;
 	public CigarClusters(int num_sources){
 	 this.num_sources = num_sources;
 	 this.seqlen =0;
 	// this.refseq =null;
 	 this.annot = null;
+	 this.totalCounts = new int[num_sources];
+	 chr = null;
 	}
 	
 	private static String getKey(String[] str, int[] inds) {
@@ -49,6 +52,8 @@ public class CigarClusters {
 		this.seqlen = refSeq.length();
 		this.annot = annot;
 		this.num_sources = num_sources;
+		this.totalCounts = new int[num_sources];
+		chr = refSeq.getName();
 	}
 
 	/*public void update(Annotation annot){
@@ -200,12 +205,9 @@ public class CigarClusters {
 			Outputs o, Sequence chrom, int chrom_index,SortedSet<String> geneNames
 			) throws IOException{
 		if(TranscriptUtils.writeAnnotP) {
-		
-				
 					annot.print(o.annotP);
-				
-			
 		}
+		o.writeTotalString(this);
 		Iterator<CigarCluster> it;
 		if(TranscriptUtils.coronavirus ){
 		Comparator<CigarCluster> comp = new Comparator<CigarCluster>(){

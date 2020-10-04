@@ -760,8 +760,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					
 					 profile =  	
 							new IdentityProfileHolder(chr, outp,  in_nmes, calcBreaks1, currentIndex, annot);
-					//else profile.refresh(chr, currentIndex);
-					//profile.update(annot);
+					
 					
 					
 					

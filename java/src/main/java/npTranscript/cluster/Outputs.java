@@ -567,10 +567,13 @@ public class Outputs{
 				return nme.compareTo(((HDFObj)o).nme);
 			}*/
 			public void expand(int new_num_cols) {
-				int[] cnts_old = cnts;
-				cnts = new int[new_num_cols];
-				System.arraycopy(cnts_old, 0, cnts, 0, cnts_old.length);
+				cnts = Outputs.expand(cnts, new_num_cols);
 			}
+		}
+		private static int[] expand(int[] cnts_old, int new_num_cols){
+			int[] cnts = new int[new_num_cols];
+			System.arraycopy(cnts_old, 0, cnts, 0, cnts_old.length);
+			return cnts;
 		}
 		static class HDFObjT  {
 			String key; int[] cnts;
@@ -585,16 +588,28 @@ public class Outputs{
 			}
 			
 			public void expand(int new_num_cols) {
-				int[] cnts_old = cnts;
-				cnts = new int[new_num_cols];
-				System.arraycopy(cnts_old, 0, cnts, 0, cnts_old.length);
+				cnts = Outputs.expand(cnts, new_num_cols);
 			}
 		}
 		
 	//	String[] transcript_info  = new String[12];
 		SortedSet<String> geneNames = new TreeSet<String>();
 		
-		
+		public synchronized void writeTotalString(CigarClusters cigarClusters){
+			 String id2 = "counts/"+cigarClusters.chr;
+			int[]   obj;
+			if(altT.exists(id2)){
+				obj = expand( altT.readIntArray(id2),this.new_max_cols);
+				
+			}else{
+				obj = new int[this.new_max_cols];
+			
+			}
+			for(int i=0; i<this.col_inds.length; i++){
+				obj[col_inds[i]] = cigarClusters.totalCounts[i];
+			}
+			altT.writeIntArray(id2, obj);
+		}
 		
 		/** writes the isoform information */
 		public synchronized void writeString(String id_, CigarCluster cc, CigarClusters cigarClusters) {
@@ -603,7 +618,7 @@ public class Outputs{
 			Map<CigarHash2, Count> all_breaks=cc.all_breaks;
 			String id = "isoforms/"+id_;
 			String id2 = "transcripts/"+id_;
-			String id3 = "counts/"+id_;
+			//String id3 = "counts/"+id_;
 			/*if(altT.exists(id3)){
 				
 			}else{
