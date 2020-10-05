@@ -2,20 +2,72 @@
   v = round(binom.confint(x[1], x[2], method=method, conf.int=conf.int)[4:6] *(1e6))
 unlist(v)
 }
-
-.getORFs<-function(datafile){
-  time_vec <- c('2hpi','24hpi','48hpi')
-  exp_vec <- c('vero','calu','caco')
-  transcripts <- .readTranscripts(datafile)
-  num_breaks = transcripts$num_exons
-  type_name = transcripts$type_nme
-  experiments <- data.frame(experiments=attr(transcripts, 'info'))
-  ORFs=data.frame(ORFs=transcripts$ORFs, type_name=as.factor(type_name), num_breaks=as.factor(num_breaks))
-  attr(ORFs,"experiments")<-  separate(experiments,1, c('molecule_type', 'cell', 'time'), sep='_', remove = T) %>%
-    transform(  molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time, levels = time_vec)) 
-  
-  ORFs
+.getHeaderH5<-function(datafile, toreplace=list()){
+  header = h5read(datafile,"header")
+  if(length(toreplace)>0){
+    for(i in 1:length(toreplace)){  
+      header[header==names(toreplace)[i]] =toreplace[[i]]
+      
+    }
+  }
+  header
 }
+.getIsoInfo<-function(datafile, toreplace=list()){
+ 
+ header=.getHeaderH5(datafile, toreplace)
+  mat =h5ls(datafile)
+  count_entries= paste(mat[grep("/counts",mat$group),1:2],collapse="/")
+  orf_entries = mat[grep("/trans",mat$group),]$name
+  counts=lapply(count_entries, function(x) h5read(datafile,x))
+  
+  total_reads = apply(data.frame(counts),1,sum)
+  #if(sum(total_reads)==0){
+  #  total_reads = rep(1e6,length(total_reads))
+  #}
+  names(total_reads) = header
+  experiments <- data.frame(experiments=header)
+ exps= separate(experiments,1, c('molecule_type', 'cell', 'time'), sep='_', remove = T) %>%
+    transform(  molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time)) 
+  num_breaks=unlist(lapply(strsplit(orf_entries,","),function(x) length(x)-1))
+  vals = list(
+     grep("end",grep("start|leader", orf_entries,v=T),v=T),
+     grep("end",grep("start|leader", orf_entries,v=T),v=T,inv=T),
+     grep("end",grep("start|leader", orf_entries,v=T,inv=T),v=T),
+     grep("end",grep("start|leader", orf_entries,v=T,inv=T),v=T,inv=T)
+  )
+  names(vals) = c("5_3", "5_no3","no5_3","no5_no3") 
+ vals_ind= lapply(vals,function(x) which(orf_entries %in% x))
+  type_name=rep("NA", length(num_breaks))
+  for(i in 1:length(vals_ind)){
+    type_name[vals_ind[[i]]] = names(vals_ind)[i]
+  }
+  
+  list(total_reads = total_reads, experiments=exps, 
+       orfs=data.frame(ORFs=orf_entries, type_name=factor(type_name),num_breaks = factor(num_breaks) )
+                )
+}
+
+.processInfo<-function(isoInfo){
+  ORFs = isoInfo$orfs
+  exps = isoInfo$experiments
+  choices = lapply(levels(ORFs$num_breaks), function(x) as.character(ORFs$ORFs[ORFs$num_breaks==x]))
+  choices1 = lapply(levels(ORFs$type_name),function(x) as.character(ORFs$ORFs[ORFs$type_name==x]))
+  names(choices) = levels(ORFs$num_breaks)
+  names(choices1) = levels(ORFs$type_name)
+  choices[[3]] = as.character(unlist(choices[-(1:2)]))
+  choices = choices[1:3]
+  names(choices)[[1]] = "zero junctions"
+  names(choices)[[2]] = "one junction"
+  names(choices)[[3]] = "two or more junctions"
+  molecules=levels(exps$molecule_type)
+  times = levels(exps$time)
+  cells = levels(exps$cell)
+  
+  
+  list(choices=choices, choices1=choices1,molecules=molecules, times=times, cells = cells)
+}
+
+
 .readTPM<-function(datafile){
   transcripts <- .readTranscripts(datafile)
   experiments <- attr(transcripts, 'info')
@@ -26,26 +78,29 @@ unlist(v)
   #if(!is.null(method)){}
    tpm= transcripts[,count_idx]
   
+  .processTPM(tpm, experiments, transcripts$ORFs)
+}
+ .processTPM<-function(tpm, experiments, ID){ 
+   colnames(tpm) <- experiments
   #props <- prop.table(x = as.matrix(transcripts[,count_idx]), margin = 2)
   # tpm=props*1e6
-  colnames(tpm) <- experiments
   #for use in 'split_by', if I can get it to work
-  time_vec <- c('2hpi','24hpi','48hpi')
-  exp_vec <- c('vero','calu','caco')
+  time_vec <- c('0hpi','2hpi','24hpi','48hpi')
+  exp_vec <- c('virion','vero','calu','caco')
   #calculate tpm
   #tpm <- props*1e6
-  tpm <- cbind(ID=as.character(transcripts$ORFs),tpm)
+  tpm <- cbind(ID=ID,tpm)
   #prep tpm_df
   #separate(TPM1, c('TPM', 'lower', 'upper'), sep=',', remove = T) %>%
   as.data.frame(tpm) %>% melt(id.vars='ID', measure.vars=experiments, value.name = 'count') %>%
     separate(variable, c('molecule_type', 'cell', 'time'), sep='_', remove = T) %>%
     transform( count=as.numeric(count), molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time, levels = time_vec)) -> tpm_df
-   attr(tpm_df,"total_reads") = total_reads
+   #attr(tpm_df,"total_reads") = total_reads
    tpm_df
 }
-.readIso<-function(x, isofile, header){
+.readIso<-function(x, isofile,header, group="/trans"){
   len  = length(header)
-  cnts = h5read(isofile, paste("transcripts", x,sep="/"), compoundAsDataFrame=F)$cnts
+  cnts = h5read(isofile, paste(group, x,sep="/"))
   c(cnts, rep(0,len -length(cnts)))
 }
 .readTotalIso<-function(isofile){
