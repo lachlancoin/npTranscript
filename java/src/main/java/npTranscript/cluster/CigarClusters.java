@@ -12,7 +12,6 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
 import japsa.seq.Sequence;
-import npTranscript.cluster.Outputs.HDFObjT;
 
 
 /**
@@ -74,6 +73,7 @@ public class CigarClusters {
 		String clusterID;
 		CigarHash2 subID ;
 		CigarCluster clust = l.get(c1.breaks_hash);
+		this.totalCounts[source_index]++;
 		if(clust==null){
 			
 			CigarCluster newc = new CigarCluster("ID"+chrom_index+"."+(l.keySet().size()+rem_count), num_sources, c1, source_index, strand);
@@ -105,7 +105,7 @@ public class CigarClusters {
 		return sb.toString();
 	}
 	
-	public void infoString(CigarCluster cc, HDFObjT obj, SortedSet<String> geneNames, String chrom){
+	/*public void infoString(CigarCluster cc, HDFObjT obj, SortedSet<String> geneNames, String chrom){
 		//String chrom = seq.getName();
 		//String chrom = "";
 		boolean forward = cc.forward;
@@ -123,7 +123,7 @@ public class CigarClusters {
 		//obj[9] = geneNames.size()+""; obj[10] = cc.totLen+""; obj[11] = cc.readCountSum()+"";
 		geneNames.clear();
 		//return getString(obj);
-	}
+	}*/
 	
 	public void process1(CigarCluster cc,   Outputs o,Sequence seq, int chrom_index, SortedSet<String> geneNames ){
 		String read_count = TranscriptUtils.getString(cc.readCount);
@@ -137,6 +137,8 @@ public class CigarClusters {
 	if(Outputs.writeGFF){
 		cc.writeGFF(o.gffW, o.refOut[type_ind], o.bedW,chrom,  Outputs.isoThresh, type_nme, seq);
 	}
+		
+		o.printTranscriptAlt(cc);
 		o.printTranscript(
 			cc.id()+"\t"+chrom+"\t"+cc.start+"\t"+cc.end+"\t"+type_nme+"\t"+
 	

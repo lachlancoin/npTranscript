@@ -375,7 +375,24 @@ public class Outputs{
 				}
 			altT2.writeStringArray(string, newh.toArray(new String[0]));
 		}
-
+		public synchronized void printTranscriptAlt(CigarCluster cc){
+			if(altT!=null){
+			String id2 = "trans/"+cc.breaks_hash.secondKey;
+			int[]  obj;
+			if(altT.exists(id2)){
+				 obj = expand(altT.readIntArray(id2),this.new_max_cols);
+			}else{
+				obj= new int[this.new_max_cols];
+				//obj = new HDFObjT(cc.breaks_hash.secondKey,cnts);
+				//cigarClusters.infoString(cc, obj, geneNames, chrom);
+			}
+			for(int i=0; i<this.col_inds.length; i++){
+				obj[col_inds[i]] = cc.readCount[i];
+			}
+			altT.writeIntArray(id2, obj);
+			}
+		}
+		
 		public synchronized void printTranscript(String str, String depth_str){
 			this.transcriptsP.print(str);
 			transcriptsP.println(depth_str);
@@ -575,7 +592,7 @@ public class Outputs{
 			System.arraycopy(cnts_old, 0, cnts, 0, cnts_old.length);
 			return cnts;
 		}
-		static class HDFObjT  {
+		/*static class HDFObjT  {
 			String key; int[] cnts;
 			String chrom; int start; int end; String type_nme; String exon_count; int span; String genes;
 		
@@ -590,7 +607,7 @@ public class Outputs{
 			public void expand(int new_num_cols) {
 				cnts = Outputs.expand(cnts, new_num_cols);
 			}
-		}
+		}*/
 		
 	//	String[] transcript_info  = new String[12];
 		SortedSet<String> geneNames = new TreeSet<String>();
@@ -609,37 +626,15 @@ public class Outputs{
 				obj[col_inds[i]] = cigarClusters.totalCounts[i];
 			}
 			altT.writeIntArray(id2, obj);
+			
 		}
 		
 		/** writes the isoform information */
 		public synchronized void writeString(String id_, CigarCluster cc, CigarClusters cigarClusters) {
 			Map<String, HDFObj> m = null;
-			int num_sources = cigarClusters.num_sources;
+		//	int num_sources = cigarClusters.num_sources;
 			Map<CigarHash2, Count> all_breaks=cc.all_breaks;
 			String id = "isoforms/"+id_;
-			String id2 = "transcripts/"+id_;
-			//String id3 = "counts/"+id_;
-			/*if(altT.exists(id3)){
-				
-			}else{
-				altT.writeString(id2, cigarClusters.infoString(cc, transcript_info, geneNames));
-
-			}
-			*/
-			HDFObjT  obj;
-			if(altT.exists(id2)){
-				 obj = altT.readCompound(id2, HDFObjT.class);
-				obj.expand(this.new_max_cols);
-				
-			}else{
-				int[] cnts = new int[this.new_max_cols];
-				obj = new HDFObjT(cc.breaks_hash.secondKey,cnts);
-				cigarClusters.infoString(cc, obj, geneNames, chrom);
-			}
-			for(int i=0; i<this.col_inds.length; i++){
-				obj.cnts[col_inds[i]] = cc.readCount[i];
-			}
-			altT.writeCompound(id2, obj);
 			//int existing_cols=0;
 			if(altT.exists(id)){
 				m = new HashMap<String, HDFObj>();
@@ -692,9 +687,7 @@ public class Outputs{
 				, int totalDepth){
 			String id = cc.breaks_hash.secondKey;
 			int[] rcount=cc.readCount;
-			
 			if(altT!=null){
-				
 				if(IdentityProfile1.writeIsoformDepthThresh.length==1){
 					if(totalDepth>=IdentityProfile1.writeIsoformDepthThresh[0]){
 						writeString(id, cc, cigarClusters);
