@@ -192,6 +192,7 @@ getKmer<-function(base, pos,v = c(-1,0,1)){
                          orfs="E,N", showSecondAxis=F){
   annot = read.table(fi, head=T)
   type_name = names(total_reads)
+  type_nme= type_name
 if(is.null(levels)){
   levels=type_nme
 }
