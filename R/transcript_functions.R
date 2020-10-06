@@ -12,12 +12,19 @@ unlist(v)
   }
   header
 }
-.getIsoInfo<-function(datafile, toreplace=list()){
+.getIsoInfo<-function(datafile, h5file,toreplace=list()){
  
  header=.getHeaderH5(datafile, toreplace)
-  mat =h5ls(datafile)
-  count_entries= paste(mat[grep("/counts",mat$group),1:2],collapse="/")
+ mat =h5ls(datafile)
+ count_entries= paste(mat[grep("/counts",mat$group),1:2],collapse="/")
+ print(h5file)
+ if(file.exists(h5file)){
+   mat1 =h5ls(h5file)
+   orf_entries = mat1[grep("/depth",mat1$group),]$name
+   
+ }else{
   orf_entries = mat[grep("/trans",mat$group),]$name
+ }
   counts=lapply(count_entries, function(x) h5read(datafile,x))
   
   total_reads = apply(data.frame(counts),1,sum)
@@ -50,15 +57,25 @@ unlist(v)
 .processInfo<-function(isoInfo){
   ORFs = isoInfo$orfs
   exps = isoInfo$experiments
-  choices = lapply(levels(ORFs$num_breaks), function(x) as.character(ORFs$ORFs[ORFs$num_breaks==x]))
-  choices1 = lapply(levels(ORFs$type_name),function(x) as.character(ORFs$ORFs[ORFs$type_name==x]))
-  names(choices) = levels(ORFs$num_breaks)
-  names(choices1) = levels(ORFs$type_name)
+  choices = lapply(levels(ORFs$num_breaks), function(x) sort(as.character(ORFs$ORFs[ORFs$num_breaks==x])))
+  choices1 = lapply(levels(ORFs$type_name),function(x) sort(as.character(ORFs$ORFs[ORFs$type_name==x])))
+  nmes1 = c("5_3","5_no3","no5_3","no5_no3")
+#  choices1= vector("list", length(nmes1))
+  if(length(choices1)<4){
+    
+    choices1 = c(choices1,rep("",4-length(choices1)))
+    names(choices1) = nmes1
+  }else{
+    names(choices1) = levels(ORFs$type_name)
+  }
+  names(choices) = paste(as.numeric(levels(ORFs$num_breaks)),"junctions")
+  if(length(choices)>3){
   choices[[3]] = as.character(unlist(choices[-(1:2)]))
-  choices = choices[1:3]
-  names(choices)[[1]] = "zero junctions"
-  names(choices)[[2]] = "one junction"
-  names(choices)[[3]] = "two or more junctions"
+  
+}
+ # names(choices)[[1]] = "zero junctions"
+#  names(choices)[[2]] = "one junction"
+#  names(choices)[[3]] = "two or more junctions"
   molecules=levels(exps$molecule_type)
   times = levels(exps$time)
   cells = levels(exps$cell)
@@ -668,11 +685,12 @@ split1<-function(fi) strsplit(fi,"_")[[1]][1]
 
 
 
-plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = F, linetype="sampID", colour="clusterID", title = "",  logy=F, leg_size = 6, xlim  = NULL, show=F, updatenmes = F, fill = F){
+plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = T, linetype="sampID", colour="clusterID", title = "", ylab=if(rawdepth)  "depth" else "TPM", logy=F, leg_size = 6, xlim  = NULL, show=F, updatenmes = F, fill = F){
   if(!is.factor(df$clusterID)) df$clusterID = as.factor(df$clusterID)  #types[df$type]
  # names(df)[3] = "depth"
   #ids =  as.character(rel_count$ID)
   #if(max(rel_count[,2])>1) stop('this should not happen')
+  
   if(!rawdepth){
     
     #for(i in 1:length(ids)){
@@ -680,9 +698,13 @@ plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = F, linetype="
     #}
     df[,k1]  = df[,k1]*(1e6/totalReadCount)
   }
+  if(is.null(xlim)){
+    xlim = c(min(df$pos), max(df$pos))
+  }
+  ylim = c(min(df[,k1]),max(df[,k1]))
   ggp<-ggplot(df, aes_string(x="pos", fill="clusterID", colour = colour, linetype=linetype, y = names(df)[k1])) +theme_bw()+geom_line() 
 if(fill) ggp<-ggp+geom_area()
-  ggp<-ggp+ggtitle(title)+labs(y= if(rawdepth)  "depth" else "TPM");
+  ggp<-ggp+ggtitle(title)+labs(y= ylab);
   if(logy) ggp<-ggp+scale_y_continuous(trans='log10')
   if(leg_size==0  || length(levels(as.factor(as.character(df$type))))>20){
     ggp<-ggp+theme(legend.position="none")
@@ -712,6 +734,7 @@ legend.title=element_text(size=leg_size), legend.text=element_text(size=leg_size
   }
   #abline(v = t$Maximum, col=3)
   if(!is.null(xlim)) ggp<-ggp+xlim(xlim)
+  ggp<-ggp+ylim(ylim)
   if(show) print(ggp)
   invisible(ggp)
 }
@@ -1456,7 +1479,7 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
 
 
 
-readH5<-function(h5file, header, toplot, pos = NULL,id_cols = c("molecule","cell","time"), dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
+readH5<-function(h5file, total_reads, header, toplot, pos = NULL,id_cols = c("molecule","cell","time"), dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
  pos_ind = 1
  ncols = length(id_cols)
  names = h5ls(h5file)$name
@@ -1471,11 +1494,16 @@ dimnames(clusters_)[[2]] = c("pos", "depth", "clusterID",'sampleID', id_cols)
 	ID = IDS[i]
 	mat = t(h5read(h5file,paste("depth",as.character(ID),sep="/")))
 	mat = mat[,c(1,dinds)]
+	if(!sumAll && !is.null(total_reads)){
+	  if(length(total_reads)==length(dinds)){
+	    mat = t(apply(mat,1,function(v)v/c(1,total_reads)))
+	  }
+	}
 
 	if(!is.null(pos)) {
 		mat2 = matrix(0, nrow = length(pos), ncol  = dim(mat)[2])
 		mat2[,1] = pos
-		mat = mat[which(mat[,1] %in% pos),]
+		mat = mat[which(mat[,1] %in% pos),,drop=F]
 		mat2[match(mat[,1],pos),-1] =mat[,-1]
 		mat = mat2
 	}
@@ -1483,7 +1511,7 @@ dimnames(clusters_)[[2]] = c("pos", "depth", "clusterID",'sampleID', id_cols)
 	mat = data.frame(mat)
 	names(mat) = header
 	if(sumAll){
-		mat[,2] = apply(mat[,-1],1,sum)
+		mat[,2] = apply(mat[,-1,drop=F],1,sum)
 		mat = mat[,1:2]
 		names(mat)[2] = "all"
 	}
