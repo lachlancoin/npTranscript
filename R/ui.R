@@ -3,7 +3,6 @@ library(reshape2)
 library(tidyr)
 library(rhdf5)
 library(RColorBrewer)
-library(gridExtra)
 
 source( "transcript_functions.R")
 
