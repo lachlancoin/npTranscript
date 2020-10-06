@@ -58,12 +58,12 @@ unlist(v)
   ORFs = isoInfo$orfs
   exps = isoInfo$experiments
  # choices = lapply(levels(ORFs$num_breaks), function(x) sort(as.character(ORFs$ORFs[ORFs$num_breaks==x])))
-  choices1 = lapply(levels(ORFs$type_name),function(x) sort(as.character(ORFs$ORFs[ORFs$type_name==x])))
+  choices1 = lapply(levels(ORFs$type_name),function(x) as.character(ORFs$ORFs[ORFs$type_name==x]))
   nmes1 = c("5_3","5_no3","no5_3","no5_no3")
 #  choices1= vector("list", length(nmes1))
   cmax = max(as.numeric(levels(ORFs$num_breaks)))
 #  c1 = vector("list",cmax+1)
-  choices = lapply( 0:cmax, function(x) sort(as.character(ORFs$ORFs[ORFs$num_breaks==x])))
+  choices = lapply( 0:cmax, function(x) as.character(ORFs$ORFs[ORFs$num_breaks==x]))
   names(choices) = paste(0:cmax,"junctions")
   if(length(choices1)<4){
     
@@ -124,14 +124,16 @@ unlist(v)
   cnts = h5read(isofile, paste(group, x,sep="/"))
   c(cnts, rep(0,len -length(cnts)))
 }
-.readTotalIso<-function(isofile){
+.readTotalIso<-function(isofile, group="/trans", trans=NULL){
   names = h5ls(isofile)
   isoheader = h5read(isofile,"header")
-  total_reads = apply(allcnts,2,sum)
-  trans = names[grep("transcript",names$group),]$name
+  #total_reads = apply(allcnts,2,sum)
+  if(is.null(trans))  trans = names[grep("/trans",names$group),]$name
   allcnts = t(data.frame(lapply(trans, .readIso, isofile, isoheader)))
   dimnames(allcnts) = list(trans, isoheader)
-  allcnts
+  cnts=apply(allcnts,1,sum)
+  names(cnts) = trans
+  order(cnts, decreasing=T)
 }
 
 
@@ -186,21 +188,27 @@ getKmer<-function(base, pos,v = c(-1,0,1)){
   list(heatm =heatm, rows = rows, cols = cols)
 }
 
-.readAnnotFile<-function(fi, type_nme=NULL, plot=T, annot0 = NULL, conf.level=0.68, showEB = F){
+.readAnnotFile<-function(fi, type_nme=NULL, plot=T, annot0 = NULL, conf.level=0.68, showEB = F, levels=NULL){
   annot = read.table(fi, head=T)
+if(is.null(levels)){
+  levels=type_nme
+}
+  toinclude=which(type_nme %in% levels)
   spi  = grep("Spliced", names(annot))
   uspi = grep("Unspliced", names(annot))
   ratio = data.frame(matrix(nrow = dim(annot)[1], ncol = length(spi)*3))
   mixt = data.frame(matrix(nrow = dim(annot)[1], ncol = length(spi)*3))
   
  nme_r = c("ORF", "Start", "Ratio","lower","upper", "type","proportion","prop_lower","prop_upper")
-   ratio1 = data.frame(matrix(nrow = dim(annot)[1]*length(spi), ncol = length(nme_r)))
   
-  names(ratio1) = nme_r
   offset = 0
   if(is.null(type_nme)) type_nme = 1:length(spi)
   nme = c()
-  for(i in 1:length(spi)){
+  if(is.null(toinclude)) toinclude = 1:length(spi)
+  ratio1 = data.frame(matrix(nrow = dim(annot)[1]*length(spi), ncol = length(nme_r)))
+  
+  names(ratio1) = nme_r
+  for(i in toinclude){
     confints =   binom.confint(annot[,spi[i]],(annot[,spi[i]]+ annot[,uspi[i]]) ,method="logit",conf.level=conf.level)
     nme = c(nme,paste(c("mean","lower","upper"), type_nme[i],sep="_"))
    # print(nme)
@@ -233,13 +241,17 @@ getKmer<-function(base, pos,v = c(-1,0,1)){
     ratio1 = rbind(annot0$ratio1, ratio1)
     annot = cbind(annot,mixt)
   }
-  ratio1$type=factor(ratio1$type,levels = names(sort(apply(ratio2,2,mean,na.rm=T))))
-  
+  if(is.null(levels)){
+ levels=names(sort(apply(ratio2,2,mean,na.rm=T)))
+  }
+  ratio1$type=factor(ratio1$type,levels = levels)
+ 
+  ratio1 = ratio1[!is.na(ratio1$type),]
   ggp= NULL
   if(plot){
     ORF="ORF"
     ord="Start"
-    x1 = paste("reorder(", ORF, ",", ord,")", sep="") 
+    x1 =  paste("reorder(", ORF, ",", ord,")", sep="") 
     ggp<-ggplot(ratio1, aes_string(x=x1,y="Ratio",fill="type", colour='type',ymin="lower" ,ymax="upper"))
     ggp<-ggp+ geom_bar(position=position_dodge(), aes_string(y="Ratio"),stat="identity")
       #geom_bar(aes_string(x=x1, y="Ratio", fill = "type", colour = "type"),stat="identity", position = "dodge")

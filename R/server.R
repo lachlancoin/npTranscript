@@ -81,6 +81,7 @@ if(!is.null(total_reads)) ylab="depth per million mapped reads"
                rawdepth = rawdepth, linetype=linetype, colour=colour,  xlim = NULL,ylab=ylab , title ="depth", logy=logy, leg_size =leg_size1, show=show, fill =fill)
 }
 
+
 .process1<-function(plottype1,info){
   choices1 = info$choices1
   choices = info$choices
@@ -119,6 +120,10 @@ shinyServer(function(input, output,session) {
     h5file=paste(currdir,"0.clusters.h5",sep="/")   
     isoInfo = .getIsoInfo(datafile, h5file,toreplace)
     total_reads = isoInfo$total_reads
+    
+    ##this gets order by counts
+    order = .readTotalIso(datafile, group="/trans", trans=as.character(isoInfo$orfs$ORFs))
+    isoInfo$orfs = isoInfo$orfs[order,,drop=F]
     
     info=.processInfo(isoInfo)
     print(paste("set", datafile))
@@ -205,7 +210,25 @@ shinyServer(function(input, output,session) {
   	     }
   	     ggp
   	  })
+output$infPlot<-renderPlot({
+  input$plotButton
+  currdir = session$userData$currdir
+  infilesAnnot = paste(currdir,"0.annot.txt.gz", sep="/")
+  if(file.exists(infilesAnnot)){
+    molecules=input$molecules; cells=input$cells; times = input$times;
+  type_nme= session$userData$header
+  types_=data.frame(t(data.frame(strsplit(type_nme,"_"))))
+  names(types_) = c("molecules","cell","time")
+  inds1 =  which(types_$molecules %in% molecules & types_$cell %in% cells & types_$time %in% times)
+  types1_ = types_[inds1,,drop=F]
+  ord = order(as.numeric(factor(types1_$time, levels=c("0hpi", "2hpi","24hpi","48hpi"))),types1_$cell,types1_$molecules)
 
+  annots1 = .readAnnotFile(infilesAnnot,plot=T,levels= type_nme[inds1][ord], type_nme=type_nme, annot0 = NULL,conf.level=0.95,showEB=T)
+  annots1$ggp
+  }else{
+    ggplot()
+  }
+})
 	output$depthPlot <- renderPlot({
 	    input$plotButton
 	      #result = loadData();

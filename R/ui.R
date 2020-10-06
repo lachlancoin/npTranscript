@@ -23,7 +23,9 @@ h5file=paste(currdir,"0.clusters.h5",sep="/")
 #datafile=paste(currdir,"0.transcripts.txt.gz",sep="/")
 toreplace=list(virion="RNA_virion_0hpi", whole_genome_mapped="RNA_vero_24hpi")
 #timevec= c('2hpi','24hpi','48hpi')
+
 isoInfo = .getIsoInfo(datafile,h5file, toreplace)
+
 info = .processInfo(isoInfo)
 options=c("show_depth", "logy", "showCI", "TPM","showMotifs","showORFs")
 totick=c("show_depth", "TPM")
@@ -58,7 +60,8 @@ shinyUI(pageWithSidebar(
     # verbatimTextOutput("variables"),
     # verbatimTextOutput("validation"),
      plotOutput("distPlot", height=400),
-   plotOutput("depthPlot", height=400)
+   plotOutput("depthPlot", height=400),
+   plotOutput("infPlot", height=400)
   )
 ))
 
