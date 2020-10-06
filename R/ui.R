@@ -59,9 +59,10 @@ shinyUI(pageWithSidebar(
     # verbatimTextOutput("instructions"),
     # verbatimTextOutput("variables"),
     # verbatimTextOutput("validation"),
+    plotOutput("infPlot", height=400),
+    
      plotOutput("distPlot", height=400),
-   plotOutput("depthPlot", height=400),
-   plotOutput("infPlot", height=400)
+   plotOutput("depthPlot", height=400)
   )
 ))
 
