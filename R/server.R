@@ -53,7 +53,7 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
    
    tot_reads =  total_reads[inds1]/rep(1e6,length(inds1))
  }
- print(tot_reads)
+ #print(tot_reads)
    	clusters_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]), toplot,id_cols=id_cols, dinds = dinds[inds1], pos =NULL, span = span, cumul=F, sumAll=sumAll)
 #print(clusters_)
    	if(is.null(clusters_)){

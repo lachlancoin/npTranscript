@@ -12,8 +12,10 @@ for(i in 1:length(required)){
 dirs=dirs[which(unlist(lapply(dirs,function(x) file.exists(paste(basedir,x,required[i],sep="/")))))]
 }
 seldir=1
+dirs = rev(dirs)
+#print(seldir)
 currdir = paste(basedir,dirs[seldir],sep="/")
-
+#print(currdir)
 datafile=paste(currdir,"0.isoforms.h5",sep="/")
 h5file=paste(currdir,"0.clusters.h5",sep="/")      
 
