@@ -33,7 +33,7 @@ total_reads = isoInfo$total_reads
 
 
 options=c("show_depth", "logy", "showCI", "TPM","showMotifs","showORFs","barchart", "showSecondAxis")
-totick=c("show_depth", "TPM")
+totick=c("show_depth", "TPM","barchart")
 ch=c(names(info$choices1), names(info$choices))
 t=readCoords(paste(currdir, "Coordinates.csv",sep="/"))
 orfs=paste(t$gene,collapse=",")
