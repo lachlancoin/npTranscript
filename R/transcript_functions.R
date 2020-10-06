@@ -57,10 +57,14 @@ unlist(v)
 .processInfo<-function(isoInfo){
   ORFs = isoInfo$orfs
   exps = isoInfo$experiments
-  choices = lapply(levels(ORFs$num_breaks), function(x) sort(as.character(ORFs$ORFs[ORFs$num_breaks==x])))
+ # choices = lapply(levels(ORFs$num_breaks), function(x) sort(as.character(ORFs$ORFs[ORFs$num_breaks==x])))
   choices1 = lapply(levels(ORFs$type_name),function(x) sort(as.character(ORFs$ORFs[ORFs$type_name==x])))
   nmes1 = c("5_3","5_no3","no5_3","no5_no3")
 #  choices1= vector("list", length(nmes1))
+  cmax = max(as.numeric(levels(ORFs$num_breaks)))
+#  c1 = vector("list",cmax+1)
+  choices = lapply( 0:cmax, function(x) sort(as.character(ORFs$ORFs[ORFs$num_breaks==x])))
+  names(choices) = paste(0:cmax,"junctions")
   if(length(choices1)<4){
     
     choices1 = c(choices1,rep("",4-length(choices1)))
@@ -69,10 +73,10 @@ unlist(v)
     names(choices1) = levels(ORFs$type_name)
   }
   names(choices) = paste(as.numeric(levels(ORFs$num_breaks)),"junctions")
-  if(length(choices)>3){
-  choices[[3]] = as.character(unlist(choices[-(1:2)]))
+#  if(length(choices)>4){
+#  choices[[4]] = as.character(unlist(choices[-(1:3)]))
   
-}
+#}
  # names(choices)[[1]] = "zero junctions"
 #  names(choices)[[2]] = "one junction"
 #  names(choices)[[3]] = "two or more junctions"
