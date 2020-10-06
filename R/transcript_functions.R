@@ -188,24 +188,30 @@ getKmer<-function(base, pos,v = c(-1,0,1)){
   list(heatm =heatm, rows = rows, cols = cols)
 }
 
-.readAnnotFile<-function(fi, type_nme=NULL, plot=T, annot0 = NULL, conf.level=0.68, showEB = F, levels=NULL){
+.readAnnotFile<-function(fi, total_reads, norm=F ,plot=T, barchart=F,annot0 = NULL, conf.level=0.68, showEB = F, levels=NULL, 
+                         orfs="E,N", showSecondAxis=F){
   annot = read.table(fi, head=T)
+  type_name = names(total_reads)
 if(is.null(levels)){
   levels=type_nme
 }
+  if(!norm){
+    total_reads = rep(1,length(total_reads))
+    names(total_reads) = type_name
+  }
   toinclude=which(type_nme %in% levels)
   spi  = grep("Spliced", names(annot))
   uspi = grep("Unspliced", names(annot))
   ratio = data.frame(matrix(nrow = dim(annot)[1], ncol = length(spi)*3))
   mixt = data.frame(matrix(nrow = dim(annot)[1], ncol = length(spi)*3))
   
- nme_r = c("ORF", "Start", "Ratio","lower","upper", "type","proportion","prop_lower","prop_upper")
+ nme_r = c("ORF", "Start", "Ratio","lower","upper", "type","spliced","unspliced","logdiff","logtotal")
   
   offset = 0
   if(is.null(type_nme)) type_nme = 1:length(spi)
   nme = c()
   if(is.null(toinclude)) toinclude = 1:length(spi)
-  ratio1 = data.frame(matrix(nrow = dim(annot)[1]*length(spi), ncol = length(nme_r)))
+  ratio1 = data.frame(matrix(nrow = dim(annot)[1]*length(toinclude), ncol = length(nme_r)))
   
   names(ratio1) = nme_r
   for(i in toinclude){
@@ -214,41 +220,52 @@ if(is.null(levels)){
    # print(nme)
     indsi = ((i-1)*3+1):((i)*3)
     ratio[,indsi ]= confints[,4:6]
-  #confints=  ratio[,i] = annot[,spi[i]]/(annot[,spi[i]]+ annot[,uspi[i]]) 
-    if(!is.null(annot0)){
-      a = annot0$annot$mean_Cell
-      b =   annot0$annot$mean_Virion
-    
-      mixt[,indsi] = apply(confints[,4:6],2,function(v) (v-b)/(a-b))
-      mixt[,indsi] =  apply(mixt[,indsi],c(1,2),function(x) min(max(x,0),1))
-    }
     ranges = offset + 1:length(annot$Gene)
     ratio1[ranges,1] = as.character(annot$Gene)
     ratio1[ranges,2] = as.numeric(as.character(annot$Start))
     ratio1[ranges,3:5] = confints[,4:6]
     ratio1[ranges,6] = rep(type_nme[i], length(ranges))
-    ratio1[ranges,7:9] = mixt[,indsi]
+    ratio1[ranges,7] = annot[,spi[i]]
+    ratio1[ranges,8] =  annot[,uspi[i]]
+    ratio1[ranges,9] = -log2(ratio1[ranges,7]/(ratio1[ranges,7]+ratio1[ranges,8]))
+    ratio1[ranges,10] = log2((ratio1[ranges,7]+ratio1[ranges,8])/total_reads[i])
+    #ratio1[ranges,7:9] = mixt[,indsi]
     offset = offset + length(ranges)
   }
-  names(ratio) =nme
-  names(mixt) =paste(nme,"prop")
-  ratio2 = ratio[,seq(1,length(spi)*3,by=3),drop=F]
-  names(ratio2) = type_nme
-  annot = cbind(annot, ratio)
-  if(!is.null(annot0)){
-    #cellular_ratio = annot0$ratio1[annot0$ratio1$type=="Cell",,drop=F]
-    #virion_ratio = annot0$ratio1[annot0$ratio1$type=="Virion",,drop=F]
-    ratio1 = rbind(annot0$ratio1, ratio1)
-    annot = cbind(annot,mixt)
-  }
-  if(is.null(levels)){
- levels=names(sort(apply(ratio2,2,mean,na.rm=T)))
-  }
-  ratio1$type=factor(ratio1$type,levels = levels)
+  #names(ratio) =nme
  
-  ratio1 = ratio1[!is.na(ratio1$type),]
-  ggp= NULL
-  if(plot){
+  orfs_include=unlist(strsplit(orfs,","))
+  ratio1 = ratio1[ratio1$ORF %in% orfs_include,,drop=F]
+ 
+  
+#  ggp= NULL
+  if(!barchart){
+    timevec=c("0hpi","2hpi","24hpi","48hpi")
+    ratio3= separate(ratio1,6, c('molecule_type', 'cell', 'time'), sep='_', remove = T) %>%
+      transform(  molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time,levels=timevec))
+    # if(is.null(orfs_include)) orfs_include = levels(factor(ratio3$ORF))
+    coeff=2
+    diff=0
+    ggp1<-ggplot(ratio3, aes(x=time))
+    ggp1<-ggp1+geom_line(aes(y=logdiff ,group=interaction(molecule_type, cell, ORF), color = cell, linetype="dotted"))
+    ggp1<-ggp1+geom_point(aes(y=logdiff ,group=interaction(molecule_type, cell, ORF), color = cell, shape=ORF,size=10))
+     if(showSecondAxis){
+       ggp1<-ggp1+geom_line(aes(y=(logtotal-diff)/coeff ,group=interaction(molecule_type, cell, ORF), color = cell, linetype="dashed"))
+       ggp1<-ggp1+geom_point(aes(y=(logtotal-diff)/coeff ,group=interaction(molecule_type, cell, ORF), color = cell, shape=ORF,size=10))
+       
+       ggp1<-ggp1+ scale_y_continuous(
+      name = "Log2 (total - sub-genomics)",
+      sec.axis = sec_axis(~.*coeff+diff, name="Log2 Total")
+    )
+     }
+    else ggp1<-ggp1+ scale_y_continuous( name = "Log2 (total - sub-genomics)")
+     
+    return(ggp1)
+  }else{
+    if(is.null(levels)){
+      levels=names(sort(apply(ratio2,2,mean,na.rm=T)))
+    }
+    ratio1$type=factor(ratio1$type,levels = levels)
     ORF="ORF"
     ord="Start"
     x1 =  paste("reorder(", ORF, ",", ord,")", sep="") 
@@ -259,16 +276,11 @@ if(is.null(levels)){
       ggp<-ggp+geom_errorbar(position=position_dodge(width=0.9),colour="black")
     } #ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="lower", ymax="upper"), width=.2)#, position="dodge")
    ggp<-ggp+scale_y_continuous(limits = c(0,1))
-    if(!is.null(annot0)){
-    ggp<-ggp +  geom_point(position=position_dodge(width=0.9), aes_string(x=x1, y="proportion"),stat="identity")
-    ggp<-ggp+geom_errorbar(position=position_dodge(width=0.9), aes_string(x=x1,ymin="prop_lower", ymax="prop_upper"), width=.2, position="dodge")
-    ggp<-ggp+ scale_y_continuous(limits = c(0,1), sec.axis =sec_axis(~ . ))
-    }
+    
      ggp<-ggp+ggtitle("Percentage of ORF covering reads which are spliced to 5'")
      ggp<-ggp+xlab("ORF")
-    #ggp
+    return(ggp)
   }
-  list(annot= annot, ratio1 = ratio1,ggp = ggp)
 }
 
 

@@ -3,6 +3,8 @@ library(reshape2)
 library(tidyr)
 library(rhdf5)
 library(RColorBrewer)
+library(gridExtra)
+
 source( "transcript_functions.R")
 
 basedir="../data"
@@ -27,9 +29,11 @@ toreplace=list(virion="RNA_virion_0hpi", whole_genome_mapped="RNA_vero_24hpi")
 isoInfo = .getIsoInfo(datafile,h5file, toreplace)
 
 info = .processInfo(isoInfo)
-options=c("show_depth", "logy", "showCI", "TPM","showMotifs","showORFs")
+options=c("show_depth", "logy", "showCI", "TPM","showMotifs","showORFs","barchart", "showSecondAxis")
 totick=c("show_depth", "TPM")
 ch=c(names(info$choices1), names(info$choices))
+t=readCoords(paste(currdir, "Coordinates.csv",sep="/"))
+orfs=paste(t$gene,collapse=",")
 # Define UI for application that plots random distributions 
 shinyUI(pageWithSidebar(
  
@@ -50,7 +54,8 @@ shinyUI(pageWithSidebar(
    checkboxGroupInput("molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules),
    checkboxGroupInput("cells", label = "Cell type",  choices = info$cells, selected = info$cells),
    checkboxGroupInput("times", label = "Time points",  choices = info$times, selected = info$times),
-   checkboxGroupInput("options", label = "Plotting options", choices = options, selected=totick) 
+   checkboxGroupInput("options", label = "Plotting options", choices = options, selected=totick) ,
+   textInput("orfs", label="ORFs to include", value = orfs)
  #  numericInput("conf.int", label = h3("Confidence intervals"), value = 0.95),
   ),
   

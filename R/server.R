@@ -5,6 +5,8 @@ library(tidyr)
 library(rhdf5)
 library(RColorBrewer)
 library(binom)
+library(gridExtra)
+
 
 
 source( "transcript_functions.R")
@@ -127,8 +129,10 @@ shinyServer(function(input, output,session) {
     
     info=.processInfo(isoInfo)
     print(paste("set", datafile))
-   
-    session$userData$t = readCoords(paste(currdir, "Coordinates.csv",sep="/"))
+    t = readCoords(paste(currdir, "Coordinates.csv",sep="/"))
+    session$userData$t=t
+    orfs=paste(t$gene,collapse=",")
+    
     fimo_file = paste(currdir,"fimo.tsv",sep="/")
     ch=c(names(info$choices1), names(info$choices))
     
@@ -149,6 +153,8 @@ shinyServer(function(input, output,session) {
     updateCheckboxGroupInput(session,"molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules)
     updateCheckboxGroupInput(session,"cells", label = "Cell type",  choices = info$cells, selected = info$cells)
     updateCheckboxGroupInput(session,"times", label = "Time points",  choices = info$times, selected = info$times)
+    updateTextInput(session,"orfs", label="ORFs to include", value = orfs)
+    
   })  
 	#THIS JUST EXAMPLE FOR RENDERING A PLOT
 	#REACTIVE ON PLOT BUTTON
@@ -213,7 +219,10 @@ shinyServer(function(input, output,session) {
 output$infPlot<-renderPlot({
   input$plotButton
   currdir = session$userData$currdir
+  barchart="barchart" %in% input$options
+  showSecondAxis="showSecondAxis" %in% input$options
   infilesAnnot = paste(currdir,"0.annot.txt.gz", sep="/")
+  total_reads = session$userData$total_reads
   if(file.exists(infilesAnnot)){
     molecules=input$molecules; cells=input$cells; times = input$times;
   type_nme= session$userData$header
@@ -222,9 +231,11 @@ output$infPlot<-renderPlot({
   inds1 =  which(types_$molecules %in% molecules & types_$cell %in% cells & types_$time %in% times)
   types1_ = types_[inds1,,drop=F]
   ord = order(as.numeric(factor(types1_$time, levels=c("0hpi", "2hpi","24hpi","48hpi"))),types1_$cell,types1_$molecules)
-
-  annots1 = .readAnnotFile(infilesAnnot,plot=T,levels= type_nme[inds1][ord], type_nme=type_nme, annot0 = NULL,conf.level=0.95,showEB=T)
-  annots1$ggp
+##we should use total reads from combined human viral.  For now we set norm=F
+  print(input$orfs)
+  annots1 = .readAnnotFile(infilesAnnot,total_reads, plot=T,barchart=barchart,norm=F,levels= type_nme[inds1][ord],
+                           showSecondAxis=showSecondAxis, annot0 = NULL,conf.level=0.95,showEB=T, orfs=input$orfs)
+  annots1
   }else{
     ggplot()
   }
@@ -244,7 +255,7 @@ output$infPlot<-renderPlot({
   if(tpm){
     total_reads = session$userData$total_reads
   }
-	  	  print(total_reads)
+	  	#  print(total_reads)
 	 # print(h5file)
 	    if(showDepth  && !is.null(h5file)){
 	    
