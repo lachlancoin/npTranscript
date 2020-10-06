@@ -26,8 +26,12 @@ toreplace=list(virion="RNA_virion_0hpi", whole_genome_mapped="RNA_vero_24hpi")
 #timevec= c('2hpi','24hpi','48hpi')
 
 isoInfo = .getIsoInfo(datafile,h5file, toreplace)
-
 info = .processInfo(isoInfo)
+total_reads = isoInfo$total_reads
+
+
+
+
 options=c("show_depth", "logy", "showCI", "TPM","showMotifs","showORFs","barchart", "showSecondAxis")
 totick=c("show_depth", "TPM")
 ch=c(names(info$choices1), names(info$choices))

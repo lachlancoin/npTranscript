@@ -224,7 +224,7 @@ output$infPlot<-renderPlot({
   total_reads = session$userData$total_reads
   if(file.exists(infilesAnnot)){
     molecules=input$molecules; cells=input$cells; times = input$times;
-  type_nme= session$userData$header
+  type_nme= names(total_reads)
   types_=data.frame(t(data.frame(strsplit(type_nme,"_"))))
   names(types_) = c("molecules","cell","time")
   inds1 =  which(types_$molecules %in% molecules & types_$cell %in% cells & types_$time %in% times)
