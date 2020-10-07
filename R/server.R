@@ -182,7 +182,7 @@ shinyServer(function(input, output,session) {
   	     datafile=session$userData$datafile
   	     header = session$userData$header
   	     total_reads = session$userData$total_reads
-  	     if(length(toplot)>0 && !is.null(datafile) && nchar(toplot[1])>3){
+  	     if(length(toplot)>0 && !is.null(datafile) && nchar(toplot[1])>2){
   	       if(usegrep){
   	        mat = .readIsoGrep(toplot,datafile,header, "/trans") 
   	       }else{
@@ -288,16 +288,15 @@ output$infPlot<-renderPlot({
 	        if(length(toplot)==0){
 	          ##need to get list from this
 	          toplot = c(isolate(input$toplot7))
-	          if(nchar(toplot[1])>3){
+	          if(nchar(toplot[1])>2){
 	            combinedID=toplot[1]
-	            mat = h5ls(h5file)
-	            mat = mat[mat$group=="/depth",,drop=F]
-	            toplot = mat[grep(toplot[1],mat$name),,drop=F]$name
+	            toplot = .findEntries(toplot[1],h5file,"/depth")
+	           
 	          }
 	          merge=T
 	          sumAll=F
 	        }
-	        if(length(toplot)>0 && nchar(toplot[1])>3){
+	        if(length(toplot)>0 && nchar(toplot[1])>2){
 	         # print(toplot)
   		run_depth(h5file,total_reads,toplot, merge=merge,molecules=input$molecules, combinedID=combinedID, cells=input$cells, times = input$times,logy=logy, sumAll = sumAll,
   		          showORFs = showORFs, fimo=fimo, t=t, showMotifs =showMotifs) 

@@ -124,10 +124,21 @@ unlist(v)
   cnts = h5read(isofile, paste(group, x,sep="/"))
   c(cnts, rep(0,len -length(cnts)))
 }
-.readIsoGrep<-function(x, isofile,header, group="/trans"){
+.findEntries<-function(x,isofile, group){
   mat = h5ls(isofile)
   mat = mat[mat$group==group,,drop=F]
-  x1 = mat[grep(x,mat$name),,drop=F]$name
+  if(x=="all"){
+    x1 = mat$name
+  }else if(length(grep("juncts",x))>0){
+    num = as.numeric(strsplit(x,":")[[1]][2])
+    x1=mat$name[unlist(lapply(strsplit(mat$name,","),length))==(num+1)]
+  }else{
+   x1=mat[grep(x,mat$name),,drop=F]$name
+  }
+  x1
+}
+.readIsoGrep<-function(x, isofile,header, group="/trans"){
+ x1 = .findEntries(x,isofile,group);
  # cnts = lapply(x1,.readIso, header, group)
   mat1 = t(data.frame( lapply(x1, .readIso, isofile, header, group)))
   mat2 = matrix(apply(mat1,2,sum),nrow=1,ncol=dim(mat1)[2])
@@ -1576,12 +1587,16 @@ readH5<-function(h5file, total_reads, header, toplot, gapthresh=10,merge=F, comb
  }
   for(i in 1:length(IDS)){
 	ID = IDS[i]
-	mat = t(h5read(h5file,paste("depth",as.character(ID),sep="/")))[,c(1,dinds),drop=F]
+	
+	mat = t(h5read(h5file,paste("depth",as.character(ID),sep="/")))
+	if(dim(mat)[1]>0){
+	mat=mat[,c(1,dinds),drop=F]
 	if(merge){
-	  mats[[i]] = mat
+	  mats[[length(mats)+1]] = mat
 	}else{
 	  mat2 = .processInternal(mat, sumAll, header, total_reads, span, gapthresh,ID)
 		clusters_ = rbind(clusters_,mat2)
+	}
 	}
   } 
  if(merge){
