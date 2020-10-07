@@ -284,6 +284,7 @@ output$infPlot<-renderPlot({
 	        merge=F
 	        toplot = toplot[toplot!="-"]
 	        combinedID="combined"
+	        sumAll = length(toplot)>1
 	        if(length(toplot)==0){
 	          ##need to get list from this
 	          toplot = c(isolate(input$toplot7))
@@ -294,10 +295,11 @@ output$infPlot<-renderPlot({
 	            toplot = mat[grep(toplot[1],mat$name),,drop=F]$name
 	          }
 	          merge=T
+	          sumAll=F
 	        }
 	        if(length(toplot)>0 && nchar(toplot[1])>3){
 	         # print(toplot)
-  		run_depth(h5file,total_reads,toplot, merge=merge,molecules=input$molecules, combinedID=combinedID, cells=input$cells, times = input$times,logy=logy, sumAll = length(toplot)>1,
+  		run_depth(h5file,total_reads,toplot, merge=merge,molecules=input$molecules, combinedID=combinedID, cells=input$cells, times = input$times,logy=logy, sumAll = sumAll,
   		          showORFs = showORFs, fimo=fimo, t=t, showMotifs =showMotifs) 
 	        }
   		#run_depth(h5file,toplot=c("leader_leader,N_end")) 
