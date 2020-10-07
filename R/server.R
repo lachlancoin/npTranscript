@@ -73,7 +73,7 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
    	  #  separate(variable, c('molecule_type', 'cell', 'time'), sep='_', remove = T)  %>%
    	 # transform( count=as.numeric(count), molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time, levels = time_vec)) 
    	
-   		if(sumAll) type_nme = "all"
+   		if(sumAll) type_nme = "combined"
 	#mat=t(h5read(h5file,paste("depth", toplot[1],sep="/")))
 rawdepth = T
 leg_size1=10
@@ -305,6 +305,7 @@ output$infPlot<-renderPlot({
 	        }
 	        if(length(toplot)>0 && nchar(toplot[1])>2){
 	         # print(toplot)
+	          if("sumDepth" %in% input$options) sumAll=TRUE
   		run_depth(h5file,total_reads,toplot, merge=merge,molecules=input$molecules, combinedID=combinedID, cells=input$cells, times = input$times,logy=logy, sumAll = sumAll,
   		          showORFs = showORFs, fimo=fimo, t=t, showMotifs =showMotifs) 
 	        }
