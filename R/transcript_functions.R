@@ -1507,8 +1507,19 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
 }
 
 
+.addZero<-function(mat, thresh=10){
+  len = dim(mat)[[1]]
+  ncol = dim(mat)[[2]]
+  diffs = apply(cbind(mat[-1,1], mat[1:(len-1),1]),1, function(v)v[1]-v[2])
+  gaps=which(diffs>thresh)
+  if(length(gaps)>0){
+  mat[gaps,-1] =rep(0, ncol-1)
+  mat[gaps+1,-1] =rep(0, ncol-1)
+  }
+  mat
+}
 
-readH5<-function(h5file, total_reads, header, toplot, pos = NULL,id_cols = c("molecule","cell","time"), dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
+readH5<-function(h5file, total_reads, header, toplot, gapthresh=10,pos = NULL,id_cols = c("molecule","cell","time"), dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
  pos_ind = 1
  ncols = length(id_cols)
  names = h5ls(h5file)$name
@@ -1522,7 +1533,8 @@ dimnames(clusters_)[[2]] = c("pos", "depth", "clusterID",'sampleID', id_cols)
   for(i in 1:length(IDS)){
 	ID = IDS[i]
 	mat = t(h5read(h5file,paste("depth",as.character(ID),sep="/")))
-	mat = mat[,c(1,dinds)]
+	mat = .addZero(mat[,c(1,dinds),drop=F], thresh=gapthresh)
+	
 	if(!sumAll && !is.null(total_reads)){
 	  if(length(total_reads)==length(dinds)){
 	    mat = t(apply(mat,1,function(v)v/c(1,total_reads)))
