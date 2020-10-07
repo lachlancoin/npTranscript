@@ -50,6 +50,13 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
  types1_ = types_[inds1,,drop=F]
  ord = order(as.numeric(factor(types1_$time, levels=c("0hpi", "2hpi","24hpi","48hpi"))),types1_$cell,types1_$molecules)
  levs=type_nme[inds1][ord]
+ 
+ facts =  apply(types1_,2,function(v) levels(factor(v)))
+  same_inds = which(unlist(lapply(facts,length))==1)
+  sumID='all'
+  if(length(same_inds)>0){
+   sumID = paste(unlist(facts[same_inds]),collapse="_")
+  }
  #print(inds1)
  id_cols = c("molecule","cell","time")
  tot_reads=NULL
@@ -58,7 +65,7 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
    tot_reads =  total_reads[inds1]/rep(1e6,length(inds1))
  }
  #print(tot_reads)
-   	clusters_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]), merge=merge,combinedID=combinedID,toplot,id_cols=id_cols, gapthresh=gapthresh, dinds = dinds[inds1], pos =NULL, span = span, cumul=F, sumAll=sumAll)
+   	clusters_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]), merge=merge,sumID=sumID, combinedID=combinedID,toplot,id_cols=id_cols, gapthresh=gapthresh, dinds = dinds[inds1], pos =NULL, span = span, cumul=F, sumAll=sumAll)
 #print(clusters_)
    	
    	if(is.null(clusters_)){
@@ -66,7 +73,7 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
  return (ggplot())
    	}
    	
-   	
+   	if(sumAll) levs=names(clusters_)[3]
    	
    	tpm_df = melt(clusters_,id.vars=c("clusterID","pos"), measure.vars=names(clusters_)[-(1:2)], variable.name="sampleID",value.name='count') %>%
    	transform(sampleID=factor(sampleID,levels=levs))

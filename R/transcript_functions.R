@@ -1552,7 +1552,7 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
  res
 }
 
-.processInternal<-function(mat, sumAll,header,total_reads,span, gapthresh,ID){
+.processInternal<-function(mat, sumAll,header,total_reads,span, gapthresh,ID, sumID="all"){
   mat = .addZero(mat, thresh=gapthresh)
   if(!sumAll && !is.null(total_reads)){
       mat = t(apply(mat,1,function(v)v/c(1,total_reads)))
@@ -1562,14 +1562,14 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
   if(sumAll){
     mat[,2] = apply(mat[,-1,drop=F],1,sum)
     mat = mat[,1:2]
-    names(mat)[2] = "all"
+    names(mat)[2] = sumID
   }
   mat1 = loess_smooth(mat, 2:dim(mat)[2], span)
   clusterID = rep(ID,dim(mat1)[[1]])
 #  print(head(mat1))
   cbind(clusterID,mat1)
 }
-readH5<-function(h5file, total_reads, header, toplot, gapthresh=10,merge=F, combinedID='combined',pos = NULL,id_cols = c("molecule","cell","time"), dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
+readH5<-function(h5file, total_reads, header, toplot, gapthresh=10,merge=F,sumID="all", combinedID='combined',pos = NULL,id_cols = c("molecule","cell","time"), dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
  pos_ind = 1
  ncols = length(id_cols)
  names = h5ls(h5file)$name
@@ -1594,14 +1594,14 @@ readH5<-function(h5file, total_reads, header, toplot, gapthresh=10,merge=F, comb
 	if(merge){
 	  mats[[length(mats)+1]] = mat
 	}else{
-	  mat2 = .processInternal(mat, sumAll, header, total_reads, span, gapthresh,ID)
+	  mat2 = .processInternal(mat, sumAll, header, total_reads, span, gapthresh,ID, sumID=sumID)
 		clusters_ = rbind(clusters_,mat2)
 	}
 	}
   } 
  if(merge){
     mat2 = .mergeDepthMats(mats)
-    clusters_=.processInternal(mat2,sumAll, header, total_reads, span, gapthresh,combinedID)
+    clusters_=.processInternal(mat2,sumAll, header, total_reads, span, gapthresh,combinedID, sumID=sumID)
  }
   clusters_
 }
