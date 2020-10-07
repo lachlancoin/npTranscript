@@ -32,8 +32,8 @@ total_reads = isoInfo$total_reads
 
 
 
-options=c("show_depth", "logy", "showCI", "TPM","showMotifs","showORFs","barchart", "showSecondAxis")
-totick=c("show_depth", "TPM","barchart")
+options=c("show_depth", "logy", "showCI", "TPM","showMotifs","showORFs","barchart", "showSecondAxis","ribbonCI")
+totick=c("show_depth", "TPM","barchart","ribbonCI")
 ch=c(names(info$choices1), names(info$choices))
 t=readCoords(paste(currdir, "Coordinates.csv",sep="/"))
 orfs=paste(t$gene,collapse=",")
@@ -53,6 +53,8 @@ shinyUI(pageWithSidebar(
     
     selectInput("toplot5", label = paste("Transcript",names(info$choices1)[1]), choices=c("-",info$choices1[[1]]), selected="-"),
     selectInput("toplot6", label = paste("Transcript",names(info$choices1)[1]), choices=c("-",info$choices1[[1]]), selected="-"),
+    textInput("toplot7", label="All transcripts matching", value = ""),
+    
     actionButton("plotButton", "Generate plots"),
    checkboxGroupInput("molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules),
    checkboxGroupInput("cells", label = "Cell type",  choices = info$cells, selected = info$cells),

@@ -38,7 +38,7 @@ datafile=NULL
 h5file = NULL
 
 #run_depth(h5file, total_reads=total_reads)
-run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),gapthresh=10, molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
+run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", gapthresh=10, merge=F,molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
                     span = 0.01, sumAll=F, fimo=NULL, t= NULL,logy=T, showMotifs=F,showORFs = F){
 
   	header =.getHeaderH5(h5file,toreplace)
@@ -55,12 +55,17 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
    tot_reads =  total_reads[inds1]/rep(1e6,length(inds1))
  }
  #print(tot_reads)
-   	clusters_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]), toplot,id_cols=id_cols, gapthresh=gapthresh, dinds = dinds[inds1], pos =NULL, span = span, cumul=F, sumAll=sumAll)
+   	clusters_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]), merge=merge,combinedID=combinedID,toplot,id_cols=id_cols, gapthresh=gapthresh, dinds = dinds[inds1], pos =NULL, span = span, cumul=F, sumAll=sumAll)
 #print(clusters_)
+   	
    	if(is.null(clusters_)){
   print(paste("could not read ",toplot))
  return (ggplot())
-}
+   	}
+   	tpm_df = melt(clusters_,id.vars=c("clusterID","pos"), measure.vars=names(clusters_)[-(1:2)], variable.name="sampleID",value.name='count')# %>%
+   	#  separate(variable, c('molecule_type', 'cell', 'time'), sep='_', remove = T)  %>%
+   	 # transform( count=as.numeric(count), molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time, levels = time_vec)) 
+   	
    		if(sumAll) type_nme = "all"
 	#mat=t(h5read(h5file,paste("depth", toplot[1],sep="/")))
 rawdepth = T
@@ -76,7 +81,7 @@ linetype="sampleID"
 }
 ylab="depth"
 if(!is.null(total_reads)) ylab="depth per million mapped reads"
- plotClusters(clusters_, 2,  1, 
+ plotClusters(tpm_df, 4,  1, 
               if(showORFs)t else NULL, 
               if(showMotifs)fimo else NULL,
                rawdepth = rawdepth, linetype=linetype, colour=colour,  xlim = NULL,ylab=ylab , title ="depth", logy=logy, leg_size =leg_size1, show=show, fill =fill)
@@ -164,15 +169,25 @@ shinyServer(function(input, output,session) {
   	     times<-input$times
   	     logy = "logy" %in% input$options
   	     showCI = "showCI" %in% input$options
+  	     ribbon="ribbonCI" %in% input$options
   	     showTPM="TPM" %in% input$options
-  	     conf.int=0.95; method="prop.test";
+  	     conf.int=0.95; method="logit";
   	     toplot = c(isolate(input$toplot5),isolate(input$toplot6))#,isolate(input$toplot7),isolate(input$toplot8))
   	     toplot = toplot[toplot!="-"]
+  	     usegrep=F
+  	     if(length(toplot)==0){
+  	       toplot=isolate(input$toplot7)
+  	       usegrep=T
+  	     }
   	     datafile=session$userData$datafile
   	     header = session$userData$header
   	     total_reads = session$userData$total_reads
-  	     if(length(toplot)>0 && !is.null(datafile)){
-  	       mat = t(data.frame( lapply(toplot, .readIso, datafile, header, "trans")))
+  	     if(length(toplot)>0 && !is.null(datafile) && nchar(toplot[1])>3){
+  	       if(usegrep){
+  	        mat = .readIsoGrep(toplot,datafile,header, "/trans") 
+  	       }else{
+  	       mat = t(data.frame( lapply(toplot, .readIso, datafile, header, "/trans")))
+  	       }
   	     #  print(mat)
   	     #  print(header)
   	       tpm_df =.processTPM(mat, header, toplot)
@@ -197,13 +212,18 @@ shinyServer(function(input, output,session) {
   	     
   	     if(showCI){
   	      ggp<-ggplot(subs, aes(x=time, y=TPM ,ymin=lower ,ymax=upper,group=interaction(molecule_type, cell, ID), color = cell, linetype=ID))
-  	      ggp<-ggp+ geom_line(position=position_dodge(width=0.1))  + geom_point(position=position_dodge(width=0.1),inherit.aes=T,aes(shape = molecule_type,size=10))
+  	      if(ribbon){
+  	        ggp<-ggp+ geom_line()  + geom_point(inherit.aes=T,aes(shape = molecule_type,size=10))
+  	        ggp<-ggp+geom_ribbon( linetype=2, alpha=0.1)
+  	      }else{
+  	       ggp<-ggp+ geom_line(position=position_dodge(width=0.1))  + geom_point(position=position_dodge(width=0.1),inherit.aes=T,aes(shape = molecule_type,size=10))
   	        ggp<-ggp+geom_errorbar(position=position_dodge(width=0.1)) #,colour="black")
+  	      }
   	     }else{
   	      ggp<-ggplot(subs, aes(x=time, y=TPM ,group=interaction(molecule_type, cell, ID), color = cell, linetype=ID))
   	      ggp<-ggp+ geom_line()  + geom_point(inherit.aes=T,aes(shape = molecule_type,size=10))
   	     }
-  	     
+  	     ggp<-ggp+theme_bw();#+ylim(c(min(subs$TPM, na.rm=T), max(subs$TPM, na.rm=T)))
   	     if(!showTPM)ggp<-ggp+ylab("Counts")
   	     # ggp<-ggp+ geom_errorbar(aes(linetype=molecule_type))
   	      if(logy){
@@ -261,11 +281,23 @@ output$infPlot<-renderPlot({
 	      if(file.exists(h5file)){
 	       # toplot = c(isolate(input$toplot1),isolate(input$toplot2),isolate(input$toplot3),isolate(input$toplot4))
 	        toplot = c(isolate(input$toplot5),isolate(input$toplot6))#,isolate(input$toplot7),isolate(input$toplot8))
-	        
+	        merge=F
 	        toplot = toplot[toplot!="-"]
-	        if(length(toplot)>0){
-	          print(toplot)
-  		run_depth(h5file,total_reads,toplot, molecules=input$molecules, cells=input$cells, times = input$times,logy=logy, sumAll = length(toplot)>1,
+	        combinedID="combined"
+	        if(length(toplot)==0){
+	          ##need to get list from this
+	          toplot = c(isolate(input$toplot7))
+	          if(nchar(toplot[1])>3){
+	            combinedID=toplot[1]
+	            mat = h5ls(h5file)
+	            mat = mat[mat$group=="/depth",,drop=F]
+	            toplot = mat[grep(toplot[1],mat$name),,drop=F]$name
+	          }
+	          merge=T
+	        }
+	        if(length(toplot)>0 && nchar(toplot[1])>3){
+	         # print(toplot)
+  		run_depth(h5file,total_reads,toplot, merge=merge,molecules=input$molecules, combinedID=combinedID, cells=input$cells, times = input$times,logy=logy, sumAll = length(toplot)>1,
   		          showORFs = showORFs, fimo=fimo, t=t, showMotifs =showMotifs) 
 	        }
   		#run_depth(h5file,toplot=c("leader_leader,N_end")) 

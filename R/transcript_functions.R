@@ -1,5 +1,5 @@
 .calcPropCI<-function(x, conf.int=0.95,  method="prop.test"){
-  v = round(binom.confint(x[1], x[2], method=method, conf.int=conf.int)[4:6] *(1e6))
+  v = binom.confint(x[1], x[2], method=method, conf.int=conf.int)[4:6] *(1e6)
 unlist(v)
 }
 .getHeaderH5<-function(datafile, toreplace=list()){
@@ -123,6 +123,15 @@ unlist(v)
   len  = length(header)
   cnts = h5read(isofile, paste(group, x,sep="/"))
   c(cnts, rep(0,len -length(cnts)))
+}
+.readIsoGrep<-function(x, isofile,header, group="/trans"){
+  mat = h5ls(isofile)
+  mat = mat[mat$group==group,,drop=F]
+  x1 = mat[grep(x,mat$name),,drop=F]$name
+ # cnts = lapply(x1,.readIso, header, group)
+  mat1 = t(data.frame( lapply(x1, .readIso, isofile, header, group)))
+  mat2 = matrix(apply(mat1,2,sum),nrow=1,ncol=dim(mat1)[2])
+  mat2
 }
 .readTotalIso<-function(isofile, group="/trans", trans=NULL){
   names = h5ls(isofile)
@@ -733,8 +742,9 @@ plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = T, linetype="
   ylim = c(min(df[,k1]),max(df[,k1]))
   ggp<-ggplot(df, aes_string(x="pos", fill="clusterID", colour = colour, linetype=linetype, y = names(df)[k1])) +theme_bw()+geom_line() 
 if(fill) ggp<-ggp+geom_area()
-  ggp<-ggp+ggtitle(title)+labs(y= ylab);
-  if(logy) ggp<-ggp+scale_y_continuous(trans='log10')
+  ggp<-ggp+ggtitle(title)
+  if(logy) ggp<-ggp+scale_y_continuous(name=ylab,trans='log10', limits=ylim)
+  else ggp<-ggp+labs(y= ylab)+ylim(ylim)
   if(leg_size==0  || length(levels(as.factor(as.character(df$type))))>20){
     ggp<-ggp+theme(legend.position="none")
   }else{
@@ -763,7 +773,7 @@ legend.title=element_text(size=leg_size), legend.text=element_text(size=leg_size
   }
   #abline(v = t$Maximum, col=3)
   if(!is.null(xlim)) ggp<-ggp+xlim(xlim)
-  ggp<-ggp+ylim(ylim)
+ # ggp<-ggp
   if(show) print(ggp)
   invisible(ggp)
 }
@@ -1519,72 +1529,66 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
   mat
 }
 
-readH5<-function(h5file, total_reads, header, toplot, gapthresh=10,pos = NULL,id_cols = c("molecule","cell","time"), dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
+.mergeDepthMats<-function(mats){
+  pos =unique(sort(unlist(lapply(mats,function(x) x[,1]))))
+  
+ res=matrix(0,nrow=length(pos), ncol = dim(mats[[1]])[[2]])
+ res[,1] = pos
+ for(i in 1:length(mats)){
+   inds=match(mats[[i]][,1],pos)
+   res[inds,-1]=res[inds,-1]+mats[[i]][,-1]
+ }
+ res
+}
+
+.processInternal<-function(mat, sumAll,header,total_reads,span, gapthresh,ID){
+  mat = .addZero(mat, thresh=gapthresh)
+  if(!sumAll && !is.null(total_reads)){
+      mat = t(apply(mat,1,function(v)v/c(1,total_reads)))
+  }
+  mat = data.frame(mat)
+  names(mat) = header
+  if(sumAll){
+    mat[,2] = apply(mat[,-1,drop=F],1,sum)
+    mat = mat[,1:2]
+    names(mat)[2] = "all"
+  }
+  mat1 = loess_smooth(mat, 2:dim(mat)[2], span)
+  clusterID = rep(ID,dim(mat1)[[1]])
+#  print(head(mat1))
+  cbind(clusterID,mat1)
+}
+readH5<-function(h5file, total_reads, header, toplot, gapthresh=10,merge=F, combinedID='combined',pos = NULL,id_cols = c("molecule","cell","time"), dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
  pos_ind = 1
  ncols = length(id_cols)
  names = h5ls(h5file)$name
  inds = which(toplot %in% names)
  if(length(inds)==0) return (NULL)
  IDS = toplot[inds]
-
- clusters_ = matrix(NA, nrow =0, ncol = 4+ncols)
-  mat_prev = NULL
-dimnames(clusters_)[[2]] = c("pos", "depth", "clusterID",'sampleID', id_cols)
+ clusters_ = NULL
+ mats=NULL
+ new_cols =  c("pos", "depth", "clusterID",'sampleID', id_cols)
+ if(!merge){
+  clusters_ = data.frame(matrix(NA, nrow =0, ncol = length(header)))
+  names(clusters_) =header
+ }else{
+ mats=list()
+ }
   for(i in 1:length(IDS)){
 	ID = IDS[i]
-	mat = t(h5read(h5file,paste("depth",as.character(ID),sep="/")))
-	mat = .addZero(mat[,c(1,dinds),drop=F], thresh=gapthresh)
-	
-	if(!sumAll && !is.null(total_reads)){
-	  if(length(total_reads)==length(dinds)){
-	    mat = t(apply(mat,1,function(v)v/c(1,total_reads)))
-	  }
-	}
-
-	if(!is.null(pos)) {
-		mat2 = matrix(0, nrow = length(pos), ncol  = dim(mat)[2])
-		mat2[,1] = pos
-		mat = mat[which(mat[,1] %in% pos),,drop=F]
-		mat2[match(mat[,1],pos),-1] =mat[,-1]
-		mat = mat2
-	}
-	
-	mat = data.frame(mat)
-	names(mat) = header
-	if(sumAll){
-		mat[,2] = apply(mat[,-1,drop=F],1,sum)
-		mat = mat[,1:2]
-		names(mat)[2] = "all"
-	}
-	if( !is.null(mat_prev) && !is.null(pos) && cumul) {
-		mat[,-1]	 = mat[,-1] + mat_prev[,-1]
-		
-	}
-	if(!is.null(pos)) mat_prev = mat
-	mat1 = loess_smooth(mat, 2:dim(mat)[2], span)
-	cname = toplot[i]  #paste(ID, transcripts_$leftGene[i], transcripts_$rightGene[i], sep=".")
-	clusterID = rep(cname, dim(mat1)[1])
-	header1 = names(mat)
-	nrows = dim(mat1)[1]
-	mat2 = data.frame(matrix(nrow = nrows, ncol = dim(clusters_)[2]))
-	dimnames(mat2)[[2]] = dimnames(clusters_)[[2]]
-	
-	for( k in 1:(length(header1)-1)){
-		#print(k)
-	  samp = header1[k+1]
-	 sampID= strsplit(samp,"_")[[1]]
-	 mat2[,1:2] =mat1[,c(1,k+1)] 
-	 mat2[,3] = clusterID
-	 mat2[,4] = samp
-	 for(kj in 1:ncols){
-	  mat2[,4+kj] = sampID[kj]
-	 }
-	#	sampID = rep(samp, dim(mat1)[1])
-	#	mat2 = cbind(,clusterID ,sampID)
+	mat = t(h5read(h5file,paste("depth",as.character(ID),sep="/")))[,c(1,dinds),drop=F]
+	if(merge){
+	  mats[[i]] = mat
+	}else{
+	  mat2 = .processInternal(mat, sumAll, header, total_reads, span, gapthresh,ID)
 		clusters_ = rbind(clusters_,mat2)
 	}
   } 
-clusters_
+ if(merge){
+    mat2 = .mergeDepthMats(mats)
+    clusters_=.processInternal(mat2,sumAll, header, total_reads, span, gapthresh,combinedID)
+ }
+  clusters_
 }
 plotHeatmap<-function(h5file, header,  transcripts1, jk, logHeatmap = F,xlim = list(c(1,max(clusters$pos+1))),featureName = "depth", 
                       max_h=0 ,title = ""){
