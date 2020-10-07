@@ -47,6 +47,9 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
   types_=data.frame(t(data.frame(strsplit(type_nme,"_"))))
   names(types_) = c("molecules","cell","time")
  inds1 =  which(types_$molecules %in% molecules & types_$cell %in% cells & types_$time %in% times)
+ types1_ = types_[inds1,,drop=F]
+ ord = order(as.numeric(factor(types1_$time, levels=c("0hpi", "2hpi","24hpi","48hpi"))),types1_$cell,types1_$molecules)
+ levs=type_nme[inds1][ord]
  #print(inds1)
  id_cols = c("molecule","cell","time")
  tot_reads=NULL
@@ -62,8 +65,12 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
   print(paste("could not read ",toplot))
  return (ggplot())
    	}
-   	tpm_df = melt(clusters_,id.vars=c("clusterID","pos"), measure.vars=names(clusters_)[-(1:2)], variable.name="sampleID",value.name='count')# %>%
-   	#  separate(variable, c('molecule_type', 'cell', 'time'), sep='_', remove = T)  %>%
+   	
+   	
+   	
+   	tpm_df = melt(clusters_,id.vars=c("clusterID","pos"), measure.vars=names(clusters_)[-(1:2)], variable.name="sampleID",value.name='count') %>%
+   	transform(sampleID=factor(sampleID,levels=levs))
+   	  #  separate(variable, c('molecule_type', 'cell', 'time'), sep='_', remove = T)  %>%
    	 # transform( count=as.numeric(count), molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time, levels = time_vec)) 
    	
    		if(sumAll) type_nme = "all"
