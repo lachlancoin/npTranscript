@@ -65,11 +65,11 @@ shinyUI(pageWithSidebar(
    checkboxGroupInput("cells", label = "Cell type",  choices = info$cells, selected = info$cells),
    checkboxGroupInput("times", label = "Time points",  choices = info$times, selected = info$times),
    checkboxGroupInput("options1", label = "Top panel", choices = options1, selected=totick1) ,
+   textInput("orfs", label="ORFs to include", value = orfs),
    checkboxGroupInput("options2", label = "Middle panel", choices = options2, selected=totick2) ,
-   checkboxGroupInput("options3", label = "Bottom panel", choices = options3, selected=totick3) ,
+   checkboxGroupInput("options3", label = "Bottom panel", choices = options3, selected=totick3) 
    
    
-   textInput("orfs", label="ORFs to include", value = orfs)
  #  numericInput("conf.int", label = h3("Confidence intervals"), value = 0.95),
   ),
   
