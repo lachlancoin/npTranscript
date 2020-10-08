@@ -221,13 +221,14 @@ shinyServer(function(input, output,session) {
   	        
   	       }
   	       mat = t(data.frame( lapply(x1, .readIso, datafile, header, "/trans")))
+  	       if(is.null(dim(mat))) mat = matrix(mat,nrow=1,ncol=length(header))
   	      if(merge){
   	        mat = matrix(apply(mat,2,sum),nrow=1,ncol=dim(mat)[2])
   	      } else{
   	       
   	        if(length(x1)>10){
   	          ord=order(apply(mat,1,sum),decreasing=T)
-  	          mat = mat[ord[1:10],]
+  	          mat = mat[ord[1:10],,drop=F]
   	          toplot = x1[ord[1:10]]
   	        }else{
   	          toplot=x1
