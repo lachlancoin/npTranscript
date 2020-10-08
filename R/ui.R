@@ -30,10 +30,15 @@ info = .processInfo(isoInfo)
 total_reads = isoInfo$total_reads
 
 
+options1=c("showCI" ,"barchart", "showSecondAxis")
+totick1 = c("showCI" ,"barchart")
+options2 = c("logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts")
+totick2 = c("TPM","ribbonCI")
+options3 = c("show_depth","logy", "TPM","showMotifs","showORFs", "sumDepth","mergeCounts")
+totick3 = c("show_depth","TPM")
 
-
-options=c("show_depth", "logy", "showCI", "TPM","showMotifs","showORFs","barchart", "showSecondAxis","ribbonCI", "sumDepth","mergeCounts")
-totick=c("show_depth", "TPM","barchart","ribbonCI")
+#options=c(, ,)
+#totick=c("show_depth", "TPM","barchart","ribbonCI")
 ch=c(names(info$choices1), names(info$choices))
 t=readCoords(paste(currdir, "Coordinates.csv",sep="/"))
 orfs=paste(t$gene,collapse=",")
@@ -59,7 +64,11 @@ shinyUI(pageWithSidebar(
    checkboxGroupInput("molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules),
    checkboxGroupInput("cells", label = "Cell type",  choices = info$cells, selected = info$cells),
    checkboxGroupInput("times", label = "Time points",  choices = info$times, selected = info$times),
-   checkboxGroupInput("options", label = "Plotting options", choices = options, selected=totick) ,
+   checkboxGroupInput("options1", label = "Top panel", choices = options1, selected=totick1) ,
+   checkboxGroupInput("options2", label = "Middle panel", choices = options2, selected=totick2) ,
+   checkboxGroupInput("options3", label = "Bottom panel", choices = options3, selected=totick3) ,
+   
+   
    textInput("orfs", label="ORFs to include", value = orfs)
  #  numericInput("conf.int", label = h3("Confidence intervals"), value = 0.95),
   ),

@@ -192,13 +192,13 @@ shinyServer(function(input, output,session) {
   	     molecules <-  input$molecules 
   	     cells <- input$cells 
   	     times<-input$times
-  	     logy = "logy" %in% input$options
-  	     showCI = "showCI" %in% input$options
-  	     ribbon="ribbonCI" %in% input$options
-  	     showTPM="TPM" %in% input$options
-  	     showCI = "showCI" %in% input$options
-  	     merge='mergeCounts' %in% input$options
-  	     barchart="barchart" %in% input$options
+  	     logy = "logy" %in% input$options2
+  	     showCI = "showCI" %in% input$options2
+  	     ribbon="ribbonCI" %in% input$options2
+  	     showTPM="TPM" %in% input$options2
+  	     showCI = "showCI" %in% input$options2
+  	     merge='mergeCounts' %in% input$options2
+  	     barchart="barchart" %in% input$options2
   	     conf.int=0.95; method="logit";
   	     toplot = c(isolate(input$toplot5),isolate(input$toplot6))#,isolate(input$toplot7),isolate(input$toplot8))
   	     toplot = toplot[toplot!="-"]
@@ -312,8 +312,8 @@ shinyServer(function(input, output,session) {
 output$infPlot<-renderPlot({
   input$plotButton
   currdir = session$userData$currdir
-  barchart="barchart" %in% input$options
-  showSecondAxis="showSecondAxis" %in% input$options
+  barchart="barchart" %in% input$options1
+  showSecondAxis="showSecondAxis" %in% input$options1
   infilesAnnot = paste(currdir,"0.annot.txt.gz", sep="/")
   total_reads = session$userData$total_reads
   if(file.exists(infilesAnnot)){
@@ -341,11 +341,11 @@ output$infPlot<-renderPlot({
 	output$depthPlot <- renderPlot({
 	    input$plotButton
 	      #result = loadData();
-	  showDepth  = "show_depth" %in% input$options
-	  logy = "logy" %in% input$options
-	  showORFs="showORFs" %in% input$options
-	  showMotifs="showMotifs" %in% input$options
-	  tpm = "TPM" %in% input$options
+	  showDepth  = "show_depth" %in% input$options3
+	  logy = "logy" %in% input$options3
+	  showORFs="showORFs" %in% input$options3
+	  showMotifs="showMotifs" %in% input$options3
+	  tpm = "TPM" %in% input$options3
 	  h5file=session$userData$h5file
 	  total_reads = NULL
 	  fimo = session$userData$fimo
@@ -377,7 +377,7 @@ output$infPlot<-renderPlot({
 	        }
 	        if(length(toplot)>0 && nchar(toplot[1])>2 ){
 	         # print(toplot)
-	          if("sumDepth" %in% input$options) sumAll=TRUE
+	          if("sumDepth" %in% input$options3) sumAll=TRUE
   		run_depth(h5file,total_reads,toplot, merge=merge,molecules=input$molecules, combinedID=combinedID, cells=input$cells, times = input$times,logy=logy, sumAll = sumAll,
   		          showORFs = showORFs, fimo=fimo, t=t, showMotifs =showMotifs) 
 	        }
