@@ -101,7 +101,10 @@ unlist(v)
   
   .processTPM(tpm, experiments, transcripts$ORFs)
 }
- .processTPM<-function(tpm, experiments, ID){ 
+ .processTPM<-function(mat, experiments_, ID,levels =NULL){ 
+   inds = if(is.null(levels)) 1:dim(mat)[2] else which(experiments %in% levels)
+   tpm = mat[,inds,drop=F]
+   experiments = experiments_[inds]
    colnames(tpm) <- experiments
   #props <- prop.table(x = as.matrix(transcripts[,count_idx]), margin = 2)
   # tpm=props*1e6
@@ -113,10 +116,15 @@ unlist(v)
   tpm <- cbind(ID=ID,tpm)
   #prep tpm_df
   #separate(TPM1, c('TPM', 'lower', 'upper'), sep=',', remove = T) %>%
+  if(is.null(levels)){
   as.data.frame(tpm) %>% melt(id.vars='ID', measure.vars=experiments, value.name = 'count') %>%
     separate(variable, c('molecule_type', 'cell', 'time'), sep='_', remove = T) %>%
     transform( count=as.numeric(count), molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time, levels = time_vec)) -> tpm_df
-   #attr(tpm_df,"total_reads") = total_reads
+  }else{
+    as.data.frame(tpm) %>% melt(id.vars='ID', measure.vars=experiments, value.name = 'count', variable.name='sample') %>%
+      transform(count=as.numeric(count),sample = factor(sample, levels =levels)) -> tpm_df
+    
+  } #attr(tpm_df,"total_reads") = total_reads
    tpm_df
 }
 .readIso<-function(x, isofile,header, group="/trans"){
@@ -137,13 +145,12 @@ unlist(v)
   }
   x1
 }
-.readIsoGrep<-function(x, isofile,header, group="/trans"){
- x1 = .findEntries(x,isofile,group);
- # cnts = lapply(x1,.readIso, header, group)
-  mat1 = t(data.frame( lapply(x1, .readIso, isofile, header, group)))
-  mat2 = matrix(apply(mat1,2,sum),nrow=1,ncol=dim(mat1)[2])
-  mat2
-}
+#.readIsoGrep<-function(x, isofile,header, group="/trans"){
+# x1 = .findEntries(x,isofile,group);
+#  mat1 = t(data.frame( lapply(x1, .readIso, isofile, header, group)))
+#  mat2 = matrix(apply(mat1,2,sum),nrow=1,ncol=dim(mat1)[2])
+#  mat2
+#}
 .readTotalIso<-function(isofile, group="/trans", trans=NULL){
   names = h5ls(isofile)
   isoheader = h5read(isofile,"header")
@@ -208,8 +215,8 @@ getKmer<-function(base, pos,v = c(-1,0,1)){
   list(heatm =heatm, rows = rows, cols = cols)
 }
 
-.readAnnotFile<-function(fi, total_reads, norm=F ,plot=T, barchart=F,annot0 = NULL, conf.level=0.68, showEB = F, levels=NULL, 
-                         orfs="E,N", showSecondAxis=F){
+.readAnnotFile<-function(fi, total_reads, norm=F , conf.level=0.95,  levels=NULL, 
+                         orfs="E,N"){
   annot = read.table(fi, head=T)
   type_name = names(total_reads)
   type_nme= names(total_reads)
@@ -219,6 +226,8 @@ if(is.null(levels)){
   if(!norm){
     total_reads = rep(1,length(total_reads))
     names(total_reads) = type_name
+  }else{
+    total_reads = total_reads/1e6
   }
   toinclude=which(type_nme %in% levels)
   spi  = grep("Spliced", names(annot))
@@ -246,8 +255,8 @@ if(is.null(levels)){
     ratio1[ranges,2] = as.numeric(as.character(annot$Start))
     ratio1[ranges,3:5] = confints[,4:6]
     ratio1[ranges,6] = rep(type_nme[i], length(ranges))
-    ratio1[ranges,7] = annot[,spi[i]]
-    ratio1[ranges,8] =  annot[,uspi[i]]
+    ratio1[ranges,7] = annot[,spi[i]]/total_reads[i]
+    ratio1[ranges,8] =  annot[,uspi[i]]/total_reads[i]
     ratio1[ranges,9] = -log2(ratio1[ranges,7]/(ratio1[ranges,7]+ratio1[ranges,8]))
     ratio1[ranges,10] = log2((ratio1[ranges,7]+ratio1[ranges,8])/total_reads[i])
     #ratio1[ranges,7:9] = mixt[,indsi]
@@ -257,40 +266,46 @@ if(is.null(levels)){
  
   orfs_include=unlist(strsplit(orfs,","))
   ratio1 = ratio1[ratio1$ORF %in% orfs_include,,drop=F]
- 
-  
+ ratio1
+}
 #  ggp= NULL
+.plotAnnotFile<-function(ratio1, levels=NULL,barchart=F,showEB = F,showSecondAxis=F,coeff=2,diff=0, y_text="Ratio"){
   if(!barchart){
     timevec=c("0hpi","2hpi","24hpi","48hpi")
     ratio3= separate(ratio1,6, c('molecule_type', 'cell', 'time'), sep='_', remove = T) %>%
       transform(  molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time,levels=timevec))
     # if(is.null(orfs_include)) orfs_include = levels(factor(ratio3$ORF))
-    coeff=2
-    diff=0
-    ggp1<-ggplot(ratio3, aes(x=time))
-    ggp1<-ggp1+geom_line(aes(y=logdiff ,group=interaction(molecule_type, cell, ORF), color = cell, linetype="dotted"))
+ 
+    if(!showSecondAxis){
+      ggp1<-ggplot(ratio3, aes(x=time))
+      
+    ggp1<-ggp1+geom_line(aes(y=logdiff ,group=interaction(molecule_type, cell, ORF), color = cell))
     ggp1<-ggp1+geom_point(aes(y=logdiff ,group=interaction(molecule_type, cell, ORF), color = cell, shape=ORF,size=10))
-     if(showSecondAxis){
-       ggp1<-ggp1+geom_line(aes(y=(logtotal-diff)/coeff ,group=interaction(molecule_type, cell, ORF), color = cell, linetype="dashed"))
-       ggp1<-ggp1+geom_point(aes(y=(logtotal-diff)/coeff ,group=interaction(molecule_type, cell, ORF), color = cell, shape=ORF,size=10))
+    ggp1<-ggp1+ scale_y_continuous( name = "Log2 (total - sub-genomics)")
+    
+    }else{
+      ratio3$logtotal = (ratio3$logtotal-diff)/coeff
+      ratio4 = melt(ratio3,id.vars=c("ORF","molecule_type","cell","time"), measure.vars=c("logdiff","logtotal"))
+      ggp1<-ggplot(ratio4, aes(x=time))
+      ggp1<-ggp1+geom_line(aes(y=value ,group=interaction(molecule_type, cell, ORF,variable), color = cell, linetype=variable))
+      ggp1<-ggp1+geom_point(aes(y=value ,group=interaction(molecule_type, cell, ORF,variable), color = cell, shape=ORF,size=10))
+       #ggp1<-ggp1+geom_line(aes(y=(logtotal-diff)/coeff ,group=interaction(molecule_type, cell, ORF), color = cell, linetype="dashed"))
+       #ggp1<-ggp1+geom_point(aes(y=(logtotal-diff)/coeff ,group=interaction(molecule_type, cell, ORF), color = cell, shape=ORF,size=10))
        
        ggp1<-ggp1+ scale_y_continuous(
       name = "Log2 (total - sub-genomics)",
       sec.axis = sec_axis(~.*coeff+diff, name="Log2 Total")
     )
      }
-    else ggp1<-ggp1+ scale_y_continuous( name = "Log2 (total - sub-genomics)")
      
     return(ggp1)
   }else{
-    if(is.null(levels)){
-      levels=names(sort(apply(ratio2,2,mean,na.rm=T)))
-    }
+   
     ratio1$type=factor(ratio1$type,levels = levels)
     ORF="ORF"
     ord="Start"
     x1 =  paste("reorder(", ORF, ",", ord,")", sep="") 
-    ggp<-ggplot(ratio1, aes_string(x=x1,y="Ratio",fill="type", colour='type',ymin="lower" ,ymax="upper"))
+    ggp<-ggplot(ratio1, aes_string(x=x1,y=y_text,fill="type", colour='type',ymin="lower" ,ymax="upper"))
     ggp<-ggp+ geom_bar(position=position_dodge(), aes_string(y="Ratio"),stat="identity")
       #geom_bar(aes_string(x=x1, y="Ratio", fill = "type", colour = "type"),stat="identity", position = "dodge")
     if(showEB){
@@ -298,7 +313,7 @@ if(is.null(levels)){
     } #ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="lower", ymax="upper"), width=.2)#, position="dodge")
    ggp<-ggp+scale_y_continuous(limits = c(0,1))
     
-     ggp<-ggp+ggtitle("Percentage of ORF covering reads which are spliced to 5'")
+     ggp<-ggp+ggtitle("Percentage of ORF covering reads which include leader")
      ggp<-ggp+xlab("ORF")
     return(ggp)
   }

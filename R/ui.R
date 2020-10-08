@@ -32,7 +32,7 @@ total_reads = isoInfo$total_reads
 
 
 
-options=c("show_depth", "logy", "showCI", "TPM","showMotifs","showORFs","barchart", "showSecondAxis","ribbonCI", "sumDepth")
+options=c("show_depth", "logy", "showCI", "TPM","showMotifs","showORFs","barchart", "showSecondAxis","ribbonCI", "sumDepth","mergeCounts")
 totick=c("show_depth", "TPM","barchart","ribbonCI")
 ch=c(names(info$choices1), names(info$choices))
 t=readCoords(paste(currdir, "Coordinates.csv",sep="/"))
@@ -69,8 +69,8 @@ shinyUI(pageWithSidebar(
     # verbatimTextOutput("instructions"),
     # verbatimTextOutput("variables"),
     # verbatimTextOutput("validation"),
+#    plotOutput("exprPlot", height=400),
     plotOutput("infPlot", height=400),
-    
      plotOutput("distPlot", height=400),
    plotOutput("depthPlot", height=400)
   )

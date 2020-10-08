@@ -36,7 +36,16 @@ t=NULL
 fimo=NULL
 datafile=NULL
 h5file = NULL
-
+.getlevels<-function(type_nme, molecules, cells, times){
+  types_=data.frame(t(data.frame(strsplit(type_nme,"_"))))
+  names(types_) = c("molecules","cell","time")
+  inds1 =  which(types_$molecules %in% molecules & types_$cell %in% cells & types_$time %in% times)
+  types1_ = types_[inds1,,drop=F]
+  ord = order(as.numeric(factor(types1_$time, levels=c("0hpi", "2hpi","24hpi","48hpi"))),types1_$cell,types1_$molecules)
+  levels1=type_nme[inds1][ord]
+  attr(levels1,"inds1") = inds1
+  levels1
+}
 #run_depth(h5file, total_reads=total_reads)
 run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", gapthresh=10, merge=F,molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
                     span = 0.01, sumAll=F, fimo=NULL, t= NULL,logy=T, showMotifs=F,showORFs = F){
@@ -44,6 +53,8 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
   	header =.getHeaderH5(h5file,toreplace)
 	dinds  = 2*(2:(length(header))-2)+2
 	type_nme = header[-1]
+#	levs1 = .getlevels(type_nme,molecules, cells, times)
+#	inds1 =  attr(levs1,"inds1");
   types_=data.frame(t(data.frame(strsplit(type_nme,"_"))))
   names(types_) = c("molecules","cell","time")
  inds1 =  which(types_$molecules %in% molecules & types_$cell %in% cells & types_$time %in% times)
@@ -185,6 +196,9 @@ shinyServer(function(input, output,session) {
   	     showCI = "showCI" %in% input$options
   	     ribbon="ribbonCI" %in% input$options
   	     showTPM="TPM" %in% input$options
+  	     showCI = "showCI" %in% input$options
+  	     merge='mergeCounts' %in% input$options
+  	     barchart="barchart" %in% input$options
   	     conf.int=0.95; method="logit";
   	     toplot = c(isolate(input$toplot5),isolate(input$toplot6))#,isolate(input$toplot7),isolate(input$toplot8))
   	     toplot = toplot[toplot!="-"]
@@ -194,21 +208,43 @@ shinyServer(function(input, output,session) {
   	       usegrep=T
   	     }
   	     datafile=session$userData$datafile
-  	     header = session$userData$header
+  	   #  header = session$userData$header
   	     total_reads = session$userData$total_reads
+  	    header = names(total_reads)
   	     if(length(toplot)>0 && !is.null(datafile) && nchar(toplot[1])>2){
   	       if(usegrep){
-  	        mat = .readIsoGrep(toplot,datafile,header, "/trans") 
+  	         x1 = .findEntries(toplot,datafile,"/trans");
+  	       #  merge=TRUE
+  	    #    mat = .readIsoGrep(toplot,datafile,header, "/trans") 
   	       }else{
-  	       mat = t(data.frame( lapply(toplot, .readIso, datafile, header, "/trans")))
+  	         x1 =toplot
+  	        
   	       }
-  	     #  print(mat)
-  	     #  print(header)
-  	       tpm_df =.processTPM(mat, header, toplot)
-  	   
-  	       subs=subset(tpm_df, molecule_type %in% molecules & cell %in% cells & time %in% times)
+  	       mat = t(data.frame( lapply(x1, .readIso, datafile, header, "/trans")))
+  	      if(merge){
+  	        mat = matrix(apply(mat,2,sum),nrow=1,ncol=dim(mat)[2])
+  	      } else{
+  	       
+  	        if(length(x1)>10){
+  	          ord=order(apply(mat,1,sum),decreasing=T)
+  	          mat = mat[ord[1:10],]
+  	          toplot = x1[ord[1:10]]
+  	        }else{
+  	          toplot=x1
+  	        }
+  	      }
+  	   #print(toplot)
   	     
+  	       if(barchart){
+  	         levs1=.getlevels(type_nme,molecules, cells, times)
+    	       subs =.processTPM(mat, header, toplot, levels=levs1)
+    	       sample = subs$sample
+  	      }else{
+  	       tpm_df= .processTPM(mat, header, toplot)
+  	       subs=subset(tpm_df, molecule_type %in% molecules & cell %in% cells & time %in% times)
   	       sample=apply(subs[,2:4,drop=F],1,paste,collapse="_")
+  	      }
+  	      
   	       inds1 =  match(sample, names(total_reads))
   	       subs1 = cbind(subs$count,total_reads[inds1])
   	       nrows = dim(subs)[1]
@@ -219,11 +255,34 @@ shinyServer(function(input, output,session) {
   	         cis[i,1:3] = .calcPropCI(subs1[i,], method=method, conf.int = conf.int)
   	       
   	       }
+  	       yname='TPM'
   	       if(!showTPM){
   	         cis = cis *subs1[,2]/1e6
+  	         yname="counts"
   	       }
   	       subs = cbind(subs,cis)
-  	     
+  	     if(barchart){
+  	       ORF="ID"
+  	       y_text="TPM"
+  	     #  ord="Start"
+  	      # x1 =  paste("reorder(", ORF, ",", ord,")", sep="") 
+  	       ggp<-ggplot(subs, aes_string(x=ORF,y=y_text,fill="sample", colour='sample',ymin="lower" ,ymax="upper"))
+  	       ggp<-ggp+theme(text = element_text(size=18), axis.text.x = element_text(size = rel(0.7), angle = 25, hjust=0.75))
+  	       ggp<-ggp+ geom_bar(position=position_dodge(), aes_string(y="TPM"),stat="identity")
+  	       #geom_bar(aes_string(x=x1, y="Ratio", fill = "type", colour = "type"),stat="identity", position = "dodge")
+  	       if(showCI){
+  	         ggp<-ggp+geom_errorbar(position=position_dodge(width=0.9),colour="black")
+  	       } #ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="lower", ymax="upper"), width=.2)#, position="dodge")
+  	      
+  	         
+  	         if(logy){
+  	           ggp<-ggp+ scale_y_continuous(trans="log10",name=yname)
+  	         }
+  	       
+  	       
+  	       ggp<-ggp+ggtitle(yname)
+  	       ggp<-ggp+xlab("ORF")
+  	     }else{
   	     if(showCI){
   	      ggp<-ggplot(subs, aes(x=time, y=TPM ,ymin=lower ,ymax=upper,group=interaction(molecule_type, cell, ID), color = cell, linetype=ID))
   	      if(ribbon){
@@ -243,7 +302,7 @@ shinyServer(function(input, output,session) {
   	      if(logy){
   	        ggp<-ggp+ scale_y_log10()
   	      }
-  	      
+  	     }
   	     }else{
   	       ggp = ggplot()
   	     }
@@ -258,16 +317,21 @@ output$infPlot<-renderPlot({
   total_reads = session$userData$total_reads
   if(file.exists(infilesAnnot)){
     molecules=input$molecules; cells=input$cells; times = input$times;
-  type_nme= names(total_reads)
-  types_=data.frame(t(data.frame(strsplit(type_nme,"_"))))
-  names(types_) = c("molecules","cell","time")
-  inds1 =  which(types_$molecules %in% molecules & types_$cell %in% cells & types_$time %in% times)
-  types1_ = types_[inds1,,drop=F]
-  ord = order(as.numeric(factor(types1_$time, levels=c("0hpi", "2hpi","24hpi","48hpi"))),types1_$cell,types1_$molecules)
+    type_nme= names(total_reads)
+    
+   
+    levels1 = .getlevels(type_nme,molecules, cells, times)
 ##we should use total reads from combined human viral.  For now we set norm=F
-  print(input$orfs)
-  annots1 = .readAnnotFile(infilesAnnot,total_reads, plot=T,barchart=barchart,norm=F,levels= type_nme[inds1][ord],
-                           showSecondAxis=showSecondAxis, annot0 = NULL,conf.level=0.95,showEB=T, orfs=input$orfs)
+  #print(input$orfs)
+#  fi, total_reads, norm=F , conf.level=0.95,  levels=NULL, 
+#  orfs="E,N"){
+  orfs=input$orfs
+  norm=F
+  ratio1 = .readAnnotFile(infilesAnnot,total_reads,norm=norm,levels= levels1, conf.level=0.95, orfs=orfs)
+  #.plotAnnotFile<-function(ratio1,molecule_type, cell, time, levels=NULL,barchart=F,showEB = F,showSecondAxis=F){
+    y_text="Ratio"
+ #   y_text="spliced"
+  annots1=.plotAnnotFile(ratio1,barchart=barchart,showSecondAxis=showSecondAxis,showEB=T, levels=levels1, y_text=y_text)
   annots1
   }else{
     ggplot()
@@ -310,7 +374,7 @@ output$infPlot<-renderPlot({
 	          merge=T
 	          sumAll=F
 	        }
-	        if(length(toplot)>0 && nchar(toplot[1])>2){
+	        if(length(toplot)>0 && nchar(toplot[1])>2 ){
 	         # print(toplot)
 	          if("sumDepth" %in% input$options) sumAll=TRUE
   		run_depth(h5file,total_reads,toplot, merge=merge,molecules=input$molecules, combinedID=combinedID, cells=input$cells, times = input$times,logy=logy, sumAll = sumAll,
