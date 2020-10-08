@@ -236,7 +236,7 @@ shinyServer(function(input, output,session) {
   	   #print(toplot)
   	     
   	       if(barchart){
-  	         levs1=.getlevels(type_nme,molecules, cells, times)
+  	         levs1=.getlevels(header,molecules, cells, times)
     	       subs =.processTPM(mat, header, toplot, levels=levs1)
     	       sample = subs$sample
   	      }else{
