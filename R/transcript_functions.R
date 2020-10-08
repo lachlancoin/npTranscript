@@ -101,10 +101,10 @@ unlist(v)
   
   .processTPM(tpm, experiments, transcripts$ORFs)
 }
- .processTPM<-function(mat, experiments_, ID,levels =NULL){ 
-   inds = if(is.null(levels)) 1:dim(mat)[2] else which(experiments_ %in% levels)
+ .processTPM<-function(mat, experiments, ID,levels =NULL){ 
+   inds = if(is.null(levels)) 1:dim(mat)[2] else which(experiments %in% levels)
    tpm = mat[,inds,drop=F]
-   experiments = experiments_[inds]
+   experiments = experiments[inds]
    colnames(tpm) <- experiments
   #props <- prop.table(x = as.matrix(transcripts[,count_idx]), margin = 2)
   # tpm=props*1e6
