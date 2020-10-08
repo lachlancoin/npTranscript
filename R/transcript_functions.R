@@ -102,7 +102,7 @@ unlist(v)
   .processTPM(tpm, experiments, transcripts$ORFs)
 }
  .processTPM<-function(mat, experiments_, ID,levels =NULL){ 
-   inds = if(is.null(levels)) 1:dim(mat)[2] else which(experiments %in% levels)
+   inds = if(is.null(levels)) 1:dim(mat)[2] else which(experiments_ %in% levels)
    tpm = mat[,inds,drop=F]
    experiments = experiments_[inds]
    colnames(tpm) <- experiments
