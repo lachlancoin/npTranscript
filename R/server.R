@@ -47,7 +47,7 @@ h5file = NULL
   levels1
 }
 #run_depth(h5file, total_reads=total_reads)
-run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", gapthresh=10, merge=F,molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
+run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", gapthresh=100, merge=F,molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
                     span = 0.01, sumAll=F, fimo=NULL, t= NULL,logy=T, showMotifs=F,showORFs = F){
 
   	header =.getHeaderH5(h5file,toreplace)
@@ -112,6 +112,31 @@ if(!is.null(total_reads)) ylab="depth per million mapped reads"
                rawdepth = rawdepth, linetype=linetype, colour=colour,  xlim = NULL,ylab=ylab , title ="depth", logy=logy, leg_size =leg_size1, show=show, fill =fill)
 }
 
+.getCIs<-function(subs,sample, total_reads1,method, showTPM=F,prefix="",suffix="", after=TRUE){
+  if(nchar(prefix)>0){
+   if(after) prefix = paste(prefix,"_",sep="") else prefix = paste("_",prefix,sep="")
+  }
+  inds1 =  match(sample,gsub(prefix,"", names(total_reads1)))
+  count_head = paste("count",suffix,sep="")
+#  print(count_head)
+#  print(names(subs))
+  count_ind = which(names(subs)==count_head)
+#  print(count_ind)
+  subs1 = cbind(subs[,count_ind],total_reads1[inds1])
+#  print(subs1)
+  nrows = dim(subs)[1]
+  cis = matrix(0,ncol=3,nrow =nrows )
+  dimnames(cis)[[2]] = paste(c("TPM","lower","upper"),suffix,sep="")
+  for(i in 1:nrows){
+   # print(i)
+    cis[i,1:3] = .calcPropCI(subs1[i,], method=method, conf.int = conf.int)
+  }
+  if(!showTPM){
+    cis = cis *subs1[,2]/1e6
+  #  yname="counts"
+  }
+  cis
+}
 
 .process1<-function(plottype1,info){
   choices1 = info$choices1
@@ -135,13 +160,273 @@ shinyServer(function(input, output,session) {
 	#output$instructions <- renderPrint({
 	#	print("Upload 0.transcripts.txt.gz file produced by npTranscript");
 	#})
+  depthPlot=function(){
+    #result = loadData();
+    showDepth  = "show_depth" %in% input$options3
+    logy = "logy" %in% input$options3
+    showORFs="showORFs" %in% input$options3
+    showMotifs="showMotifs" %in% input$options3
+    tpm = "TPM" %in% input$options3
+    h5file=session$userData$h5file
+    total_reads = NULL
+    fimo = session$userData$fimo
+    t = session$userData$t
+    if(tpm){
+      total_reads = session$userData$total_reads
+    }
+    #  print(total_reads)
+    # print(h5file)
+    ggp=ggplot()
+    if(showDepth  && !is.null(h5file)){
+      if(file.exists(h5file)){
+        toplot = c(isolate(input$toplot5))#,isolate(input$toplot6))#,isolate(input$toplot7),isolate(input$toplot8))
+        tojoin=isolate(input$tojoin)
+        merge=F
+        toplot = toplot[toplot!="-"]
+        combinedID="combined"
+        sumAll = length(toplot)>1
+        if(length(toplot)==0){
+          ##need to get list from this
+          toplot=c(isolate(input$toplot7),isolate(input$toplot8))
+          toplot = toplot[unlist(lapply(toplot,nchar))>2]
+          if(length(toplot)>0){
+            combinedID=toplot[1]
+            toplot = .findEntries(toplot,h5file,"/depth",tojoin)
+          }
+          merge=T
+          sumAll=F
+        }
+        if(length(toplot)>0 && nchar(toplot[1])>2 ){
+          # print(toplot)
+          if("sumDepth" %in% input$options3) sumAll=TRUE
+          ggplot=run_depth(h5file,total_reads,toplot, merge=merge,molecules=input$molecules, combinedID=combinedID, cells=input$cells, times = input$times,logy=logy, sumAll = sumAll,
+                    showORFs = showORFs, fimo=fimo, t=t, showMotifs =showMotifs) 
+        }
+        #run_depth(h5file,toplot=c("leader_leader,N_end")) 
+      }
+    }
+  }
+    
+  
+  transcriptPlot=function(){
+    molecules <-  input$molecules 
+    cells <- input$cells 
+    times<-input$times
+    splitby=input$splitby
+    splitby_vec=NULL
+    xy=FALSE
+    if(splitby=="molecules"){
+      xy=T
+      splitby_vec=molecules
+    }else if(splitby=="cells"){
+      xy=T
+      splitby_vec=cells
+    }else if(splitby=="times"){
+      xy=T
+      splitby_vec=times
+    }
+    
+    
+    logy = "logy" %in% input$options2
+    showCI = "showCI" %in% input$options2
+    ribbon="ribbonCI" %in% input$options2
+    showTPM="TPM" %in% input$options2
+    showCI = "showCI" %in% input$options2
+    merge='mergeCounts' %in% input$options2
+    barchart="barchart" %in% input$options2
+    max_trans = input$maxtrans
+    conf.int=input$conf.int
+    method="logit";
+    toplot = c(isolate(input$toplot5))#,isolate(input$toplot6))#,isolate(input$toplot7),isolate(input$toplot8))
+    toplot = toplot[toplot!="-"]
+    usegrep=F
+    if(length(toplot)==0){
+      toplot=c(isolate(input$toplot7),isolate(input$toplot8))
+      toplot = toplot[unlist(lapply(toplot,nchar))>2]
+      
+      usegrep=T
+    }
+    datafile=session$userData$datafile
+    #  header = session$userData$header
+    total_reads = session$userData$total_reads
+    tojoin=isolate(input$tojoin)
+    header = names(total_reads)
+    if(length(toplot)>0 && !is.null(datafile) ){
+      if(usegrep){
+        x1 = .findEntries(toplot,datafile,"/trans",tojoin);
+        #  merge=TRUE
+        #    mat = .readIsoGrep(toplot,datafile,header, "/trans") 
+      }else{
+        x1 =toplot
+        
+      }
+      mat = t(data.frame( lapply(x1, .readIso, datafile, header, "/trans")))
+      if(is.null(dim(mat))) mat = matrix(mat,nrow=1,ncol=length(header))
+      if(merge){
+        mat = matrix(apply(mat,2,sum),nrow=1,ncol=dim(mat)[2])
+      } else{
+        
+        if(length(x1)>max_trans){
+          ord=order(apply(mat,1,sum),decreasing=T)
+          mat = mat[ord[1:max_trans],,drop=F]
+          toplot = x1[ord[1:max_trans]]
+        }else{
+          toplot=x1
+        }
+      }
+      #print(toplot)
+      
+      if(xy){
+        subs = list()
+        for(i in 1:length(splitby_vec)){
+          if(splitby=="molecules"){
+            levs1=.getlevels(header,molecules[i], cells, times)
+          } else if(splitby=="cells"){
+            levs1=.getlevels(header,molecules, cells[i], times)
+          }else{
+            levs1=.getlevels(header,molecules, cells, times[i])
+            
+          }
+          subs[[i]] =.processTPM(mat, header, toplot, levels=levs1,split=T)
+          print(head(subs[[i]]))
+          # subs[[i]]$sample=sub(molecules[i],"",subs[[i]]$sample)
+        }
+        by=c("ID","cell","time")
+        if(splitby=="cells"){
+          by=c("ID","molecule_type","time") 
+        }else if(splitby=="times"){
+          by=c("ID","molecule_type","cell")
+        }
+        subs = merge(subs[[1]],subs[[2]],by=by)
+        sample=apply(subs[,2:3,drop=F],1,paste,collapse="_")
+      } else if(barchart){
+        levs1=.getlevels(header,molecules, cells, times)
+        subs =.processTPM(mat, header, toplot, levels=levs1,split=F)
+        sample = subs$sample
+      }else{
+        tpm_df= .processTPM(mat, header, toplot,split=T)
+        subs=subset(tpm_df, molecule_type %in% molecules & cell %in% cells & time %in% times)
+        sample=apply(subs[,2:4,drop=F],1,paste,collapse="_")
+      }
+      yname='TPM'
+      if(!showTPM){
+        yname="Counts"
+      }
+      if(xy){
+        if(splitby=="times") after =FALSE else after=TRUE
+        cis.x = .getCIs(subs,sample,total_reads[ grep(splitby_vec[1],names(total_reads))],method, showTPM, prefix=splitby_vec[1],suffix=".x", after=after)
+        cis.y = .getCIs(subs,sample,total_reads[ grep(splitby_vec[2],names(total_reads))],method, showTPM, prefix=splitby_vec[2],suffix=".y", after=after)
+        cis = cbind(cis.x,cis.y)
+        
+      }else{
+        cis = .getCIs(subs,sample,total_reads,method, showTPM)
+        
+      }
+      subs = cbind(subs,cis)
+      if(xy){
+        colorby=names(subs)[1]
+        
+        shapeby=names(subs)[2] 
+        fillby = names(subs)[3]
+        #   shapeby=names(subs)[2]
+        if(length(levels(subs[[2]]))<length(levels(subs[[3]]))){
+          shapeby=names(subs)[3] 
+          fillby=names(subs)[2]
+          
+        }
+        ylim = c(min(subs$TPM.x, subs$TPM.y),c(max(subs$TPM.y, subs$TPM.y)))
+        ggp<-ggplot(subs, aes_string(x="TPM.x", y="TPM.y",ymin="lower.y", ymax="upper.y", 
+                                     xmin="lower.x", xmax="upper.x"))
+        ggp<-ggp+ggtitle(yname)+theme_bw()
+        ggp<-ggp +geom_point(inherit.aes=T,aes_string(shape = shapeby,fill=fillby,color=colorby,size=10))
+        #   ggp<-ggp +geom_point(inherit.aes=T,aes_string(shape = shapeby,color=fillby,size=2))
+        
+        if(showCI){
+          ggp<-ggp+geom_errorbar(colour="black")
+        } #
+        trans="identity"
+        if(logy){
+          trans="log10"
+        }
+        ggp<-ggp+ scale_y_continuous(trans=trans,name=splitby_vec[2], limits=ylim)+ scale_x_continuous(limits = ylim,trans=trans,name=splitby_vec[1])
+        
+      }else if(barchart){
+        ORF="ID"
+        y_text="TPM"
+        #  ord="Start"
+        # x1 =  paste("reorder(", ORF, ",", ord,")", sep="") 
+        ggp<-ggplot(subs, aes_string(x=ORF,y=y_text,fill="sample", colour='sample',ymin="lower" ,ymax="upper"))
+        ggp<-ggp+theme(text = element_text(size=18), axis.text.x = element_text(size = rel(0.7), angle = 25, hjust=0.75))
+        ggp<-ggp+ geom_bar(position=position_dodge(), aes_string(y="TPM"),stat="identity")
+        #geom_bar(aes_string(x=x1, y="Ratio", fill = "type", colour = "type"),stat="identity", position = "dodge")
+        if(showCI){
+          ggp<-ggp+geom_errorbar(position=position_dodge(width=0.9),colour="black")
+        } #ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="lower", ymax="upper"), width=.2)#, position="dodge")
+        
+        
+        if(logy){
+          ggp<-ggp+ scale_y_continuous(trans="log10",name=yname)
+        }
+        
+        
+        ggp<-ggp+ggtitle(yname)
+        ggp<-ggp+xlab("ORF")
+      }else if(!xy){
+        if(showCI){
+          ggp<-ggplot(subs, aes(x=time, y=TPM ,ymin=lower ,ymax=upper,group=interaction(molecule_type, cell, ID), color = cell, linetype=ID))
+          if(ribbon){
+            ggp<-ggp+ geom_line()  + geom_point(inherit.aes=T,aes(shape = molecule_type,size=10))
+            ggp<-ggp+geom_ribbon( linetype=2, alpha=0.1)
+          }else{
+            ggp<-ggp+ geom_line(position=position_dodge(width=0.1))  + geom_point(position=position_dodge(width=0.1),inherit.aes=T,aes(shape = molecule_type,size=10))
+            ggp<-ggp+geom_errorbar(position=position_dodge(width=0.1)) #,colour="black")
+          }
+        }else{
+          ggp<-ggplot(subs, aes(x=time, y=TPM ,group=interaction(molecule_type, cell, ID), color = cell, linetype=ID))
+          ggp<-ggp+ geom_line()  + geom_point(inherit.aes=T,aes(shape = molecule_type,size=10))
+        }
+        ggp<-ggp+theme_bw();#+ylim(c(min(subs$TPM, na.rm=T), max(subs$TPM, na.rm=T)))
+        if(!showTPM)ggp<-ggp+ylab("Counts")
+        # ggp<-ggp+ geom_errorbar(aes(linetype=molecule_type))
+        if(logy){
+          ggp<-ggp+ scale_y_log10()
+        }
+      }
+    }else{
+      ggp = ggplot()
+    }
+    ggp
+  }
+  infectivityPlot=function(){
+    currdir = session$userData$currdir
+    barchart="barchart" %in% input$options1
+    showSecondAxis="showSecondAxis" %in% input$options1
+    conf.int=input$conf.int
+    
+    infilesAnnot = paste(currdir,"0.annot.txt.gz", sep="/")
+    total_reads = session$userData$total_reads
+    if(file.exists(infilesAnnot)){
+      molecules=input$molecules; cells=input$cells; times = input$times;
+      type_nme= names(total_reads)
+      
+      
+      levels1 = .getlevels(type_nme,molecules, cells, times)
+      orfs=input$orfs
+      norm=F
+      ratio1 = .readAnnotFile(infilesAnnot,total_reads,norm=norm,levels= levels1, conf.level=conf.int, orfs=orfs)
+      #.plotAnnotFile<-function(ratio1,molecule_type, cell, time, levels=NULL,barchart=F,showEB = F,showSecondAxis=F){
+      y_text="Ratio"
+      #   y_text="spliced"
+      annots1=.plotAnnotFile(ratio1,barchart=barchart,showSecondAxis=showSecondAxis,showEB=T, levels=levels1, y_text=y_text)
+      annots1
+    }else{
+      ggplot()
+    }
+  }
+  
   observeEvent(input$plottype,{
     dd= .process1(input$plottype,  session$userData$info)
     updateSelectInput(session,"toplot5", label = dd$label, choices=dd$ch, selected="-")
-  })
-  observeEvent(input$plottype1,{
-    dd= .process1(input$plottype1, session$userData$info)
-  updateSelectInput(session,"toplot6", label = dd$label, choices=dd$ch, selected="-")
   })
   observeEvent(input$dir, {
     print(input$dir)
@@ -176,9 +461,9 @@ shinyServer(function(input, output,session) {
     session$userData$header=names(total_reads)
 
     updateSelectInput(session,"plottype", label = "Category 1", choices=ch, selected=input$plottype)
-    updateSelectInput(session,"plottype1", label = "Category 2", choices=ch, selected=input$plottype1)
+   # updateSelectInput(session,"plottype1", label = "Category 2", choices=ch, selected=input$plottype1)
     updateSelectInput(session, "toplot5",label = paste("Transcript",names(info$choices1)[1]),choices=c("-",info$choices1[[1]]),selected=input$toplot5)
-    updateSelectInput(session, "toplot6",label = paste("Transcript",names(info$choices1)[2]),choices=c("-",info$choices1[[2]]),selected=input$toplot6)
+  #  updateSelectInput(session, "toplot6",label = paste("Transcript",names(info$choices1)[2]),choices=c("-",info$choices1[[2]]),selected=input$toplot6)
     updateCheckboxGroupInput(session,"molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules)
     updateCheckboxGroupInput(session,"cells", label = "Cell type",  choices = info$cells, selected = info$cells)
     updateCheckboxGroupInput(session,"times", label = "Time points",  choices = info$times, selected = info$times)
@@ -189,202 +474,16 @@ shinyServer(function(input, output,session) {
 	#REACTIVE ON PLOT BUTTON
 	output$distPlot <- renderPlot({
 	    input$plotButton
-  	     molecules <-  input$molecules 
-  	     cells <- input$cells 
-  	     times<-input$times
-  	     logy = "logy" %in% input$options2
-  	     showCI = "showCI" %in% input$options2
-  	     ribbon="ribbonCI" %in% input$options2
-  	     showTPM="TPM" %in% input$options2
-  	     showCI = "showCI" %in% input$options2
-  	     merge='mergeCounts' %in% input$options2
-  	     barchart="barchart" %in% input$options2
-  	     conf.int=0.95; method="logit";
-  	     toplot = c(isolate(input$toplot5),isolate(input$toplot6))#,isolate(input$toplot7),isolate(input$toplot8))
-  	     toplot = toplot[toplot!="-"]
-  	     usegrep=F
-  	     if(length(toplot)==0){
-  	       toplot=isolate(input$toplot7)
-  	       usegrep=T
-  	     }
-  	     datafile=session$userData$datafile
-  	   #  header = session$userData$header
-  	     total_reads = session$userData$total_reads
-  	    header = names(total_reads)
-  	     if(length(toplot)>0 && !is.null(datafile) && nchar(toplot[1])>2){
-  	       if(usegrep){
-  	         x1 = .findEntries(toplot,datafile,"/trans");
-  	       #  merge=TRUE
-  	    #    mat = .readIsoGrep(toplot,datafile,header, "/trans") 
-  	       }else{
-  	         x1 =toplot
-  	        
-  	       }
-  	       mat = t(data.frame( lapply(x1, .readIso, datafile, header, "/trans")))
-  	       if(is.null(dim(mat))) mat = matrix(mat,nrow=1,ncol=length(header))
-  	      if(merge){
-  	        mat = matrix(apply(mat,2,sum),nrow=1,ncol=dim(mat)[2])
-  	      } else{
-  	       
-  	        if(length(x1)>10){
-  	          ord=order(apply(mat,1,sum),decreasing=T)
-  	          mat = mat[ord[1:10],,drop=F]
-  	          toplot = x1[ord[1:10]]
-  	        }else{
-  	          toplot=x1
-  	        }
-  	      }
-  	   #print(toplot)
-  	     
-  	       if(barchart){
-  	         levs1=.getlevels(header,molecules, cells, times)
-    	       subs =.processTPM(mat, header, toplot, levels=levs1)
-    	       sample = subs$sample
-  	      }else{
-  	       tpm_df= .processTPM(mat, header, toplot)
-  	       subs=subset(tpm_df, molecule_type %in% molecules & cell %in% cells & time %in% times)
-  	       sample=apply(subs[,2:4,drop=F],1,paste,collapse="_")
-  	      }
-  	      
-  	       inds1 =  match(sample, names(total_reads))
-  	       subs1 = cbind(subs$count,total_reads[inds1])
-  	       nrows = dim(subs)[1]
-  	       cis = matrix(0,ncol=3,nrow =nrows )
-  	       dimnames(cis)[[2]] = c("TPM","lower","upper")
-  	      
-  	       for(i in 1:nrows){
-  	         cis[i,1:3] = .calcPropCI(subs1[i,], method=method, conf.int = conf.int)
-  	       
-  	       }
-  	       yname='TPM'
-  	       if(!showTPM){
-  	         cis = cis *subs1[,2]/1e6
-  	         yname="counts"
-  	       }
-  	       subs = cbind(subs,cis)
-  	     if(barchart){
-  	       ORF="ID"
-  	       y_text="TPM"
-  	     #  ord="Start"
-  	      # x1 =  paste("reorder(", ORF, ",", ord,")", sep="") 
-  	       ggp<-ggplot(subs, aes_string(x=ORF,y=y_text,fill="sample", colour='sample',ymin="lower" ,ymax="upper"))
-  	       ggp<-ggp+theme(text = element_text(size=18), axis.text.x = element_text(size = rel(0.7), angle = 25, hjust=0.75))
-  	       ggp<-ggp+ geom_bar(position=position_dodge(), aes_string(y="TPM"),stat="identity")
-  	       #geom_bar(aes_string(x=x1, y="Ratio", fill = "type", colour = "type"),stat="identity", position = "dodge")
-  	       if(showCI){
-  	         ggp<-ggp+geom_errorbar(position=position_dodge(width=0.9),colour="black")
-  	       } #ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="lower", ymax="upper"), width=.2)#, position="dodge")
-  	      
-  	         
-  	         if(logy){
-  	           ggp<-ggp+ scale_y_continuous(trans="log10",name=yname)
-  	         }
-  	       
-  	       
-  	       ggp<-ggp+ggtitle(yname)
-  	       ggp<-ggp+xlab("ORF")
-  	     }else{
-  	     if(showCI){
-  	      ggp<-ggplot(subs, aes(x=time, y=TPM ,ymin=lower ,ymax=upper,group=interaction(molecule_type, cell, ID), color = cell, linetype=ID))
-  	      if(ribbon){
-  	        ggp<-ggp+ geom_line()  + geom_point(inherit.aes=T,aes(shape = molecule_type,size=10))
-  	        ggp<-ggp+geom_ribbon( linetype=2, alpha=0.1)
-  	      }else{
-  	       ggp<-ggp+ geom_line(position=position_dodge(width=0.1))  + geom_point(position=position_dodge(width=0.1),inherit.aes=T,aes(shape = molecule_type,size=10))
-  	        ggp<-ggp+geom_errorbar(position=position_dodge(width=0.1)) #,colour="black")
-  	      }
-  	     }else{
-  	      ggp<-ggplot(subs, aes(x=time, y=TPM ,group=interaction(molecule_type, cell, ID), color = cell, linetype=ID))
-  	      ggp<-ggp+ geom_line()  + geom_point(inherit.aes=T,aes(shape = molecule_type,size=10))
-  	     }
-  	     ggp<-ggp+theme_bw();#+ylim(c(min(subs$TPM, na.rm=T), max(subs$TPM, na.rm=T)))
-  	     if(!showTPM)ggp<-ggp+ylab("Counts")
-  	     # ggp<-ggp+ geom_errorbar(aes(linetype=molecule_type))
-  	      if(logy){
-  	        ggp<-ggp+ scale_y_log10()
-  	      }
-  	     }
-  	     }else{
-  	       ggp = ggplot()
-  	     }
-  	     ggp
+  	    transcriptPlot()
   	  })
 output$infPlot<-renderPlot({
   input$plotButton
-  currdir = session$userData$currdir
-  barchart="barchart" %in% input$options1
-  showSecondAxis="showSecondAxis" %in% input$options1
-  infilesAnnot = paste(currdir,"0.annot.txt.gz", sep="/")
-  total_reads = session$userData$total_reads
-  if(file.exists(infilesAnnot)){
-    molecules=input$molecules; cells=input$cells; times = input$times;
-    type_nme= names(total_reads)
-    
-   
-    levels1 = .getlevels(type_nme,molecules, cells, times)
-##we should use total reads from combined human viral.  For now we set norm=F
-  #print(input$orfs)
-#  fi, total_reads, norm=F , conf.level=0.95,  levels=NULL, 
-#  orfs="E,N"){
-  orfs=input$orfs
-  norm=F
-  ratio1 = .readAnnotFile(infilesAnnot,total_reads,norm=norm,levels= levels1, conf.level=0.95, orfs=orfs)
-  #.plotAnnotFile<-function(ratio1,molecule_type, cell, time, levels=NULL,barchart=F,showEB = F,showSecondAxis=F){
-    y_text="Ratio"
- #   y_text="spliced"
-  annots1=.plotAnnotFile(ratio1,barchart=barchart,showSecondAxis=showSecondAxis,showEB=T, levels=levels1, y_text=y_text)
-  annots1
-  }else{
-    ggplot()
-  }
+  infectivityPlot()
 })
 	output$depthPlot <- renderPlot({
 	    input$plotButton
-	      #result = loadData();
-	  showDepth  = "show_depth" %in% input$options3
-	  logy = "logy" %in% input$options3
-	  showORFs="showORFs" %in% input$options3
-	  showMotifs="showMotifs" %in% input$options3
-	  tpm = "TPM" %in% input$options3
-	  h5file=session$userData$h5file
-	  total_reads = NULL
-	  fimo = session$userData$fimo
-	  t = session$userData$t
-  if(tpm){
-    total_reads = session$userData$total_reads
-  }
-	  	#  print(total_reads)
-	 # print(h5file)
-	    if(showDepth  && !is.null(h5file)){
-	    
-	      if(file.exists(h5file)){
-	       # toplot = c(isolate(input$toplot1),isolate(input$toplot2),isolate(input$toplot3),isolate(input$toplot4))
-	        toplot = c(isolate(input$toplot5),isolate(input$toplot6))#,isolate(input$toplot7),isolate(input$toplot8))
-	        merge=F
-	        toplot = toplot[toplot!="-"]
-	        combinedID="combined"
-	        sumAll = length(toplot)>1
-	        if(length(toplot)==0){
-	          ##need to get list from this
-	          toplot = c(isolate(input$toplot7))
-	          if(nchar(toplot[1])>2){
-	            combinedID=toplot[1]
-	            toplot = .findEntries(toplot[1],h5file,"/depth")
-	           
-	          }
-	          merge=T
-	          sumAll=F
-	        }
-	        if(length(toplot)>0 && nchar(toplot[1])>2 ){
-	         # print(toplot)
-	          if("sumDepth" %in% input$options3) sumAll=TRUE
-  		run_depth(h5file,total_reads,toplot, merge=merge,molecules=input$molecules, combinedID=combinedID, cells=input$cells, times = input$times,logy=logy, sumAll = sumAll,
-  		          showORFs = showORFs, fimo=fimo, t=t, showMotifs =showMotifs) 
-	        }
-  		#run_depth(h5file,toplot=c("leader_leader,N_end")) 
-	      }
-	    }
+	  depthPlot()
+	})
 	   
-	 })
 
 })

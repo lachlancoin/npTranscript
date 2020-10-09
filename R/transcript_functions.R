@@ -101,7 +101,8 @@ unlist(v)
   
   .processTPM(tpm, experiments, transcripts$ORFs)
 }
- .processTPM<-function(mat, experiments, ID,levels =NULL){ 
+ .processTPM<-function(mat, experiments, ID,levels =NULL,split=T){ 
+   toplot=ID
    inds = if(is.null(levels)) 1:dim(mat)[2] else which(experiments %in% levels)
    tpm = mat[,inds,drop=F]
    experiments = experiments[inds]
@@ -116,13 +117,13 @@ unlist(v)
   tpm <- cbind(ID=ID,tpm)
   #prep tpm_df
   #separate(TPM1, c('TPM', 'lower', 'upper'), sep=',', remove = T) %>%
-  if(is.null(levels)){
+  if(split){
   as.data.frame(tpm) %>% melt(id.vars='ID', measure.vars=experiments, value.name = 'count') %>%
     separate(variable, c('molecule_type', 'cell', 'time'), sep='_', remove = T) %>%
     transform( count=as.numeric(count), molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time, levels = time_vec)) -> tpm_df
   }else{
     as.data.frame(tpm) %>% melt(id.vars='ID', measure.vars=experiments, value.name = 'count', variable.name='sample') %>%
-      transform(count=as.numeric(count),sample = factor(sample, levels =levels)) -> tpm_df
+      transform(count=as.numeric(count),ID=factor(ID, levels=toplot),sample = factor(sample, levels =levels)) -> tpm_df
     
   } #attr(tpm_df,"total_reads") = total_reads
    tpm_df
@@ -132,18 +133,27 @@ unlist(v)
   cnts = h5read(isofile, paste(group, x,sep="/"))
   c(cnts, rep(0,len -length(cnts)))
 }
-.findEntries<-function(x,isofile, group){
+.findEntries<-function(x,isofile, group ,tojoin="OR"){
   mat = h5ls(isofile)
   mat = mat[mat$group==group,,drop=F]
-  if(x=="all"){
-    x1 = mat$name
-  }else if(length(grep("juncts",x))>0){
-    num = as.numeric(strsplit(x,":")[[1]][2])
-    x1=mat$name[unlist(lapply(strsplit(mat$name,","),length))==(num+1)]
-  }else{
-   x1=mat[grep(x,mat$name),,drop=F]$name
-  }
-  x1
+  join_and = tojoin=="AND"
+if(join_and)  x2 =  mat$name else   x2 =  c()
+  for(j in 1:length(x)){
+    if(x[j]=="all"){
+      x1 = mat$name
+    }else if(x[j]=="no3"){
+      x1=mat[grep("end",mat$name,inv=T),,drop=F]$name
+    }else if(x[j]=="no5"){
+      x1=mat[grep("leader",mat$name,inv=T),,drop=F]$name
+    }else if(length(grep("juncts",x[j]))>0){
+      num = as.numeric(strsplit(x[j],":")[[1]][2])
+      x1=mat$name[unlist(lapply(strsplit(mat$name,","),length))==(num+1)]
+    }else{
+     x1=mat[grep(x[j],mat$name),,drop=F]$name
+    }
+    if(join_and) x2 = x2[x2 %in% x1] else x2 = c(x2, x1[!(x1 %in% x2)])
+}
+  x2
 }
 #.readIsoGrep<-function(x, isofile,header, group="/trans"){
 # x1 = .findEntries(x,isofile,group);
@@ -1584,7 +1594,7 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
 #  print(head(mat1))
   cbind(clusterID,mat1)
 }
-readH5<-function(h5file, total_reads, header, toplot, gapthresh=10,merge=F,sumID="all", combinedID='combined',pos = NULL,id_cols = c("molecule","cell","time"), dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
+readH5<-function(h5file, total_reads, header, toplot, gapthresh=100,merge=F,sumID="all", combinedID='combined',pos = NULL,id_cols = c("molecule","cell","time"), dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
  pos_ind = 1
  ncols = length(id_cols)
  names = h5ls(h5file)$name
