@@ -486,6 +486,4 @@ output$infPlot<-renderPlot({
 	})
 	   
 	 })
-	output$downloadInf <- downloadHandler(filename = 'plotInfectivity.pdf', content = file.copy(output$infPlot) )
-
-})
+	#output$downloadInf <- downloadHandler(filename = 'plotInfectivity.pdf', content = file.copy(output$infPlot) )
