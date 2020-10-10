@@ -58,21 +58,30 @@ shinyUI(fluidPage(
     #fileInput("datafile", "Transcripts file", multiple = FALSE, accept = NULL),\    
     selectInput("dir", label = "Directory", choices=dirs, selected=currdir),
     selectInput("plottype", label = "Category 1", choices=ch, selected=ch[1]),
-    selectInput("plottype1", label = "Category 2", choices=ch, selected=ch[1]),
+  #  selectInput("plottype1", label = "Category 2", choices=ch, selected=ch[1]),
     
     selectInput("toplot5", label = paste("Transcript",names(info$choices1)[1]), choices=c("-",info$choices1[[1]]), selected="-"),
-    selectInput("toplot6", label = paste("Transcript",names(info$choices1)[1]), choices=c("-",info$choices1[[1]]), selected="-"),
+   # selectInput("toplot6", label = paste("Transcript",names(info$choices1)[1]), choices=c("-",info$choices1[[1]]), selected="-"),
+    
+    textInput("toplot7", label="All transcripts matching", value = ""),
+    selectInput("tojoin", label ="Join", choices=c("AND","OR"), selected="OR"),
+    
+    textInput("toplot8", label="All transcripts matching", value = ""),
+    
     actionButton("plotButton", "Generate plots"),
    checkboxGroupInput("molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules),
    checkboxGroupInput("cells", label = "Cell type",  choices = info$cells, selected = info$cells),
    checkboxGroupInput("times", label = "Time points",  choices = info$times, selected = info$times),
-   checkboxGroupInput("options1", label = "Top panel", choices = options1, selected=totick1) ,
+   checkboxGroupInput("options1", label = h3("Top panel"), choices = options1, selected=totick1) ,
    textInput("orfs", label="ORFs to include", value = orfs),
-   checkboxGroupInput("options2", label = "Middle panel", choices = options2, selected=totick2) ,
-   checkboxGroupInput("options3", label = "Bottom panel", choices = options3, selected=totick3) 
+   checkboxGroupInput("options2", label = h3("Middle panel"), choices = options2, selected=totick2) ,
+   numericInput("conf.int", label = "Confidence intervals", value = 0.95),
+   numericInput("maxtrans", label = "Maximum number of transcripts", value = 10),
+  selectInput("splitby", label ="Plot x vs y", choices=c("off","molecules","cells","times"), selected="off"),
+  
+   checkboxGroupInput("options3", label = h3("Bottom panel"), choices = options3, selected=totick3) 
    
    
- #  numericInput("conf.int", label = h3("Confidence intervals"), value = 0.95),
   ),
  
   
@@ -82,11 +91,8 @@ shinyUI(fluidPage(
     # verbatimTextOutput("variables"),
     # verbatimTextOutput("validation"),
     plotOutput("infPlot", height=400),
-    downloadButton('downloadInf'),
      plotOutput("distPlot", height=400),
-	 downloadButton('downloadTPM'),
-   plotOutput("depthPlot", height=400),
-   downloadButton('downloadDepth')
+   plotOutput("depthPlot", height=400)
   )
   #,
   #htmlTemplate(file.path(basedir, "shiny-common/uomfooter.html"))
