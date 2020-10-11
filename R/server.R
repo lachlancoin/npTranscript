@@ -160,7 +160,7 @@ shinyServer(function(input, output,session) {
 	#output$instructions <- renderPrint({
 	#	print("Upload 0.transcripts.txt.gz file produced by npTranscript");
 	#})
-  depthPlot=function(){
+  depthPlot= function() {
     #result = loadData();
     showDepth  = "show_depth" %in% input$options3
     logy = "logy" %in% input$options3
@@ -484,6 +484,8 @@ output$infPlot<-renderPlot({
 	    input$plotButton
 	  depthPlot()
 	})
-	   
+output$downloadInf <- downloadHandler(filename = function() {'plotInfectivity.pdf'}, content = function(file) ggsave(file, infectivityPlot(), device='pdf', height = 20, width = 40, units='cm' ) )
+output$downloadDepth <- downloadHandler(filename = function() {'plotDepth.pdf'}, content = function(file) ggsave(file, depthPlot(), device = 'pdf', height = 20, width = 40, units='cm') )
+output$downloadDist <- downloadHandler(filename = function() {'plotDist.pdf'}, content = function(file) ggsave(file, distPlot(), device = 'pdf' , height = 20, width = 40, units='cm') )
 	 })
-	#output$downloadInf <- downloadHandler(filename = 'plotInfectivity.pdf', content = file.copy(output$infPlot) )
+

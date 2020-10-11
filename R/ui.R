@@ -60,7 +60,7 @@ shinyUI(fluidPage(
     selectInput("plottype", label = "Category 1", choices=ch, selected=ch[1]),
   #  selectInput("plottype1", label = "Category 2", choices=ch, selected=ch[1]),
     
-    selectInput("toplot5", label = paste("Transcript",names(info$choices1)[1]), choices=c("-",info$choices1[[1]]), selected="-"),
+    selectInput("toplot5", label = paste("Transcript",names(info$choices1)[1]), choices=c("-",info$choices1[[1]]), selected="leader_leader,N_end"),
    # selectInput("toplot6", label = paste("Transcript",names(info$choices1)[1]), choices=c("-",info$choices1[[1]]), selected="-"),
     
     textInput("toplot7", label="All transcripts matching", value = ""),
@@ -91,8 +91,11 @@ shinyUI(fluidPage(
     # verbatimTextOutput("variables"),
     # verbatimTextOutput("validation"),
     plotOutput("infPlot", height=400),
+	downloadButton('downloadInf'),
      plotOutput("distPlot", height=400),
-   plotOutput("depthPlot", height=400)
+	downloadButton('downloadDist'),
+   plotOutput("depthPlot", height=400),
+   downloadButton("downloadDepth")
   )
   #,
   #htmlTemplate(file.path(basedir, "shiny-common/uomfooter.html"))
