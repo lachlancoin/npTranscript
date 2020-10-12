@@ -289,7 +289,7 @@ public static  synchronized void printBed(PrintWriter bedW, String chrom, List<I
 			all_breaks = new HashMap<CigarHash2, Count>();
 			//if(all_breaks.size()>0) throw new RuntimeException("should be zero");
 			Count cnt =new Count(num_sources, source_index,  0);
-			if(Outputs.writeGFF) cnt.addBreaks(c1.breaks);
+			if(Outputs.writeGFF || Outputs.writeIsoforms) cnt.addBreaks(c1.breaks);
 			this.all_breaks.put(IdentityProfile1.includeStart  ? breaks : breaks.clone(true, 1),cnt);
 			this.breaks_hash.setSecondKey(c1.breaks_hash.secondKey);
 			
@@ -530,7 +530,7 @@ public static boolean recordStartEnd = false;
 				else{
 				count.increment(src_index);
 				}
-			if(Outputs.writeGFF) count.addBreaks(c1.breaks);
+			if(Outputs.writeGFF || Outputs.writeIsoforms) count.addBreaks(c1.breaks);
 			for(int i=0; i<this.readCount.length;i++) {
 				readCount[i]+=c1.readCount[i];
 			}

@@ -167,9 +167,11 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addBoolean("keepAlignment", false, "whether to keep alignment for MSA");
 		addBoolean("attempt5rescue", true, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
 		addBoolean("attempt3rescue", true, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
-		addBoolean("writePolyA", false, "whether write reads with poly								qqq	A in middle");
+		addBoolean("writePolyA", false, "whether write reads with polyA in middle");
 		addBoolean("coronavirus", true, "whether to run in coronavirus mode (necessary to do breakpoint analysis, but takes more memory)");
 		addBoolean("writeGFF", false, "whether to output gff ");
+		addBoolean("writeIsoforms", false, "whether to write isoforms");
+
 		addString("mm2_path", "/sw/minimap2/current/minimap2",  "minimap2 path", false);
 		addString("mm2Preset", "splice",  "preset for minimap2", false);
 	//	addBoolean("writeBed", false, "whether to write bed",false);
@@ -347,6 +349,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		
 		//Outputs.writeBed  = cmdLine.getBooleanVal("writeBed");
 		Outputs.writeGFF = cmdLine.getBooleanVal("writeGFF");
+		Outputs.writeIsoforms = cmdLine.getBooleanVal("writeIsoforms");
+
 		mm2_threads = cmdLine.getIntVal("mm2_threads");
 		mm2_mem = cmdLine.getStringVal("mm2_mem");
 		mm2_path = cmdLine.getStringVal("mm2_path");

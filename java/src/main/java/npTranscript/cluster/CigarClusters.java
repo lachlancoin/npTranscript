@@ -186,7 +186,7 @@ public class CigarClusters {
 					if(cc.end<endThresh){
 						int totalDepth = cc.readCountSum();
 						process1(cc, o, chrom, chrom_index,  geneNames);
-						o.writeIsoforms(cc, this, chrom, chrom_index, totalDepth);
+						if(Outputs.writeIsoforms) o.writeIsoforms(cc, this, chrom, chrom_index, totalDepth);
 						o.writeDepthH5(cc, this, chrom,chrom_index, totalDepth);
 						rem_count++;
 						l.remove(cc.breaks_hash);
@@ -231,7 +231,7 @@ public class CigarClusters {
 					CigarCluster nxt = it.next();
 					process1(nxt, o, chrom, chrom_index, geneNames);
 					int  totalDepth = nxt.readCountSum();
-					o.writeIsoforms(nxt, this, chrom, chrom_index, totalDepth);
+					if(Outputs.writeIsoforms) o.writeIsoforms(nxt, this, chrom, chrom_index, totalDepth);
 					o.writeDepthH5(nxt, this, chrom,chrom_index, totalDepth);
 			}
 			

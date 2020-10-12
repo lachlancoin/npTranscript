@@ -47,7 +47,8 @@ public class Outputs{
 	public static int gffThreshGene = 10;
 	public static int gffThreshTranscript = 10;
 	public static int maxTranscriptsPerGeneInGFF = Integer.MAX_VALUE;
-	
+	public static boolean writeIsoforms = false;
+
 	public static File library = new File("./");
 	public static final ExecutorService writeCompressDirsExecutor  = Executors.newSingleThreadExecutor();
 	public static final ExecutorService fastQwriter = Executors.newSingleThreadExecutor();
@@ -592,23 +593,44 @@ public class Outputs{
 		//	return mergeSourceClusters ? Arrays.stream(val.count()).sum()  : val.count()[source];
 		}
 
-		
+		public static String getString(int[] l,char sep){
+			StringBuffer sb = new StringBuffer();
+			for(int i=0; i<l.length; i++){
+				if(i>0) sb.append(sep);
+				sb.append(l[i]);
+			}
+			return sb.toString();
+		}
 		
 		static class HDFObj  {
 			public HDFObj(){
 				
 			}
+			public  String toString(){
+				return nme+"\t"+getString(br,',')+"\t"+getString(cnts,',');
+			}
+			public HDFObj(String str) {
+				String[] str_ = str.split("\t");
+				this.nme = str_[0];
+				String[] str1 = str_[1].split(",");
+				String[] str2 = str_[2].split(",");
+				br = new int[str1.length];
+				cnts = new int[str2.length];
+				for(int i=0; i<str1.length; i++)br[i] = Integer.parseInt(str1[i]);
+				for(int i=0; i<str2.length; i++)cnts[i] = Integer.parseInt(str2[i]);
+			}
 			public HDFObj(List<Integer>l1, List<Integer>l2, int[] count) {
 				nme = CigarHash2.getString(l1);
-				if(l2!=null){
+			//	if(l2!=null){
 					br = new int[l2.size()];
 					
 					for(int i=0; i<l2.size(); i++){
 						br[i] = l2.get(i);
 					}
-				}
+				//}
 				cnts = count;
 			}
+			
 			String nme; int[]  br; int[] cnts;
 			/*@Override
 			public int compareTo(Object o) {
@@ -669,14 +691,15 @@ public class Outputs{
 			//int existing_cols=0;
 			if(altT.exists(id)){
 				m = new HashMap<String, HDFObj>();
-				HDFObj[] objs1 = altT.readCompoundArray(id, HDFObj.class);
+				String[] objs1 = altT.readStringArray(id);
 				//existing_cols = objs1[0].cnts.length;
 				for(int i=0; i<objs1.length; i++){
-					objs1[i].expand(this.new_max_cols);
-					m.put(objs1[i].nme, objs1[i]);
+					HDFObj obji = new HDFObj(objs1[i]);
+					obji.expand(this.new_max_cols);
+					m.put(obji.nme, obji);
 				}
 			}
-				List<HDFObj> objs = new ArrayList<HDFObj>();
+				List<String> objs = new ArrayList<String>();
 						Iterator<Entry<CigarHash2, Count>> it = all_breaks.entrySet().iterator();
 						for(int i=0;  it.hasNext();i++){
 							Entry<CigarHash2,Count> ch = it.next();
@@ -691,12 +714,14 @@ public class Outputs{
 							for(int j=0; j<col_inds.length; j++){
 								obj_i.cnts[col_inds[j]] = cnts[j];
 							}
-							objs.add(obj_i);
+							objs.add(obj_i.toString());
 							
 						}
 					
 					//    altT.compound().writeA
-						altT.compound().writeArray(id,  objs.toArray(new HDFObj[0]));;
+					//	System.err.println(objs);
+						altT.writeStringArray(id, objs.toArray(new String[0]));
+						//altT.compound().writeArray(id,  objs.toArray(new HDFObj[0]));;
 						//altT.writeCompoundArray(id, objs.toArray(new HDFObj[0]));
 			
 		}
