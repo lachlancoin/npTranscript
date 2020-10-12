@@ -137,7 +137,8 @@ unlist(v)
   mat = h5ls(isofile)
   mat = mat[mat$group==group,,drop=F]
   join_and = tojoin=="AND"
-if(join_and)  x2 =  mat$name else   x2 =  c()
+  join_not = tojoin=="NOT"
+if(join_and || join_not)  x2 =  mat$name else   x2 =  c()
   for(j in 1:length(x)){
     if(x[j]=="all"){
       x1 = mat$name
@@ -151,7 +152,7 @@ if(join_and)  x2 =  mat$name else   x2 =  c()
     }else{
      x1=mat[grep(x[j],mat$name),,drop=F]$name
     }
-    if(join_and) x2 = x2[x2 %in% x1] else x2 = c(x2, x1[!(x1 %in% x2)])
+    if(join_and) x2 = x2[x2 %in% x1] else if (join_not) x2 = x2[!(x2 %in% x1)] else x2 = c(x2, x1[!(x1 %in% x2)])
 }
   x2
 }
@@ -834,7 +835,7 @@ loess_smooth<-function(clusters,  inds,span = 0.05){
     for(j in inds){	
       names(clusters)[j] = "depth"
      
-      if(max(clusters$depth)>0){
+      if(max(clusters$depth,na.rm=T)>0){
         y = try(.loess(clusters, span))
 	if(inherits(y,"try-error")) {
 		print("error loess")
@@ -1594,8 +1595,9 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
 #  print(head(mat1))
   cbind(clusterID,mat1)
 }
-readH5<-function(h5file, total_reads, header, toplot, gapthresh=100,merge=F,sumID="all", combinedID='combined',pos = NULL,id_cols = c("molecule","cell","time"), dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
+readH5<-function(h5file, total_reads, header, toplot, gapthresh=100,mergeGroups = NULL,sumID="all", pos = NULL,id_cols = c("molecule","cell","time"), dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
  pos_ind = 1
+ merge=!is.null(mergeGroups)
  ncols = length(id_cols)
  names = h5ls(h5file)$name
  inds = which(toplot %in% names)
@@ -1604,11 +1606,10 @@ readH5<-function(h5file, total_reads, header, toplot, gapthresh=100,merge=F,sumI
  clusters_ = NULL
  mats=NULL
  new_cols =  c("pos", "depth", "clusterID",'sampleID', id_cols)
- if(!merge){
-  clusters_ = data.frame(matrix(NA, nrow =0, ncol = length(header)))
-  names(clusters_) =header
- }else{
- mats=list()
+ clusters_ = data.frame(matrix(NA, nrow =0, ncol = length(header)))
+ names(clusters_) =header
+ if(merge){
+   mats <- vector("list", length(IDS))
  }
   for(i in 1:length(IDS)){
 	ID = IDS[i]
@@ -1617,7 +1618,7 @@ readH5<-function(h5file, total_reads, header, toplot, gapthresh=100,merge=F,sumI
 	if(dim(mat)[1]>0){
 	mat=mat[,c(1,dinds),drop=F]
 	if(merge){
-	  mats[[length(mats)+1]] = mat
+	  mats[[i]] = mat
 	}else{
 	  mat2 = .processInternal(mat, sumAll, header, total_reads, span, gapthresh,ID, sumID=sumID)
 		clusters_ = rbind(clusters_,mat2)
@@ -1625,8 +1626,17 @@ readH5<-function(h5file, total_reads, header, toplot, gapthresh=100,merge=F,sumI
 	}
   } 
  if(merge){
-    mat2 = .mergeDepthMats(mats)
-    clusters_=.processInternal(mat2,sumAll, header, total_reads, span, gapthresh,combinedID, sumID=sumID)
+   for(k in 1:length(mergeGroups)){
+     if(length(mergeGroups[[k]])>0){
+        matsk = mats[mergeGroups[[k]]]
+        nonnull=!unlist(lapply(matsk, is.null)) 
+        if(length(which(nonnull))>0){
+          mat2 = .mergeDepthMats(matsk[nonnull])
+          clusters_=rbind(clusters_,.processInternal(mat2,sumAll, header, total_reads, span, gapthresh,names(mergeGroups)[k], sumID=sumID))
+        }
+     }
+   }
+   
  }
   clusters_
 }
