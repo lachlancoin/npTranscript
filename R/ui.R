@@ -8,12 +8,12 @@ source( "transcript_functions.R")
 
 basedir="../data"
 dirs = list.dirs(basedir,full.names=F, rec=T)
-required=c("0.isoforms.h5","Coordinates.csv")
+required=c("0.isoforms.h5") #,"Coordinates.csv")
 for(i in 1:length(required)){
 dirs=dirs[which(unlist(lapply(dirs,function(x) file.exists(paste(basedir,x,required[i],sep="/")))))]
 }
 seldir=1
-dirs = rev(dirs)
+dirs = c("",dirs)
 #print(seldir)
 currdir = paste(basedir,dirs[seldir],sep="/")
 #print(currdir)
@@ -24,22 +24,36 @@ h5file=paste(currdir,"0.clusters.h5",sep="/")
 #datafile=paste(currdir,"0.transcripts.txt.gz",sep="/")
 toreplace=list(virion="RNA_virion_0hpi", whole_genome_mapped="RNA_vero_24hpi")
 #timevec= c('2hpi','24hpi','48hpi')
-
-isoInfo = .getIsoInfo(datafile,h5file, toreplace)
-info = .processInfo(isoInfo)
-total_reads = isoInfo$total_reads
-
+if(file.exists(datafile)){
+  isoInfo = .getIsoInfo(datafile,h5file, toreplace)
+  info = .processInfo(isoInfo)
+  total_reads = isoInfo$total_reads
+  ch=c(names(info$choices1), names(info$choices))
+  
+}else{
+  ch = c()
+}
+if(file.exists(h5file)){
+plot_type_ch =   sub("/","",grep("depth",unique(h5ls(h5file)[,1]),v=T))
+}else{
+  plot_type_ch  = c("-");
+}
 
 options1=c("showCI" ,"barchart", "showSecondAxis")
 totick1 = c("showCI" ,"barchart")
-options2 = c("logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts")
+#options2 = c("logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts")
+ options2 = c("logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts", "stacked")
 totick2 = c("TPM","ribbonCI")
 options3 = c("show_depth","logy", "TPM","showMotifs","showORFs", "sumDepth","mergeCounts")
 totick3 = c("show_depth","TPM")
 
-ch=c(names(info$choices1), names(info$choices))
-t=readCoords(paste(currdir, "Coordinates.csv",sep="/"))
-orfs=paste(t$gene,collapse=",")
+coordsFile = paste(currdir, "Coordinates.csv",sep="/")
+if(file.exists(coordsFile)){
+  t=readCoords(coordsFile)
+  orfs=paste(t$gene,collapse=",")
+}else{
+  orfs = c()
+}
 # Define UI for application that plots random distributions 
 shinyUI(fluidPage(
    theme="https://d2h9b02ioca40d.cloudfront.net/v8.0.1/uom.css",
@@ -67,7 +81,8 @@ shinyUI(fluidPage(
     selectInput("tojoin", label ="Join", choices=c("AND","OR"), selected="OR"),
     
     textInput("toplot8", label="All transcripts matching", value = ""),
-    
+  textInput("group_by", label="Group transcripts by", value = ""),
+  
     actionButton("plotButton", "Generate plots"),
    checkboxGroupInput("molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules),
    checkboxGroupInput("cells", label = "Cell type",  choices = info$cells, selected = info$cells),
@@ -79,9 +94,12 @@ shinyUI(fluidPage(
    numericInput("maxtrans", label = "Maximum number of transcripts", value = 10),
   selectInput("splitby", label ="Plot x vs y", choices=c("off","molecules","cells","times"), selected="off"),
   
-   checkboxGroupInput("options3", label = h3("Bottom panel"), choices = options3, selected=totick3) 
-   
-   
+   checkboxGroupInput("options3", label = h3("Bottom panel"), choices = options3, selected=totick3) ,
+  selectInput("depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="OR"),
+  numericInput("min_x", label = "Min position", value = 0),
+  numericInput("max_x", label = "Max position", value = 30000)
+  
+  
   ),
  
   
