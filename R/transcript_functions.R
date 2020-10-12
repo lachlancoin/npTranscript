@@ -1,21 +1,94 @@
 .calcPropCI<-function(x, conf.int=0.95,  method="prop.test"){
-  v = round(binom.confint(x[1], x[2], method=method, conf.int=conf.int)[4:6] *(1e6))
+  v = binom.confint(x[1], x[2], method=method, conf.int=conf.int)[4:6] *(1e6)
 unlist(v)
 }
-
-.getORFs<-function(datafile){
-  time_vec <- c('2hpi','24hpi','48hpi')
-  exp_vec <- c('vero','calu','caco')
-  transcripts <- .readTranscripts(datafile)
-  num_breaks = transcripts$num_exons
-  type_name = transcripts$type_nme
-  experiments <- data.frame(experiments=attr(transcripts, 'info'))
-  ORFs=data.frame(ORFs=transcripts$ORFs, type_name=as.factor(type_name), num_breaks=as.factor(num_breaks))
-  attr(ORFs,"experiments")<-  separate(experiments,1, c('molecule_type', 'cell', 'time'), sep='_', remove = T) %>%
-    transform(  molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time, levels = time_vec)) 
-  
-  ORFs
+.getHeaderH5<-function(datafile, toreplace=list()){
+  header = h5read(datafile,"header")
+  if(length(toreplace)>0){
+    for(i in 1:length(toreplace)){  
+      header[header==names(toreplace)[i]] =toreplace[[i]]
+      
+    }
+  }
+  header
 }
+.getIsoInfo<-function(datafile, h5file,toreplace=list()){
+ 
+ header=.getHeaderH5(datafile, toreplace)
+ mat =h5ls(datafile)
+ count_entries= paste(mat[grep("/counts",mat$group),1:2],collapse="/")
+ print(h5file)
+ if(file.exists(h5file)){
+   mat1 =h5ls(h5file)
+   orf_entries = mat1[grep("/depth",mat1$group),]$name
+   
+ }else{
+  orf_entries = mat[grep("/trans",mat$group),]$name
+ }
+  counts=lapply(count_entries, function(x) h5read(datafile,x))
+  
+  total_reads = apply(data.frame(counts),1,sum)
+  #if(sum(total_reads)==0){
+  #  total_reads = rep(1e6,length(total_reads))
+  #}
+  names(total_reads) = header
+  experiments <- data.frame(experiments=header)
+ exps= separate(experiments,1, c('molecule_type', 'cell', 'time'), sep='_', remove = T) %>%
+    transform(  molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time)) 
+  num_breaks=unlist(lapply(strsplit(orf_entries,","),function(x) length(x)-1))
+  vals = list(
+     grep("end",grep("start|leader", orf_entries,v=T),v=T),
+     grep("end",grep("start|leader", orf_entries,v=T),v=T,inv=T),
+     grep("end",grep("start|leader", orf_entries,v=T,inv=T),v=T),
+     grep("end",grep("start|leader", orf_entries,v=T,inv=T),v=T,inv=T)
+  )
+  names(vals) = c("5_3", "5_no3","no5_3","no5_no3") 
+ vals_ind= lapply(vals,function(x) which(orf_entries %in% x))
+  type_name=rep("NA", length(num_breaks))
+  for(i in 1:length(vals_ind)){
+    type_name[vals_ind[[i]]] = names(vals_ind)[i]
+  }
+  
+  list(total_reads = total_reads, experiments=exps, 
+       orfs=data.frame(ORFs=orf_entries, type_name=factor(type_name),num_breaks = factor(num_breaks) )
+                )
+}
+
+.processInfo<-function(isoInfo){
+  ORFs = isoInfo$orfs
+  exps = isoInfo$experiments
+ # choices = lapply(levels(ORFs$num_breaks), function(x) sort(as.character(ORFs$ORFs[ORFs$num_breaks==x])))
+  choices1 = lapply(levels(ORFs$type_name),function(x) as.character(ORFs$ORFs[ORFs$type_name==x]))
+  nmes1 = c("5_3","5_no3","no5_3","no5_no3")
+#  choices1= vector("list", length(nmes1))
+  cmax = max(as.numeric(levels(ORFs$num_breaks)))
+#  c1 = vector("list",cmax+1)
+  choices = lapply( 0:cmax, function(x) as.character(ORFs$ORFs[ORFs$num_breaks==x]))
+  names(choices) = paste(0:cmax,"junctions")
+  if(length(choices1)<4){
+    
+    choices1 = c(choices1,rep("",4-length(choices1)))
+    names(choices1) = nmes1
+  }else{
+    names(choices1) = levels(ORFs$type_name)
+  }
+  names(choices) = paste(as.numeric(levels(ORFs$num_breaks)),"junctions")
+#  if(length(choices)>4){
+#  choices[[4]] = as.character(unlist(choices[-(1:3)]))
+  
+#}
+ # names(choices)[[1]] = "zero junctions"
+#  names(choices)[[2]] = "one junction"
+#  names(choices)[[3]] = "two or more junctions"
+  molecules=levels(exps$molecule_type)
+  times = levels(exps$time)
+  cells = levels(exps$cell)
+  
+  
+  list(choices=choices, choices1=choices1,molecules=molecules, times=times, cells = cells)
+}
+
+
 .readTPM<-function(datafile){
   transcripts <- .readTranscripts(datafile)
   experiments <- attr(transcripts, 'info')
@@ -26,36 +99,78 @@ unlist(v)
   #if(!is.null(method)){}
    tpm= transcripts[,count_idx]
   
+  .processTPM(tpm, experiments, transcripts$ORFs)
+}
+ .processTPM<-function(mat, experiments, ID,levels =NULL,split=T){ 
+   toplot=ID
+   inds = if(is.null(levels)) 1:dim(mat)[2] else which(experiments %in% levels)
+   tpm = mat[,inds,drop=F]
+   experiments = experiments[inds]
+   colnames(tpm) <- experiments
   #props <- prop.table(x = as.matrix(transcripts[,count_idx]), margin = 2)
   # tpm=props*1e6
-  colnames(tpm) <- experiments
   #for use in 'split_by', if I can get it to work
-  time_vec <- c('2hpi','24hpi','48hpi')
-  exp_vec <- c('vero','calu','caco')
+  time_vec <- c('0hpi','2hpi','24hpi','48hpi')
+  exp_vec <- c('virion','vero','calu','caco')
   #calculate tpm
   #tpm <- props*1e6
-  tpm <- cbind(ID=as.character(transcripts$ORFs),tpm)
+  tpm <- cbind(ID=ID,tpm)
   #prep tpm_df
   #separate(TPM1, c('TPM', 'lower', 'upper'), sep=',', remove = T) %>%
+  if(split){
   as.data.frame(tpm) %>% melt(id.vars='ID', measure.vars=experiments, value.name = 'count') %>%
     separate(variable, c('molecule_type', 'cell', 'time'), sep='_', remove = T) %>%
     transform( count=as.numeric(count), molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time, levels = time_vec)) -> tpm_df
-   attr(tpm_df,"total_reads") = total_reads
+  }else{
+    as.data.frame(tpm) %>% melt(id.vars='ID', measure.vars=experiments, value.name = 'count', variable.name='sample') %>%
+      transform(count=as.numeric(count),ID=factor(ID, levels=toplot),sample = factor(sample, levels =levels)) -> tpm_df
+    
+  } #attr(tpm_df,"total_reads") = total_reads
    tpm_df
 }
-.readIso<-function(x, isofile, header){
+.readIso<-function(x, isofile,header, group="/trans"){
   len  = length(header)
-  cnts = h5read(isofile, paste("transcripts", x,sep="/"), compoundAsDataFrame=F)$cnts
+  cnts = h5read(isofile, paste(group, x,sep="/"))
   c(cnts, rep(0,len -length(cnts)))
 }
-.readTotalIso<-function(isofile){
+.findEntries<-function(x,isofile, group ,tojoin="OR"){
+  mat = h5ls(isofile)
+  mat = mat[mat$group==group,,drop=F]
+  join_and = tojoin=="AND"
+if(join_and)  x2 =  mat$name else   x2 =  c()
+  for(j in 1:length(x)){
+    if(x[j]=="all"){
+      x1 = mat$name
+    }else if(x[j]=="no3"){
+      x1=mat[grep("end",mat$name,inv=T),,drop=F]$name
+    }else if(x[j]=="no5"){
+      x1=mat[grep("leader",mat$name,inv=T),,drop=F]$name
+    }else if(length(grep("juncts",x[j]))>0){
+      num = as.numeric(strsplit(x[j],":")[[1]][2])
+      x1=mat$name[unlist(lapply(strsplit(mat$name,","),length))==(num+1)]
+    }else{
+     x1=mat[grep(x[j],mat$name),,drop=F]$name
+    }
+    if(join_and) x2 = x2[x2 %in% x1] else x2 = c(x2, x1[!(x1 %in% x2)])
+}
+  x2
+}
+#.readIsoGrep<-function(x, isofile,header, group="/trans"){
+# x1 = .findEntries(x,isofile,group);
+#  mat1 = t(data.frame( lapply(x1, .readIso, isofile, header, group)))
+#  mat2 = matrix(apply(mat1,2,sum),nrow=1,ncol=dim(mat1)[2])
+#  mat2
+#}
+.readTotalIso<-function(isofile, group="/trans", trans=NULL){
   names = h5ls(isofile)
   isoheader = h5read(isofile,"header")
-  total_reads = apply(allcnts,2,sum)
-  trans = names[grep("transcript",names$group),]$name
+  #total_reads = apply(allcnts,2,sum)
+  if(is.null(trans))  trans = names[grep("/trans",names$group),]$name
   allcnts = t(data.frame(lapply(trans, .readIso, isofile, isoheader)))
   dimnames(allcnts) = list(trans, isoheader)
-  allcnts
+  cnts=apply(allcnts,1,sum)
+  names(cnts) = trans
+  order(cnts, decreasing=T)
 }
 
 
@@ -110,77 +225,108 @@ getKmer<-function(base, pos,v = c(-1,0,1)){
   list(heatm =heatm, rows = rows, cols = cols)
 }
 
-.readAnnotFile<-function(fi, type_nme=NULL, plot=T, annot0 = NULL, conf.level=0.68, showEB = F){
+.readAnnotFile<-function(fi, total_reads, norm=F , conf.level=0.95,  levels=NULL, 
+                         orfs="E,N"){
   annot = read.table(fi, head=T)
+  type_name = names(total_reads)
+  type_nme= names(total_reads)
+if(is.null(levels)){
+  levels=type_nme
+}
+  if(!norm){
+    total_reads = rep(1,length(total_reads))
+    names(total_reads) = type_name
+  }else{
+    total_reads = total_reads/1e6
+  }
+  toinclude=which(type_nme %in% levels)
   spi  = grep("Spliced", names(annot))
   uspi = grep("Unspliced", names(annot))
   ratio = data.frame(matrix(nrow = dim(annot)[1], ncol = length(spi)*3))
   mixt = data.frame(matrix(nrow = dim(annot)[1], ncol = length(spi)*3))
   
- nme_r = c("ORF", "Start", "Ratio","lower","upper", "type","proportion","prop_lower","prop_upper")
-   ratio1 = data.frame(matrix(nrow = dim(annot)[1]*length(spi), ncol = length(nme_r)))
+ nme_r = c("ORF", "Start", "Ratio","lower","upper", "type","spliced","unspliced","logdiff","logtotal")
   
-  names(ratio1) = nme_r
   offset = 0
   if(is.null(type_nme)) type_nme = 1:length(spi)
   nme = c()
-  for(i in 1:length(spi)){
+  if(is.null(toinclude)) toinclude = 1:length(spi)
+  ratio1 = data.frame(matrix(nrow = dim(annot)[1]*length(toinclude), ncol = length(nme_r)))
+  
+  names(ratio1) = nme_r
+  for(i in toinclude){
     confints =   binom.confint(annot[,spi[i]],(annot[,spi[i]]+ annot[,uspi[i]]) ,method="logit",conf.level=conf.level)
     nme = c(nme,paste(c("mean","lower","upper"), type_nme[i],sep="_"))
    # print(nme)
     indsi = ((i-1)*3+1):((i)*3)
     ratio[,indsi ]= confints[,4:6]
-  #confints=  ratio[,i] = annot[,spi[i]]/(annot[,spi[i]]+ annot[,uspi[i]]) 
-    if(!is.null(annot0)){
-      a = annot0$annot$mean_Cell
-      b =   annot0$annot$mean_Virion
-    
-      mixt[,indsi] = apply(confints[,4:6],2,function(v) (v-b)/(a-b))
-      mixt[,indsi] =  apply(mixt[,indsi],c(1,2),function(x) min(max(x,0),1))
-    }
     ranges = offset + 1:length(annot$Gene)
     ratio1[ranges,1] = as.character(annot$Gene)
     ratio1[ranges,2] = as.numeric(as.character(annot$Start))
     ratio1[ranges,3:5] = confints[,4:6]
     ratio1[ranges,6] = rep(type_nme[i], length(ranges))
-    ratio1[ranges,7:9] = mixt[,indsi]
+    ratio1[ranges,7] = annot[,spi[i]]/total_reads[i]
+    ratio1[ranges,8] =  annot[,uspi[i]]/total_reads[i]
+    ratio1[ranges,9] = -log2(ratio1[ranges,7]/(ratio1[ranges,7]+ratio1[ranges,8]))
+    ratio1[ranges,10] = log2((ratio1[ranges,7]+ratio1[ranges,8])/total_reads[i])
+    #ratio1[ranges,7:9] = mixt[,indsi]
     offset = offset + length(ranges)
   }
-  names(ratio) =nme
-  names(mixt) =paste(nme,"prop")
-  ratio2 = ratio[,seq(1,length(spi)*3,by=3),drop=F]
-  names(ratio2) = type_nme
-  annot = cbind(annot, ratio)
-  if(!is.null(annot0)){
-    #cellular_ratio = annot0$ratio1[annot0$ratio1$type=="Cell",,drop=F]
-    #virion_ratio = annot0$ratio1[annot0$ratio1$type=="Virion",,drop=F]
-    ratio1 = rbind(annot0$ratio1, ratio1)
-    annot = cbind(annot,mixt)
-  }
-  ratio1$type=factor(ratio1$type,levels = names(sort(apply(ratio2,2,mean,na.rm=T))))
-  
-  ggp= NULL
-  if(plot){
+  #names(ratio) =nme
+ 
+  orfs_include=unlist(strsplit(orfs,","))
+  ratio1 = ratio1[ratio1$ORF %in% orfs_include,,drop=F]
+ ratio1
+}
+#  ggp= NULL
+.plotAnnotFile<-function(ratio1, levels=NULL,barchart=F,showEB = F,showSecondAxis=F,coeff=2,diff=0, y_text="Ratio"){
+  if(!barchart){
+    timevec=c("0hpi","2hpi","24hpi","48hpi")
+    ratio3= separate(ratio1,6, c('molecule_type', 'cell', 'time'), sep='_', remove = T) %>%
+      transform(  molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time,levels=timevec))
+    # if(is.null(orfs_include)) orfs_include = levels(factor(ratio3$ORF))
+ 
+    if(!showSecondAxis){
+      ggp1<-ggplot(ratio3, aes(x=time))
+      
+    ggp1<-ggp1+geom_line(aes(y=logdiff ,group=interaction(molecule_type, cell, ORF), color = cell))
+    ggp1<-ggp1+geom_point(aes(y=logdiff ,group=interaction(molecule_type, cell, ORF), color = cell, shape=ORF,size=10))
+    ggp1<-ggp1+ scale_y_continuous( name = "Log2 (total - sub-genomics)")
+    
+    }else{
+      ratio3$logtotal = (ratio3$logtotal-diff)/coeff
+      ratio4 = melt(ratio3,id.vars=c("ORF","molecule_type","cell","time"), measure.vars=c("logdiff","logtotal"))
+      ggp1<-ggplot(ratio4, aes(x=time))
+      ggp1<-ggp1+geom_line(aes(y=value ,group=interaction(molecule_type, cell, ORF,variable), color = cell, linetype=variable))
+      ggp1<-ggp1+geom_point(aes(y=value ,group=interaction(molecule_type, cell, ORF,variable), color = cell, shape=ORF,size=10))
+       #ggp1<-ggp1+geom_line(aes(y=(logtotal-diff)/coeff ,group=interaction(molecule_type, cell, ORF), color = cell, linetype="dashed"))
+       #ggp1<-ggp1+geom_point(aes(y=(logtotal-diff)/coeff ,group=interaction(molecule_type, cell, ORF), color = cell, shape=ORF,size=10))
+       
+       ggp1<-ggp1+ scale_y_continuous(
+      name = "Log2 (total - sub-genomics)",
+      sec.axis = sec_axis(~.*coeff+diff, name="Log2 Total")
+    )
+     }
+     
+    return(ggp1)
+  }else{
+   
+    ratio1$type=factor(ratio1$type,levels = levels)
     ORF="ORF"
     ord="Start"
-    x1 = paste("reorder(", ORF, ",", ord,")", sep="") 
-    ggp<-ggplot(ratio1, aes_string(x=x1,y="Ratio",fill="type", colour='type',ymin="lower" ,ymax="upper"))
+    x1 =  paste("reorder(", ORF, ",", ord,")", sep="") 
+    ggp<-ggplot(ratio1, aes_string(x=x1,y=y_text,fill="type", colour='type',ymin="lower" ,ymax="upper"))
     ggp<-ggp+ geom_bar(position=position_dodge(), aes_string(y="Ratio"),stat="identity")
       #geom_bar(aes_string(x=x1, y="Ratio", fill = "type", colour = "type"),stat="identity", position = "dodge")
     if(showEB){
       ggp<-ggp+geom_errorbar(position=position_dodge(width=0.9),colour="black")
     } #ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="lower", ymax="upper"), width=.2)#, position="dodge")
    ggp<-ggp+scale_y_continuous(limits = c(0,1))
-    if(!is.null(annot0)){
-    ggp<-ggp +  geom_point(position=position_dodge(width=0.9), aes_string(x=x1, y="proportion"),stat="identity")
-    ggp<-ggp+geom_errorbar(position=position_dodge(width=0.9), aes_string(x=x1,ymin="prop_lower", ymax="prop_upper"), width=.2, position="dodge")
-    ggp<-ggp+ scale_y_continuous(limits = c(0,1), sec.axis =sec_axis(~ . ))
-    }
-     ggp<-ggp+ggtitle("Percentage of ORF covering reads which are spliced to 5'")
+    
+     ggp<-ggp+ggtitle("Percentage of ORF covering reads which include leader")
      ggp<-ggp+xlab("ORF")
-    #ggp
+    return(ggp)
   }
-  list(annot= annot, ratio1 = ratio1,ggp = ggp)
 }
 
 
@@ -613,11 +759,12 @@ split1<-function(fi) strsplit(fi,"_")[[1]][1]
 
 
 
-plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = F, linetype="sampID", colour="clusterID", title = "",  logy=F, leg_size = 6, xlim  = NULL, show=F, updatenmes = F, fill = F){
+plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = T, linetype="sampID", colour="clusterID", title = "", ylab=if(rawdepth)  "depth" else "TPM", logy=F, leg_size = 6, xlim  = NULL, show=F, updatenmes = F, fill = F){
   if(!is.factor(df$clusterID)) df$clusterID = as.factor(df$clusterID)  #types[df$type]
  # names(df)[3] = "depth"
   #ids =  as.character(rel_count$ID)
   #if(max(rel_count[,2])>1) stop('this should not happen')
+  
   if(!rawdepth){
     
     #for(i in 1:length(ids)){
@@ -625,10 +772,15 @@ plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = F, linetype="
     #}
     df[,k1]  = df[,k1]*(1e6/totalReadCount)
   }
+  if(is.null(xlim)){
+    xlim = c(min(df$pos), max(df$pos))
+  }
+  ylim = c(min(df[,k1]),max(df[,k1]))
   ggp<-ggplot(df, aes_string(x="pos", fill="clusterID", colour = colour, linetype=linetype, y = names(df)[k1])) +theme_bw()+geom_line() 
 if(fill) ggp<-ggp+geom_area()
-  ggp<-ggp+ggtitle(title)+labs(y= if(rawdepth)  "depth" else "TPM");
-  if(logy) ggp<-ggp+scale_y_continuous(trans='log10')
+  ggp<-ggp+ggtitle(title)
+  if(logy) ggp<-ggp+scale_y_continuous(name=ylab,trans='log10', limits=ylim)
+  else ggp<-ggp+labs(y= ylab)+ylim(ylim)
   if(leg_size==0  || length(levels(as.factor(as.character(df$type))))>20){
     ggp<-ggp+theme(legend.position="none")
   }else{
@@ -657,6 +809,7 @@ legend.title=element_text(size=leg_size), legend.text=element_text(size=leg_size
   }
   #abline(v = t$Maximum, col=3)
   if(!is.null(xlim)) ggp<-ggp+xlim(xlim)
+ # ggp<-ggp
   if(show) print(ggp)
   invisible(ggp)
 }
@@ -1400,67 +1553,82 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
 }
 
 
+.addZero<-function(mat, thresh=10){
+  len = dim(mat)[[1]]
+  ncol = dim(mat)[[2]]
+  diffs = apply(cbind(mat[-1,1], mat[1:(len-1),1]),1, function(v)v[1]-v[2])
+  gaps=which(diffs>thresh)
+  if(length(gaps)>0){
+  mat[gaps,-1] =rep(0, ncol-1)
+  mat[gaps+1,-1] =rep(0, ncol-1)
+  }
+  mat
+}
 
-readH5<-function(h5file, header, toplot, pos = NULL,id_cols = c("molecule","cell","time"), dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
+.mergeDepthMats<-function(mats){
+  pos =unique(sort(unlist(lapply(mats,function(x) x[,1]))))
+  
+ res=matrix(0,nrow=length(pos), ncol = dim(mats[[1]])[[2]])
+ res[,1] = pos
+ for(i in 1:length(mats)){
+   inds=match(mats[[i]][,1],pos)
+   res[inds,-1]=res[inds,-1]+mats[[i]][,-1]
+ }
+ res
+}
+
+.processInternal<-function(mat, sumAll,header,total_reads,span, gapthresh,ID, sumID="all"){
+  mat = .addZero(mat, thresh=gapthresh)
+  if(!sumAll && !is.null(total_reads)){
+      mat = t(apply(mat,1,function(v)v/c(1,total_reads)))
+  }
+  mat = data.frame(mat)
+  names(mat) = header
+  if(sumAll){
+    mat[,2] = apply(mat[,-1,drop=F],1,sum)
+    mat = mat[,1:2]
+    names(mat)[2] = sumID
+  }
+  mat1 = loess_smooth(mat, 2:dim(mat)[2], span)
+  clusterID = rep(ID,dim(mat1)[[1]])
+#  print(head(mat1))
+  cbind(clusterID,mat1)
+}
+readH5<-function(h5file, total_reads, header, toplot, gapthresh=100,merge=F,sumID="all", combinedID='combined',pos = NULL,id_cols = c("molecule","cell","time"), dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
  pos_ind = 1
  ncols = length(id_cols)
  names = h5ls(h5file)$name
  inds = which(toplot %in% names)
  if(length(inds)==0) return (NULL)
  IDS = toplot[inds]
-
- clusters_ = matrix(NA, nrow =0, ncol = 4+ncols)
-  mat_prev = NULL
-dimnames(clusters_)[[2]] = c("pos", "depth", "clusterID",'sampleID', id_cols)
+ clusters_ = NULL
+ mats=NULL
+ new_cols =  c("pos", "depth", "clusterID",'sampleID', id_cols)
+ if(!merge){
+  clusters_ = data.frame(matrix(NA, nrow =0, ncol = length(header)))
+  names(clusters_) =header
+ }else{
+ mats=list()
+ }
   for(i in 1:length(IDS)){
 	ID = IDS[i]
+	
 	mat = t(h5read(h5file,paste("depth",as.character(ID),sep="/")))
-	mat = mat[,c(1,dinds)]
-
-	if(!is.null(pos)) {
-		mat2 = matrix(0, nrow = length(pos), ncol  = dim(mat)[2])
-		mat2[,1] = pos
-		mat = mat[which(mat[,1] %in% pos),]
-		mat2[match(mat[,1],pos),-1] =mat[,-1]
-		mat = mat2
-	}
-	
-	mat = data.frame(mat)
-	names(mat) = header
-	if(sumAll){
-		mat[,2] = apply(mat[,-1],1,sum)
-		mat = mat[,1:2]
-		names(mat)[2] = "all"
-	}
-	if( !is.null(mat_prev) && !is.null(pos) && cumul) {
-		mat[,-1]	 = mat[,-1] + mat_prev[,-1]
-		
-	}
-	if(!is.null(pos)) mat_prev = mat
-	mat1 = loess_smooth(mat, 2:dim(mat)[2], span)
-	cname = toplot[i]  #paste(ID, transcripts_$leftGene[i], transcripts_$rightGene[i], sep=".")
-	clusterID = rep(cname, dim(mat1)[1])
-	header1 = names(mat)
-	nrows = dim(mat1)[1]
-	mat2 = data.frame(matrix(nrow = nrows, ncol = dim(clusters_)[2]))
-	dimnames(mat2)[[2]] = dimnames(clusters_)[[2]]
-	
-	for( k in 1:(length(header1)-1)){
-		#print(k)
-	  samp = header1[k+1]
-	 sampID= strsplit(samp,"_")[[1]]
-	 mat2[,1:2] =mat1[,c(1,k+1)] 
-	 mat2[,3] = clusterID
-	 mat2[,4] = samp
-	 for(kj in 1:ncols){
-	  mat2[,4+kj] = sampID[kj]
-	 }
-	#	sampID = rep(samp, dim(mat1)[1])
-	#	mat2 = cbind(,clusterID ,sampID)
+	if(dim(mat)[1]>0){
+	mat=mat[,c(1,dinds),drop=F]
+	if(merge){
+	  mats[[length(mats)+1]] = mat
+	}else{
+	  mat2 = .processInternal(mat, sumAll, header, total_reads, span, gapthresh,ID, sumID=sumID)
 		clusters_ = rbind(clusters_,mat2)
 	}
+	}
   } 
-clusters_
+ if(merge){
+    mat2 = .mergeDepthMats(mats)
+    clusters_=.processInternal(mat2,sumAll, header, total_reads, span, gapthresh,combinedID, sumID=sumID)
+ }
+  clusters_
 }
 plotHeatmap<-function(h5file, header,  transcripts1, jk, logHeatmap = F,xlim = list(c(1,max(clusters$pos+1))),featureName = "depth", 
                       max_h=0 ,title = ""){

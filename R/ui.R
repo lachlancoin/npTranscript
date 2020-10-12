@@ -4,59 +4,102 @@ library(tidyr)
 library(rhdf5)
 library(RColorBrewer)
 
-
 source( "transcript_functions.R")
 
-datafile="../data/shiny/0.transcripts.txt.gz"
-ORFs = .getORFs(datafile)
-exps = attr(ORFs,"experiments")
-choices = lapply(levels(ORFs$num_breaks), function(x) as.character(ORFs$ORFs[ORFs$num_breaks==x]))
-names(choices) = levels(ORFs$num_breaks)
-choices[[4]] = as.character(unlist(choices[-(1:3)]))
-choices = choices[1:4]
-names(choices)[[1]] = "zero junctions"
-names(choices)[[2]] = "one junction"
-names(choices)[[3]] = "two junctions"
-names(choices)[[4]] = "three or more junctions"
+basedir="../data"
+dirs = list.dirs(basedir,full.names=F, rec=T)
+required=c("0.isoforms.h5","Coordinates.csv")
+for(i in 1:length(required)){
+dirs=dirs[which(unlist(lapply(dirs,function(x) file.exists(paste(basedir,x,required[i],sep="/")))))]
+}
+seldir=1
+dirs = rev(dirs)
+#print(seldir)
+currdir = paste(basedir,dirs[seldir],sep="/")
+#print(currdir)
+datafile=paste(currdir,"0.isoforms.h5",sep="/")
+h5file=paste(currdir,"0.clusters.h5",sep="/")      
 
 
-molecules=levels(exps$molecule_type)
-times = levels(exps$time)
+#datafile=paste(currdir,"0.transcripts.txt.gz",sep="/")
+toreplace=list(virion="RNA_virion_0hpi", whole_genome_mapped="RNA_vero_24hpi")
+#timevec= c('2hpi','24hpi','48hpi')
 
-cells = levels(exps$cell)
-options=c("show_depth", "logy", "showCI", "showMotifs","showORFs")
+isoInfo = .getIsoInfo(datafile,h5file, toreplace)
+info = .processInfo(isoInfo)
+total_reads = isoInfo$total_reads
+
+
+options1=c("showCI" ,"barchart", "showSecondAxis")
+totick1 = c("showCI" ,"barchart")
+options2 = c("logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts")
+totick2 = c("TPM","ribbonCI")
+options3 = c("show_depth","logy", "TPM","showMotifs","showORFs", "sumDepth","mergeCounts")
+totick3 = c("show_depth","TPM")
+
+ch=c(names(info$choices1), names(info$choices))
+t=readCoords(paste(currdir, "Coordinates.csv",sep="/"))
+orfs=paste(t$gene,collapse=",")
 # Define UI for application that plots random distributions 
-shinyUI(pageWithSidebar(
- 
-  
+shinyUI(fluidPage(
+   theme="https://d2h9b02ioca40d.cloudfront.net/v8.0.1/uom.css",
+	tags$head(includeHTML(file.path(basedir, "shiny-common/unset_shiny.html"))),
+	htmlTemplate(file.path(basedir, "shiny-common/uomheader.html"),
+            title = "Coin Lab",
+			apptitle = "SARS-COV-2 Transcriptome",
+			subapptitle = ""
+               	),
+
   # Application title
-  headerPanel("SARS-COV2 transcriptome"),
+  #headerPanel("SARS-COV2 transcriptome"),
   
   # Sidebar with a slider input for number of observations
   sidebarPanel(
-    #fileInput("datafile", "Transcripts file", multiple = FALSE, accept = NULL),
+    #fileInput("datafile", "Transcripts file", multiple = FALSE, accept = NULL),\    
+    selectInput("dir", label = "Directory", choices=dirs, selected=currdir),
+    selectInput("plottype", label = "Category 1", choices=ch, selected=ch[1]),
+  #  selectInput("plottype1", label = "Category 2", choices=ch, selected=ch[1]),
     
-    selectInput("toplot1", label = paste("Transcript",names(choices)[1]), choices=c("-",choices[[1]]), selected="-"),
-    selectInput("toplot2", label = paste("Transcript",names(choices)[2]), choices=c("-",choices[[2]]), selected="-"),
-    selectInput("toplot3", label = paste("Transcript",names(choices)[3]), choices=c("-",choices[[3]]), selected="-"),
-    selectInput("toplot4", label = paste("Transcript",names(choices)[4]),choices=c("-",choices[[4]]), selected="-"),
+    selectInput("toplot5", label = paste("Transcript",names(info$choices1)[1]), choices=c("-",info$choices1[[1]]), selected="leader_leader,N_end"),
+   # selectInput("toplot6", label = paste("Transcript",names(info$choices1)[1]), choices=c("-",info$choices1[[1]]), selected="-"),
     
-   checkboxGroupInput("molecules", label = "Molecule type",  choices =molecules, selected = molecules),
-   checkboxGroupInput("cells", label = "Cell type",  choices = cells, selected = cells),
-   checkboxGroupInput("times", label = "Time points",  choices = times, selected = times),
-   checkboxGroupInput("options", label = "Plotting options", choices = options, selected=options[options!="logy"]) ,
- #  numericInput("conf.int", label = h3("Confidence intervals"), value = 0.95),
-	actionButton("plotButton", "Generate plots")
+    textInput("toplot7", label="All transcripts matching", value = ""),
+    selectInput("tojoin", label ="Join", choices=c("AND","OR"), selected="OR"),
+    
+    textInput("toplot8", label="All transcripts matching", value = ""),
+    
+    actionButton("plotButton", "Generate plots"),
+   checkboxGroupInput("molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules),
+   checkboxGroupInput("cells", label = "Cell type",  choices = info$cells, selected = info$cells),
+   checkboxGroupInput("times", label = "Time points",  choices = info$times, selected = info$times),
+   checkboxGroupInput("options1", label = h3("Top panel"), choices = options1, selected=totick1) ,
+   textInput("orfs", label="ORFs to include", value = orfs),
+   checkboxGroupInput("options2", label = h3("Middle panel"), choices = options2, selected=totick2) ,
+   numericInput("conf.int", label = "Confidence intervals", value = 0.95),
+   numericInput("maxtrans", label = "Maximum number of transcripts", value = 10),
+  selectInput("splitby", label ="Plot x vs y", choices=c("off","molecules","cells","times"), selected="off"),
+  
+   checkboxGroupInput("options3", label = h3("Bottom panel"), choices = options3, selected=totick3) 
+   
+   
   ),
+ 
   
   # Show a plot of the generated distribution
   mainPanel(
     # verbatimTextOutput("instructions"),
     # verbatimTextOutput("variables"),
     # verbatimTextOutput("validation"),
+    plotOutput("infPlot", height=400),
+	downloadButton('downloadInf'),
      plotOutput("distPlot", height=400),
-   plotOutput("depthPlot", height=400)
+	downloadButton('downloadDist'),
+   plotOutput("depthPlot", height=400),
+   downloadButton("downloadDepth")
   )
+  #,
+  #htmlTemplate(file.path(basedir, "shiny-common/uomfooter.html"))
+  
 ))
 
 
