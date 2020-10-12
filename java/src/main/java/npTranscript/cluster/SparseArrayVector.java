@@ -1,6 +1,7 @@
 package npTranscript.cluster;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -14,23 +15,52 @@ import java.util.TreeMap;
  */
 
 
-class SparseVector{
-	static Integer zero = 0;
-	
-	private SortedMap<Integer, Integer> m = new TreeMap<Integer, Integer>();
+class SparseArrayVector{
+static int zero_=0;
+//final boolean end;
+	public SparseArrayVector(int len){
+		this.len = len;
+		this.zero = new int[len];
+	//	this.end = end;
+	}
+	private SortedMap<Integer, int[]> m = new TreeMap<Integer,int[]>();
 	private int valsum=0;
+	final int len;
+	final int[] zero;
 	//double valsumByKey=0;
-	
+	/*static Integer zero = 0;
 	public void addZero(int pos){
 		this.m.put(pos, zero);
+	}*/
+	
+	public int[] get1(Integer position){
+		int[] arr = m.get(position);
+		if(arr==null){
+			arr =new int[len];
+			Arrays.fill(arr, 0);
+			m.put(position, arr);
+		}
+		return arr;
+	}
+	public void addToEntry(Integer position, int src_index, int i) {
+		valsum+=i;
+	//	if(end && position < 500) {
+	//		throw new RuntimeException("!!");
+	//	}
+		this.get1(position)[src_index]++;
 	}
 	
-	public void addToEntry(Integer position, int i) {
-		Integer val = m.get(position);
-		valsum+=i;
-		//valsumByKey+=position.doubleValue()* (double) i;
-		m.put(position, val==null ? i : val + i);
+	private void addToEntry(Integer position, int[] is) {
+		int[] arr = this.get1(position);
+		//if(end && position < 500) {
+		//	throw new RuntimeException("!!");
+		//}
+		for(int i=0; i<arr.length; i++){
+			arr[i]+=is[i];
+		}
+		
 	}
+	
 	public String toString(){
 		return m.keySet().toString();
 	}
@@ -40,7 +70,7 @@ class SparseVector{
 		Collections.sort(l);
 		return l;
 	}
-	public List<Integer> keys(double thresh) {
+	/*public List<Integer> keys(double thresh) {
 		List<Integer> l= new ArrayList<Integer>();
 		for(Iterator<Map.Entry<Integer, Integer>> it = m.entrySet().iterator(); it.hasNext();){
 			Map.Entry<Integer, Integer> nxt = it.next();
@@ -50,14 +80,15 @@ class SparseVector{
 		}
 		Collections.sort(l);
 		return l;
-	}
+	}*/
+	
 	public Iterator<Integer> keyIt(){
 		return m.keySet().iterator();
 	}
 
-	public Integer get(Integer val) {
-		Integer res =  this.m.get(val);
-		if(res==null) return 0;
+	public int[] get(Integer val) {
+		int[] res =  this.m.get(val);
+		if(res==null) return zero;
 		else return res;
 	}
 	
@@ -70,22 +101,29 @@ class SparseVector{
 		
 	}
 	
-	public Integer getDepth(Integer i) {
-		Integer val = m.get(i);
+	public int[] getDepth(Integer i) {
+		int[] val = m.get(i);
 		return val==null ? zero: val;
+	}
+	public int getDepth(int src_index, Integer i) {
+		int[] val = m.get(i);
+		return val==null ? zero_: val[src_index];
 	}
 	public Iterator<Integer> tailKeys(Integer st) {
 		return m.tailMap(st).keySet().iterator();
 	}
-	void merge(SparseVector source){
+	void merge(SparseArrayVector source){
 		for(Iterator<Integer> it = source.keyIt();it.hasNext();){
 			Integer key = it.next();
+			
+			
 			this.addToEntry(key, source.get(key));
 		}
 		
 			//return this.valsum;
 		}
 
+	
 	public double valsum() {
 	return valsum;
 	}

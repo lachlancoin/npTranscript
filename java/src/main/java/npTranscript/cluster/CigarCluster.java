@@ -254,15 +254,25 @@ public static  synchronized void printBed(PrintWriter bedW, String chrom, List<I
 				map = new SparseVector();
 				this.maps = new SparseVector[num_sources];
 				this.errors= new SparseVector[num_sources];
+				if(CigarCluster.recordStartEnd){
+					this.mapStart = new SparseArrayVector(num_sources);
+					this.mapEnd = new SparseArrayVector(num_sources);
+				}
 				for(int i=0; i<maps.length; i++){
 					maps[i] = new SparseVector();
 					errors[i] = new SparseVector();
-					
 				}
+				
 			}else{
 				maps = null;
 				errors = null;
 				map = null;
+			}
+		}
+		public void setStartEnd(int startPos, int endPos, int src) {
+			if(CigarCluster.recordStartEnd){
+				this.mapStart.addToEntry(start, src,1);
+				this.mapEnd.addToEntry(end, src, 1);
 			}
 		}
 		
@@ -294,12 +304,18 @@ public static  synchronized void printBed(PrintWriter bedW, String chrom, List<I
 					if(errors[i].valsum()<0) throw new NumberFormatException("shoud not be negative");
 					if(errors[i].valsum()>maps[i].valsum()) throw new NumberFormatException("shoud not be greater");
 				}
+				if(recordStartEnd){
+						mapStart.merge( c1.mapStart);
+						mapEnd.merge(c1.mapEnd);
+				}
 			}
 		}
 
 		 final SparseVector map;// = new SparseVector(); //coverage at high res
 		final  SparseVector[] maps, errors;
-final private char strand;
+		SparseArrayVector mapStart, mapEnd;
+		
+		final private char strand;
 	   public void clear(){
 		   span.clear();
 			this.forward = null;
@@ -312,6 +328,10 @@ final private char strand;
 				for(int i=0; i<maps.length; i++){
 					maps[i].clear();
 					errors[i].clear();
+				}
+				if(this.recordStartEnd){
+					this.mapStart.clear();
+					this.mapEnd.clear();
 				}
 			}
 			Arrays.fill(readCount, 0);
@@ -328,15 +348,17 @@ final private char strand;
 
 		
 	
-
+public static boolean recordStartEnd = false;
+	   
 		public void add(int pos, int src_index, boolean match) {
+			boolean break_p = pos-prev_position>IdentityProfile1.break_thresh;
 			if(match){
 			//System.err.println(prev_position + " "+pos);
 			if(first){
 				first = false; 
 				breaks.add(pos);
 			} else{	
-				if(pos-prev_position>IdentityProfile1.break_thresh){
+				if(break_p){
 					this.breaks.add(prev_position);
 					this.breaks.add(pos);
 				}
@@ -345,10 +367,16 @@ final private char strand;
 			}
 
 			if(CigarCluster.recordDepthByPosition){
+				
 				map.addToEntry(pos, 1);
 				maps[src_index].addToEntry(pos, 1);
 				if(!match){
 					errors[src_index].addToEntry(pos, 1);
+				}
+				if(recordStartEnd && break_p ){
+					mapStart.addToEntry(pos,src_index, 1);
+					mapEnd.addToEntry(prev_position,src_index, 1);
+
 				}
 			}
 		}
@@ -376,6 +404,7 @@ final private char strand;
 				row[i1+1]	=	this.errors[src_index].getDepth(i) ;
 			}
 		}
+		
 		
 		String getTotDepthSt(boolean match) {
 			if(maps==null) return "NA";
@@ -411,7 +440,7 @@ final private char strand;
 		
 		//int[][] exons;
 		
-		void addZeros(int seqlen){
+		/*void addZeros(int seqlen){
 			if(map==null) return;
 			List<Integer> keys = this.map.keys();
 			if(start> 1){
@@ -428,7 +457,7 @@ final private char strand;
 			}
 			
 			
-		}
+		}*/
 		
 		public void getClusterDepth(int[][] matr, List<Integer> keys,   int[] col_inds, int offset) {
 			totLen =0;
@@ -438,14 +467,18 @@ final private char strand;
 				Integer pos = keys.get(i);
 				int[] row = matr[i];
 				row[0] = pos;
-			//	row[1] = pos <= ref.length() ? (int) ref.getBase(pos-1) : -1; // because sequence is in 0 in index
-				//System.err.println(ref.charAt(pos-1)+" -> " + row[1]);
-				//A =, C = 1, G = 2. T = 3
 				getDepthSt(pos, row, col_inds, offset);
-			//	getDepthSt(pos, row,1 + num_sources, false);
 			}
-			//return matr;
-			//TranscriptUtils.printedLines[index]+=keys.size();
+		}
+		public static void getClusterDepthStartEnd(int[][] matr, List<Integer> keys,   int offset, SparseArrayVector mapS) {
+			 int keysize = keys.size();
+			int len = mapS.len;
+			for(int i=0; i<keysize; i++){
+				Integer pos = keys.get(i);
+				int[] row = matr[i];
+				row[0] = pos;
+				System.arraycopy(mapS.get(pos), 0, row, 1, len);
+			}
 		}
 		
 		
@@ -510,6 +543,11 @@ final private char strand;
 					maps[i].merge( c1.maps[i]);
 					errors[i].merge(c1.errors[i]);
 				}
+				if(recordStartEnd){
+					
+						mapStart.merge( c1.mapStart);
+						mapEnd.merge(c1.mapEnd);
+				}
 			}
 			return br;
 		}
@@ -554,6 +592,8 @@ final private char strand;
 			String st = sb.toString();
 			return st;
 		}
+
+		
 
 
 		

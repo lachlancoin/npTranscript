@@ -198,6 +198,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		pw.close();
 		
 	}
+ public static char pool_sep=',';
+ public static boolean limit_to_read_list = false;
 	public static int mm2_threads;
 	public static String mm2_path, mm2_mem, mm2_index, mm2Preset, mm2_splicing;
  public static void run(CommandLine cmdLine, String[] bamFiles, String resDir,File anno, String chrs, String chrsToIgnore,  boolean fastq, String reference) throws IOException{
@@ -295,6 +297,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		boolean annotByBreakPosition = false;  // should be true for SARS_COV2
 		Outputs.writePolyA = cmdLine.getBooleanVal("writePolyA");
 		CigarCluster.recordDepthByPosition = cmdLine.getBooleanVal("recordDepthByPosition");
+		CigarCluster.recordStartEnd = cmdLine.getBooleanVal("recordDepthByPosition");
+
 		if(coronavirus){
 		//	
 		//	CigarCluster.recordDepthByPosition = true;
@@ -645,11 +649,12 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 						)){
 					continue;
 				}
-				int poolID = 0;
+				int poolID = -1;
 				if(reads!=null){ 
 					Integer readInd = reads.get(sam.getReadName());
-					if(readInd==null) continue;
-					else poolID = readInd;
+					if(readInd==null) {
+						if(limit_to_read_list)	continue;
+					}else poolID = readInd;
 				}
 				byte[] b = sam.getBaseQualities();
 				double sump = 0;
@@ -817,7 +822,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				
 					try{
 						
-						String pool = readList==null || readList.length==0 ||  poolID<0 ? "" : (readList[poolID]+"|");
+						String pool = readList==null || readList.length==0 ||  poolID<0 ? "" : (readList[poolID]+pool_sep);
 						
 						profile.identity1(readSeq, sam, source_index, cluster_reads,  pool, q1);
 					}catch(NumberFormatException exc){

@@ -520,37 +520,68 @@ public class Outputs{
 			int offset=1;
 			if(clusterW!=null && totalDepth>IdentityProfile1.writeCoverageDepthThresh){
 				String  key = "depth/"+cc.breaks_hash.secondKey;
-				cc.addZeros(cigarClusters.seqlen); 
-				List<Integer> keys = cc.map.keys(IdentityProfile1.writeCoverageDepthThresh);
-				int[][]matr; //int[][] matr_err;
-				if(clusterW.exists(key)){
-					int[][]  matr1 = clusterW.readIntMatrix(key);
-					for(int i=0; i<matr1.length; i++){
-						if(!keys.contains(matr1[i][0])){
-							keys.add(matr1[i][0]);
-						}
-					}
-					Collections.sort(keys);
-					matr = new int[keys.size()][2*(new_max_cols_depth-offset)+offset];
-					for(int i=0; i<matr1.length; i++){
-						int ind = keys.indexOf(matr1[i][0]);
-						System.arraycopy(matr1[i], 0, matr[ind], 0, matr1[i].length);
-					}
-					
-				}else{
-					matr = new int[keys.size()][2*(new_max_cols_depth-offset)+offset];
+				
+				
+
+				//
+				//cc.addZeros(cigarClusters.seqlen); 
+				{
+					List<Integer> keys = cc.map.keys();
+
+					int[][]matr = getMatr(key, offset, keys); //int[][] matr_err;
+					cc.getClusterDepth(matr, keys,  this.col_inds_depth, offset);
+					clusterW.writeIntMatrix(key, matr);
 				}
-				cc.getClusterDepth(matr, keys,  this.col_inds_depth, offset);
-			//	cc.getClusterDepth(matr, keys, false, this.col_inds_depth);
-
-				clusterW.writeIntMatrix(key, matr);
-
+				if(CigarCluster.recordStartEnd){
+					{
+						String  keyStart = "depthStart/"+cc.breaks_hash.secondKey; // this for start end
+						List<Integer> keys = cc.mapStart.keys();
+						int[][]matr = getMatr(keyStart, offset, keys); //int[][] matr_err;
+						CigarCluster.getClusterDepthStartEnd(matr, keys, offset,cc.mapStart);
+						clusterW.writeIntMatrix(keyStart, matr);
+					}
+					{
+						String  keyEnd= "depthEnd/"+cc.breaks_hash.secondKey;
+						List<Integer> keys = cc.mapEnd.keys();
+						int[][] matr = getMatr(keyEnd, offset, keys); //int[][] matr_err;
+						CigarCluster.getClusterDepthStartEnd(matr, keys, offset,cc.mapEnd);
+						clusterW.writeIntMatrix(keyEnd, matr);
+					}
+				}
 				
 			}
 		}
 		
 	
 		
+		private int[][] getMatr( String key, int offset, List<Integer>keys) {
+			int[][]matr;
+			if(clusterW.exists(key)){
+				int[][]  matr1 = clusterW.readIntMatrix(key);
+				for(int i=0; i<matr1.length; i++){
+					if(!keys.contains(matr1[i][0])){
+						keys.add(matr1[i][0]);
+					}
+				}
+				Collections.sort(keys);
+				matr = new int[keys.size()][2*(new_max_cols_depth-offset)+offset];
+				for(int i=0; i<matr1.length; i++){
+					int ind = keys.indexOf(matr1[i][0]);
+					System.arraycopy(matr1[i], 0, matr[ind], 0, matr1[i].length);
+				}
+				
+			}else{
+				matr = new int[keys.size()][2*(new_max_cols_depth-offset)+offset];
+			}
+			return matr;
+		}
+
+
+
+
+
+
+
 		private synchronized CompressDir getCluster(int source){
 			if(clusters==null) return null;
 			return this.clusters[this.msa_sources.get(source)];

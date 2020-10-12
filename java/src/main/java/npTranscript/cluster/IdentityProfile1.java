@@ -125,6 +125,7 @@ static char delim1 = ',';
 		
 		startPos = sam.getAlignmentStart()+1; // transfer to one based
 		endPos = sam.getAlignmentEnd()+1;
+		
 		readSt = start_read; readEn = end_read;
 		boolean forward = !sam.getReadNegativeStrandFlag();
 		//boolean hasSplice = false;
@@ -138,9 +139,9 @@ static char delim1 = ',';
 			seqlen = seqlen-(polyAlen);
 			annot.adjust3UTR(seqlen);
 		}
-		
-		coRefPositions.end = endPos;
+	
 		coRefPositions.start = startPos;
+		coRefPositions.end = endPos;
 		coRefPositions.forward = forward;
 		breaks.add(coRefPositions.end);
 		boolean includeInConsensus = true;
@@ -181,6 +182,7 @@ static char delim1 = ',';
 				}
 			}
 		}
+		
 		//String roundStartP = annotByBreakPosition ? TranscriptUtils.round(startPos, CigarHash2.round)+"" : 	"";
 		StringBuffer secondKey =new StringBuffer();
 		
@@ -228,9 +230,14 @@ static char delim1 = ',';
 		if(Annotation.enforceStrand){
 			secondKey.append(forward ? '+' : '-');
 		}
-		
+		//System.err.println(secondKey);
+
 		String type_nme = annot.getTypeNme( startPos, endPos, forward); //coRefPositions.getTypeNme(seqlen);
 		geneNames.clear();
+		
+			
+			this.coRefPositions.setStartEnd(startPos,endPos,src_index);
+
 		String span_str = annot.getSpan(coRefPositions.breaks, forward,  coRefPositions.span, geneNames);
 		int  span = geneNames.size();
 		if(!TranscriptUtils.coronavirus && span==0 && q_value < ViralTranscriptAnalysisCmd2.fail_thresh1){
