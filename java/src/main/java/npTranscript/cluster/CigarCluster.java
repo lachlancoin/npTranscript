@@ -352,6 +352,20 @@ public static boolean recordStartEnd = false;
 	   
 		public void add(int pos, int src_index, boolean match) {
 			boolean break_p = pos-prev_position>IdentityProfile1.break_thresh;
+			if(CigarCluster.recordDepthByPosition){
+				
+				map.addToEntry(pos, 1);
+				maps[src_index].addToEntry(pos, 1);
+				if(!match){
+					errors[src_index].addToEntry(pos, 1);
+				}
+				if(recordStartEnd && break_p ){
+					mapStart.addToEntry(pos,src_index, 1);
+					mapEnd.addToEntry(prev_position,src_index, 1);
+
+				}
+			}
+			
 			if(match){
 			//System.err.println(prev_position + " "+pos);
 			if(first){
@@ -366,19 +380,7 @@ public static boolean recordStartEnd = false;
 			prev_position = pos;
 			}
 
-			if(CigarCluster.recordDepthByPosition){
-				
-				map.addToEntry(pos, 1);
-				maps[src_index].addToEntry(pos, 1);
-				if(!match){
-					errors[src_index].addToEntry(pos, 1);
-				}
-				if(recordStartEnd && break_p ){
-					mapStart.addToEntry(pos,src_index, 1);
-					mapEnd.addToEntry(prev_position,src_index, 1);
-
-				}
-			}
+			
 		}
 
 		public String toString() {
