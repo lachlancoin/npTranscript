@@ -1595,7 +1595,7 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
 #  print(head(mat1))
   cbind(clusterID,mat1)
 }
-readH5<-function(h5file, total_reads, header, toplot, gapthresh=100,mergeGroups = NULL,sumID="all", pos = NULL,id_cols = c("molecule","cell","time"), dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
+readH5<-function(h5file, total_reads, header, toplot, path="depth",gapthresh=100,mergeGroups = NULL,sumID="all", pos = NULL,id_cols = c("molecule","cell","time"), dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
  pos_ind = 1
  merge=!is.null(mergeGroups)
  ncols = length(id_cols)
@@ -1614,7 +1614,7 @@ readH5<-function(h5file, total_reads, header, toplot, gapthresh=100,mergeGroups 
   for(i in 1:length(IDS)){
 	ID = IDS[i]
 	
-	mat = t(h5read(h5file,paste("depth",as.character(ID),sep="/")))
+	mat = t(h5read(h5file,paste(path,as.character(ID),sep="/")))
 	if(dim(mat)[1]>0){
 	mat=mat[,c(1,dinds),drop=F]
 	if(merge){

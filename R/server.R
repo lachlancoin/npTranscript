@@ -67,10 +67,14 @@ h5file = NULL
 }
 #run_depth(h5file, total_reads=total_reads)
 run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", gapthresh=100, mergeGroups=NULL,molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
-                    span = 0.01, sumAll=F, fimo=NULL, t= NULL,logy=T, showMotifs=F,showORFs = F){
+                    span = 0.01, sumAll=F, xlim=null, fimo=NULL, t= NULL,logy=T, showMotifs=F,showORFs = F, path="depth"){
 
   	header =.getHeaderH5(h5file,toreplace)
+  	if(path=="depth"){
 	dinds  = 2*(2:(length(header))-2)+2
+  	}else{
+  	  dinds = 2:(length(header))
+  	}
 	type_nme = header[-1]
   types_=data.frame(t(data.frame(strsplit(type_nme,"_"))))
   names(types_) = c("molecules","cell","time")
@@ -93,9 +97,15 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
    tot_reads =  total_reads[inds1]/rep(1e6,length(inds1))
  }
  #print(tot_reads)
-   	clusters_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]), mergeGroups=mergeGroups,sumID=sumID, toplot,id_cols=id_cols, gapthresh=gapthresh, dinds = dinds[inds1], pos =NULL, span = span, cumul=F, sumAll=sumAll)
+   	clusters_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]), mergeGroups=mergeGroups,sumID=sumID, path=path,toplot,id_cols=id_cols, gapthresh=gapthresh, dinds = dinds[inds1], pos =NULL, span = span, cumul=F, sumAll=sumAll)
 #print(clusters_)
-   	
+
+   if(!is.null(xlim)){
+     minx = min(clusters_$pos)
+     maxx = max(clusters_$pos)
+     xlim[1] = max(minx,xlim[1])
+     xlim[2] = min(maxx, xlim[2])
+   }
    	if(is.null(clusters_)){
   print(paste("could not read ",toplot))
  return (ggplot())
@@ -126,7 +136,7 @@ if(!is.null(total_reads)) ylab="depth per million mapped reads"
  plotClusters(tpm_df, 4,  1, 
               if(showORFs)t else NULL, 
               if(showMotifs)fimo else NULL,
-               rawdepth = rawdepth, linetype=linetype, colour=colour,  xlim = NULL,ylab=ylab , title ="depth", logy=logy, leg_size =leg_size1, show=show, fill =fill)
+               rawdepth = rawdepth, linetype=linetype, colour=colour,  xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =leg_size1, show=show, fill =fill)
 }
 
 .getCIs<-function(subs,sample, total_reads1,method, showTPM=F,prefix="",suffix="", after=TRUE){
@@ -167,6 +177,7 @@ if(!is.null(total_reads)) ylab="depth per million mapped reads"
     label=paste("Transcript",names(choices)[ind])
     ch = c("-",choices[[ind]])
   }
+  
   list(label=label, ch=ch)
 }
 
@@ -184,6 +195,7 @@ shinyServer(function(input, output,session) {
     showDepth  = "show_depth" %in% input$options3
     logy = "logy" %in% input$options3
     group_by=input$group_by
+    plot_type=input$depth_plot_type
     
     showORFs="showORFs" %in% input$options3
     showMotifs="showMotifs" %in% input$options3
@@ -227,7 +239,7 @@ shinyServer(function(input, output,session) {
           cells=input$cells
           times = input$times
           ggplot=run_depth(h5file,total_reads,toplot, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
-                    showORFs = showORFs, fimo=fimo, t=t, showMotifs =showMotifs) 
+                    showORFs = showORFs, fimo=fimo,xlim = c(input$min_x, input$max_x), t=t,path=plot_type, showMotifs =showMotifs) 
         }
         #run_depth(h5file,toplot=c("leader_leader,N_end")) 
       }
@@ -498,6 +510,11 @@ shinyServer(function(input, output,session) {
     }else{
       ch = c()
     }
+    if(file.exists(h5file)){
+      plot_type_ch =   sub("/","",grep("depth",unique(h5ls(h5file)[,1]),v=T))
+    }else{
+      plot_type_ch  = c("-");
+    }
     coords_file = paste(currdir, "Coordinates.csv",sep="/")
     if(file.exists(coords_file)){
       t = readCoords(coords_file)
@@ -523,6 +540,7 @@ shinyServer(function(input, output,session) {
     updateCheckboxGroupInput(session,"cells", label = "Cell type",  choices = info$cells, selected = info$cells)
     updateCheckboxGroupInput(session,"times", label = "Time points",  choices = info$times, selected = info$times)
     updateTextInput(session,"orfs", label="ORFs to include", value = orfs)
+    updateSelectInput(session, "depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="depth")
     
   })  
 	#THIS JUST EXAMPLE FOR RENDERING A PLOT

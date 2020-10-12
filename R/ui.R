@@ -33,6 +33,11 @@ if(file.exists(datafile)){
 }else{
   ch = c()
 }
+if(file.exists(h5file)){
+plot_type_ch =   sub("/","",grep("depth",unique(h5ls(h5file)[,1]),v=T))
+}else{
+  plot_type_ch  = c("-");
+}
 
 options1=c("showCI" ,"barchart", "showSecondAxis")
 totick1 = c("showCI" ,"barchart")
@@ -89,9 +94,12 @@ shinyUI(fluidPage(
    numericInput("maxtrans", label = "Maximum number of transcripts", value = 10),
   selectInput("splitby", label ="Plot x vs y", choices=c("off","molecules","cells","times"), selected="off"),
   
-   checkboxGroupInput("options3", label = h3("Bottom panel"), choices = options3, selected=totick3) 
-   
-   
+   checkboxGroupInput("options3", label = h3("Bottom panel"), choices = options3, selected=totick3) ,
+  selectInput("depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="OR"),
+  numericInput("min_x", label = "Min position", value = 0),
+  numericInput("max_x", label = "Max position", value = 30000)
+  
+  
   ),
  
   
