@@ -360,6 +360,7 @@ public static boolean recordStartEnd = false;
 					errors[src_index].addToEntry(pos, 1);
 				}
 				if(recordStartEnd && break_p ){
+					
 					mapStart.addToEntry(pos,src_index, 1);
 					mapEnd.addToEntry(prev_position,src_index, 1);
 
