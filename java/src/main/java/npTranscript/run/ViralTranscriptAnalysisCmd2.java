@@ -136,7 +136,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addInt("maxReads", Integer.MAX_VALUE, "ORF annotation file");
 		addDouble("probInclude", 1.0, "probability of including each read");
 		addInt("minClusterEntries",10,"threshold for consensus");
-		addBoolean("tryComplementOnExtra", false, "look for negative strand matches on left over seqs");
+	//	addBoolean("tryComplementOnExtra", false, "look for negative strand matches on left over seqs");
 		addBoolean("reAlignExtra", false, "whether to try realigning the extra sequence");
 	//	addBoolean("combineOutput", false, "whether to combine output from different chroms");
 		addString("pattern", null, "Pattern of read name, used for filtering");
@@ -165,8 +165,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 	//	addBoolean("coexpression", false, "whether to calc coexperssion matrices (large memory for small bin size)");
 	//	addBoolean("overwrite", false, "whether to overwrite existing results files");
 		addBoolean("keepAlignment", false, "whether to keep alignment for MSA");
-		addBoolean("attempt5rescue", true, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
-		addBoolean("attempt3rescue", true, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
+		addBoolean("attempt5rescue", false, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
+		addBoolean("attempt3rescue", false, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
 		addBoolean("writePolyA", false, "whether write reads with polyA in middle");
 		addBoolean("coronavirus", true, "whether to run in coronavirus mode (necessary to do breakpoint analysis, but takes more memory)");
 		addBoolean("writeGFF", false, "whether to output gff ");
@@ -238,7 +238,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		int coverageDepthThresh = cmdLine.getIntVal("coverageDepthThresh");
 		IdentityProfile1.msaDepthThresh =(int) Math.floor(cmdLine.getDoubleVal("msaDepthThresh"));
 	IdentityProfile1.extra_threshold = cmdLine.getIntVal("extra_threshold");
-	IdentityProfile1.tryComplementOnExtra = cmdLine.getBooleanVal("tryComplementOnExtra");
+//	IdentityProfile1.tryComplementOnExtra = cmdLine.getBooleanVal("tryComplementOnExtra");
 	IdentityProfile1.reAlignExtra = cmdLine.getBooleanVal("reAlignExtra");
 	IdentityProfile1.attempt5rescue = cmdLine.getBooleanVal("attempt5rescue");
 	IdentityProfile1.attempt3rescue = cmdLine.getBooleanVal("attempt3rescue");
@@ -308,7 +308,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			calcBreaks  = true; 
 			filterBy5_3 = true;
 		//	Outputs.writeGFF=true;
-			
+			Outputs.calcBreaks=true;
 		//	Outputs.MSA_at_cluster = true;
 			TranscriptUtils.checkAlign = true;
 			TranscriptUtils.coronavirus = true;
@@ -323,6 +323,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		//	TranscriptUtils.reAlignExtra = false;
 		//	TranscriptUtils.findPolyA = false;
 		//Outputs.writeGFF = false;
+			Outputs.calcBreaks=true;
 			TranscriptUtils.coronavirus = false;
 			IdentityProfile1.extra_threshold1 = 1000000;
 			//Outputs.writeUnSplicedFastq = false;
