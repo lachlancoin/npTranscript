@@ -31,6 +31,9 @@ if(file.exists(datafile)){
   ch=c(names(info$choices1), names(info$choices))
   
 }else{
+  isoInfo=NULL
+  info=NULL
+  total_reads=NULL
   ch = c()
 }
 if(file.exists(h5file)){
@@ -97,7 +100,8 @@ shinyUI(fluidPage(
    checkboxGroupInput("options3", label = h3("Bottom panel"), choices = options3, selected=totick3) ,
   selectInput("depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="OR"),
   numericInput("min_x", label = "Min position", value = 0),
-  numericInput("max_x", label = "Max position", value = 30000)
+  numericInput("max_x", label = "Max position", value = 30000),
+  numericInput("loess", label = "Loess span", value = 0.02)
   
   
   ),

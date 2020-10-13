@@ -238,7 +238,7 @@ shinyServer(function(input, output,session) {
           molecules=input$molecules
           cells=input$cells
           times = input$times
-          ggplot=run_depth(h5file,total_reads,toplot, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
+          ggplot=run_depth(h5file,total_reads,toplot, span = input$loess, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
                     showORFs = showORFs, fimo=fimo,xlim = c(input$min_x, input$max_x), t=t,path=plot_type, showMotifs =showMotifs) 
         }
         #run_depth(h5file,toplot=c("leader_leader,N_end")) 
