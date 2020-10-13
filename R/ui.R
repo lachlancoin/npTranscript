@@ -48,7 +48,7 @@ totick1 = c("showCI" ,"barchart")
  options2 = c("logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts", "stacked")
 totick2 = c("TPM","ribbonCI")
 options3 = c("show_depth","logy", "TPM","showMotifs","showORFs", "sumDepth","mergeCounts")
-totick3 = c("show_depth","TPM")
+totick3 = c("show_depth","TPM", "mergeCounts")
 
 coordsFile = paste(currdir, "Coordinates.csv",sep="/")
 if(file.exists(coordsFile)){

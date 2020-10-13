@@ -16,7 +16,9 @@ toreplace=list(virion="RNA_virion_0hpi", whole_genome_mapped="RNA_vero_24hpi")
 
 .getGroups<-function(x1,group_by){
   l = list()
-  if(group_by=="type"){
+  if(group_by=="all"){
+  l = list("all"=1:length(x1))    
+  }else if(group_by=="type"){
     vals = list(
       grep("end",grep("start|leader",x1,v=T),v=T),
       grep("end",grep("start|leader",x1,v=T),v=T,inv=T),
@@ -199,6 +201,8 @@ shinyServer(function(input, output,session) {
     
     showORFs="showORFs" %in% input$options3
     showMotifs="showMotifs" %in% input$options3
+    mergeCounts='mergeCounts' %in% input$options3
+    
     tpm = "TPM" %in% input$options3
     h5file=session$userData$h5file
     total_reads = NULL
@@ -232,6 +236,7 @@ shinyServer(function(input, output,session) {
         if(length(toplot)>0 && nchar(toplot[1])>2 ){
           if("sumDepth" %in% input$options3) sumAll=TRUE
           mergeGroups=NULL
+          if(mergeCounts) group_by="all"
           if(nchar(group_by)>0){
             mergeGroups = .getGroups(toplot,group_by)
           }
