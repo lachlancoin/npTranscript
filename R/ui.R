@@ -19,10 +19,15 @@ currdir = paste(basedir,dirs[seldir],sep="/")
 #print(currdir)
 datafile=paste(currdir,"0.isoforms.h5",sep="/")
 h5file=paste(currdir,"0.clusters.h5",sep="/")      
+decodeFile = paste(basedir,"decode.txt",sep='/')
+replace=read.table(decodeFile,sep="\t",head=F)
+toreplace = replace[,2]
+
+names(toreplace) = replace[,1]
 
 
 #datafile=paste(currdir,"0.transcripts.txt.gz",sep="/")
-toreplace=list(virion="RNA_virion_0hpi", whole_genome_mapped="RNA_vero_24hpi")
+
 #timevec= c('2hpi','24hpi','48hpi')
 if(file.exists(datafile)){
   isoInfo = .getIsoInfo(datafile,h5file, toreplace)

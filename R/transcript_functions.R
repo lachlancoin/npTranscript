@@ -778,9 +778,12 @@ plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = T, linetype="
 #  }
   if(is.null(xlim)){
     xlim = c(min(df$pos), max(df$pos))
+
+    ylim = c(min(df[,k1], na.rm=T),max(df[,k1], na.rm=T))
+  }else{
+    xincl = df$pos <= xlim[2] & df$pos >=xlim[1]
+    ylim = c(min(df[xincl,k1], na.rm=T),max(df[xincl,k1], na.rm=T))
   }
- ylim = c(min(df[,k1], na.rm=T),max(df[,k1], na.rm=T))
-  
   ggp<-ggplot(df, aes_string(x="pos", fill="clusterID", colour = colour, linetype=linetype, y = names(df)[k1])) +theme_bw()+geom_line() 
 if(fill) ggp<-ggp+geom_area()
   ggp<-ggp+ggtitle(title)

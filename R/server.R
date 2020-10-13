@@ -11,8 +11,15 @@ library(binom)
 source( "transcript_functions.R")
 
 basedir="../data"
-toreplace=list(virion="RNA_virion_0hpi", whole_genome_mapped="RNA_vero_24hpi")
+#toreplace=list(virion="RNA_virion_0hpi", whole_genome_mapped="RNA_vero_24hpi")
+decodeFile = paste(basedir,"decode.txt",sep='/')
+replace=read.table(decodeFile,sep="\t",head=F)
+toreplace = replace[,2]
+names(toreplace) = replace[,1]
 
+
+
+reorder=T
 
 .getGroups<-function(x1,group_by){
   l = list()
@@ -247,8 +254,13 @@ shinyServer(function(input, output,session) {
           molecules=input$molecules
           cells=input$cells
           times = input$times
+        xlim =   c(isolate(input$min_x), isolate(input$max_x))
+        #print("xlim")
+        #print(xlim)
+        #xlim= NULL
+        if(xlim[2]<=xlim[1]) xlim = NULL
           ggplot=run_depth(h5file,total_reads,toplot, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
-                    showORFs = showORFs, fimo=fimo,xlim = c(input$min_x, input$max_x), t=t,path=plot_type, showMotifs =showMotifs) 
+                    showORFs = showORFs, fimo=fimo,xlim =xlim, t=t,path=plot_type, showMotifs =showMotifs) 
         }
         #run_depth(h5file,toplot=c("leader_leader,N_end")) 
       }
@@ -505,8 +517,10 @@ shinyServer(function(input, output,session) {
       isoInfo = .getIsoInfo(datafile, h5file,toreplace)
       total_reads = isoInfo$total_reads
       ##this gets order by counts
-      order = .readTotalIso(datafile, group="/trans", trans=as.character(isoInfo$orfs$ORFs))
-      isoInfo$orfs = isoInfo$orfs[order,,drop=F]
+      if(reorder){
+        order = .readTotalIso(datafile, group="/trans", trans=as.character(isoInfo$orfs$ORFs))
+        isoInfo$orfs = isoInfo$orfs[order,,drop=F]
+      }
       
       info=.processInfo(isoInfo)
       print(paste("set", datafile))
@@ -519,7 +533,12 @@ shinyServer(function(input, output,session) {
     }else{
       ch = c()
     }
-   
+   annot_file = paste(currdir, "annotation.csv.gz",sep="/")
+    if(file.exists(annot_file)){
+      annots = read.table(annot_file,sep="\t", head=F)
+      names(annots) = c("chr","ens","name","ens1","type")
+      session$userData$annots=annots
+    }
     coords_file = paste(currdir, "Coordinates.csv",sep="/")
     if(file.exists(coords_file)){
       t = readCoords(coords_file)
@@ -532,6 +551,7 @@ shinyServer(function(input, output,session) {
     }else{
       orfs = c()
     }
+    
     session$userData$currdir=currdir
     session$userData$datafile=datafile
     session$userData$h5file=h5file
