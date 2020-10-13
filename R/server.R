@@ -76,7 +76,7 @@ h5file = NULL
 }
 #run_depth(h5file, total_reads=total_reads)
 run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", gapthresh=100, mergeGroups=NULL,molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
-                    span = 0.01, sumAll=F, xlim=null, fimo=NULL, t= NULL,logy=T, showMotifs=F,showORFs = F, path="depth"){
+                    span = 0.01, sumAll=F, xlim=null, fimo=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,showORFs = F, path="depth"){
 
   	header =.getHeaderH5(h5file,toreplace)
   	if(path=="depth"){
@@ -147,7 +147,7 @@ if(!is.null(total_reads)) ylab="depth per million mapped reads"
  plotClusters(tpm_df, 4,  1, 
               if(showORFs)t else NULL, 
               if(showMotifs)fimo else NULL,
-               rawdepth = rawdepth, linetype=linetype, colour=colour,  xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =leg_size1, show=show, fill =fill)
+               rawdepth = rawdepth, linetype=linetype, colour=colour, alpha=alpha, xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =leg_size1, show=show, fill =fill)
 }
 
 .getCIs<-function(subs,sample, total_reads1,method, showTPM=F,prefix="",suffix="", after=TRUE){
@@ -255,12 +255,13 @@ shinyServer(function(input, output,session) {
           cells=input$cells
           times = input$times
         xlim =   c(isolate(input$min_x), isolate(input$max_x))
+        alpha = isolate(input$alpha)
         #print("xlim")
         #print(xlim)
         #xlim= NULL
         if(xlim[2]<=xlim[1]) xlim = NULL
           ggplot=run_depth(h5file,total_reads,toplot, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
-                    showORFs = showORFs, fimo=fimo,xlim =xlim, t=t,path=plot_type, showMotifs =showMotifs) 
+                    showORFs = showORFs, fimo=fimo,xlim =xlim, t=t,path=plot_type, showMotifs =showMotifs, alpha=alpha) 
         }
         #run_depth(h5file,toplot=c("leader_leader,N_end")) 
       }

@@ -106,8 +106,9 @@ shinyUI(fluidPage(
  # selectInput("depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="OR"),
   numericInput("min_x", label = "Min position", value = 0),
   numericInput("max_x", label = "Max position", value = 30000),
-  numericInput("loess", label = "Loess span", value = 0.02)
-  
+  numericInput("loess", label = "Loess span", value = 0.02,max=1,min=0),
+ 
+ numericInput("alpha", label = "Transparency", value = 1.0)
   
   ),
  

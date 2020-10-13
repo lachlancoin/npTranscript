@@ -760,7 +760,7 @@ split1<-function(fi) strsplit(fi,"_")[[1]][1]
 
 
 
-plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = T, linetype="sampID", colour="clusterID", title = "", ylab=if(rawdepth)  "depth" else "TPM", logy=F, leg_size = 6, xlim  = NULL, show=F, updatenmes = F, fill = F){
+plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = T, linetype="sampID", colour="clusterID", title = "", ylab=if(rawdepth)  "depth" else "TPM", logy=F, leg_size = 6, xlim  = NULL, show=F, updatenmes = F, fill = F, alpha=0.5){
   if(!is.factor(df$clusterID)) df$clusterID = as.factor(df$clusterID)  #types[df$type]
  # names(df)[3] = "depth"
   #ids =  as.character(rel_count$ID)
@@ -784,7 +784,8 @@ plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = T, linetype="
     xincl = df$pos <= xlim[2] & df$pos >=xlim[1]
     ylim = c(min(df[xincl,k1], na.rm=T),max(df[xincl,k1], na.rm=T))
   }
-  ggp<-ggplot(df, aes_string(x="pos", fill="clusterID", colour = colour, linetype=linetype, y = names(df)[k1])) +theme_bw()+geom_line() 
+  ggp<-ggplot(df, aes_string(x="pos", fill="clusterID", colour = colour, linetype=linetype, y = names(df)[k1])) +theme_bw()
+  ggp<-ggp+geom_line(inherit.aes=T, aes(alpha=alpha)) 
 if(fill) ggp<-ggp+geom_area()
   ggp<-ggp+ggtitle(title)
   if(logy) ggp<-ggp+scale_y_continuous(name=ylab,trans='log10') #, limits=ylim)
