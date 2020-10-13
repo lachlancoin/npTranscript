@@ -773,10 +773,14 @@ plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = T, linetype="
     #}
     df[,k1]  = df[,k1]*(1e6/totalReadCount)
   }
+  if(logy){
+    df[df[,k1]==0,k1]=0.01
+  }
   if(is.null(xlim)){
     xlim = c(min(df$pos), max(df$pos))
   }
   ylim = c(min(df[,k1]),max(df[,k1]))
+  
   ggp<-ggplot(df, aes_string(x="pos", fill="clusterID", colour = colour, linetype=linetype, y = names(df)[k1])) +theme_bw()+geom_line() 
 if(fill) ggp<-ggp+geom_area()
   ggp<-ggp+ggtitle(title)
@@ -1554,14 +1558,14 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
 }
 
 
-.addZero<-function(mat, thresh=10, toadd=0){
+.addZero<-function(mat, thresh=10, toadd=0.01){
   len = dim(mat)[[1]]
   ncol = dim(mat)[[2]]
   diffs = apply(cbind(mat[-1,1], mat[1:(len-1),1]),1, function(v)v[1]-v[2])
   gaps=which(diffs>thresh)
   if(length(gaps)>0){
-  mat[gaps,-1] =rep(toadd, ncol-1)
-  mat[gaps+1,-1] =rep(toadd, ncol-1)
+  mat[gaps,-1] =rep(0, ncol-1)
+  mat[gaps+1,-1] =rep(0, ncol-1)
   }
   mat
 }
@@ -1578,7 +1582,7 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
  res
 }
 
-.processInternal<-function(mat, sumAll,header,total_reads,span, gapthresh,ID, sumID="all", toAdd=0){
+.processInternal<-function(mat, sumAll,header,total_reads,span, gapthresh,ID, sumID="all", toAdd=0.01){
    mat =  .addZero(mat, thresh=gapthresh,toAdd)
   if(!sumAll && !is.null(total_reads)){
       mat = t(apply(mat,1,function(v)v/c(1,total_reads)))
