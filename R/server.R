@@ -84,6 +84,8 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
  types1_ = types_[inds1,,drop=F]
  ord = order(as.numeric(factor(types1_$time, levels=c("0hpi", "2hpi","24hpi","48hpi"))),types1_$cell,types1_$molecules)
  levs=type_nme[inds1][ord]
+ toAdd=0
+ if(logy)toAdd=0.001
  
  facts =  apply(types1_,2,function(v) levels(factor(v)))
   same_inds = which(unlist(lapply(facts,length))==1)
@@ -99,15 +101,15 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
    tot_reads =  total_reads[inds1]/rep(1e6,length(inds1))
  }
  #print(tot_reads)
-   	clusters_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]), mergeGroups=mergeGroups,sumID=sumID, path=path,toplot,id_cols=id_cols, gapthresh=gapthresh, dinds = dinds[inds1], pos =NULL, span = span, cumul=F, sumAll=sumAll)
+   	clusters_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]),toAdd = toAdd, mergeGroups=mergeGroups,sumID=sumID, path=path,toplot,id_cols=id_cols, gapthresh=gapthresh, dinds = dinds[inds1], pos =NULL, span = span, cumul=F, sumAll=sumAll)
 #print(clusters_)
 
-   if(!is.null(xlim)){
-     minx = min(clusters_$pos)
-     maxx = max(clusters_$pos)
-     xlim[1] = max(minx,xlim[1])
-     xlim[2] = min(maxx, xlim[2])
-   }
+  # if(!is.null(xlim)){
+  #   minx = min(clusters_$pos)
+  #   maxx = max(clusters_$pos)
+  #   xlim[1] = max(minx,xlim[1])
+  #   xlim[2] = min(maxx, xlim[2])
+  # }
    	if(is.null(clusters_)){
   print(paste("could not read ",toplot))
  return (ggplot())
@@ -190,14 +192,13 @@ shinyServer(function(input, output,session) {
 	#output$instructions <- renderPrint({
 	#	print("Upload 0.transcripts.txt.gz file produced by npTranscript");
 	#})
-  depthPlot= function() {
+  depthPlot= function(plot_type) {
     #result = loadData();
     if(!file.exists(session$userData$h5file)) return(ggplot())
-    
     showDepth  = "show_depth" %in% input$options3
     logy = "logy" %in% input$options3
     group_by=input$group_by
-    plot_type=input$depth_plot_type
+  #  plot_type=input$depth_plot_type
     
     showORFs="showORFs" %in% input$options3
     showMotifs="showMotifs" %in% input$options3
@@ -214,6 +215,8 @@ shinyServer(function(input, output,session) {
     #  print(total_reads)
     # print(h5file)
     ggp=ggplot()
+    if(length(grep(plot_type,h5ls(h5file)$group))<=0) return (ggp)
+    
     if(showDepth  && !is.null(h5file)){
       if(file.exists(h5file)){
         toplot = c(isolate(input$toplot5))#,isolate(input$toplot6))#,isolate(input$toplot7),isolate(input$toplot8))
@@ -515,11 +518,7 @@ shinyServer(function(input, output,session) {
     }else{
       ch = c()
     }
-    if(file.exists(h5file)){
-      plot_type_ch =   sub("/","",grep("depth",unique(h5ls(h5file)[,1]),v=T))
-    }else{
-      plot_type_ch  = c("-");
-    }
+   
     coords_file = paste(currdir, "Coordinates.csv",sep="/")
     if(file.exists(coords_file)){
       t = readCoords(coords_file)
@@ -545,7 +544,7 @@ shinyServer(function(input, output,session) {
     updateCheckboxGroupInput(session,"cells", label = "Cell type",  choices = info$cells, selected = info$cells)
     updateCheckboxGroupInput(session,"times", label = "Time points",  choices = info$times, selected = info$times)
     updateTextInput(session,"orfs", label="ORFs to include", value = orfs)
-    updateSelectInput(session, "depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="depth")
+   # updateSelectInput(session, "depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="depth")
     
   })  
 	#THIS JUST EXAMPLE FOR RENDERING A PLOT
@@ -560,10 +559,21 @@ output$infPlot<-renderPlot({
 })
 	output$depthPlot <- renderPlot({
 	    input$plotButton
-	  depthPlot()
+	  depthPlot("depth")
+	})
+	output$depthStartPlot <- renderPlot({
+	  input$plotButton
+	  depthPlot("depthStart")
+	})
+	output$depthEndPlot <- renderPlot({
+	  input$plotButton
+	  depthPlot("depthEnd")
 	})
 output$downloadInf <- downloadHandler(filename = function() {'plotInfectivity.pdf'}, content = function(file) ggsave(file, infectivityPlot(), device='pdf', height = 20, width = 40, units='cm' ) )
-output$downloadDepth <- downloadHandler(filename = function() {'plotDepth.pdf'}, content = function(file) ggsave(file, depthPlot(), device = 'pdf', height = 20, width = 40, units='cm') )
+output$downloadDepth <- downloadHandler(filename = function() {'plotDepth.pdf'}, content = function(file) ggsave(file, depthPlot("depth"), device = 'pdf', height = 20, width = 40, units='cm') )
+output$downloadDepthStart <- downloadHandler(filename = function() {'plotDepthStart.pdf'}, content = function(file) ggsave(file, depthPlot("depthStart"), device = 'pdf', height = 20, width = 40, units='cm') )
+output$downloadDepthEnd <- downloadHandler(filename = function() {'plotDepthEnd.pdf'}, content = function(file) ggsave(file, depthPlot("depthEnd"), device = 'pdf', height = 20, width = 40, units='cm') )
+
 output$downloadDist <- downloadHandler(filename = function() {'plotDist.pdf'}, content = function(file) ggsave(file, transcriptPlot(), device = 'pdf' , height = 20, width = 40, units='cm') )
 	 })
 

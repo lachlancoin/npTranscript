@@ -98,7 +98,7 @@ shinyUI(fluidPage(
   selectInput("splitby", label ="Plot x vs y", choices=c("off","molecules","cells","times"), selected="off"),
   
    checkboxGroupInput("options3", label = h3("Bottom panel"), choices = options3, selected=totick3) ,
-  selectInput("depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="OR"),
+ # selectInput("depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="OR"),
   numericInput("min_x", label = "Min position", value = 0),
   numericInput("max_x", label = "Max position", value = 30000),
   numericInput("loess", label = "Loess span", value = 0.02)
@@ -117,7 +117,11 @@ shinyUI(fluidPage(
      plotOutput("distPlot", height=400),
 	downloadButton('downloadDist'),
    plotOutput("depthPlot", height=400),
-   downloadButton("downloadDepth")
+   downloadButton("downloadDepth"),
+	plotOutput("depthStartPlot", height=400),
+	downloadButton("downloadDepthStart"),
+	plotOutput("depthEndPlot", height=400),
+	downloadButton("downloadDepthEnd")
   )
   #,
   #htmlTemplate(file.path(basedir, "shiny-common/uomfooter.html"))

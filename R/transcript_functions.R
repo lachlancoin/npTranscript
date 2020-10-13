@@ -1554,14 +1554,14 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
 }
 
 
-.addZero<-function(mat, thresh=10){
+.addZero<-function(mat, thresh=10, toadd=0){
   len = dim(mat)[[1]]
   ncol = dim(mat)[[2]]
   diffs = apply(cbind(mat[-1,1], mat[1:(len-1),1]),1, function(v)v[1]-v[2])
   gaps=which(diffs>thresh)
   if(length(gaps)>0){
-  mat[gaps,-1] =rep(0, ncol-1)
-  mat[gaps+1,-1] =rep(0, ncol-1)
+  mat[gaps,-1] =rep(toadd, ncol-1)
+  mat[gaps+1,-1] =rep(toadd, ncol-1)
   }
   mat
 }
@@ -1578,8 +1578,8 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
  res
 }
 
-.processInternal<-function(mat, sumAll,header,total_reads,span, gapthresh,ID, sumID="all"){
-  mat = .addZero(mat, thresh=gapthresh)
+.processInternal<-function(mat, sumAll,header,total_reads,span, gapthresh,ID, sumID="all", toAdd=0){
+   mat =  .addZero(mat, thresh=gapthresh,toAdd)
   if(!sumAll && !is.null(total_reads)){
       mat = t(apply(mat,1,function(v)v/c(1,total_reads)))
   }
@@ -1595,7 +1595,7 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
 #  print(head(mat1))
   cbind(clusterID,mat1)
 }
-readH5<-function(h5file, total_reads, header, toplot, path="depth",gapthresh=100,mergeGroups = NULL,sumID="all", pos = NULL,id_cols = c("molecule","cell","time"), dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
+readH5<-function(h5file, total_reads, header, toplot, path="depth",gapthresh=100,mergeGroups = NULL,sumID="all", pos = NULL,id_cols = c("molecule","cell","time"), toAdd=0,dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
  pos_ind = 1
  merge=!is.null(mergeGroups)
  ncols = length(id_cols)
@@ -1620,7 +1620,7 @@ readH5<-function(h5file, total_reads, header, toplot, path="depth",gapthresh=100
 	if(merge){
 	  mats[[i]] = mat
 	}else{
-	  mat2 = .processInternal(mat, sumAll, header, total_reads, span, gapthresh,ID, sumID=sumID)
+	  mat2 = .processInternal(mat, sumAll, header, total_reads, span, gapthresh,ID, sumID=sumID, toAdd=toAdd)
 		clusters_ = rbind(clusters_,mat2)
 	}
 	}
@@ -1632,7 +1632,7 @@ readH5<-function(h5file, total_reads, header, toplot, path="depth",gapthresh=100
         nonnull=!unlist(lapply(matsk, is.null)) 
         if(length(which(nonnull))>0){
           mat2 = .mergeDepthMats(matsk[nonnull])
-          clusters_=rbind(clusters_,.processInternal(mat2,sumAll, header, total_reads, span, gapthresh,names(mergeGroups)[k], sumID=sumID))
+          clusters_=rbind(clusters_,.processInternal(mat2,sumAll, header, total_reads, span, gapthresh,names(mergeGroups)[k], sumID=sumID, toAdd=toAdd))
         }
      }
    }
