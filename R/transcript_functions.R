@@ -16,7 +16,7 @@ unlist(v)
  
  header=.getHeaderH5(datafile, toreplace)
  mat =h5ls(datafile)
- count_entries= paste(mat[grep("/counts",mat$group),1:2],collapse="/")
+ count_entries= apply(mat[grep("/counts",mat$group),1:2],1,paste,collapse="/")
  print(h5file)
  if(file.exists(h5file)){
    mat1 =h5ls(h5file)
@@ -779,13 +779,13 @@ plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = T, linetype="
   if(is.null(xlim)){
     xlim = c(min(df$pos), max(df$pos))
   }
-#  ylim = c(min(df[,k1], na.rm=T),max(df[,k1], na.rm=T))
+ ylim = c(min(df[,k1], na.rm=T),max(df[,k1], na.rm=T))
   
   ggp<-ggplot(df, aes_string(x="pos", fill="clusterID", colour = colour, linetype=linetype, y = names(df)[k1])) +theme_bw()+geom_line() 
 if(fill) ggp<-ggp+geom_area()
   ggp<-ggp+ggtitle(title)
   if(logy) ggp<-ggp+scale_y_continuous(name=ylab,trans='log10') #, limits=ylim)
-  else ggp<-ggp+labs(y= ylab)#+ylim(ylim)
+  else ggp<-ggp+labs(y= ylab)+ylim(ylim)
   if(leg_size==0  || length(levels(as.factor(as.character(df$type))))>20){
     ggp<-ggp+theme(legend.position="none")
   }else{
