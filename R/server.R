@@ -216,7 +216,8 @@ shinyServer(function(input, output,session) {
     # print(h5file)
     ggp=ggplot()
     if(length(grep(plot_type,h5ls(h5file)$group))<=0) return (ggp)
-    
+    span = 0
+    if(plot_type=="depth") span=input$loess
     if(showDepth  && !is.null(h5file)){
       if(file.exists(h5file)){
         toplot = c(isolate(input$toplot5))#,isolate(input$toplot6))#,isolate(input$toplot7),isolate(input$toplot8))
@@ -246,7 +247,7 @@ shinyServer(function(input, output,session) {
           molecules=input$molecules
           cells=input$cells
           times = input$times
-          ggplot=run_depth(h5file,total_reads,toplot, span = input$loess, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
+          ggplot=run_depth(h5file,total_reads,toplot, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
                     showORFs = showORFs, fimo=fimo,xlim = c(input$min_x, input$max_x), t=t,path=plot_type, showMotifs =showMotifs) 
         }
         #run_depth(h5file,toplot=c("leader_leader,N_end")) 
