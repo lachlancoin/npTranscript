@@ -773,19 +773,19 @@ plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = T, linetype="
     #}
     df[,k1]  = df[,k1]*(1e6/totalReadCount)
   }
-  if(logy){
-    df[df[,k1]==0,k1]=0.01
-  }
+ # if(logy){
+#    df[df[,k1]<=0.01,k1]=0.01
+#  }
   if(is.null(xlim)){
     xlim = c(min(df$pos), max(df$pos))
   }
-  ylim = c(min(df[,k1]),max(df[,k1]))
+#  ylim = c(min(df[,k1], na.rm=T),max(df[,k1], na.rm=T))
   
   ggp<-ggplot(df, aes_string(x="pos", fill="clusterID", colour = colour, linetype=linetype, y = names(df)[k1])) +theme_bw()+geom_line() 
 if(fill) ggp<-ggp+geom_area()
   ggp<-ggp+ggtitle(title)
-  if(logy) ggp<-ggp+scale_y_continuous(name=ylab,trans='log10', limits=ylim)
-  else ggp<-ggp+labs(y= ylab)+ylim(ylim)
+  if(logy) ggp<-ggp+scale_y_continuous(name=ylab,trans='log10') #, limits=ylim)
+  else ggp<-ggp+labs(y= ylab)#+ylim(ylim)
   if(leg_size==0  || length(levels(as.factor(as.character(df$type))))>20){
     ggp<-ggp+theme(legend.position="none")
   }else{
