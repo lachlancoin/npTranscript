@@ -54,7 +54,7 @@ totick1 = c("showCI" ,"barchart")
  options2 = c("logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts", "stacked")
 totick2 = c("TPM","ribbonCI")
 options3 = c("show_depth","logy", "TPM","showMotifs","showORFs", "sumDepth","mergeCounts")
-totick3 = c("show_depth","TPM", "mergeCounts")
+totick3 = c("show_depth", "mergeCounts", "sumDepth")
 
 coordsFile = paste(currdir, "Coordinates.csv",sep="/")
 if(file.exists(coordsFile)){
@@ -107,8 +107,7 @@ shinyUI(fluidPage(
  # selectInput("depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="OR"),
   numericInput("min_x", label = "Min position", value = 0),
   numericInput("max_x", label = "Max position", value = 30000),
-  numericInput("loess", label = "Loess span", value = 0.02,max=1,min=0),
- 
+  numericInput("loess", label = "Loess span", value = 0.0,max=1,min=0),
  numericInput("alpha", label = "Transparency", value = 1.0)
   
   ),

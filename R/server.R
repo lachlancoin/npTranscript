@@ -241,6 +241,7 @@ shinyServer(function(input, output,session) {
             combinedID=toplot[1]
             toplot = .findEntries(toplot,h5file,"/depth",tojoin)
           }
+          
           merge=T
           sumAll=F
         }
@@ -250,6 +251,13 @@ shinyServer(function(input, output,session) {
           if(mergeCounts) group_by="all"
           if(nchar(group_by)>0){
             mergeGroups = .getGroups(toplot,group_by)
+          }else if(length(toplot)>input$maxtrans){
+            ##only show top number if not merging
+            isoInfo=session$userData$isoInfo
+            inds_k = sort(match(toplot,isoInfo$orfs$ORFs))
+          #  print(inds_k)
+         #   print(isoInfo$orfs$ORFs[inds_k][1:input$maxtrans])
+            toplot = isoInfo$orfs$ORFs[inds_k][1:input$maxtrans]
           }
           molecules=input$molecules
           cells=input$cells
