@@ -117,11 +117,12 @@ public class Outputs{
 	public static boolean writeGFF=true;
 	public static int minClusterEntries = 5;
 	public static Collection numExonsMSA = Arrays.asList(new Integer[0]); // numBreaks for MSA 
+	public static boolean calcBreaks;
 	
 		public File transcripts_file;
 		public File reads_file; 
 		public File feature_counts_file;
-		private final File  outfile2,  outfile4, outfile5,  outfile10, outfile11,  gff_output;
+		private final File  outfile2,  outfile4, outfile5,  outfile10, outfile11, outfile12, gff_output;
 		//outfile9;
 		private final FOutp[] leftover_l, polyA;//, leftover_r, fusion_l, fusion_r;
 	
@@ -131,6 +132,7 @@ public class Outputs{
 		 SequenceOutputStream[] refOut;
 		 IHDF5SimpleWriter clusterW = null;
 		 IHDF5Writer altT = null;
+		 IHDF5Writer breakPW = null;
 		File resDir;
 		CompressDir[] clusters;
 		
@@ -164,6 +166,7 @@ public class Outputs{
 			}
 			if(clusterW!=null) clusterW.close();
 			this.altT.close();
+			if(this.breakPW!=null) breakPW.close();
 			this.annotP.close();
 			//this.clusters.close();
 			for(int i=0; i<clusters.length; i++){
@@ -216,7 +219,7 @@ public class Outputs{
 			 outfile4 = new File(resDir,genome_index+ "exons.txt.gz");
 			 outfile5 = new File(resDir,genome_index+ "clusters.fa.gz");
 			 outfile10 = new File(library,genome_index+"isoforms.h5");
-			
+			outfile12 = new File(library,genome_index+"breakpoints.h5");
 			gff_output = new File(resDir,genome_index+"gff.gz");
 			
 			 outfile11 = new File(resDir, genome_index+"annot.txt.gz");
@@ -321,6 +324,10 @@ public class Outputs{
 			}
 			this.col_inds = new int[this.type_nmes.length];
 			altT = HDF5Factory.open(outfile10);
+			if(Outputs.calcBreaks){
+				this.breakPW =  HDF5Factory.open(outfile12);
+
+			}
 			writeStringArray(altT, "header", str.toArray(new String[0]),this.col_inds,0);
 			this.new_max_cols = Arrays.stream(col_inds) .max() .getAsInt()+1;
 				     
@@ -417,36 +424,31 @@ public class Outputs{
 		}
 		
 		void printMatrix(SparseRealMatrix cod, SparseVector breakSt2, SparseVector breakEnd2,  int chrom_index, int i, int j) throws IOException{
-			
-			PrintWriter pw = getBreakPointPw(chrom_index+"",i, j);
-				
+			String id = this.chrom+"/"+this.type_nmes[i]+"/"+j;
+//			PrintWriter pw = getBreakPointPw(chrom_index+"",i, j);
 			StringBuffer secondLine = new StringBuffer();
 			List<Integer> rows  = breakSt2.keys();
 			List<Integer> cols =  breakEnd2.keys();
-			for(Iterator<Integer> it = cols.iterator(); it.hasNext();){
-				pw.print(",");
-				Integer val = it.next();
-				pw.print(val);
-				secondLine.append(",");
-				secondLine.append(breakEnd2.get(val));
+			int[][] mat = new int[rows.size()+2][cols.size()+2];
+			for(int k=0; k<cols.size();k++){
+				Integer val =  cols.get(k);
+				mat[0][k+2] =val;
+				mat[1][k+2] = breakEnd2.get(val);
 			}
-			pw.println();
-			pw.println(secondLine.toString());
 			//Set<Integer> cols = breakEnd2
-			for (Iterator<Integer> it =rows.iterator(); it.hasNext();) {
-				Integer row = it.next(); // nonZeroRows.get(i);
-				pw.print(row);
-				pw.print(",");
-				pw.print(breakSt2.get(row));
-				for(Iterator<Integer> it1 = cols.iterator(); it1.hasNext();){
-					Integer col = it1.next();// nonZeroRows.get(j);
+			for (int m=0; m<rows.size(); m++) {
+				Integer row = rows.get(m); // nonZeroRows.get(i);
+				mat[m+2][0] = row;
+				mat[m+2][1] = breakSt2.get(row);
+				for(int k=0; k<cols.size();k++){
+					Integer col = cols.get(k);
 					int val =  (int) cod.getEntry(row, col);// : 0;
-					pw.print(",");
-					pw.print(val);
+					mat[m+2][k+2] = val;
 				}
-				pw.println();
+				//pw.println();
 			}
-			pw.close();
+			this.breakPW.writeIntMatrix(id, mat);
+			//pw.close();
 			
 		}
 		

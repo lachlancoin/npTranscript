@@ -1,3 +1,10 @@
+###
+##NEW WAY OF READING BREAKPONTS
+# brP1 = readBreakPointsH5(h5file,"chrMT007544", "virion", 0)
+#plots_i =  plotBreakPIntrons(brP1)
+#region =  c(1,5000,100,25000,30000,100)
+#plots = plotBreakPIntrons(brP1, t,fimo,region =  region,   logT=logT, title= names(special)[i1], subtitle = type_nme[i])
+
 ##BREAKPOINT ANALYSIS
 #infilesBr = grep("breakpoints.", dir(), v=T)
 infilesBr0 = paste("0.breakpoints.",type_nme,".0.txt.gz",sep="")

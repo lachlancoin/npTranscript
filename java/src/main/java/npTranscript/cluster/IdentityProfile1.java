@@ -51,7 +51,7 @@ public class IdentityProfile1 {
 	public static int break_thresh = 1000;
 	
 	public static Sequence polyA = new Sequence(Alphabet.DNA(), "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".toCharArray(), "polyA");
-	public  static boolean tryComplementOnExtra = false;
+	//public  static boolean tryComplementOnExtra = false;
 	public static boolean reAlignExtra = false;
 	
 	public int startPos, endPos;
@@ -146,8 +146,8 @@ static char delim1 = ',';
 		breaks.add(coRefPositions.end);
 		boolean includeInConsensus = true;
 		if( align5prime!=null ){
-			if(align5prime.getIdentity()>0.8 * Math.max(start_read,align5prime.getLength())){
-				System.err.println("rescued 5' "+readSeq.getName());
+			if(align5prime.getIdentity()>0.85 * Math.max(start_read,align5prime.getLength())){
+				System.err.println("rescued 5' "+readSeq.getName()+" "+align5prime.getIdentity()+" "+align5prime.getLength());
 			
 				int newStartPos = align5prime.getStart2() + 1; // transfer to 1-based
 				int newBreakPos = newStartPos + align5prime.getSequence2().length -  align5prime.getGaps2();
@@ -166,7 +166,7 @@ static char delim1 = ',';
 			double diff = readLength-end_read;
 			double ident = align3prime.getIdentity();
 			double alignLen = align3prime.getLength();
-			if(ident > 0.8 *Math.max(alignLen,diff)){// && read_st< 20){
+			if(ident > 0.85 *Math.max(alignLen,diff)){// && read_st< 20){
 				includeInConsensus = false;
 				int newBreakPos = offset_3prime+ align3prime.getStart2() + 1; // transfer to 1-based
 				int newEndPos = newBreakPos + align3prime.getSequence2().length -  align3prime.getGaps2();
@@ -197,14 +197,15 @@ static char delim1 = ',';
 			secondKey.append(annot.nextUpstream(startPos,chrom_index, forward)+delim);
 		}
 		if(annotByBreakPosition){
-			
+			boolean firstBreak=true;
 			for(int i=1; i<breaks.size()-1; i+=2){
 				int gap = breaks.get(i+1)-breaks.get(i);
 				String upst = annot.nextUpstream(breaks.get(i), chrom_index,forward);
 				secondKey.append(upst+delim1);
 				secondKey.append(annot.nextDownstream(breaks.get(i+1), chrom_index,forward)+delim);
 				if(gap > break_thresh){
-					if(annot.isLeader(breaks.get(i))){
+					if(firstBreak){
+						firstBreak=false;
 						parent.addBreakPoint(source_index, 0, breaks.get(i), breaks.get(i+1));
 					//	if(bp!=null) this.bp.addBreakPoint(source_index, 0, breaks.get(i), breaks.get(i+1));
 						hasLeaderBreak = true;
@@ -611,14 +612,14 @@ static char delim1 = ',';
 				 TranscriptUtils.getStartEnd(align_5prime, seq1, seq2, 0, 0, sam.getReadNegativeStrandFlag());
 				String secondKey1 =  profile.all_clusters.annot.nextUpstream(seq1[2], profile.chrom_index, forward)+";"+profile.all_clusters.annot.nextDownstream(seq1[3], profile.chrom_index,forward);
 				desc.append(" "+String.format("%5.3g",(double)seq2[1]/(double) seq2[0]).trim()+" "+secondKey1+" "+getString(seq1)+";"+getString(seq2));
-				if(tryComplementOnExtra){
+				/*if(tryComplementOnExtra){
 					align_5prime = SWGAlignment.align(TranscriptUtils.revCompl(leftseq), refSeq);
 					 TranscriptUtils.getStartEnd(align_5prime, seq1, seq2, 0, 0, !sam.getReadNegativeStrandFlag());
 						 secondKey1 =  profile.all_clusters.annot.nextUpstream(seq1[2], profile.chrom_index,forward)+";"+profile.all_clusters.annot.nextDownstream(seq1[3], profile.chrom_index,forward);
 
 					 desc.append(" "+secondKey1+" "+String.format("%5.3g",(double)seq2[1]/(double) seq2[0]).trim()+" "+getString(seq1)+";"+getString(seq2));
 						
-				}
+				}*/
 				}
 				
 				leftseq.setDesc(desc.toString());
@@ -654,14 +655,14 @@ static char delim1 = ',';
 					String secondKey1 =  profile.all_clusters.annot.nextUpstream(seq1[2], profile.chrom_index,forward)+";"+profile.all_clusters.annot.nextDownstream(seq1[3], profile.chrom_index,forward);
 
 				 desc.append(" "+String.format("%5.3g",(double)seq2[1]/(double) seq2[0]).trim()+" "+secondKey1+" "+getString(seq1)+";"+getString(seq2));
-				 if(tryComplementOnExtra){
+				 /*if(tryComplementOnExtra){
 						align_3prime = SWGAlignment.align(TranscriptUtils.revCompl(rightseq), refSeq);
 						 TranscriptUtils.getStartEnd(align_3prime, seq1, seq2, end_r, 0, !sam.getReadNegativeStrandFlag());
 							 secondKey1 =  profile.all_clusters.annot.nextUpstream(seq1[2], profile.chrom_index,forward)+";"+profile.all_clusters.annot.nextDownstream(seq1[3], profile.chrom_index,forward);
 
 						 desc.append(" "+secondKey1+" "+String.format("%5.3g",(double)seq2[1]/(double) seq2[0]).trim()+" "+getString(seq1)+";"+getString(seq2));
 							
-					}
+					}*/
 					}catch(Exception exc){
 						System.err.println("warning 3'alignment unsuccessful");
 					}
