@@ -5,7 +5,7 @@ library(tidyr)
 library(rhdf5)
 library(RColorBrewer)
 library(binom)
-
+library(writexl)
 
 
 source( "transcript_functions.R")

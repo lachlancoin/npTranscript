@@ -3,6 +3,7 @@ library(reshape2)
 library(tidyr)
 library(rhdf5)
 library(RColorBrewer)
+library(writexl)
 
 source( "transcript_functions.R")
 
