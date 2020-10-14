@@ -120,17 +120,18 @@ shinyUI(fluidPage(
     # verbatimTextOutput("variables"),
     # verbatimTextOutput("validation"),
     plotOutput("infPlot", height=400),
-	downloadButton('downloadInf'),
-	downloadButton("downloadResultsInf"),
-     plotOutput("distPlot", height=400),
-	downloadButton('downloadDist'),
-	downloadButton("downloadResults"),
-   plotOutput("depthPlot", height=400),
-   downloadButton("downloadDepth"),
-	plotOutput("depthStartPlot", height=400),
-	downloadButton("downloadDepthStart"),
-	plotOutput("depthEndPlot", height=400),
-	downloadButton("downloadDepthEnd")
+        downloadButton('downloadInf', 'Download plot'),
+        downloadButton("downloadResultsInf", 'Download data'),
+    plotOutput("distPlot", height=400),
+        downloadButton('downloadDist', 'Download plot'),
+        downloadButton("downloadResults", 'Download data'),
+    plotOutput("depthPlot", height=400),
+        downloadButton("downloadDepth", 'Download plot'),
+    plotOutput("depthStartPlot", height=400),
+        downloadButton("downloadDepthStart", 'Download plot'),
+    plotOutput("depthEndPlot", height=400),
+        downloadButton("downloadDepthEnd", 'Download plot')
+  
   )
   #,
   #htmlTemplate(file.path(basedir, "shiny-common/uomfooter.html"))
