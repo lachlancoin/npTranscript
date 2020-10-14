@@ -34,6 +34,16 @@ reorder=T
     )
     l = lapply(vals,function(x) which(x1 %in% x))
     names(l) = c("5_3", "5_no3","no5_3","no5_no3") 
+  }else if(group_by=="juncts"){
+    juncts = factor( unlist(lapply(x1,function(x)length(strsplit(x,",")[[1]]))))
+    junctlev = levels(juncts)
+  #  print(juncts)
+  #  print(junctlev)
+   l = list()
+    for(k in 1:length(junctlev)){
+      l[[k]] = which(juncts==junctlev[k])
+    }
+    names(l) = junctlev
   }else{
   l[[1]] = grep(group_by,x1)
   l[[2]] = grep(group_by, x1,inv=T )
