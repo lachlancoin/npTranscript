@@ -146,6 +146,15 @@ if(join_and || join_not)  x2 =  mat$name else   x2 =  c()
       x1=mat[grep("end",mat$name,inv=T),,drop=F]$name
     }else if(x[j]=="no5"){
       x1=mat[grep("leader",mat$name,inv=T),,drop=F]$name
+    }else if(x[j]=="no5_no3"){
+      ##need to fix this
+      x1 = grep("end",grep("leader",mat$name,inv=T,v=T),inv=T,v=T)
+    }else if(x[j]=="no5_3"){
+      x1 = grep("end",grep("leader",mat$name,inv=T,v=T),inv=F,v=T)
+    }else if(x[j]=="5_no3"){
+      x1 = grep("end",grep("leader",mat$name,inv=F,v=T),inv=T,v=T)
+    }else if(x[j]=="5_3"){
+      x1 = grep("end",grep("leader",mat$name,inv=F,v=T),inv=F,v=T)
     }else if(length(grep("juncts",x[j]))>0){
       num = as.numeric(strsplit(x[j],":")[[1]][2])
       x1=mat$name[unlist(lapply(strsplit(mat$name,","),length))==(num+1)]
@@ -289,7 +298,7 @@ if(is.null(levels)){
  
     if(!showSecondAxis){
       ggp1<-ggplot(ratio3, aes(x=time))
-      
+      data=ratio3
     ggp1<-ggp1+geom_line(aes(y=logdiff ,group=interaction(molecule_type, cell, ORF), color = cell))
     ggp1<-ggp1+geom_point(aes(y=logdiff ,group=interaction(molecule_type, cell, ORF), color = cell, shape=ORF,size=10))
     ggp1<-ggp1+ scale_y_continuous( name = "Log2 (total - sub-genomics)")
@@ -297,6 +306,7 @@ if(is.null(levels)){
     }else{
       ratio3$logtotal = (ratio3$logtotal-diff)/coeff
       ratio4 = melt(ratio3,id.vars=c("ORF","molecule_type","cell","time"), measure.vars=c("logdiff","logtotal"))
+      data=ratio4
       ggp1<-ggplot(ratio4, aes(x=time))
       ggp1<-ggp1+geom_line(aes(y=value ,group=interaction(molecule_type, cell, ORF,variable), color = cell, linetype=variable))
       ggp1<-ggp1+geom_point(aes(y=value ,group=interaction(molecule_type, cell, ORF,variable), color = cell, shape=ORF,size=10))
@@ -309,7 +319,7 @@ if(is.null(levels)){
     )
      }
      
-    return(ggp1)
+    return(list(ggp=ggp1, data=data))
   }else{
    
     ratio1$type=factor(ratio1$type,levels = levels)
@@ -326,7 +336,7 @@ if(is.null(levels)){
     
      ggp<-ggp+ggtitle("Percentage of ORF covering reads which include leader")
      ggp<-ggp+xlab("ORF")
-    return(ggp)
+    return(list(ggp=ggp, data =ratio1) )
   }
 }
 

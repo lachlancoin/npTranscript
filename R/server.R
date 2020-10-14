@@ -269,6 +269,7 @@ shinyServer(function(input, output,session) {
   }
     
   
+  
   transcriptPlot=function(){
     if(!file.exists(session$userData$datafile)) return(ggplot())
     molecules <-  input$molecules 
@@ -396,6 +397,10 @@ shinyServer(function(input, output,session) {
         
       }
       subs = cbind(subs,cis)
+     
+       # resall = 
+      #names(resall) =   session$userData$dirname
+        session$userData$results = list(data=subs);
       if(xy){
         colorby=names(subs)[1]
         
@@ -426,6 +431,7 @@ shinyServer(function(input, output,session) {
       }else if(barchart){
         ORF="ID"
         y_text="TPM"
+        if(!showTPM) y_text = "Counts";
         #  ord="Start"
         # x1 =  paste("reorder(", ORF, ",", ord,")", sep="") 
         if(stack){
@@ -498,7 +504,11 @@ shinyServer(function(input, output,session) {
       y_text="Ratio"
       #   y_text="spliced"
       annots1=.plotAnnotFile(ratio1,barchart=barchart,showSecondAxis=showSecondAxis,showEB=T, levels=levels1, y_text=y_text)
-      annots1
+     
+#      resall = 
+     # names(resall) =   session$userData$dirname
+      session$userData$resultsInf = list(data=annots1$data)
+      annots1$ggp
     }else{
       ggplot()
     }
@@ -552,11 +562,11 @@ shinyServer(function(input, output,session) {
     }else{
       orfs = c()
     }
-    
+    session$userData$dirname = gsub("/","_",input$dirname)
     session$userData$currdir=currdir
     session$userData$datafile=datafile
     session$userData$h5file=h5file
-    
+    session$userData$results = list()
 
     updateSelectInput(session,"plottype", label = "Category 1", choices=ch, selected=input$plottype)
    # updateSelectInput(session,"plottype1", label = "Category 2", choices=ch, selected=input$plottype1)
@@ -595,7 +605,9 @@ output$downloadInf <- downloadHandler(filename = function() {'plotInfectivity.pd
 output$downloadDepth <- downloadHandler(filename = function() {'plotDepth.pdf'}, content = function(file) ggsave(file, depthPlot("depth"), device = 'pdf', height = 20, width = 40, units='cm') )
 output$downloadDepthStart <- downloadHandler(filename = function() {'plotDepthStart.pdf'}, content = function(file) ggsave(file, depthPlot("depthStart"), device = 'pdf', height = 20, width = 40, units='cm') )
 output$downloadDepthEnd <- downloadHandler(filename = function() {'plotDepthEnd.pdf'}, content = function(file) ggsave(file, depthPlot("depthEnd"), device = 'pdf', height = 20, width = 40, units='cm') )
-
 output$downloadDist <- downloadHandler(filename = function() {'plotDist.pdf'}, content = function(file) ggsave(file, transcriptPlot(), device = 'pdf' , height = 20, width = 40, units='cm') )
+output$downloadResults<-downloadHandler(filename = function() {'results.xlsx'}, content = function(file) write_xlsx( session$userData$results,file ) )
+output$downloadResultsInf<-downloadHandler(filename = function() {'resultsInf.xlsx'}, content = function(file) write_xlsx( session$userData$resultsInf,file ) )
+
 	 })
 
