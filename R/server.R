@@ -164,8 +164,8 @@ linetype="sampleID"
 ylab="depth"
 if(!is.null(total_reads)) ylab="depth per million mapped reads"
  plotClusters(tpm_df, 4,  1, 
-              if(showORFs)t else NULL, 
-              if(showMotifs)fimo else NULL,
+              t,
+             fimo,
                rawdepth = rawdepth, linetype=linetype, colour=colour, alpha=alpha, xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =leg_size1, show=show, fill =fill)
 }
 
@@ -296,8 +296,16 @@ shinyServer(function(input, output,session) {
     tpm = "TPM" %in% input$options3
     h5file=session$userData$h5file
     total_reads = NULL
+    fimo = NULL
+    t = NULL
+   # print(showMotifs)
+    if(showMotifs){
     fimo = session$userData$fimo
+    }
+    #print(fimo)
+    if(showORFs){
     t = session$userData$t
+    }
     if(tpm){
       total_reads = session$userData$total_reads
     }

@@ -820,11 +820,12 @@ legend.title=element_text(size=leg_size), legend.text=element_text(size=leg_size
   if(!is.null(t$sideCols)){
     ggp<-ggp+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols)
     ggp<-ggp+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols)
-    if(!is.null(fimo)){
+  
+  }
+  if(!is.null(fimo)){
     ggp<-ggp+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id=='TRS_short')], linetype="dotted", color="black")
-	ggp<-ggp+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id=='TRS_long')], linetype="dotdash", color="black")
+    ggp<-ggp+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id=='TRS_long')], linetype="dotdash", color="black")
     #ggp<-ggp+geom_vline(xintercept = fimo$start[fimo$strand=="-"], linetype="dotted", color="grey")
-    }
   }
   #abline(v = t$Maximum, col=3)
   if(!is.null(xlim)) ggp<-ggp+xlim(xlim)
