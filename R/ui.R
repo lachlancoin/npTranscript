@@ -91,7 +91,7 @@ shinyUI(fluidPage(
     selectInput("tojoin", label ="Join", choices=c("AND","OR"), selected="OR"),
     
     textInput("toplot8", label="All transcripts matching", value = ""),
-  textInput("group_by", label="Group transcripts by", value = ""),
+  selectInput("group_by", label="Group transcripts by", choices = c('all', 'type', 'juncts'), selected = 'all'),
   
     actionButton("plotButton", "Generate plots"),
    checkboxGroupInput("molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules),
