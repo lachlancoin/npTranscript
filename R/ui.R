@@ -84,7 +84,7 @@ shinyUI(fluidPage(
     selectInput("plottype", label = "Category 1", choices=ch, selected=ch[1]),
   #  selectInput("plottype1", label = "Category 2", choices=ch, selected=ch[1]),
     
-    selectInput("toplot5", label = paste("Transcript",names(info$choices1)[1]), choices=c("-",info$choices1[[1]]), selected="leader_leader,N_end"),
+    selectInput("toplot5", label = paste("Transcript",names(info$choices1)[1]), choices=c("-",info$choices1[[1]]), selected="-"),
    # selectInput("toplot6", label = paste("Transcript",names(info$choices1)[1]), choices=c("-",info$choices1[[1]]), selected="-"),
     
     textInput("toplot7", label="All transcripts matching", value = ""),
@@ -125,7 +125,7 @@ shinyUI(fluidPage(
     withSpinner(plotOutput("distPlot", height=400)),
         downloadButton('downloadDist', 'Download plot'),
         downloadButton("downloadResults", 'Download data'),
-    withSpinner(plotOutput("depthPlot", height=400)),
+    plotOutput("depthPlot", height=400),
         downloadButton("downloadDepth", 'Download plot'),
     plotOutput("depthStartPlot", height=400),
         downloadButton("downloadDepthStart", 'Download plot'),

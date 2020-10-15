@@ -261,7 +261,7 @@ shinyServer(function(input, output,session) {
 
     updateSelectInput(session,"plottype", label = "Category 1", choices=ch, selected=input$plottype)
    # updateSelectInput(session,"plottype1", label = "Category 2", choices=ch, selected=input$plottype1)
-    updateSelectInput(session, "toplot5",label = paste("Transcript",names(info$choices1)[1]),choices=c("-",info$choices1[[1]]),selected=input$toplot5)
+    updateSelectInput(session, "toplot5",label = paste("Transcript",names(info$choices1)[1]),choices=c("-",info$choices1[[1]]),selected='-')
   #  updateSelectInput(session, "toplot6",label = paste("Transcript",names(info$choices1)[2]),choices=c("-",info$choices1[[2]]),selected=input$toplot6)
     updateCheckboxGroupInput(session,"molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules)
     updateCheckboxGroupInput(session,"cells", label = "Cell type",  choices = info$cells, selected = info$cells)
@@ -602,16 +602,22 @@ shinyServer(function(input, output,session) {
   observeEvent(input$dir, readDir() )		  
 	#THIS JUST EXAMPLE FOR RENDERING A PLOT
 	#REACTIVE ON PLOT BUTTON
+
+	output$infPlot<-renderPlot({
+	  input$plotButton
+	   validate(need(input$dir, 'Please select a directory to begin'))
+	  infectivityPlot()
+	})
+
 	output$distPlot <- renderPlot({
+		validate(need(input$dir, ''))
+		validate(need(input$toplot5 != "-", 'Select a transcript to plot'))
 	    input$plotButton
   	    transcriptPlot()
   	  })
-output$infPlot<-renderPlot({
-  input$plotButton
-   validate(need(input$dir, 'Please select a directory to begin'))
-  infectivityPlot()
-})
+
 	output$depthPlot <- renderPlot({
+
 	    input$plotButton
 	  depthPlot("depth")
 	})
@@ -623,6 +629,7 @@ output$infPlot<-renderPlot({
 	  input$plotButton
 	  depthPlot("depthEnd")
 	})
+#Downloads
 output$downloadInf <- downloadHandler(filename = function() {'plotInfectivity.pdf'}, content = function(file) ggsave(file, infectivityPlot(), device='pdf', height = 20, width = 40, units='cm' ) )
 output$downloadDepth <- downloadHandler(filename = function() {'plotDepth.pdf'}, content = function(file) ggsave(file, depthPlot("depth"), device = 'pdf', height = 20, width = 40, units='cm') )
 output$downloadDepthStart <- downloadHandler(filename = function() {'plotDepthStart.pdf'}, content = function(file) ggsave(file, depthPlot("depthStart"), device = 'pdf', height = 20, width = 40, units='cm') )
