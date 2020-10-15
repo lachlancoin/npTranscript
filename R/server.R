@@ -21,18 +21,27 @@ names(toreplace) = replace[,1]
 
 reorder=T
 
-.getGroups<-function(x1,group_by){
+.getGroups<-function(x1, group_bys){
+  group_l = unlist(strsplit(group_bys,":")[[1]])
+  l1 = list(x1)
+  for(i in 1:length(group_l)){
+    l1 = unlist(lapply(l1,.getGroupsInner,group_l[i]),recursive=F)
+  }
+  l1
+}
+
+.getGroupsInner<-function(x1,group_by){
   l = list()
   if(group_by=="all"){
-  l = list("all"=1:length(x1))    
+  l = list("all"=x1)    
   }else if(group_by=="type"){
-    vals = list(
+    l = list(
       grep("end",grep("start|leader",x1,v=T),v=T),
       grep("end",grep("start|leader",x1,v=T),v=T,inv=T),
       grep("end",grep("start|leader", x1,v=T,inv=T),v=T),
       grep("end",grep("start|leader", x1,v=T,inv=T),v=T,inv=T)
     )
-    l = lapply(vals,function(x) which(x1 %in% x))
+    #l = vals #lapply(vals,function(x) which(x1 %in% x))
     names(l) = c("5_3", "5_no3","no5_3","no5_no3") 
   }else if(group_by=="juncts"){
     juncts = factor( unlist(lapply(x1,function(x)-1+length(strsplit(x,",")[[1]]))))
@@ -41,15 +50,15 @@ reorder=T
   #  print(junctlev)
    l = list()
     for(k in 1:length(junctlev)){
-      l[[k]] = which(juncts==junctlev[k])
+      l[[k]] = x1[which(juncts==junctlev[k])]
     }
     names(l) = junctlev
   }else{
-  l[[1]] = grep(group_by,x1)
-  l[[2]] = grep(group_by, x1,inv=T )
+  l[[1]] = grep(group_by,x1,v=T)
+  l[[2]] = grep(group_by, x1,inv=T,v=t )
   names(l) = c(group_by,paste("!",group_by))
-}
-  l
+  }
+  l[ unlist(lapply(l, length))>0]
 }
 #dirs = list.dirs(basedir,full.names=F, rec=T)
 #dirs=dirs[which(unlist(lapply(dirs,function(x) file.exists(paste(basedir,x,"0.isoforms.h5",sep="/")))))]
@@ -416,7 +425,8 @@ shinyServer(function(input, output,session) {
         toplot=names(groups)
         mat1 = matrix(NA, nrow = length(toplot), ncol  =dim(mat)[2])
         for(j in 1:length(groups)){
-          mat1[j,]=apply(mat[groups[[j]],,drop=F],2,sum)
+          indsj = which(x1 %in% groups[[j]])
+          mat1[j,]=apply(mat[indsj,,drop=F],2,sum)
         }
         mat = mat1
       } else{
