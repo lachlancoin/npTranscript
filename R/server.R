@@ -209,6 +209,69 @@ shinyServer(function(input, output,session) {
 	#output$instructions <- renderPrint({
 	#	print("Upload 0.transcripts.txt.gz file produced by npTranscript");
 	#})
+	readDir <- function() {
+    print(input$dir)
+    print(" updating input dir")
+    currdir = paste(basedir,input$dir,sep="/")
+    datafile = paste(currdir,"0.isoforms.h5",sep="/")
+    h5file=paste(currdir,"0.clusters.h5",sep="/")   
+    if(file.exists(datafile)){
+      isoInfo = .getIsoInfo(datafile, h5file,toreplace)
+      total_reads = isoInfo$total_reads
+      ##this gets order by counts
+      if(reorder){
+        order = .readTotalIso(datafile, group="/trans", trans=as.character(isoInfo$orfs$ORFs))
+        isoInfo$orfs = isoInfo$orfs[order,,drop=F]
+      }
+      
+      info=.processInfo(isoInfo)
+      print(paste("set", datafile))
+      ch=c(names(info$choices1), names(info$choices))
+      type_nmes=names(total_reads)
+      session$userData$isoInfo=isoInfo
+      session$userData$info=info
+      session$userData$total_reads = total_reads
+      session$userData$header=type_nmes
+    }else{
+      ch = c()
+    }
+   annot_file = paste(currdir, "annotation.csv.gz",sep="/")
+    if(file.exists(annot_file)){
+      annots = read.table(annot_file,sep="\t", head=F)
+      names(annots) = c("chr","ens","name","ens1","type")
+      session$userData$annots=annots
+    }
+    coords_file = paste(currdir, "Coordinates.csv",sep="/")
+    if(file.exists(coords_file)){
+      t = readCoords(coords_file)
+      session$userData$t=t
+      orfs=paste(t$gene,collapse=",")
+   
+      fimo_file = paste(currdir,"fimo.tsv",sep="/")
+      fimo=read.table(fimo_file, sep="\t", head=T)
+      session$userData$fimo = fimo
+    }else{
+      orfs = c()
+    }
+    session$userData$dirname = gsub("/","_",input$dirname)
+    session$userData$currdir=currdir
+    session$userData$datafile=datafile
+    session$userData$h5file=h5file
+    session$userData$results = list()
+
+    updateSelectInput(session,"plottype", label = "Category 1", choices=ch, selected=input$plottype)
+   # updateSelectInput(session,"plottype1", label = "Category 2", choices=ch, selected=input$plottype1)
+    updateSelectInput(session, "toplot5",label = paste("Transcript",names(info$choices1)[1]),choices=c("-",info$choices1[[1]]),selected=input$toplot5)
+  #  updateSelectInput(session, "toplot6",label = paste("Transcript",names(info$choices1)[2]),choices=c("-",info$choices1[[2]]),selected=input$toplot6)
+    updateCheckboxGroupInput(session,"molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules)
+    updateCheckboxGroupInput(session,"cells", label = "Cell type",  choices = info$cells, selected = info$cells)
+    updateCheckboxGroupInput(session,"times", label = "Time points",  choices = info$times, selected = info$times)
+    updateTextInput(session,"orfs", label="ORFs to include", value = orfs)
+   # updateSelectInput(session, "depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="depth")
+    
+  }
+	
+	
   depthPlot= function(plot_type) {
     #result = loadData();
     if(!file.exists(session$userData$h5file)) return(ggplot())
@@ -536,67 +599,7 @@ shinyServer(function(input, output,session) {
     dd= .process1(input$plottype,  session$userData$info)
     updateSelectInput(session,"toplot5", label = dd$label, choices=dd$ch, selected="-")
   })
-  observeEvent(input$dir, {
-    print(input$dir)
-    print(" updating input dir")
-    currdir = paste(basedir,input$dir,sep="/")
-    datafile = paste(currdir,"0.isoforms.h5",sep="/")
-    h5file=paste(currdir,"0.clusters.h5",sep="/")   
-    if(file.exists(datafile)){
-      isoInfo = .getIsoInfo(datafile, h5file,toreplace)
-      total_reads = isoInfo$total_reads
-      ##this gets order by counts
-      if(reorder){
-        order = .readTotalIso(datafile, group="/trans", trans=as.character(isoInfo$orfs$ORFs))
-        isoInfo$orfs = isoInfo$orfs[order,,drop=F]
-      }
-      
-      info=.processInfo(isoInfo)
-      print(paste("set", datafile))
-      ch=c(names(info$choices1), names(info$choices))
-      type_nmes=names(total_reads)
-      session$userData$isoInfo=isoInfo
-      session$userData$info=info
-      session$userData$total_reads = total_reads
-      session$userData$header=type_nmes
-    }else{
-      ch = c()
-    }
-   annot_file = paste(currdir, "annotation.csv.gz",sep="/")
-    if(file.exists(annot_file)){
-      annots = read.table(annot_file,sep="\t", head=F)
-      names(annots) = c("chr","ens","name","ens1","type")
-      session$userData$annots=annots
-    }
-    coords_file = paste(currdir, "Coordinates.csv",sep="/")
-    if(file.exists(coords_file)){
-      t = readCoords(coords_file)
-      session$userData$t=t
-      orfs=paste(t$gene,collapse=",")
-   
-      fimo_file = paste(currdir,"fimo.tsv",sep="/")
-      fimo=read.table(fimo_file, sep="\t", head=T)
-      session$userData$fimo = fimo
-    }else{
-      orfs = c()
-    }
-    session$userData$dirname = gsub("/","_",input$dirname)
-    session$userData$currdir=currdir
-    session$userData$datafile=datafile
-    session$userData$h5file=h5file
-    session$userData$results = list()
-
-    updateSelectInput(session,"plottype", label = "Category 1", choices=ch, selected=input$plottype)
-   # updateSelectInput(session,"plottype1", label = "Category 2", choices=ch, selected=input$plottype1)
-    updateSelectInput(session, "toplot5",label = paste("Transcript",names(info$choices1)[1]),choices=c("-",info$choices1[[1]]),selected=input$toplot5)
-  #  updateSelectInput(session, "toplot6",label = paste("Transcript",names(info$choices1)[2]),choices=c("-",info$choices1[[2]]),selected=input$toplot6)
-    updateCheckboxGroupInput(session,"molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules)
-    updateCheckboxGroupInput(session,"cells", label = "Cell type",  choices = info$cells, selected = info$cells)
-    updateCheckboxGroupInput(session,"times", label = "Time points",  choices = info$times, selected = info$times)
-    updateTextInput(session,"orfs", label="ORFs to include", value = orfs)
-   # updateSelectInput(session, "depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="depth")
-    
-  })  
+  observeEvent(input$dir, readDir() )		  
 	#THIS JUST EXAMPLE FOR RENDERING A PLOT
 	#REACTIVE ON PLOT BUTTON
 	output$distPlot <- renderPlot({
@@ -605,6 +608,7 @@ shinyServer(function(input, output,session) {
   	  })
 output$infPlot<-renderPlot({
   input$plotButton
+   validate(need(input$dir, 'Please select a directory to begin'))
   infectivityPlot()
 })
 	output$depthPlot <- renderPlot({
