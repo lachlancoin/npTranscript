@@ -4,6 +4,7 @@ library(tidyr)
 library(rhdf5)
 library(RColorBrewer)
 library(writexl)
+library(shinycssloaders)
 
 source( "transcript_functions.R")
 
@@ -118,13 +119,13 @@ shinyUI(fluidPage(
     # verbatimTextOutput("instructions"),
     # verbatimTextOutput("variables"),
     # verbatimTextOutput("validation"),
-    plotOutput("infPlot", height=400),
+    withSpinner(plotOutput("infPlot", height=400)),
         downloadButton('downloadInf', 'Download plot'),
         downloadButton("downloadResultsInf", 'Download data'),
-    plotOutput("distPlot", height=400),
+    withSpinner(plotOutput("distPlot", height=400)),
         downloadButton('downloadDist', 'Download plot'),
         downloadButton("downloadResults", 'Download data'),
-    plotOutput("depthPlot", height=400),
+    withSpinner(plotOutput("depthPlot", height=400)),
         downloadButton("downloadDepth", 'Download plot'),
     plotOutput("depthStartPlot", height=400),
         downloadButton("downloadDepthStart", 'Download plot'),
