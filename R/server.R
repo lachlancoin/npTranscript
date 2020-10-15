@@ -362,6 +362,7 @@ shinyServer(function(input, output,session) {
   
   transcriptPlot=function(){
     if(!file.exists(session$userData$datafile)) return(ggplot())
+	print(paste('testinput', input$molecules))
     molecules <-  input$molecules 
     cells <- input$cells 
     times<-input$times
@@ -622,6 +623,7 @@ shinyServer(function(input, output,session) {
 	output$distPlot <- renderPlot({
 		validate(need(input$dir, ''))
 		validate(need(input$toplot5 != "-", 'Select a transcript to plot'))
+		validate(need(length(input$molecules) > 0 & length(input$cells) > 0 & length(input$times) > 0, 'At least one molecule, cell and time point must be supplied') )
 	    input$plotButton
   	    transcriptPlot()
   	  })
