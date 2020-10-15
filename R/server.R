@@ -339,7 +339,7 @@ shinyServer(function(input, output,session) {
           if("sumDepth" %in% input$options3) sumAll=TRUE
           mergeGroups=NULL
           if(mergeCounts) group_by="all"
-          if(nchar(group_by)>0){
+          if(group_by != 'No grouping'){
             mergeGroups = .getGroups(toplot,group_by)
           }else if(length(toplot)>input$maxtrans){
             ##only show top number if not merging
@@ -429,7 +429,7 @@ shinyServer(function(input, output,session) {
       if(is.null(dim(mat))) mat = matrix(mat,nrow=1,ncol=length(header))
       if(merge){
         mat = matrix(apply(mat,2,sum),nrow=1,ncol=dim(mat)[2])
-      }else if(nchar(group_by)>0){
+      }else if(group_by != 'No grouping'){
         groups = .getGroups(x1,group_by)
         toplot=names(groups)
         mat1 = matrix(NA, nrow = length(toplot), ncol  =dim(mat)[2])
