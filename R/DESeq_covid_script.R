@@ -1,10 +1,7 @@
-<<<<<<< HEAD
-#Developed by Josie Gleeson 2020, 
-#based on deseq2-analysis-template.R script by Stephen Turner: 
-#https://gist.github.com/stephenturner/f60c1934405c127f09a6
-=======
-#Developed by Josie Gleeson 2020, based on the 'deseq2-analysis-template.R' script by Stephen Turner https://gist.github.com/stephenturner/f60c1934405c127f09a6
->>>>>>> 2b938b2a09458e98be5f7064e604b46fcf9775c2
+
+# Developed by Josie Gleeson (GitHub: josiegleeson) 2020, based on the 'deseq2-analysis-template.R' script by Stephen Turner https://gist.github.com/stephenturner/f60c1934405c127f09a6
+# Execute as: Rscript DESeq_covid_script.R [count_file.csv] [output_prefix] [time1] time2]
+
 
 main <- function() {
   
