@@ -137,6 +137,7 @@ public class CigarClusters {
 	if(Outputs.writeGFF){
 		cc.writeGFF(o.gffW, o.refOut[type_ind], o.bedW,chrom,  Outputs.isoThresh, type_nme, seq);
 	}
+	String depth_str = "\t"+cc.getTotDepthSt(true)+"\t"+cc.getTotDepthSt(false);
 		
 		o.printTranscriptAlt(cc);
 		o.printTranscript(
@@ -144,7 +145,7 @@ public class CigarClusters {
 	
 		cc.exonCount()+"\t"+cc.numIsoforms()+"\t"+(hasLeaderBreak? 1: 0)+"\t"+cc.breaks_hash.secondKey+"\t"+geneNme+"\t"+
 		geneNames.size()+"\t"+
-		cc.totLen+"\t"+cc.readCountSum()+"\t"+read_count,"");
+		cc.totLen+"\t"+cc.readCountSum()+"\t"+read_count,depth_str);
 		List<Integer> br = cc.getBreaks();
 	
 		StringBuffer starts = new StringBuffer();
