@@ -414,7 +414,7 @@ public static boolean recordStartEnd = false;
 			StringBuffer sb = new StringBuffer();
 			for(int src_index=0; src_index<maps.length; src_index++){
 				if(src_index>0)sb.append("\t");
-				sb.append(match ? this.maps[src_index].valsum() : this.errors[src_index].valsum());
+				sb.append(String.format("%5.3g", match ? this.maps[src_index].valsum() : this.errors[src_index].valsum()).trim());
 			}
 			return sb.toString();
 		}

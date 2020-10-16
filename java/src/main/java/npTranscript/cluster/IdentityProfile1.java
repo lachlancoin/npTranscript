@@ -186,7 +186,7 @@ static char delim1 = ',';
 		//String roundStartP = annotByBreakPosition ? TranscriptUtils.round(startPos, CigarHash2.round)+"" : 	"";
 		StringBuffer secondKey =new StringBuffer();
 		
-		secondKey.append(pool);
+	//	if(pool!=null)secondKey.append(pool);
 		//String upstream, upstream2, downstream, downstream2;
 		int maxg = 0;
 		int maxg_ind = -1;
@@ -194,7 +194,13 @@ static char delim1 = ',';
 		int maxg_ind2 =-1; 
 		boolean hasLeaderBreak = TranscriptUtils.coronavirus? (breaks.size()>1 &&  annot.isLeader(breaks.get(1))) : false;
 		if(includeStart){
-			secondKey.append(annot.nextUpstream(startPos,chrom_index, forward)+delim);
+			//if pool is not null
+			if(pool!=null) {
+				secondKey.append(pool+delim1+annot.nextDownstream(startPos,chrom_index, forward)+delim);
+			}
+			else{
+				secondKey.append(annot.nextUpstream(startPos,chrom_index, forward)+delim);
+			}
 		}
 		if(annotByBreakPosition){
 			boolean firstBreak=true;
