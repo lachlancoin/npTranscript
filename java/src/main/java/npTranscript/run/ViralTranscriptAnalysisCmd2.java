@@ -200,7 +200,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		pw.close();
 		
 	}
- public static char pool_sep=',';
+ public static String pool_sep="";
  public static boolean limit_to_read_list = false;
 	public static int mm2_threads;
 	public static String mm2_path, mm2_mem, mm2_index, mm2Preset, mm2_splicing;
@@ -827,7 +827,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				
 					try{
 						
-						String pool = readList==null || readList.length==0 ||  poolID<0 ? "" : (readList[poolID]+pool_sep);
+						String pool = readList==null || readList.length==0 ||  poolID<0 ? null : (readList[poolID]+pool_sep);
 						
 						profile.identity1(readSeq, sam, source_index, cluster_reads,  pool, q1);
 					}catch(NumberFormatException exc){
