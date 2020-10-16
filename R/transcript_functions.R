@@ -146,6 +146,15 @@ if(join_and || join_not)  x2 =  mat$name else   x2 =  c()
       x1=mat[grep("end",mat$name,inv=T),,drop=F]$name
     }else if(x[j]=="no5"){
       x1=mat[grep("leader",mat$name,inv=T),,drop=F]$name
+    }else if(x[j]=="no5_no3"){
+      ##need to fix this
+      x1 = grep("end",grep("leader",mat$name,inv=T,v=T),inv=T,v=T)
+    }else if(x[j]=="no5_3"){
+      x1 = grep("end",grep("leader",mat$name,inv=T,v=T),inv=F,v=T)
+    }else if(x[j]=="5_no3"){
+      x1 = grep("end",grep("leader",mat$name,inv=F,v=T),inv=T,v=T)
+    }else if(x[j]=="5_3"){
+      x1 = grep("end",grep("leader",mat$name,inv=F,v=T),inv=F,v=T)
     }else if(length(grep("juncts",x[j]))>0){
       num = as.numeric(strsplit(x[j],":")[[1]][2])
       x1=mat$name[unlist(lapply(strsplit(mat$name,","),length))==(num+1)]
@@ -289,7 +298,7 @@ if(is.null(levels)){
  
     if(!showSecondAxis){
       ggp1<-ggplot(ratio3, aes(x=time))
-      
+      data=ratio3
     ggp1<-ggp1+geom_line(aes(y=logdiff ,group=interaction(molecule_type, cell, ORF), color = cell))
     ggp1<-ggp1+geom_point(aes(y=logdiff ,group=interaction(molecule_type, cell, ORF), color = cell, shape=ORF,size=10))
     ggp1<-ggp1+ scale_y_continuous( name = "Log2 (total - sub-genomics)")
@@ -297,6 +306,7 @@ if(is.null(levels)){
     }else{
       ratio3$logtotal = (ratio3$logtotal-diff)/coeff
       ratio4 = melt(ratio3,id.vars=c("ORF","molecule_type","cell","time"), measure.vars=c("logdiff","logtotal"))
+      data=ratio4
       ggp1<-ggplot(ratio4, aes(x=time))
       ggp1<-ggp1+geom_line(aes(y=value ,group=interaction(molecule_type, cell, ORF,variable), color = cell, linetype=variable))
       ggp1<-ggp1+geom_point(aes(y=value ,group=interaction(molecule_type, cell, ORF,variable), color = cell, shape=ORF,size=10))
@@ -309,7 +319,7 @@ if(is.null(levels)){
     )
      }
      
-    return(ggp1)
+    return(list(ggp=ggp1, data=data))
   }else{
    
     ratio1$type=factor(ratio1$type,levels = levels)
@@ -326,7 +336,7 @@ if(is.null(levels)){
     
      ggp<-ggp+ggtitle("Percentage of ORF covering reads which include leader")
      ggp<-ggp+xlab("ORF")
-    return(ggp)
+    return(list(ggp=ggp, data =ratio1) )
   }
 }
 
@@ -810,11 +820,12 @@ legend.title=element_text(size=leg_size), legend.text=element_text(size=leg_size
   if(!is.null(t$sideCols)){
     ggp<-ggp+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols)
     ggp<-ggp+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols)
-    if(!is.null(fimo)){
+  
+  }
+  if(!is.null(fimo)){
     ggp<-ggp+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id=='TRS_short')], linetype="dotted", color="black")
-	ggp<-ggp+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id=='TRS_long')], linetype="dotdash", color="black")
+    ggp<-ggp+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id=='TRS_long')], linetype="dotdash", color="black")
     #ggp<-ggp+geom_vline(xintercept = fimo$start[fimo$strand=="-"], linetype="dotted", color="grey")
-    }
   }
   #abline(v = t$Maximum, col=3)
   if(!is.null(xlim)) ggp<-ggp+xlim(xlim)
@@ -898,19 +909,7 @@ getGeneBP<-function(t, genes, left, right, left_buffer = 10){
   }
   endcs
 }
- readBreakPointsH5<-function(h5file,chr="chrMT007544",source="virion",i=0, addOne=F){
-id = paste(chr,source,i,sep="/")
-aa=h5read(h5file,id)
-heatm = aa[-(1:2),-(1:2)]
-rowlen = nrow(heatm)
-collen = ncol(heatm)
-rows = cbind(data.frame(aa[-(1:2),1:2]), rep("start", rowlen), rep(source, rowlen))
-cols = cbind(data.frame(t(aa[(1:2),-(1:2)])), rep("end", collen), rep(source, collen))
-  dimnames(heatm) = list(rows[,1], cols[,1])
-names(rows) = c("pos", "depth", "s_e", "type")
-  names(cols) = c("pos", "depth", "s_e", "type")
-  list(heatm = as.matrix(t(heatm)), rows = cols, cols = rows)
-}
+
 
 readBreakPoints<-function(f, type, addOne = F){
 	if (length(scan(f,n=2, what="raw"))==0) return (NULL)
@@ -1414,8 +1413,7 @@ blankGraph<-function(xlim, xax, yax, title = "" ) {
   ggplot(data.frame()) + geom_point()  + ylim(0, 100) + theme_bw()+xlab(xax)+ylab(yax)+ggtitle(title) +scale_x_continuous(limits = xlim[1:2])
  
 }
-
-plotBreakPIntrons<-function(breakP1, t=NULL, fimo=NULL, region =  c(1,5000,100,25000,30000,100), mult = 1, plotHM=T, logT = F, title = "", subtitle = ""){
+plotBreakPIntrons<-function(breakP1, t, fimo, region =  c(1,5000,100,25000,30000,100), mult = 1, plotHM=T, logT = F, title = "", subtitle = ""){
   breakP_ = subsetBr(breakP1, region)
   col = getHMCol()
  
@@ -1648,8 +1646,12 @@ readH5<-function(h5file, total_reads, header, toplot, path="depth",gapthresh=100
   } 
  if(merge){
    for(k in 1:length(mergeGroups)){
-     if(length(mergeGroups[[k]])>0){
-        matsk = mats[mergeGroups[[k]]]
+     indsk=which(IDS %in% mergeGroups[[k]])
+   #  print(indsk)
+     if(length(indsk)>0){
+      
+       
+        matsk = mats[indsk]
         nonnull=!unlist(lapply(matsk, is.null)) 
         if(length(which(nonnull))>0){
           mat2 = .mergeDepthMats(matsk[nonnull])

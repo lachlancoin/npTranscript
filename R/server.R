@@ -5,7 +5,7 @@ library(tidyr)
 library(rhdf5)
 library(RColorBrewer)
 library(binom)
-
+library(writexl)
 
 
 source( "transcript_functions.R")
@@ -21,25 +21,44 @@ names(toreplace) = replace[,1]
 
 reorder=T
 
-.getGroups<-function(x1,group_by){
+.getGroups<-function(x1, group_bys){
+  group_l = unlist(strsplit(group_bys,":")[[1]])
+  l1 = list(x1)
+  for(i in 1:length(group_l)){
+    l1 = unlist(lapply(l1,.getGroupsInner,group_l[i]),recursive=F)
+  }
+  l1
+}
+
+.getGroupsInner<-function(x1,group_by){
   l = list()
   if(group_by=="all"){
-  l = list("all"=1:length(x1))    
+  l = list("all"=x1)    
   }else if(group_by=="type"){
-    vals = list(
+    l = list(
       grep("end",grep("start|leader",x1,v=T),v=T),
       grep("end",grep("start|leader",x1,v=T),v=T,inv=T),
       grep("end",grep("start|leader", x1,v=T,inv=T),v=T),
       grep("end",grep("start|leader", x1,v=T,inv=T),v=T,inv=T)
     )
-    l = lapply(vals,function(x) which(x1 %in% x))
+    #l = vals #lapply(vals,function(x) which(x1 %in% x))
     names(l) = c("5_3", "5_no3","no5_3","no5_no3") 
+  }else if(group_by=="juncts"){
+    juncts = factor( unlist(lapply(x1,function(x)-1+length(strsplit(x,",")[[1]]))))
+    junctlev = levels(juncts)
+  #  print(juncts)
+  #  print(junctlev)
+   l = list()
+    for(k in 1:length(junctlev)){
+      l[[k]] = x1[which(juncts==junctlev[k])]
+    }
+    names(l) = junctlev
   }else{
-  l[[1]] = grep(group_by,x1)
-  l[[2]] = grep(group_by, x1,inv=T )
+  l[[1]] = grep(group_by,x1,v=T)
+  l[[2]] = grep(group_by, x1,inv=T,v=t )
   names(l) = c(group_by,paste("!",group_by))
-}
-  l
+  }
+  l[ unlist(lapply(l, length))>0]
 }
 #dirs = list.dirs(basedir,full.names=F, rec=T)
 #dirs=dirs[which(unlist(lapply(dirs,function(x) file.exists(paste(basedir,x,"0.isoforms.h5",sep="/")))))]
@@ -145,8 +164,8 @@ linetype="sampleID"
 ylab="depth"
 if(!is.null(total_reads)) ylab="depth per million mapped reads"
  plotClusters(tpm_df, 4,  1, 
-              if(showORFs)t else NULL, 
-              if(showMotifs)fimo else NULL,
+              t,
+             fimo,
                rawdepth = rawdepth, linetype=linetype, colour=colour, alpha=alpha, xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =leg_size1, show=show, fill =fill)
 }
 
@@ -199,6 +218,69 @@ shinyServer(function(input, output,session) {
 	#output$instructions <- renderPrint({
 	#	print("Upload 0.transcripts.txt.gz file produced by npTranscript");
 	#})
+	readDir <- function() {
+    print(input$dir)
+    print(" updating input dir")
+    currdir = paste(basedir,input$dir,sep="/")
+    datafile = paste(currdir,"0.isoforms.h5",sep="/")
+    h5file=paste(currdir,"0.clusters.h5",sep="/")   
+    if(file.exists(datafile)){
+      isoInfo = .getIsoInfo(datafile, h5file,toreplace)
+      total_reads = isoInfo$total_reads
+      ##this gets order by counts
+      if(reorder){
+        order = .readTotalIso(datafile, group="/trans", trans=as.character(isoInfo$orfs$ORFs))
+        isoInfo$orfs = isoInfo$orfs[order,,drop=F]
+      }
+      
+      info=.processInfo(isoInfo)
+      print(paste("set", datafile))
+      ch=c(names(info$choices1), names(info$choices))
+      type_nmes=names(total_reads)
+      session$userData$isoInfo=isoInfo
+      session$userData$info=info
+      session$userData$total_reads = total_reads
+      session$userData$header=type_nmes
+    }else{
+      ch = c()
+    }
+   annot_file = paste(currdir, "annotation.csv.gz",sep="/")
+    if(file.exists(annot_file)){
+      annots = read.table(annot_file,sep="\t", head=F)
+      names(annots) = c("chr","ens","name","ens1","type")
+      session$userData$annots=annots
+    }
+    coords_file = paste(currdir, "Coordinates.csv",sep="/")
+    if(file.exists(coords_file)){
+      t = readCoords(coords_file)
+      session$userData$t=t
+      orfs=paste(t$gene,collapse=",")
+   
+      fimo_file = paste(currdir,"fimo.tsv",sep="/")
+      fimo=read.table(fimo_file, sep="\t", head=T)
+      session$userData$fimo = fimo
+    }else{
+      orfs = c()
+    }
+    session$userData$dirname = gsub("/","_",input$dirname)
+    session$userData$currdir=currdir
+    session$userData$datafile=datafile
+    session$userData$h5file=h5file
+    session$userData$results = list()
+
+    updateSelectInput(session,"plottype", label = "Category 1", choices=ch, selected=input$plottype)
+   # updateSelectInput(session,"plottype1", label = "Category 2", choices=ch, selected=input$plottype1)
+    updateSelectInput(session, "toplot5",label = paste("Transcript",names(info$choices1)[1]),choices=c("-",info$choices1[[1]]),selected='-')
+  #  updateSelectInput(session, "toplot6",label = paste("Transcript",names(info$choices1)[2]),choices=c("-",info$choices1[[2]]),selected=input$toplot6)
+    updateCheckboxGroupInput(session,"molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules)
+    updateCheckboxGroupInput(session,"cells", label = "Cell type",  choices = info$cells, selected = info$cells)
+    updateCheckboxGroupInput(session,"times", label = "Time points",  choices = info$times, selected = info$times)
+    updateTextInput(session,"orfs", label="ORFs to include", value = orfs)
+   # updateSelectInput(session, "depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="depth")
+    
+  }
+	
+	
   depthPlot= function(plot_type) {
     #result = loadData();
     if(!file.exists(session$userData$h5file)) return(ggplot())
@@ -214,8 +296,16 @@ shinyServer(function(input, output,session) {
     tpm = "TPM" %in% input$options3
     h5file=session$userData$h5file
     total_reads = NULL
+    fimo = NULL
+    t = NULL
+   # print(showMotifs)
+    if(showMotifs){
     fimo = session$userData$fimo
+    }
+    #print(fimo)
+    if(showORFs){
     t = session$userData$t
+    }
     if(tpm){
       total_reads = session$userData$total_reads
     }
@@ -241,6 +331,7 @@ shinyServer(function(input, output,session) {
             combinedID=toplot[1]
             toplot = .findEntries(toplot,h5file,"/depth",tojoin)
           }
+          
           merge=T
           sumAll=F
         }
@@ -248,8 +339,15 @@ shinyServer(function(input, output,session) {
           if("sumDepth" %in% input$options3) sumAll=TRUE
           mergeGroups=NULL
           if(mergeCounts) group_by="all"
-          if(nchar(group_by)>0){
+          if(group_by != 'No grouping'){
             mergeGroups = .getGroups(toplot,group_by)
+          }else if(length(toplot)>input$maxtrans){
+            ##only show top number if not merging
+            isoInfo=session$userData$isoInfo
+            inds_k = sort(match(toplot,isoInfo$orfs$ORFs))
+          #  print(inds_k)
+         #   print(isoInfo$orfs$ORFs[inds_k][1:input$maxtrans])
+            toplot = isoInfo$orfs$ORFs[inds_k][1:input$maxtrans]
           }
           molecules=input$molecules
           cells=input$cells
@@ -269,8 +367,10 @@ shinyServer(function(input, output,session) {
   }
     
   
+  
   transcriptPlot=function(){
     if(!file.exists(session$userData$datafile)) return(ggplot())
+	print(paste('testinput', input$molecules))
     molecules <-  input$molecules 
     cells <- input$cells 
     times<-input$times
@@ -329,12 +429,13 @@ shinyServer(function(input, output,session) {
       if(is.null(dim(mat))) mat = matrix(mat,nrow=1,ncol=length(header))
       if(merge){
         mat = matrix(apply(mat,2,sum),nrow=1,ncol=dim(mat)[2])
-      }else if(nchar(group_by)>0){
+      }else if(group_by != 'No grouping'){
         groups = .getGroups(x1,group_by)
         toplot=names(groups)
         mat1 = matrix(NA, nrow = length(toplot), ncol  =dim(mat)[2])
         for(j in 1:length(groups)){
-          mat1[j,]=apply(mat[groups[[j]],,drop=F],2,sum)
+          indsj = which(x1 %in% groups[[j]])
+          mat1[j,]=apply(mat[indsj,,drop=F],2,sum)
         }
         mat = mat1
       } else{
@@ -396,6 +497,10 @@ shinyServer(function(input, output,session) {
         
       }
       subs = cbind(subs,cis)
+     
+       # resall = 
+      #names(resall) =   session$userData$dirname
+        session$userData$results = list(data=subs);
       if(xy){
         colorby=names(subs)[1]
         
@@ -426,6 +531,7 @@ shinyServer(function(input, output,session) {
       }else if(barchart){
         ORF="ID"
         y_text="TPM"
+        if(!showTPM) y_text = "Counts";
         #  ord="Start"
         # x1 =  paste("reorder(", ORF, ",", ord,")", sep="") 
         if(stack){
@@ -498,7 +604,11 @@ shinyServer(function(input, output,session) {
       y_text="Ratio"
       #   y_text="spliced"
       annots1=.plotAnnotFile(ratio1,barchart=barchart,showSecondAxis=showSecondAxis,showEB=T, levels=levels1, y_text=y_text)
-      annots1
+     
+#      resall = 
+     # names(resall) =   session$userData$dirname
+      session$userData$resultsInf = list(data=annots1$data)
+      annots1$ggp
     }else{
       ggplot()
     }
@@ -508,78 +618,26 @@ shinyServer(function(input, output,session) {
     dd= .process1(input$plottype,  session$userData$info)
     updateSelectInput(session,"toplot5", label = dd$label, choices=dd$ch, selected="-")
   })
-  observeEvent(input$dir, {
-    print(input$dir)
-    print(" updating input dir")
-    currdir = paste(basedir,input$dir,sep="/")
-    datafile = paste(currdir,"0.isoforms.h5",sep="/")
-    h5file=paste(currdir,"0.clusters.h5",sep="/")   
-    if(file.exists(datafile)){
-      isoInfo = .getIsoInfo(datafile, h5file,toreplace)
-      total_reads = isoInfo$total_reads
-      ##this gets order by counts
-      if(reorder){
-        order = .readTotalIso(datafile, group="/trans", trans=as.character(isoInfo$orfs$ORFs))
-        isoInfo$orfs = isoInfo$orfs[order,,drop=F]
-      }
-      
-      info=.processInfo(isoInfo)
-      print(paste("set", datafile))
-      ch=c(names(info$choices1), names(info$choices))
-      type_nmes=names(total_reads)
-      session$userData$isoInfo=isoInfo
-      session$userData$info=info
-      session$userData$total_reads = total_reads
-      session$userData$header=type_nmes
-    }else{
-      ch = c()
-    }
-   annot_file = paste(currdir, "annotation.csv.gz",sep="/")
-    if(file.exists(annot_file)){
-      annots = read.table(annot_file,sep="\t", head=F)
-      names(annots) = c("chr","ens","name","ens1","type")
-      session$userData$annots=annots
-    }
-    coords_file = paste(currdir, "Coordinates.csv",sep="/")
-    if(file.exists(coords_file)){
-      t = readCoords(coords_file)
-      session$userData$t=t
-      orfs=paste(t$gene,collapse=",")
-   
-      fimo_file = paste(currdir,"fimo.tsv",sep="/")
-      fimo=read.table(fimo_file, sep="\t", head=T)
-      session$userData$fimo = fimo
-    }else{
-      orfs = c()
-    }
-    
-    session$userData$currdir=currdir
-    session$userData$datafile=datafile
-    session$userData$h5file=h5file
-    
-
-    updateSelectInput(session,"plottype", label = "Category 1", choices=ch, selected=input$plottype)
-   # updateSelectInput(session,"plottype1", label = "Category 2", choices=ch, selected=input$plottype1)
-    updateSelectInput(session, "toplot5",label = paste("Transcript",names(info$choices1)[1]),choices=c("-",info$choices1[[1]]),selected=input$toplot5)
-  #  updateSelectInput(session, "toplot6",label = paste("Transcript",names(info$choices1)[2]),choices=c("-",info$choices1[[2]]),selected=input$toplot6)
-    updateCheckboxGroupInput(session,"molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules)
-    updateCheckboxGroupInput(session,"cells", label = "Cell type",  choices = info$cells, selected = info$cells)
-    updateCheckboxGroupInput(session,"times", label = "Time points",  choices = info$times, selected = info$times)
-    updateTextInput(session,"orfs", label="ORFs to include", value = orfs)
-   # updateSelectInput(session, "depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="depth")
-    
-  })  
+  observeEvent(input$dir, readDir() )		  
 	#THIS JUST EXAMPLE FOR RENDERING A PLOT
 	#REACTIVE ON PLOT BUTTON
+
+	output$infPlot<-renderPlot({
+	  input$plotButton
+	   validate(need(input$dir, 'Please select a directory to begin'))
+	  infectivityPlot()
+	})
+
 	output$distPlot <- renderPlot({
+		validate(need(input$dir, ''))
+		#validate(need(input$toplot5 != "-", 'Select a transcript to plot'))
+		validate(need(length(input$molecules) > 0 & length(input$cells) > 0 & length(input$times) > 0, 'At least one molecule, cell and time point must be supplied') )
 	    input$plotButton
   	    transcriptPlot()
   	  })
-output$infPlot<-renderPlot({
-  input$plotButton
-  infectivityPlot()
-})
+
 	output$depthPlot <- renderPlot({
+
 	    input$plotButton
 	  depthPlot("depth")
 	})
@@ -591,11 +649,14 @@ output$infPlot<-renderPlot({
 	  input$plotButton
 	  depthPlot("depthEnd")
 	})
+#Downloads
 output$downloadInf <- downloadHandler(filename = function() {'plotInfectivity.pdf'}, content = function(file) ggsave(file, infectivityPlot(), device='pdf', height = 20, width = 40, units='cm' ) )
 output$downloadDepth <- downloadHandler(filename = function() {'plotDepth.pdf'}, content = function(file) ggsave(file, depthPlot("depth"), device = 'pdf', height = 20, width = 40, units='cm') )
 output$downloadDepthStart <- downloadHandler(filename = function() {'plotDepthStart.pdf'}, content = function(file) ggsave(file, depthPlot("depthStart"), device = 'pdf', height = 20, width = 40, units='cm') )
 output$downloadDepthEnd <- downloadHandler(filename = function() {'plotDepthEnd.pdf'}, content = function(file) ggsave(file, depthPlot("depthEnd"), device = 'pdf', height = 20, width = 40, units='cm') )
-
 output$downloadDist <- downloadHandler(filename = function() {'plotDist.pdf'}, content = function(file) ggsave(file, transcriptPlot(), device = 'pdf' , height = 20, width = 40, units='cm') )
+output$downloadResults<-downloadHandler(filename = function() {'results.xlsx'}, content = function(file) write_xlsx( session$userData$results,file ) )
+output$downloadResultsInf<-downloadHandler(filename = function() {'resultsInf.xlsx'}, content = function(file) write_xlsx( session$userData$resultsInf,file ) )
+
 	 })
 

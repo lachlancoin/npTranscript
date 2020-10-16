@@ -3,6 +3,8 @@ library(reshape2)
 library(tidyr)
 library(rhdf5)
 library(RColorBrewer)
+library(writexl)
+library(shinycssloaders)
 
 source( "transcript_functions.R")
 
@@ -53,7 +55,7 @@ totick1 = c("showCI" ,"barchart")
  options2 = c("logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts", "stacked")
 totick2 = c("TPM","ribbonCI")
 options3 = c("show_depth","logy", "TPM","showMotifs","showORFs", "sumDepth","mergeCounts")
-totick3 = c("show_depth","TPM", "mergeCounts")
+totick3 = c("show_depth", "mergeCounts", "sumDepth")
 
 coordsFile = paste(currdir, "Coordinates.csv",sep="/")
 if(file.exists(coordsFile)){
@@ -82,14 +84,14 @@ shinyUI(fluidPage(
     selectInput("plottype", label = "Category 1", choices=ch, selected=ch[1]),
   #  selectInput("plottype1", label = "Category 2", choices=ch, selected=ch[1]),
     
-    selectInput("toplot5", label = paste("Transcript",names(info$choices1)[1]), choices=c("-",info$choices1[[1]]), selected="leader_leader,N_end"),
+    selectInput("toplot5", label = paste("Transcript",names(info$choices1)[1]), choices=c("-",info$choices1[[1]]), selected="-"),
    # selectInput("toplot6", label = paste("Transcript",names(info$choices1)[1]), choices=c("-",info$choices1[[1]]), selected="-"),
     
     textInput("toplot7", label="All transcripts matching", value = ""),
     selectInput("tojoin", label ="Join", choices=c("AND","OR"), selected="OR"),
     
     textInput("toplot8", label="All transcripts matching", value = ""),
-  textInput("group_by", label="Group transcripts by", value = ""),
+  selectInput("group_by", label="Group transcripts by", choices = c('all', 'type', 'juncts'), selected = 'all'),
   
     actionButton("plotButton", "Generate plots"),
    checkboxGroupInput("molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules),
@@ -106,8 +108,7 @@ shinyUI(fluidPage(
  # selectInput("depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="OR"),
   numericInput("min_x", label = "Min position", value = 0),
   numericInput("max_x", label = "Max position", value = 30000),
-  numericInput("loess", label = "Loess span", value = 0.02,max=1,min=0),
- 
+  numericInput("loess", label = "Loess span", value = 0.0,max=1,min=0),
  numericInput("alpha", label = "Transparency", value = 1.0)
   
   ),
@@ -118,16 +119,19 @@ shinyUI(fluidPage(
     # verbatimTextOutput("instructions"),
     # verbatimTextOutput("variables"),
     # verbatimTextOutput("validation"),
-    plotOutput("infPlot", height=400),
-	downloadButton('downloadInf'),
-     plotOutput("distPlot", height=400),
-	downloadButton('downloadDist'),
-   plotOutput("depthPlot", height=400),
-   downloadButton("downloadDepth"),
-	plotOutput("depthStartPlot", height=400),
-	downloadButton("downloadDepthStart"),
-	plotOutput("depthEndPlot", height=400),
-	downloadButton("downloadDepthEnd")
+    withSpinner(plotOutput("infPlot", height=400)),
+        downloadButton('downloadInf', 'Download plot'),
+        downloadButton("downloadResultsInf", 'Download data'),
+    withSpinner(plotOutput("distPlot", height=400)),
+        downloadButton('downloadDist', 'Download plot'),
+        downloadButton("downloadResults", 'Download data'),
+    plotOutput("depthPlot", height=400),
+        downloadButton("downloadDepth", 'Download plot'),
+    plotOutput("depthStartPlot", height=400),
+        downloadButton("downloadDepthStart", 'Download plot'),
+    plotOutput("depthEndPlot", height=400),
+        downloadButton("downloadDepthEnd", 'Download plot')
+  
   )
   #,
   #htmlTemplate(file.path(basedir, "shiny-common/uomfooter.html"))
