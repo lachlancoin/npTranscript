@@ -93,6 +93,7 @@ shinyUI(fluidPage(
     textInput("toplot8", label="All transcripts matching", value = ""),
   selectInput("group_by", label="Group transcripts by", choices = c('all', 'type', 'juncts'), selected = 'all'),
   
+  checkboxInput('ActivateDE', label = 'Activate DE', FALSE)
     actionButton("plotButton", "Generate plots"),
    checkboxGroupInput("molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules),
    checkboxGroupInput("cells", label = "Cell type",  choices = info$cells, selected = info$cells),
