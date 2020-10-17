@@ -916,8 +916,10 @@ readBreakPointsH5<-function(h5file, chrom, type,j){
   heatm = mat[-(1:2),-(1:2)]
   rowlen = nrow(heatm)
   collen= ncol(heatm)
- rows = data.frame(cbind(mat[-(1:2),1:2], rep("start", rowlen), rep(type,rowlen )))
-  cols = data.frame(cbind(t(mat[1:2,-(1:2)]), rep("end", collen), rep(type,collen )))
+ rows =cbind( data.frame(mat[-(1:2),1:2]), rep("start", rowlen), rep(type,rowlen ))
+  cols = cbind(data.frame(t(mat[1:2,-(1:2)])), rep("end", collen), rep(type,collen ))
+ 
+  
   names(rows) = c("pos", "depth", "s_e", "type")
   names(cols) = c("pos", "depth", "s_e", "type")
   dimnames(heatm) = list(rows[,1], cols[,1])
