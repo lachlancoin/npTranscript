@@ -1431,14 +1431,39 @@ blankGraph<-function(xlim, xax, yax, title = "" ) {
   ggplot(data.frame()) + geom_point()  + ylim(0, 100) + theme_bw()+xlab(xax)+ylab(yax)+ggtitle(title) +scale_x_continuous(limits = xlim[1:2])
  
 }
-plotBreakPIntrons<-function(breakP1, t=NULL, fimo=NULL, region =  c(1,5000,100,25000,30000,100), mult = 1, plotHM=T, logT = F, title = "", subtitle = ""){
+
+plotBreakPByGenes<-function(breakP1, t, genesLeft="leader", genesRight="N",
+                            left_range=NULL, right_range=NULL, step_left = 10, step_right=100, plotHM=T,
+                            logT=T, title="", subtitle="", mult=1, fimo=NULL){
+  region =  c(1,100,step_left,28000,30000,step_right)
+  if(!is.null(genesLeft)){
+    i1 = which(t$gene==genesLeft)
+    region[1] = t$Minimum[i1]
+    region[2] = t$Maximum[i1]
+  }
+  if(!is.null(genesRight)){
+    i2 = which(t$gene==genesRight)
+    region[4] = t$Minimum[i2-1]
+    region[5] = t$Minimum[i2]
+  }
+  if(!is.null(left_range)){
+    region[1] = left_range[1]
+    region[2] = left_range[2]
+  }
+  if(!is.null(right_range)){
+    region[4] = right_range[1]
+    region[5] = right_range[2]
+  }
+  plotBreakPIntrons(breakP1,t,fimo=fimo,region=region, mult=mult, plotHM=plotHM, logT=logT, title=title, subtitle=subtitle)
+                    
+}
+
+plotBreakPIntrons<-function(breakP1, t=NULL, fimo=NULL,
+                            region =  c(1,100,10,28000,30000,100), mult = 1, plotHM=T, logT = T, title = "", subtitle = ""){
   breakP_ = subsetBr(breakP1, region)
   col = getHMCol()
- 
- 
   breakP = expandBr(breakP_, region)  #bin = c(startc[3], endc[3]))
   maxv = max(breakP$heatm)
- 
   if(maxv>0){
     heat_breaks = seq(0,maxv, length.out = length(col ))
     if(logT)   heat_breaks = seq(0,log10(maxv), length.out = length(col ))
