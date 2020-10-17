@@ -375,7 +375,7 @@ public class ViralChimericReadsAnalysisCmd extends CommandLine {
 						// 4. the FASTQ header of the leftover sequences will contain four information fields
 						//     - add '-y' option for alignment with minimap2
 						//     - SAMRecord getStringAttribute() could be used to retrieve these information
-                        //       record.getStringAttribute("LO") for the position of the leftover sequence
+						//       record.getStringAttribute("LO") for the position of the leftover sequence
 						//       record.getStringAttribute("AP") for the alignment position of the original sequence
 						//       record.getStringAttribute("FR") for the flanking sequence on the reference sequence
 						//       record.getStringAttribute("FQ") for the flanking sequence on the query/read sequence
