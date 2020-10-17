@@ -909,6 +909,22 @@ getGeneBP<-function(t, genes, left, right, left_buffer = 10){
   }
   endcs
 }
+# brP1 = readBreakPointsH5(h5file,"chrMT007544", "", 0)
+readBreakPointsH5<-function(h5file, chrom, type,j){
+  id = paste(chrom,type,j, sep="/")
+  mat=h5read(h5file,id)
+  heatm = mat[-(1:2),-(1:2)]
+  rowlen = nrow(heatm)
+  collen= ncol(heatm)
+ rows = data.frame(cbind(mat[-(1:2),1:2], rep("start", rowlen), rep(type,rowlen )))
+  cols = data.frame(cbind(t(mat[1:2,-(1:2)]), rep("end", collen), rep(type,collen )))
+  names(rows) = c("pos", "depth", "s_e", "type")
+  names(cols) = c("pos", "depth", "s_e", "type")
+  dimnames(heatm) = list(rows[,1], cols[,1])
+  res =list(heatm = t(as.matrix(heatm)), rows = cols, cols = rows)
+  #checkHeatm(res)
+  res
+}
 
 
 readBreakPoints<-function(f, type, addOne = F){
@@ -1413,7 +1429,7 @@ blankGraph<-function(xlim, xax, yax, title = "" ) {
   ggplot(data.frame()) + geom_point()  + ylim(0, 100) + theme_bw()+xlab(xax)+ylab(yax)+ggtitle(title) +scale_x_continuous(limits = xlim[1:2])
  
 }
-plotBreakPIntrons<-function(breakP1, t, fimo, region =  c(1,5000,100,25000,30000,100), mult = 1, plotHM=T, logT = F, title = "", subtitle = ""){
+plotBreakPIntrons<-function(breakP1, t=NULL, fimo=NULL, region =  c(1,5000,100,25000,30000,100), mult = 1, plotHM=T, logT = F, title = "", subtitle = ""){
   breakP_ = subsetBr(breakP1, region)
   col = getHMCol()
  
