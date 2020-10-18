@@ -1,5 +1,58 @@
 ###
 ##NEW WAY OF READING BREAKPONTS
+
+if(FALSE){
+inputs = c("",grep("chr", grep("scores", h5ls(h5file)$group, v=T), inv=T, v=T))
+names(inputs) = gsub("/","",inputs)
+brPs =  lapply(inputs, function(prefix) readBreakPointsH5(h5file,"chrMT007544", "cellular", 0, prefix=prefix))
+
+region=c(1700,2300,10,28274,29533,10) 
+plotRegion<-function(brPs, region, logT=T, pdf=T){
+	file = paste(paste(region, collapse="_"),"pdf",sep= ".")
+	if(pdf) pdf(file)
+	for(i in 1:length(brPs)){
+		plotBreakPIntrons(brPs[[i]],region = region, title=names(brPs)[[i]], logT=logT)
+	}
+	if(pdf) dev.off()
+}
+
+findMaxSeqsAll<-function(brPs, fasta, region=c(60,80,1,28240,28260,1)){
+ 	res = list()
+	for(i in 1:length(brPs)){
+	 res[[i]] = findMaxSeqs(brPs[[i]], region = region, fasta, nme = names(brPs)[[i]])
+	}
+	names(res) = names(brPs)
+	res
+}
+
+plotRegion(brPs, region=c(1,100,1,25000,30000,100))
+plotRegion(brPs, region=c(60,80,1,28240,28260,1), logT=F)
+
+
+
+maxseqs = findMaxSeqsAll(brPs,fasta,  region = c(1700,2300,1,28274,29533,1))
+
+
+plotRegion(brPs[2], region=c(60,80,1,28240,28260,1), logT=F, pdf=F)
+ plotRegion(brPs,region=c(6700,7300,10,28274,29533,10),logT=F,pdf=T)
+ plotRegion(brPs,region=c(1700,2300,10,28274,29533,10),logT=F,pdf=T)
+
+
+plotBreakPIntrons(brP0,region=c(1,100,1,25000,30000,100))
+plotBreakPIntrons(brP1,region=c(1,100,1,25000,30000,100))
+
+pdf("out1.pdf")
+plotBreakPIntrons(brP1,region=c(1,10000,10,28274,29533,10), title="similarity", logT=T)
+plotBreakPIntrons(brP0,region=c(1,10000,10,28274,29533,10), title="depth", logT=T)
+plotBreakPIntrons(brP1,region=c(1700,2300,10,28274,29533,10), title="similarity", logT=T)
+plotBreakPIntrons(brP0,region=c(1700,2300,10,28274,29533,10), title="depth", logT=T)
+plotBreakPIntrons(brP0,region=c(6761,7241,10,28274,29533,10), title="depth", logT=T)
+plotBreakPIntrons(brP1,region=c(6761,7241,10,28274,29533,10), title="depth", logT=T)
+ plotBreakPIntrons(brP1,region=c(6700,7300,10,28274,29533,10), title="depth", logT=F)
+
+dev.off()
+
+}
 # brP1 = readBreakPointsH5(h5file,"chrMT007544", "virion", 0)
 #plots_i =  plotBreakPIntrons(brP1)
 #region =  c(1,5000,100,25000,30000,100)

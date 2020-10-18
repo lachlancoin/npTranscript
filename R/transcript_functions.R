@@ -910,8 +910,8 @@ getGeneBP<-function(t, genes, left, right, left_buffer = 10){
   endcs
 }
 # brP1 = readBreakPointsH5(h5file,"chrMT007544", "", 0)
-readBreakPointsH5<-function(h5file, chrom, type,j){
-  id = paste(chrom,type,j, sep="/")
+readBreakPointsH5<-function(h5file, chrom, type,j, prefix=""){
+  id = paste(prefix,chrom,type,j, sep="/")
   mat=h5read(h5file,id)
   heatm = mat[-(1:2),-(1:2)]
   rowlen = nrow(heatm)
@@ -1431,6 +1431,42 @@ blankGraph<-function(xlim, xax, yax, title = "" ) {
   ggplot(data.frame()) + geom_point()  + ylim(0, 100) + theme_bw()+xlab(xax)+ylab(yax)+ggtitle(title) +scale_x_continuous(limits = xlim[1:2])
  
 }
+
+
+findMaxSeqs<-function(breakP1,region=c(60,80,1,28240,28260,1), fasta, nme=""){
+	left=c(-10,10); right = c(-10,10)
+	if(nme=="scores33") {
+		left =c(0,10); right = c(0,10)
+	}
+	if(nme=="scores55") {
+		left =c(-10,0); right = c(-10,0)
+	}
+if(nme=="scores53") {
+		left =c(-10,0); right = c(0,10)
+	}
+if(nme=="scores35") {
+		left =c(0,10); right = c(-10,0)
+	}
+	breakP_ = subsetBr(breakP1, region)
+ 	breakP = expandBr(breakP_, region)  
+	mm = breakP$heatm
+	rowcol = which(mm == max(mm), arr.ind = TRUE)
+	res = list()
+	nmes = rep("a", dim(rowcol)[1])
+	for(k in 1:dim(rowcol)[1]){
+		colind = rowcol[k,2]
+		rowind = rowcol[k,1]
+		row = breakP$rows[rowind,1]
+		col = breakP$cols[colind,1]
+		seq1 = fasta[[1]][(col+right[1]):(col+right[2])]
+		seq2 = fasta[[1]][(row+left[1]):(row+left[2])]
+		nmes[k] = paste(breakP$rows[rowind,1], breakP$cols[colind,1],sep="_")
+		res[[k]] = list(seq1= seq1, seq2 = seq2, rowcol, row=breakP$rows[rowind,], col=breakP$cols[colind,], left=left, right = right, nme=nme)
+        }
+	names(res) =nmes
+	res
+}
+
 plotBreakPIntrons<-function(breakP1, t=NULL, fimo=NULL, region =  c(1,5000,100,25000,30000,100), mult = 1, plotHM=T, logT = F, title = "", subtitle = ""){
   breakP_ = subsetBr(breakP1, region)
   col = getHMCol()
