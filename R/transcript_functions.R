@@ -1434,7 +1434,7 @@ blankGraph<-function(xlim, xax, yax, title = "" ) {
 
 
 findMaxSeqs<-function(breakP1,region=c(60,80,1,28240,28260,1), fasta, nme=""){
-	left=c(-10,10); right = c(-10,10)
+	left=c(-5,5); right = c(-5,5)
 	if(nme=="scores33") {
 		left =c(0,10); right = c(0,10)
 	}
@@ -1450,7 +1450,8 @@ if(nme=="scores35") {
 	breakP_ = subsetBr(breakP1, region)
  	breakP = expandBr(breakP_, region)  
 	mm = breakP$heatm
-	rowcol = which(mm == max(mm), arr.ind = TRUE)
+maxv = max(mm)
+	rowcol = which(mm == maxv, arr.ind = TRUE)
 	res = list()
 	nmes = rep("a", dim(rowcol)[1])
 	for(k in 1:dim(rowcol)[1]){
@@ -1460,7 +1461,7 @@ if(nme=="scores35") {
 		col = breakP$cols[colind,1]
 		seq1 = fasta[[1]][(col+right[1]):(col+right[2])]
 		seq2 = fasta[[1]][(row+left[1]):(row+left[2])]
-		nmes[k] = paste(breakP$rows[rowind,1], breakP$cols[colind,1],sep="_")
+		nmes[k] = paste(breakP$rows[rowind,1], breakP$cols[colind,1],maxv, sep="_")
 		res[[k]] = list(seq1= seq1, seq2 = seq2, rowcol, row=breakP$rows[rowind,], col=breakP$cols[colind,], left=left, right = right, nme=nme)
         }
 	names(res) =nmes

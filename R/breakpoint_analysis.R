@@ -2,16 +2,19 @@
 ##NEW WAY OF READING BREAKPONTS
 
 if(FALSE){
-inputs = c("",grep("chr", grep("scores", h5ls(h5file)$group, v=T), inv=T, v=T))
-names(inputs) = gsub("/","",inputs)
-brPs =  lapply(inputs, function(prefix) readBreakPointsH5(h5file,"chrMT007544", "cellular", 0, prefix=prefix))
 
-region=c(1700,2300,10,28274,29533,10) 
+.modifyH<-function(breakP_){
+	breakP_$heatm = apply(breakP_$heatm,c(1,2), function(x) 1/exp(x))
+	breakP_
+}
+
+
 plotRegion<-function(brPs, region, logT=T, pdf=T){
 	file = paste(paste(region, collapse="_"),"pdf",sep= ".")
 	if(pdf) pdf(file)
 	for(i in 1:length(brPs)){
-		plotBreakPIntrons(brPs[[i]],region = region, title=names(brPs)[[i]], logT=logT)
+		
+		plotBreakPIntrons(brPs[[i]],region = region, title=names(brPs)[[i]],subtitle = max(brPs[[i]]$heatm),  logT=logT)
 	}
 	if(pdf) dev.off()
 }
@@ -25,32 +28,50 @@ findMaxSeqsAll<-function(brPs, fasta, region=c(60,80,1,28240,28260,1)){
 	res
 }
 
+inputs = c("",grep("chr", grep("scores", h5ls(h5file)$group, v=T), inv=T, v=T))
+names(inputs) = gsub("/","",inputs)
+brPs =  lapply(inputs, function(prefix) readBreakPointsH5(h5file,"chrMT007544", "cellular", 0, prefix=prefix))
+brPs0 = brPs[1]
+brPs = lapply(brPs[-1],.modifyH)
+brPs = c(brPs0, brPs)
+names(brPs)[[1]] = "reads"
+
+regions = list(a =  c(60,80,1,28240,28260,1),
+		b=c(1000,10000,10,28274,29533,10),
+		c=c(1000,7000,100,29300,29533,10),
+		d = c(2020,2060,1,28500,28560,1),
+		e= c(6500,7500,100,29300,29533,10),
+		f= c(6930,7100,1,29470,29500,1)
+)
+
 plotRegion(brPs, region=c(1,100,1,25000,30000,100))
 plotRegion(brPs, region=c(60,80,1,28240,28260,1), logT=F)
 
+plotRegion(brPs[2], region=regions$a, logT=F, pdf=F)
+maxseqs = findMaxSeqsAll(brPs,fasta,  region = regions$a)
+lapply(maxseqs, names)
 
+plotRegion(brPs[2], region=regions$b, logT=F, pdf=F)
+maxseqs = findMaxSeqsAll(brPs,fasta,  region = regions$b)
+lapply(maxseqs, names)
 
-maxseqs = findMaxSeqsAll(brPs,fasta,  region = c(1700,2300,1,28274,29533,1))
+plotRegion(brPs, region=regions$c, pdf=T)
+plotRegion(brPs, region=regions$e, pdf=T)
+plotRegion(brPs, region=regions$f, pdf=T)
 
-
-plotRegion(brPs[2], region=c(60,80,1,28240,28260,1), logT=F, pdf=F)
  plotRegion(brPs,region=c(6700,7300,10,28274,29533,10),logT=F,pdf=T)
- plotRegion(brPs,region=c(1700,2300,10,28274,29533,10),logT=F,pdf=T)
+ plotRegion(brPs[1],region=c(1950,2000,1,29450,29500,1),logT=F,pdf=T)
 
 
-plotBreakPIntrons(brP0,region=c(1,100,1,25000,30000,100))
-plotBreakPIntrons(brP1,region=c(1,100,1,25000,30000,100))
+plotRegion(brPs, region=c(60,80,1,28240,28260,1), logT=F)
+plotRegion(brPs[1], region=c(60,80,1,29500,29600,1), logT=F, pdf=F)
+maxseqs = findMaxSeqsAll(brPs[1],fasta,  region = c(60,80,1,29533,1))
+region = 
 
-pdf("out1.pdf")
-plotBreakPIntrons(brP1,region=c(1,10000,10,28274,29533,10), title="similarity", logT=T)
-plotBreakPIntrons(brP0,region=c(1,10000,10,28274,29533,10), title="depth", logT=T)
-plotBreakPIntrons(brP1,region=c(1700,2300,10,28274,29533,10), title="similarity", logT=T)
-plotBreakPIntrons(brP0,region=c(1700,2300,10,28274,29533,10), title="depth", logT=T)
-plotBreakPIntrons(brP0,region=c(6761,7241,10,28274,29533,10), title="depth", logT=T)
-plotBreakPIntrons(brP1,region=c(6761,7241,10,28274,29533,10), title="depth", logT=T)
- plotBreakPIntrons(brP1,region=c(6700,7300,10,28274,29533,10), title="depth", logT=F)
+plotRegion(brPs, region, logT=F)
+maxseqs = findMaxSeqsAll(brPs[1],fasta,  region )
 
-dev.off()
+maxseqs = findMaxSeqsAll(brPs[1],fasta,  region = c(1700,2300,1,28274,29533,1))
 
 }
 # brP1 = readBreakPointsH5(h5file,"chrMT007544", "virion", 0)
