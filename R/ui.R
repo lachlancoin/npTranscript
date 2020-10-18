@@ -5,6 +5,7 @@ library(rhdf5)
 library(RColorBrewer)
 library(writexl)
 library(shinycssloaders)
+library(shinyjs)
 
 source( "transcript_functions.R")
 
@@ -66,6 +67,7 @@ if(file.exists(coordsFile)){
 }
 # Define UI for application that plots random distributions 
 shinyUI(fluidPage(
+	useShinyjs(),
    theme="https://d2h9b02ioca40d.cloudfront.net/v8.0.1/uom.css",
 	tags$head(includeHTML(file.path(basedir, "shiny-common/unset_shiny.html"))),
 	htmlTemplate(file.path(basedir, "shiny-common/uomheader.html"),
@@ -93,7 +95,7 @@ shinyUI(fluidPage(
     textInput("toplot8", label="All transcripts matching", value = ""),
   selectInput("group_by", label="Group transcripts by", choices = c('all', 'type', 'juncts'), selected = 'all'),
   
-  checkboxInput('ActivateDE', label = 'Activate DE', FALSE)
+  checkboxInput('ActivateDE', label = 'Activate DE', FALSE),
     actionButton("plotButton", "Generate plots"),
    checkboxGroupInput("molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules),
    checkboxGroupInput("cells", label = "Cell type",  choices = info$cells, selected = info$cells),
