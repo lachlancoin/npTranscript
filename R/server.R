@@ -6,7 +6,7 @@ library(rhdf5)
 library(RColorBrewer)
 library(binom)
 library(writexl)
-
+library(shinyjs)
 
 source( "transcript_functions.R")
 
@@ -267,7 +267,17 @@ shinyServer(function(input, output,session) {
     session$userData$datafile=datafile
     session$userData$h5file=h5file
     session$userData$results = list()
-
+	
+	
+	print(dir.exists(file.path(currdir,'DE')))
+	
+	if (!dir.exists(file.path(currdir,'DE'))) {
+		shinyjs::disable('ActivateDE') } else {
+		session$userData$DE = file.path(currdir, 'DE')
+		shinyjs::enable('ActivateDE')
+	}
+	
+	#toggleState('ActivateDE', condition = dir.exists(file.path(currdir,'DE')))
     updateSelectInput(session,"plottype", label = "Category 1", choices=ch, selected=input$plottype)
    # updateSelectInput(session,"plottype1", label = "Category 2", choices=ch, selected=input$plottype1)
     updateSelectInput(session, "toplot5",label = paste("Transcript",names(info$choices1)[1]),choices=c("-",info$choices1[[1]]),selected='-')
