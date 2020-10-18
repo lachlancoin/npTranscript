@@ -23,15 +23,20 @@ main <- function() {
   })
   
   # Import data 
-  countdata <- read.table(gzfile(counts), header=TRUE )
+  countdata <- read.table(gzfile(counts), header=TRUE, row.names = 1 )
   countdata <- as.matrix(countdata)
   
+  #Trim to relevant columns
+  first_cond_idx <- which(grepl(pattern = paste0(time1,'hpi'), x= colnames(countdata)))
+  second_cond_idx <- which(grepl(pattern = paste0(time2,'hpi'), x= colnames(countdata)))
+  count_trim <- countdata[,c(first_cond_idx, second_cond_idx)]
+  
   # Assign conditions
-  (condition <- factor(c(rep(time1, 3), rep(time2, 3))))
+  (condition <- factor(c(rep(time1, length(first_cond_idx)), rep(time2, length(second_cond_idx)))))
   
   # Make DESeq dataset
-  (coldata <- data.frame(row.names=colnames(countdata), condition))
-  dds <- DESeqDataSetFromMatrix(countData=countdata, colData=coldata, design=~condition)
+  (coldata <- data.frame(row.names=colnames(count_trim), condition))
+  dds <- DESeqDataSetFromMatrix(countData=count_trim, colData=coldata, design=~condition)
   
   keep <- rowSums(counts(dds)) >= 5
   dds <- dds[keep,]
@@ -83,7 +88,7 @@ main <- function() {
   
   
   # Volcano Plot
-  volcanoplot <- function (res, lfcthresh=1, sigthresh=0.05, main="Volcano Plot", legendpos="bottomright", labelsig=FALSE, textcx=1, ...) {
+  volcanoplot <- function (res, lfcthresh=0.5, sigthresh=0.05, main="Volcano Plot", legendpos="bottomright", labelsig=FALSE, textcx=1, ...) {
     with(res, plot(log2FoldChange, -log10(pvalue), pch=20, main=main, ...))
     with(subset(res, padj<sigthresh ), points(log2FoldChange, -log10(pvalue), pch=20, col="blue", ...))
     with(subset(res, abs(log2FoldChange)>lfcthresh), points(log2FoldChange, -log10(pvalue), pch=20, col="orange", ...))
@@ -95,7 +100,7 @@ main <- function() {
     legend(legendpos, xjust=1, yjust=1, legend=c(paste("p-adj<",sigthresh,sep=""), paste("|LogFC|>",lfcthresh,sep=""), "both"), pch=20, col=c("red","orange","green"))
   }
   pdf(paste0("volcanoplot_", output, ".pdf"), 18, 18, pointsize=20)
-  volcanoplot(resdata, lfcthresh=1, sigthresh=0.05, textcx=0.8, xlim=c(-10, 10), legendpos="topright")
+  volcanoplot(resdata, lfcthresh=0.5, sigthresh=0.05, textcx=0.8, xlim=c(-10, 10), legendpos="topright")
   dev.off()
   
   
