@@ -9,6 +9,7 @@ library(writexl)
 library(shinyjs)
 
 source( "transcript_functions.R")
+source("shiny-DE.R")
 
 basedir="../data"
 #toreplace=list(virion="RNA_virion_0hpi", whole_genome_mapped="RNA_vero_24hpi")
@@ -83,6 +84,8 @@ t=NULL
 fimo=NULL
 datafile=NULL
 h5file = NULL
+
+
 .getlevels<-function(type_nme, molecules, cells, times){
   types_=data.frame(t(data.frame(strsplit(type_nme,"_"))))
   names(types_) = c("molecules","cell","time")
@@ -267,12 +270,17 @@ shinyServer(function(input, output,session) {
     session$userData$datafile=datafile
     session$userData$h5file=h5file
     session$userData$results = list()
+    session$userData$results = list()
 	
 	
 	print(dir.exists(file.path(currdir,'DE')))
 	
+	updateCheckboxInput(session, "ActivateDE", value = FALSE)	
+	session$userData$DE_countdata = NULL
+	
 	if (!dir.exists(file.path(currdir,'DE'))) {
-		shinyjs::disable('ActivateDE') } else {
+		shinyjs::disable('ActivateDE') 
+		} else {
 		session$userData$DE = file.path(currdir, 'DE')
 		shinyjs::enable('ActivateDE')
 	}
@@ -288,7 +296,28 @@ shinyServer(function(input, output,session) {
     updateTextInput(session,"orfs", label="ORFs to include", value = orfs)
    # updateSelectInput(session, "depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="depth")
     
+	
+	
   }
+  
+  loadDE <- function() {
+  
+  # Import data 
+  message(paste('importing DE Data'))
+  count_files <- list.files(path = file.path(session$userData$currdir, 'DE'), recursive = T, full.names = T)
+  cell_types <- lapply(strsplit(x = count_files, split = '/'), rev) %>% sapply('[', 2) 
+  print(cell_types)
+  print(count_files)
+  countdata <- lapply(count_files, FUN = 
+                        function(x) {read.table((gzfile(x)), header = T, row.names = 1) %>%
+                              subset(select = -c(1:5)) %>% 
+                                as.matrix() } )
+  names(countdata) <- cell_types
+  return(countdata)
+}
+  
+  
+  
 	
 	
   depthPlot= function(plot_type) {
@@ -593,6 +622,7 @@ shinyServer(function(input, output,session) {
     }
     ggp
   }
+  
   infectivityPlot=function(){
     currdir = session$userData$currdir
     barchart="barchart" %in% input$options1
@@ -624,6 +654,27 @@ shinyServer(function(input, output,session) {
     }
   }
   
+  makeDEPlots = function() {
+	
+	}
+	
+# DE_countdata <- reactive( {
+	
+	# DE_countdata = loadDE()
+	# print(names(DE_countdata))
+	# updateSelectInput(session, "DE_cell",  choices = names(DE_countdata))
+	# updateSelectInput(session, "DE_time1",  choices = info$times)
+	# updateSelectInput(session, "DE_time2",  choices = info$times)
+	# return(DE_coundata)
+		
+	# })
+	
+do_DE <- observeEvent(
+	input$plotDE, 
+	runDE(count_list = DE_countdata, cell = input$DE_cell, time1 = input$DE_time1, time2 = input$DE_time2)
+	
+)
+  
   observeEvent(input$plottype,{
     dd= .process1(input$plottype,  session$userData$info)
     updateSelectInput(session,"toplot5", label = dd$label, choices=dd$ch, selected="-")
@@ -631,6 +682,8 @@ shinyServer(function(input, output,session) {
   observeEvent(input$dir, readDir() )		  
 	#THIS JUST EXAMPLE FOR RENDERING A PLOT
 	#REACTIVE ON PLOT BUTTON
+
+
 
 	output$infPlot<-renderPlot({
 	  input$plotButton
@@ -658,7 +711,43 @@ shinyServer(function(input, output,session) {
 	output$depthEndPlot <- renderPlot({
 	  input$plotButton
 	  depthPlot("depthEnd")
+		
 	})
+
+
+#DE Plots
+observeEvent( input$ActivateDE,	
+{
+
+	session$userData$DE_countdata = loadDE()
+	updateSelectInput(session, "DE_cell",  choices = names(session$userData$DE_countdata))
+	updateSelectInput(session, "DE_time1",  choices = session$userData$info$times)
+updateSelectInput(session, "DE_time2",  choices = session$userData$info$times)
+
+
+toggle("plotDE")
+toggle(id = "DE_cell")
+toggle("DE_time1")
+toggle("DE_time2")
+
+} )
+
+
+ observeEvent(input$plotDE, {
+	
+	DEout <- runDE(count_list = session$userData$DE_countdata, cell = input$DE_cell , time1 = input$DE_time1, time2 = input$DE_time2)
+	
+	output$DEPlot_volcano <- renderPlot( {
+	DEout[['volcano']]
+	})
+	
+	output$DEPlot_PCA <- renderPlot( {
+	DEout[['rld_pca']]
+	})
+	
+	session$userData$resultsDE <- DEout[['data']]
+	 } )
+	 
 #Downloads
 output$downloadInf <- downloadHandler(filename = function() {'plotInfectivity.pdf'}, content = function(file) ggsave(file, infectivityPlot(), device='pdf', height = 20, width = 40, units='cm' ) )
 output$downloadDepth <- downloadHandler(filename = function() {'plotDepth.pdf'}, content = function(file) ggsave(file, depthPlot("depth"), device = 'pdf', height = 20, width = 40, units='cm') )

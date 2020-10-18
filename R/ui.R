@@ -94,9 +94,7 @@ shinyUI(fluidPage(
     
     textInput("toplot8", label="All transcripts matching", value = ""),
   selectInput("group_by", label="Group transcripts by", choices = c('all', 'type', 'juncts'), selected = 'all'),
-  
-  checkboxInput('ActivateDE', label = 'Activate DE', FALSE),
-    actionButton("plotButton", "Generate plots"),
+      actionButton("plotButton", "Generate plots"),
    checkboxGroupInput("molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules),
    checkboxGroupInput("cells", label = "Cell type",  choices = info$cells, selected = info$cells),
    checkboxGroupInput("times", label = "Time points",  choices = info$times, selected = info$times),
@@ -112,8 +110,13 @@ shinyUI(fluidPage(
   numericInput("min_x", label = "Min position", value = 0),
   numericInput("max_x", label = "Max position", value = 30000),
   numericInput("loess", label = "Loess span", value = 0.0,max=1,min=0),
- numericInput("alpha", label = "Transparency", value = 1.0)
-  
+ numericInput("alpha", label = "Transparency", value = 1.0),
+   
+   checkboxInput('ActivateDE', label = 'Activate DE', FALSE),
+   selectInput("DE_cell", label = "DE in cell", choices = info$cells),
+   selectInput("DE_time1", label = "Time 1", choices = c()),
+   selectInput("DE_time2", label = "Time 2", choices = c()),
+     actionButton('plotDE', 'Do DE')
   ),
  
   
@@ -122,19 +125,26 @@ shinyUI(fluidPage(
     # verbatimTextOutput("instructions"),
     # verbatimTextOutput("variables"),
     # verbatimTextOutput("validation"),
+	h2("Infectivity Plots"),
     withSpinner(plotOutput("infPlot", height=400)),
         downloadButton('downloadInf', 'Download plot'),
         downloadButton("downloadResultsInf", 'Download data'),
+	h2("TPM Plots"),
     withSpinner(plotOutput("distPlot", height=400)),
         downloadButton('downloadDist', 'Download plot'),
         downloadButton("downloadResults", 'Download data'),
+	h2("Depth Plots"),
     plotOutput("depthPlot", height=400),
         downloadButton("downloadDepth", 'Download plot'),
     plotOutput("depthStartPlot", height=400),
         downloadButton("downloadDepthStart", 'Download plot'),
     plotOutput("depthEndPlot", height=400),
-        downloadButton("downloadDepthEnd", 'Download plot')
-  
+        downloadButton("downloadDepthEnd", 'Download plot'),
+	h2("DE Plots"),
+	withSpinner(plotOutput("DEPlot_PCA", height = 400)),
+	withSpinner(plotOutput("DEPlot_volcano", height = 400))
+	
+
   )
   #,
   #htmlTemplate(file.path(basedir, "shiny-common/uomfooter.html"))

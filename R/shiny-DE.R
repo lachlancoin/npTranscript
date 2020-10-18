@@ -13,19 +13,20 @@ suppressPackageStartupMessages({
   library(tibble)
     })
 
-load_DE <- function() {
-  
-  # Import data 
-  count_files <- list.files(path = 'DE', recursive = T, full.names = T)
-  cell_types <- sapply(strsplit(x = count_files, split = '/'), '[', 2)
-  countdata <- lapply(count_files, FUN = 
-                        function(x) {read.table((gzfile(x)), header = T, row.names = 1) %>%
-                              subset(select = -c(1:5)) %>% 
-                                as.matrix() } )
-  names(countdata) <- cell_types
-  
-  return(countdata)
-}
+# loadDE <- function() {
+# 
+#   # Import data
+#   message(paste('importing DE Data'))
+#   count_files <- list.files(path = 'DE', recursive = T, full.names = T)
+#   cell_types <- lapply(strsplit(x = count_files, split = '/'), rev) %>% sapply('[', 2) 
+#   print(count_files)
+#   countdata <- lapply(count_files, FUN =
+#                         function(x) {read.table((gzfile(x)), header = T, row.names = 1) %>%
+#                               subset(select = -c(1:5)) %>%
+#                                 as.matrix() } )
+#   names(countdata) <- cell_types
+#   return(countdata)
+# }
 
 #PCA Function
 rld_pca <- function (rld, intgroup = "condition", ntop = 500, colors=NULL, legendpos="bottomleft", main=paste('PCA', cell1, time1, 'vs', cell2, time2), textcx=1, ...) {
@@ -66,7 +67,7 @@ volcanoplot <- function (res, lfcthresh=0.5, sigthresh=0.05, main="Volcano Plot"
 }
 
 
-main <- function(count_list, cell, time1, time2) {
+runDE <- function(count_list, cell, time1, time2) {
   #Trim to relevant columns
   countdata = count_list[[cell]]
   first_cond_idx <- which(grepl(time1, x= colnames(countdata)))
@@ -113,6 +114,6 @@ main <- function(count_list, cell, time1, time2) {
   return(list(data = resdata, rld_pca = rpca, volcano = vp))
 }
 
-DE_out <- main()
+#DE_out <- main()
 
 
