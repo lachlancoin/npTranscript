@@ -1,6 +1,7 @@
 package npTranscript.cluster;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.Stack;
@@ -69,7 +70,7 @@ public class IdentityProfileHolder {
 		
 	}
  
- public IdentityProfileHolder(Sequence refSeq,Outputs o, String[] in_nmes,  boolean calcBreakpoints, int chrom_index, Annotation annot)
+ public IdentityProfileHolder(ArrayList<Sequence> genomes, Sequence refSeq,Outputs o, String[] in_nmes,  boolean calcBreakpoints, int chrom_index, Annotation annot)
 		 throws IOException {
 	 this.genome=refSeq;
 	this.chrom_ =genome.getName();
@@ -81,7 +82,7 @@ public class IdentityProfileHolder {
 		all_clusters =new CigarClusters(refSeq,  num_sources, annot);
 		if(calcBreakpoints){
 			System.err.println("calculating break point usage");
-			bp = new BreakPoints(num_sources, seqlen);
+			bp = new BreakPoints(num_sources, refSeq, genomes);
 		}else{
 			bp  = null;
 		}
@@ -106,6 +107,10 @@ public class IdentityProfileHolder {
 		 chr3prime = TranscriptUtils.coronavirus ? chr.subSequence(Math.max(0, chr.length()-primelen), chr.length()) : null;
 	}*/
 	public synchronized void addBreakPoint(int source_index, int i, int br_i, int br_i1) {
+	 	this.bp.addBreakPoint(source_index, i, br_i, br_i1);
+		
+	}
+	public synchronized void addBreakPoint(int source_index, String i, int br_i, int br_i1) {
 	 	this.bp.addBreakPoint(source_index, i, br_i, br_i1);
 		
 	}

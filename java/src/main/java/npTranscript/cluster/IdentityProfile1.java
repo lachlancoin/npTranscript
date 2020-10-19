@@ -195,8 +195,14 @@ static char delim1 = ',';
 		boolean hasLeaderBreak = TranscriptUtils.coronavirus? (breaks.size()>1 &&  annot.isLeader(breaks.get(1))) : false;
 		if(includeStart){
 			//if pool is not null
+			
 			if(pool!=null) {
-				secondKey.append(pool+delim1+annot.nextDownstream(startPos,chrom_index, forward)+delim);
+				String[] pool_ = pool.split(":");
+
+				secondKey.append(pool_[0]+delim1+annot.nextDownstream(startPos,chrom_index, forward)+delim);
+				if(pool_.length>1){
+					parent.addBreakPoint(src_index, pool_[0], Integer.parseInt(pool_[1]), startPos);
+				}
 			}
 			else{
 				secondKey.append(annot.nextUpstream(startPos,chrom_index, forward)+delim);

@@ -25,6 +25,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.zip.GZIPOutputStream;
 
+import org.apache.commons.math3.linear.OpenMapRealMatrix;
 import org.apache.commons.math3.linear.SparseRealMatrix;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
@@ -166,7 +167,6 @@ public class Outputs{
 			}
 			if(clusterW!=null) clusterW.close();
 			this.altT.close();
-			if(this.breakPW!=null) breakPW.close();
 			this.annotP.close();
 			//this.clusters.close();
 			for(int i=0; i<clusters.length; i++){
@@ -177,7 +177,8 @@ public class Outputs{
 				if(leftover_l[i]!=null) this.leftover_l[i].close();
 				if(polyA[i]!=null) this.polyA[i].close();
 			}
-			
+		
+
 			
 		}
 		
@@ -423,8 +424,9 @@ public class Outputs{
 			return pw;
 		}
 		
-		void printMatrix(SparseRealMatrix cod, SparseVector breakSt2, SparseVector breakEnd2,  int chrom_index, int i, int j) throws IOException{
-			String id = this.chrom+"/"+this.type_nmes[i]+"/"+j;
+		void printMatrix(SparseRealMatrix cod, SparseVector breakSt2, SparseVector breakEnd2,   int chrom_index, int i, int j, String prefix) throws IOException{
+			String id = prefix+this.chrom+"/"+this.type_nmes[i]+"/"+j;
+			//String id_scores = scores+"/"+this.chrom+"/"+this.type_nmes[i]+"/"+j;
 //			PrintWriter pw = getBreakPointPw(chrom_index+"",i, j);
 			StringBuffer secondLine = new StringBuffer();
 			List<Integer> rows  = breakSt2.keys();
@@ -794,6 +796,14 @@ public class Outputs{
 		    	}
 			
 		}
+
+
+
+
+
+
+
+		
 
 		
 

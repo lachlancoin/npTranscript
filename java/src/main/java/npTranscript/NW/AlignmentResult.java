@@ -74,5 +74,28 @@ public class AlignmentResult {
           }
           return totalCost;
     }
+
+	public double getMatchPerc() {
+		int matches=0;
+		int gaps=0;
+//		StringBuffer sb = new StringBuffer();
+		for (int k=0; k < alignments[0].length(); k++){
+		if (alignments[0].charAt(k)==alignments[1].charAt(k)) {
+		    matches++;
+		//    sb.append("|");
+		} //else sb.append(" ");
+		               
+		  if ( (alignments[0].charAt(k)=='-') ||
+		       (alignments[1].charAt(k)=='-')  ) 
+		  gaps++;
+		}
+		//String sc=String.format( "%5.3g", (float)matches/alignments[0].length()).trim();
+		//pw.println(nme+" match_score="+matches+" identity="+sc+" gaps="+gaps+" edit_distance="+result.getTotalCost()+" length="+result.getAlignmentLength());
+		//pw.println(alignments[0]);
+		//pw.println(sb.toString());
+		//pw.println(alignments[1]);
+		return (double)matches/(double) alignments[0].length();
+		
+	}
      
 }

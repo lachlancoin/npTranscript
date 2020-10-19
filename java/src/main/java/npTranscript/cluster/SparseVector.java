@@ -17,7 +17,7 @@ import java.util.TreeMap;
 class SparseVector{
 	static Integer zero = 0;
 	
-	private SortedMap<Integer, Integer> m = new TreeMap<Integer, Integer>();
+	SortedMap<Integer, Integer> m = new TreeMap<Integer, Integer>();
 	private int valsum=0;
 	//double valsumByKey=0;
 	
@@ -89,6 +89,10 @@ class SparseVector{
 	public double valsum() {
 	return valsum;
 	}
+
+	
+
+	
 
 	
 }
