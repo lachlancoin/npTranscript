@@ -253,6 +253,15 @@ shinyServer(function(input, output,session) {
       names(annots) = c("chr","ens","name","ens1","type")
       session$userData$annots=annots
     }
+   counts_file = paste(currdir, "Counts_genome1.csv",sep="/")
+   if(file.exists(counts_file)){
+     countsHostVirus= read.csv(counts_file)
+     inds_a = grep("X.Map.to", names(countsHostVirus))
+     for(ij in inds_a) countsHostVirus[,ij] = countsHostVirus[,ij] * 1e4
+     sampleID= apply(countsHostVirus[,1:3],1,paste,collapse="_")
+     session$userData$countsHostVirus = cbind(sampleID,countsHostVirus)
+   }
+     
     coords_file = paste(currdir, "Coordinates.csv",sep="/")
     if(file.exists(coords_file)){
       t = readCoords(coords_file)
@@ -446,7 +455,6 @@ shinyServer(function(input, output,session) {
     if(length(toplot)==0){
       toplot=c(isolate(input$toplot7),isolate(input$toplot8))
       toplot = toplot[unlist(lapply(toplot,nchar))>2]
-      
       usegrep=T
     }
     datafile=session$userData$datafile
@@ -458,11 +466,8 @@ shinyServer(function(input, output,session) {
     if(length(toplot)>0 && !is.null(datafile) ){
       if(usegrep){
         x1 = .findEntries(toplot,datafile,"/trans",tojoin);
-        #  merge=TRUE
-        #    mat = .readIsoGrep(toplot,datafile,header, "/trans") 
       }else{
         x1 =toplot
-        
       }
       mat = t(data.frame( lapply(x1, .readIso, datafile, header, "/trans")))
       if(is.null(dim(mat))) mat = matrix(mat,nrow=1,ncol=length(header))
@@ -515,7 +520,16 @@ shinyServer(function(input, output,session) {
       } else if(barchart){
         levs1=.getlevels(header,molecules, cells, times)
         subs =.processTPM(mat, header, toplot, levels=levs1,split=F)
+        
         sample = subs$sample
+      
+        if(!is.null(session$userData$countsHostVirus)){
+          countsHostVirus= session$userData$countsHostVirus
+          subm = countsHostVirus[match( subs$sample,countsHostVirus$sampleID), grep("Map.to",names(countsHostVirus))]
+          subs = cbind(subs,subm)
+          print(head(subs))
+        }
+        
       }else{
         tpm_df= .processTPM(mat, header, toplot,split=T)
         subs=subset(tpm_df, molecule_type %in% molecules & cell %in% cells & time %in% times)
@@ -574,9 +588,22 @@ shinyServer(function(input, output,session) {
         #  ord="Start"
         # x1 =  paste("reorder(", ORF, ",", ord,")", sep="") 
         if(stack){
-          ggp<-ggplot(subs, aes_string(x="sample",y=y_text,fill=ORF, colour=ORF,ymin="lower" ,ymax="upper"))
-          ggp<-ggp+ geom_bar(position="stack", aes_string(y="TPM"),stat="identity")
-          
+          #ggp<-ggplot(subs, aes_string(x="sample",y=y_text,fill=ORF, colour=ORF,ymin="lower" ,ymax="upper"))
+          ggp<-ggplot(subs,aes_string(x="sample"))
+          ggp<-ggp+geom_bar(aes_string(y=y_text,fill=ORF,color=ORF),position="stack",stat='identity')
+#          ggp<-ggp+ geom_bar(position="stack", aes_string(y="TPM"),stat="identity")
+          if(showTPM && !logy && "X.Map.to.Host" %in% names(subs)){
+          #  ggp<-ggplot(countsHostVirus, aes_string(x="sample"))
+            ggp<-ggp+geom_line(aes_string(y="X.Map.to.Host",x="sample", group="ID"),color="black",stat="identity")
+            ggp<-ggp+geom_line(aes_string(y="X.Map.to.Virus",x="sample", group="ID"),color="red",stat="identity")
+            ggp<-ggp+geom_line(aes_string(y="X.Map.to.Sequin",x="sample", group="ID"),color="blue",stat="identity")
+            ggp<-ggp+geom_point(aes_string(y='X.Map.to.Host'),color="black",stat="identity")
+            ggp<-ggp+geom_point(aes_string(y='X.Map.to.Virus' ),color="red",stat="identity")
+            ggp<-ggp+geom_point(aes_string(y='X.Map.to.Sequin'),color="blue",stat="identity")
+            ggp<-ggp+ scale_y_continuous(
+              name = "TPM",
+              sec.axis = sec_axis(~.*1e-4, name="Proportion (%)"))
+          }
         }else{
           ggp<-ggplot(subs, aes_string(x=ORF,y=y_text,fill="sample", colour='sample',ymin="lower" ,ymax="upper"))
           ggp<-ggp+ geom_bar(position=position_dodge(), aes_string(y="TPM"),stat="identity")

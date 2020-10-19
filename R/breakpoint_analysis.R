@@ -9,7 +9,7 @@ if(FALSE){
 }
 
 
-plotRegion<-function(brPs, region, logT=T, pdf=T){
+plotRegion<-function(brPs, region, logT=F, pdf=T){
 	file = paste(paste(region, collapse="_"),"pdf",sep= ".")
 	if(pdf) pdf(file)
 	for(i in 1:length(brPs)){
@@ -27,25 +27,52 @@ findMaxSeqsAll<-function(brPs, fasta, region=c(60,80,1,28240,28260,1)){
 	names(res) = names(brPs)
 	res
 }
-
-inputs = c("",grep("chr", grep("scores", h5ls(h5file)$group, v=T), inv=T, v=T))
+h5fileB = paste(currdir,"0.breakpoints.h5",sep="/") 
+inputs = c("",grep("chr", grep("scores", h5ls(h5fileB)$group, v=T), inv=T, v=T))
 names(inputs) = gsub("/","",inputs)
-brPs =  lapply(inputs, function(prefix) readBreakPointsH5(h5file,"chrMT007544", "cellular", 0, prefix=prefix))
+j1=1
+brPs =  lapply(inputs, function(prefix) readBreakPointsH5(h5fileB,"chrMT007544", "cellular", j1, prefix=prefix))
 brPs0 = brPs[1]
 brPs = lapply(brPs[-1],.modifyH)
 brPs = c(brPs0, brPs)
 names(brPs)[[1]] = "reads"
 
-regions = list(a =  c(60,80,1,28240,28260,1),
-		b=c(1000,10000,10,28274,29533,10),
-		c=c(1000,7000,100,29300,29533,10),
-		d = c(2020,2060,1,28500,28560,1),
-		e= c(6500,7500,100,29300,29533,10),
-		f= c(6930,7100,1,29470,29500,1)
-)
 
+
+
+.calcCor(brPs[[1]]$heatm, brPs[[2]]$heatm, offrow=0, offcol=-1, thresh =1)
+.calcCor(brPs[[1]]$heatm, brPs[[5]]$heatm, offrow=12, offcol=12, thresh =1)
+
+
+plot(as.vector(brPs[[1]]$heatm[indsk]), as.vector(brPs[[2]]$heatm[indsk+1]),log="xy")
+
+summary(lm(as.vector(brPs[[1]]$heatm[indsk])~ as.vector(brPs[[2]]$heatm[indsk+1])))
+
+
+
+
+.calcCor<-function(hm0,hm1, offrow=0, offcol=0, thresh=1){
+  if(offrow>0) hm1 = hm1[-(1:offrow),]
+  if(offcol>0) hm1 = hm1[,-(1:offcol)]
+  if(offrow<0) hm0 = hm0[-(1:-(offrow)),]
+  if(offcol<0) hm0 = hm0[,-(1:-(offcol))]
+  inds = which(hm0>=thresh)
+ print( summary(lm(hm0[inds]~ hm1[inds])))
+#  plot(hm0[inds],hm1[inds])
+  cor(hm0[inds], hm1[inds], use="pairwise.complete.obs")
+}
+
+regions = list(a =  c(60,80,1,28200,28400,1),
+               a1=c(60,80,1,26440,26520,1),
+		b=c(1000,10000,10,28274,29533,10),
+		c=c(1000,7000,100,28274,29533,10),
+		d = c(2020,2060,1,28500,28560,1),
+		e= c(6930,6960,1,29450,29490,1),
+		f= c(1800,2000,1,28274,29533,1)
+)
+plotRegion(brPs,region=regions$f)
 plotRegion(brPs, region=c(1,100,1,25000,30000,100))
-plotRegion(brPs, region=c(60,80,1,28240,28260,1), logT=F)
+plotRegion(brPs, region=c(1,100,1,25000,30000,10), logT=F)
 
 plotRegion(brPs[2], region=regions$a, logT=F, pdf=F)
 maxseqs = findMaxSeqsAll(brPs,fasta,  region = regions$a)

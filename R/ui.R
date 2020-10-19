@@ -54,7 +54,7 @@ options1=c("showCI" ,"barchart", "showSecondAxis")
 totick1 = c("showCI" ,"barchart")
 #options2 = c("logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts")
  options2 = c("logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts", "stacked")
-totick2 = c("TPM","ribbonCI")
+totick2 = c("TPM","ribbonCI","barchart","stacked")
 options3 = c("show_depth","logy", "TPM","showMotifs","showORFs", "sumDepth","mergeCounts")
 totick3 = c("show_depth", "mergeCounts", "sumDepth")
 
@@ -93,7 +93,7 @@ shinyUI(fluidPage(
     selectInput("tojoin", label ="Join", choices=c("AND","OR"), selected="OR"),
     
     textInput("toplot8", label="All transcripts matching", value = ""),
-  selectInput("group_by", label="Group transcripts by", choices = c('all', 'type', 'juncts'), selected = 'all'),
+  selectInput("group_by", label="Group transcripts by", choices = c('No grouping' ,'all', 'type', 'juncts'), selected = 'No grouping'),
       actionButton("plotButton", "Generate plots"),
    checkboxGroupInput("molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules),
    checkboxGroupInput("cells", label = "Cell type",  choices = info$cells, selected = info$cells),
