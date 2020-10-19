@@ -50,13 +50,13 @@ plot_type_ch =   sub("/","",grep("depth",unique(h5ls(h5file)[,1]),v=T))
   plot_type_ch  = c("-");
 }
 
-options1=c("showCI" ,"barchart", "showSecondAxis")
+options1=c("showCI" ,"barchart", "showSecondAxis", "reverseOrder")
 totick1 = c("showCI" ,"barchart")
 #options2 = c("logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts")
- options2 = c("logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts", "stacked")
+ options2 = c("logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder")
 totick2 = c("TPM","ribbonCI","barchart","stacked")
 options3 = c("show_depth","logy", "TPM","showMotifs","showORFs", "sumDepth","mergeCounts")
-totick3 = c("show_depth", "mergeCounts", "sumDepth")
+totick3 = c( "mergeCounts", "sumDepth")
 
 coordsFile = paste(currdir, "Coordinates.csv",sep="/")
 if(file.exists(coordsFile)){

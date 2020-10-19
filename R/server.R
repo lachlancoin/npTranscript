@@ -86,12 +86,14 @@ datafile=NULL
 h5file = NULL
 
 
-.getlevels<-function(type_nme, molecules, cells, times){
+.getlevels<-function(type_nme, molecules, cells, times, reverseOrder=T){
   types_=data.frame(t(data.frame(strsplit(type_nme,"_"))))
   names(types_) = c("molecules","cell","time")
   inds1 =  which(types_$molecules %in% molecules & types_$cell %in% cells & types_$time %in% times)
   types1_ = types_[inds1,,drop=F]
   ord = order(as.numeric(factor(types1_$time, levels=c("0hpi", "2hpi","24hpi","48hpi"))),types1_$cell,types1_$molecules)
+ if(reverseOrder) ord = order(types1_$molecules,types1_$cell,as.numeric(factor(types1_$time, levels=c("0hpi", "2hpi","24hpi","48hpi"))))
+  
   levels1=type_nme[inds1][ord]
   attr(levels1,"inds1") = inds1
   levels1
@@ -256,10 +258,17 @@ shinyServer(function(input, output,session) {
    counts_file = paste(currdir, "Counts_genome1.csv",sep="/")
    if(file.exists(counts_file)){
      countsHostVirus= read.csv(counts_file)
-     inds_a = grep("X.Map.to", names(countsHostVirus))
+     names(countsHostVirus) =  gsub("X.","",names(countsHostVirus))
+     inds_a = grep("Map.to", names(countsHostVirus))
      for(ij in inds_a) countsHostVirus[,ij] = countsHostVirus[,ij] * 1e4
-     sampleID= apply(countsHostVirus[,1:3],1,paste,collapse="_")
-     session$userData$countsHostVirus = cbind(sampleID,countsHostVirus)
+     sample= apply(countsHostVirus[,1:3],1,paste,collapse="_")
+     countsHostVirus=cbind(sample,countsHostVirus)
+     countsHostVirus=
+      melt(countsHostVirus,id.vars=c("sample"),
+                   measure.vars=grep("Map.to",names(countsHostVirus),v=T), variable.name="ID", value.name="count") %>%
+       transform(sample=factor(sample), ID=factor(ID))
+     session$userData$countsHostVirus = countsHostVirus
+     
    }
      
     coords_file = paste(currdir, "Coordinates.csv",sep="/")
@@ -444,6 +453,7 @@ shinyServer(function(input, output,session) {
     showCI = "showCI" %in% input$options2
     merge='mergeCounts' %in% input$options2
     barchart="barchart" %in% input$options2
+    reverseOrder="reverseOrder" %in% input$options2
     stack = "stacked" %in% input$options2
     group_by=input$group_by
     max_trans = input$maxtrans
@@ -498,11 +508,11 @@ shinyServer(function(input, output,session) {
         subs = list()
         for(i in 1:length(splitby_vec)){
           if(splitby=="molecules"){
-            levs1=.getlevels(header,molecules[i], cells, times)
+            levs1=.getlevels(header,molecules[i], cells, times, reverseOrder)
           } else if(splitby=="cells"){
-            levs1=.getlevels(header,molecules, cells[i], times)
+            levs1=.getlevels(header,molecules, cells[i], times, reverseOrder)
           }else{
-            levs1=.getlevels(header,molecules, cells, times[i])
+            levs1=.getlevels(header,molecules, cells, times[i], reverseOrder)
             
           }
           subs[[i]] =.processTPM(mat, header, toplot, levels=levs1,split=T)
@@ -518,17 +528,12 @@ shinyServer(function(input, output,session) {
         subs = merge(subs[[1]],subs[[2]],by=by)
         sample=apply(subs[,2:3,drop=F],1,paste,collapse="_")
       } else if(barchart){
-        levs1=.getlevels(header,molecules, cells, times)
+        levs1=.getlevels(header,molecules, cells, times, reverseOrder)
         subs =.processTPM(mat, header, toplot, levels=levs1,split=F)
         
         sample = subs$sample
       
-        if(!is.null(session$userData$countsHostVirus)){
-          countsHostVirus= session$userData$countsHostVirus
-          subm = countsHostVirus[match( subs$sample,countsHostVirus$sampleID), grep("Map.to",names(countsHostVirus))]
-          subs = cbind(subs,subm)
-          print(head(subs))
-        }
+       
         
       }else{
         tpm_df= .processTPM(mat, header, toplot,split=T)
@@ -588,21 +593,18 @@ shinyServer(function(input, output,session) {
         #  ord="Start"
         # x1 =  paste("reorder(", ORF, ",", ord,")", sep="") 
         if(stack){
-          #ggp<-ggplot(subs, aes_string(x="sample",y=y_text,fill=ORF, colour=ORF,ymin="lower" ,ymax="upper"))
-          ggp<-ggplot(subs,aes_string(x="sample"))
-          ggp<-ggp+geom_bar(aes_string(y=y_text,fill=ORF,color=ORF),position="stack",stat='identity')
-#          ggp<-ggp+ geom_bar(position="stack", aes_string(y="TPM"),stat="identity")
-          if(showTPM && !logy && "X.Map.to.Host" %in% names(subs)){
-          #  ggp<-ggplot(countsHostVirus, aes_string(x="sample"))
-            ggp<-ggp+geom_line(aes_string(y="X.Map.to.Host",x="sample", group="ID"),color="black",stat="identity")
-            ggp<-ggp+geom_line(aes_string(y="X.Map.to.Virus",x="sample", group="ID"),color="red",stat="identity")
-            ggp<-ggp+geom_line(aes_string(y="X.Map.to.Sequin",x="sample", group="ID"),color="blue",stat="identity")
-            ggp<-ggp+geom_point(aes_string(y='X.Map.to.Host'),color="black",stat="identity")
-            ggp<-ggp+geom_point(aes_string(y='X.Map.to.Virus' ),color="red",stat="identity")
-            ggp<-ggp+geom_point(aes_string(y='X.Map.to.Sequin'),color="blue",stat="identity")
+          
+          ggp<-ggplot()
+          ggp<-ggp+geom_bar(data=subs,aes_string(x="sample",y=y_text,fill=ORF,color=ORF),position="stack",stat='identity')
+          if(!is.null(session$userData$countsHostVirus) && showTPM && !logy){
+              countsHostVirus= session$userData$countsHostVirus
+              countsHostVirus = countsHostVirus[which(countsHostVirus$sample %in% subs$sample),,drop=F]
+            ggp<-ggp+geom_point(data=countsHostVirus, aes_string(x="sample",color="ID",y="count"),stat="identity")
+            ggp<-ggp+geom_line(data=countsHostVirus, aes_string(x="sample",color="ID",y="count", group="ID"),stat="identity")
             ggp<-ggp+ scale_y_continuous(
               name = "TPM",
               sec.axis = sec_axis(~.*1e-4, name="Proportion (%)"))
+            #ggp<-ggp+ scale_colour_manual(values = c("black","red",  "green","orange","pink"))
           }
         }else{
           ggp<-ggplot(subs, aes_string(x=ORF,y=y_text,fill="sample", colour='sample',ymin="lower" ,ymax="upper"))
@@ -653,6 +655,7 @@ shinyServer(function(input, output,session) {
   infectivityPlot=function(){
     currdir = session$userData$currdir
     barchart="barchart" %in% input$options1
+    reverseOrder="reverseOrder" %in% input$options1
     showSecondAxis="showSecondAxis" %in% input$options1
     conf.int=input$conf.int
     
@@ -663,7 +666,7 @@ shinyServer(function(input, output,session) {
       type_nme= names(total_reads)
       
       
-      levels1 = .getlevels(type_nme,molecules, cells, times)
+      levels1 = .getlevels(type_nme,molecules, cells, times,reverseOrder)
       orfs=input$orfs
       norm=F
       ratio1 = .readAnnotFile(infilesAnnot,total_reads,norm=norm,levels= levels1, conf.level=conf.int, orfs=orfs)
