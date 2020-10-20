@@ -90,7 +90,7 @@ shinyUI(fluidPage(
    # selectInput("toplot6", label = paste("Transcript",names(info$choices1)[1]), choices=c("-",info$choices1[[1]]), selected="-"),
     
     textInput("toplot7", label="All transcripts matching", value = ""),
-    selectInput("tojoin", label ="Join", choices=c("AND","OR"), selected="OR"),
+    selectInput("tojoin", label ="Join", choices=c("AND","OR","AND NOT"), selected="OR"),
     
     textInput("toplot8", label="All transcripts matching", value = ""),
   selectInput("group_by", label="Group transcripts by", choices = c('No grouping' ,'all', 'type', 'juncts'), selected = 'No grouping'),

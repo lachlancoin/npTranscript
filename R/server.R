@@ -589,7 +589,7 @@ shinyServer(function(input, output,session) {
       }else if(barchart){
         ORF="ID"
         y_text="TPM"
-        if(!showTPM) y_text = "Counts";
+      #  if(!showTPM) y_text = "Counts";
         #  ord="Start"
         # x1 =  paste("reorder(", ORF, ",", ord,")", sep="") 
         if(stack){

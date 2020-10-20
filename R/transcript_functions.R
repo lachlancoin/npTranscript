@@ -1377,6 +1377,7 @@ expandBr<-function(breakP_, region){
   endc = region[4:6]
   rows = breakP_$rows
   cols = breakP_$cols
+  
   rowl = floor(seq(startc[1], startc[2], by = startc[3]))
   coll = floor(seq(endc[1], endc[2], by = endc[3]))
   if(rowl[length(rowl)]<region[2]) rowl = c(rowl, rowl[length(rowl)] +startc[3])
@@ -1395,8 +1396,10 @@ expandBr<-function(breakP_, region){
       heatm1[i1,j1]  = heatm1[i1,j1] + heatm[i,j]
     }
   }
+  
 }
- 
+  vol = startc[3] *endc[3]
+  heatm1=apply(heatm1,c(1,2),function(x) x/vol) 
   dimh = dim(heatm1)
   rows1 = data.frame(pos = as.numeric(dimnames(heatm1)[[1]]), depth = apply(heatm1, 1, sum) , s_e = as.factor(rep(as.character(rows$s_e[1]), dimh[1])))
   cols1 = data.frame(pos = as.numeric(dimnames(heatm1)[[2]]), depth = apply(heatm1, 2, sum) , s_e = as.factor(rep(as.character(cols$s_e[1]), dimh[2])))
