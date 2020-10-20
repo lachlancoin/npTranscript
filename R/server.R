@@ -797,7 +797,7 @@ toggle("DE_time2")
 	)
 	})
 	
-	session$userData$resultsDE <- DE$main_out[['data']]
+	
 		}
 	 } )
 	 
@@ -820,6 +820,6 @@ output$downloadVOLCANO <- downloadHandler(filename = function() {'plotVOLCANO.pd
 	dev.off()
 		})
 output$downloadDEdata <- downloadHandler(filename = function() {'DE_data.xlsx'}, content = function(file) {
-	write.xlsx(DE$main_out[['data']], file)
+	write_xlsx(DE$main_out[['data']], file)
 	})
 })
