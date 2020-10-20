@@ -112,8 +112,9 @@ shinyUI(fluidPage(
   numericInput("loess", label = "Loess span", value = 0.0,max=1,min=0),
  numericInput("alpha", label = "Transparency", value = 1.0),
    
-   checkboxInput('ActivateDE', label = 'Activate DE', FALSE),
-   selectInput("DE_cell", label = "DE in cell", choices = info$cells),
+   checkboxInput('LoadDE', label = 'Activate DE'),
+   selectInput("DE_cell1", label = "DE in cell 1", choices = c()),
+   selectInput("DE_cell2", label = "DE in cell 2", choices = c()),
    selectInput("DE_time1", label = "Time 1", choices = c()),
    selectInput("DE_time2", label = "Time 2", choices = c()),
      actionButton('plotDE', 'Do DE')
@@ -141,8 +142,11 @@ shinyUI(fluidPage(
     plotOutput("depthEndPlot", height=400),
         downloadButton("downloadDepthEnd", 'Download plot'),
 	h2("DE Plots"),
-	withSpinner(plotOutput("DEPlot_PCA", height = 400)),
-	withSpinner(plotOutput("DEPlot_volcano", height = 400))
+	plotOutput("DEPlot_PCA", height = 400),
+	downloadButton('downloadPCA', 'Download PCA'),
+	plotOutput("DEPlot_volcano", height = 400),
+	downloadButton("downloadVOLCANO", 'Download Volcano'),
+	downloadButton("downloadDEdata", 'Download DE data')
 	
 
   )

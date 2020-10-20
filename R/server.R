@@ -223,6 +223,10 @@ shinyServer(function(input, output,session) {
 	#output$instructions <- renderPrint({
 	#	print("Upload 0.transcripts.txt.gz file produced by npTranscript");
 	#})
+	
+	#source("shiny-DE.R")
+	
+	
 	readDir <- function() {
     print(input$dir)
     print(" updating input dir")
@@ -293,14 +297,22 @@ shinyServer(function(input, output,session) {
 	
 	print(dir.exists(file.path(currdir,'DE')))
 	
-	updateCheckboxInput(session, "ActivateDE", value = FALSE)	
-	session$userData$DE_countdata = NULL
+	updateCheckboxInput(session, "LoadDE", value = FALSE)
+	hide("plotDE")
+	hide("DE_cell1")
+	hide("DE_cell2")
+	hide("DE_time1")
+	hide("DE_time2")	
+	
+	
+	print('setting DE_countdata to NULL')
+	DE$counts = NULL
 	
 	if (!dir.exists(file.path(currdir,'DE'))) {
-		shinyjs::disable('ActivateDE') 
+		shinyjs::disable('LoadDE') 
 		} else {
 		session$userData$DE = file.path(currdir, 'DE')
-		shinyjs::enable('ActivateDE')
+		shinyjs::enable('LoadDE')
 	}
 	
 	#toggleState('ActivateDE', condition = dir.exists(file.path(currdir,'DE')))
@@ -325,7 +337,9 @@ shinyServer(function(input, output,session) {
   count_files <- list.files(path = file.path(session$userData$currdir, 'DE'), recursive = T, full.names = T)
   cell_types <- lapply(strsplit(x = count_files, split = '/'), rev) %>% sapply('[', 2) 
   print(cell_types)
+  
   print(count_files)
+  
   countdata <- lapply(count_files, FUN = 
                         function(x) {read.table((gzfile(x)), header = T, row.names = 1) %>%
                               subset(select = -c(1:5)) %>% 
@@ -684,9 +698,7 @@ shinyServer(function(input, output,session) {
     }
   }
   
-  makeDEPlots = function() {
-	
-	}
+
 	
 # DE_countdata <- reactive( {
 	
@@ -699,11 +711,8 @@ shinyServer(function(input, output,session) {
 		
 	# })
 	
-do_DE <- observeEvent(
-	input$plotDE, 
-	runDE(count_list = DE_countdata, cell = input$DE_cell, time1 = input$DE_time1, time2 = input$DE_time2)
-	
-)
+		
+
   
   observeEvent(input$plottype,{
     dd= .process1(input$plottype,  session$userData$info)
@@ -745,37 +754,51 @@ do_DE <- observeEvent(
 	})
 
 
-#DE Plots
-observeEvent( input$ActivateDE,	
-{
+DE <- reactiveValues(counts = NULL, main_out = NULL)
 
-	session$userData$DE_countdata = loadDE()
-	updateSelectInput(session, "DE_cell",  choices = names(session$userData$DE_countdata))
+
+observeEvent( input$LoadDE,	
+{
+	DE$counts = loadDE()
+	print(paste('loadDE output'))
+	updateSelectInput(session, "DE_cell1",  choices = names(DE$counts))
+	updateSelectInput(session, "DE_cell2", choices = names(DE$counts))
 	updateSelectInput(session, "DE_time1",  choices = session$userData$info$times)
-updateSelectInput(session, "DE_time2",  choices = session$userData$info$times)
+	updateSelectInput(session, "DE_time2",  choices = session$userData$info$times)
+
 
 
 toggle("plotDE")
-toggle(id = "DE_cell")
+toggle("DE_cell1")
+toggle("DE_cell2")
 toggle("DE_time1")
 toggle("DE_time2")
 
 } )
 
 
+#DE Plots
  observeEvent(input$plotDE, {
+ head(DE$counts)
+ if (is.null(DE$counts)) {print('DE_countdata is null') } else {
+	head(DE$counts)
+	DE$main_out <- runDE(count_list = DE$counts, cell1 = input$DE_cell1 , cell2 = input$DE_cell2, time1 = input$DE_time1, time2 = input$DE_time2)
+	print(paste('DEout done', names(DE$main_out)))
 	
-	DEout <- runDE(count_list = session$userData$DE_countdata, cell = input$DE_cell , time1 = input$DE_time1, time2 = input$DE_time2)
 	
 	output$DEPlot_volcano <- renderPlot( {
-	DEout[['volcano']]
+	do.call(volcanoplot, 
+	DE$main_out[['volcano_params']] )
 	})
 	
 	output$DEPlot_PCA <- renderPlot( {
-	DEout[['rld_pca']]
+	do.call(rld_pca, 
+	DE$main_out[['rld_pca_params']]
+	)
 	})
 	
-	session$userData$resultsDE <- DEout[['data']]
+	session$userData$resultsDE <- DE$main_out[['data']]
+		}
 	 } )
 	 
 #Downloads
@@ -786,6 +809,17 @@ output$downloadDepthEnd <- downloadHandler(filename = function() {'plotDepthEnd.
 output$downloadDist <- downloadHandler(filename = function() {'plotDist.pdf'}, content = function(file) ggsave(file, transcriptPlot(), device = 'pdf' , height = 20, width = 40, units='cm') )
 output$downloadResults<-downloadHandler(filename = function() {'results.xlsx'}, content = function(file) write_xlsx( session$userData$results,file ) )
 output$downloadResultsInf<-downloadHandler(filename = function() {'resultsInf.xlsx'}, content = function(file) write_xlsx( session$userData$resultsInf,file ) )
-
-	 })
-
+output$downloadPCA <- downloadHandler(filename = function() {'plotPCA.pdf'}, content = function(file) {
+	pdf(file, 18, 18, pointsize=50)
+	do.call(rld_pca, DE$main_out[['rld_pca_params']])
+	dev.off()
+		})
+output$downloadVOLCANO <- downloadHandler(filename = function() {'plotVOLCANO.pdf'}, content = function(file) {
+	pdf(file, 18, 18, pointsize=20)
+	do.call(volcanoplot, DE$main_out[['volcano_params']] )
+	dev.off()
+		})
+output$downloadDEdata <- downloadHandler(filename = function() {'DE_data.xlsx'}, content = function(file) {
+	write.xlsx(DE$main_out[['data']], file)
+	})
+})

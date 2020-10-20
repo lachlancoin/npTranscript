@@ -13,23 +13,27 @@ suppressPackageStartupMessages({
   library(tibble)
     })
 
-# loadDE <- function() {
-# 
-#   # Import data
-#   message(paste('importing DE Data'))
-#   count_files <- list.files(path = 'DE', recursive = T, full.names = T)
-#   cell_types <- lapply(strsplit(x = count_files, split = '/'), rev) %>% sapply('[', 2) 
-#   print(count_files)
-#   countdata <- lapply(count_files, FUN =
-#                         function(x) {read.table((gzfile(x)), header = T, row.names = 1) %>%
-#                               subset(select = -c(1:5)) %>%
-#                                 as.matrix() } )
-#   names(countdata) <- cell_types
-#   return(countdata)
-# }
+loadDE <- function() {
+  
+  # Import data 
+  message(paste('importing DE Data'))
+  count_files <- list.files(path = 'DE', recursive = T, full.names = T)
+  cell_types <- lapply(strsplit(x = count_files, split = '/'), rev) %>% sapply('[', 2) 
+  print(cell_types)
+  
+  print(count_files)
+  
+  countdata <- lapply(count_files, FUN = 
+                        function(x) {read.table((gzfile(x)), header = T, row.names = 1) %>%
+                            subset(select = -c(1:5)) %>% 
+                            as.matrix() } )
+  names(countdata) <- cell_types
+  return(countdata)
+}
 
 #PCA Function
-rld_pca <- function (rld, intgroup = "condition", ntop = 500, colors=NULL, legendpos="bottomleft", main=paste('PCA', cell, time1, 'vs', cell, time2), textcx=1, ...) {
+rld_pca <- function (rld, intgroup = "condition", ntop = 500, colors=NULL, legendpos="bottomleft", main=paste('PCA', cell1, time1, 'vs', cell2, time2), textcx=1, ...) {
+  print(main)
   require(genefilter)
   require(calibrate)
   require(RColorBrewer)
@@ -54,7 +58,7 @@ rld_pca <- function (rld, intgroup = "condition", ntop = 500, colors=NULL, legen
 }
 
 # Volcano Plot
-volcanoplot <- function (res, lfcthresh=0.5, sigthresh=0.05, main="Volcano Plot", legendpos="bottomright", labelsig=FALSE, textcx=1, ...) {
+volcanoplot <- function (res, lfcthresh=0.5, sigthresh=0.05, main="Volcano Plot", legendpos="bottomright", labelsig=FALSE, textcx=0.8, ...) {
   with(res, plot(log2FoldChange, -log10(pvalue), pch=20, main=main, ...))
   with(subset(res, padj<sigthresh ), points(log2FoldChange, -log10(pvalue), pch=20, col="blue", ...))
   with(subset(res, abs(log2FoldChange)>lfcthresh), points(log2FoldChange, -log10(pvalue), pch=20, col="orange", ...))
@@ -67,13 +71,22 @@ volcanoplot <- function (res, lfcthresh=0.5, sigthresh=0.05, main="Volcano Plot"
 }
 
 
-runDE <- function(count_list, cell, time1, time2) {
-  #Trim to relevant columns
-  countdata = count_list[[cell]]
-  first_cond_idx <- which(grepl(time1, x= colnames(countdata)))
-  second_cond_idx <- which(grepl(time2, x= colnames(countdata)))
-  count_trim <- countdata[,c(first_cond_idx, second_cond_idx)]
+runDE <- function(count_list, cell1, cell2, time1, time2) {
   
+  #Trim to relevant columns
+  print(paste('DE', cell1, cell2, time1, time2))
+  first_cond_idx <- which(grepl(time1, x= colnames(count_list[[cell1]])))
+  second_cond_idx <- which(grepl(time2, x= colnames(count_list[[cell2]])))
+  
+  count_trim <- merge( x = count_list[[cell1]][,first_cond_idx], 
+                       y = count_list[[cell2]][, second_cond_idx], 
+                       by = "row.names", sort = FALSE) %>% 
+                transform(row.names=Row.names, Row.names=NULL) %>%
+              as.matrix()
+  
+  #uncomment below if all = T in merge
+  #count_trim[is.na(count_trim)] <- 0
+
   # Assign conditions
   (condition <- factor(c(rep(time1, length(first_cond_idx)), rep(time2, length(second_cond_idx)))))
   
@@ -103,15 +116,15 @@ runDE <- function(count_list, cell, time1, time2) {
   
   # PCA
   #pdf(paste0("pca_1_2_", output, ".pdf"), 18, 18, pointsize=50)
-  rpca <- rld_pca(rld, colors=mycols, intgroup="condition", xlim=c(-1, 1), ylim=c(-1, 1))
+  rpca_command <- list(rld = rld, colors=mycols, intgroup="condition", xlim=c(-1, 1), ylim=c(-1, 1), main = paste('PCA', cell1, time1, 'vs', cell2, time2))
   #dev.off()
-
+  
+  #Volcano
   #pdf(paste0("volcanoplot_", output, ".pdf"), 18, 18, pointsize=20)
-  vp <- volcanoplot(resdata, lfcthresh=0.5, sigthresh=0.05, textcx=0.8, xlim=c(-10, 10), legendpos="topright", main = paste('DESeq2', cell, time1, 'vs', cell, time2))
-  
+  vp_command <- list(res = resdata, lfcthresh=0.5, sigthresh=0.05, textcx=0.8, xlim=c(-10, 10), legendpos="topright", main = paste('DESeq2', cell, time1, 'vs', cell, time2))
   #dev.off()
   
-  return(list(data = resdata, rld_pca = rpca, volcano = vp))
+  return(list(data = resdata, rld_pca_params = rpca_command, volcano_params = vp_command))
 }
 
 #DE_out <- main()
