@@ -29,7 +29,7 @@ suppressPackageStartupMessages({
 # }
 
 #PCA Function
-rld_pca <- function (rld, intgroup = "condition", ntop = 500, colors=NULL, legendpos="bottomleft", main=paste('PCA', cell1, time1, 'vs', cell2, time2), textcx=1, ...) {
+rld_pca <- function (rld, intgroup = "condition", ntop = 500, colors=NULL, legendpos="bottomleft", main=paste('PCA', cell, time1, 'vs', cell, time2), textcx=1, ...) {
   require(genefilter)
   require(calibrate)
   require(RColorBrewer)
