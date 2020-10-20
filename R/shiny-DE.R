@@ -90,7 +90,7 @@ runDE <- function(count_list, cell1, cell2, time1, time2) {
   #count_trim[is.na(count_trim)] <- 0
 
   # Assign conditions
-  (condition <- factor(c(rep(paste(time1, cell1, sep = '_'), length(first_cond_idx)), rep(paste(time2, cell2, sep = '_'), length(second_cond_idx)))))
+  (condition <- factor(c(rep(paste('1', time1, cell1, sep = '_'), length(first_cond_idx)), rep(paste('2',time2, cell2, sep = '_'), length(second_cond_idx)))))
   
   # Make DESeq dataset
   (coldata <- data.frame(row.names=colnames(count_trim), condition))
