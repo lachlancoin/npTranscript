@@ -56,7 +56,7 @@ reorder=T
     names(l) = junctlev
   }else{
   l[[1]] = grep(group_by,x1,v=T)
-  l[[2]] = grep(group_by, x1,inv=T,v=t )
+  l[[2]] = grep(group_by, x1,inv=T,v=T )
   names(l) = c(group_by,paste("!",group_by))
   }
   l[ unlist(lapply(l, length))>0]
@@ -589,7 +589,7 @@ shinyServer(function(input, output,session) {
       }else if(barchart){
         ORF="ID"
         y_text="TPM"
-        if(!showTPM) y_text = "Counts";
+      #  if(!showTPM) y_text = "Counts";
         #  ord="Start"
         # x1 =  paste("reorder(", ORF, ",", ord,")", sep="") 
         if(stack){
