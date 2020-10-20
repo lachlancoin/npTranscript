@@ -75,6 +75,8 @@ runDE <- function(count_list, cell1, cell2, time1, time2) {
   
   #Trim to relevant columns
   print(paste('DE', cell1, cell2, time1, time2))
+  print(colnames(count_list[[cell1]]))
+  print(colnames(count_list[[cell2]]))
   first_cond_idx <- which(grepl(time1, x= colnames(count_list[[cell1]])))
   second_cond_idx <- which(grepl(time2, x= colnames(count_list[[cell2]])))
   
@@ -88,7 +90,7 @@ runDE <- function(count_list, cell1, cell2, time1, time2) {
   #count_trim[is.na(count_trim)] <- 0
 
   # Assign conditions
-  (condition <- factor(c(rep(time1, length(first_cond_idx)), rep(time2, length(second_cond_idx)))))
+  (condition <- factor(c(rep(paste(time1, cell1, sep = '_'), length(first_cond_idx)), rep(paste(time2, cell2, sep = '_'), length(second_cond_idx)))))
   
   # Make DESeq dataset
   (coldata <- data.frame(row.names=colnames(count_trim), condition))
