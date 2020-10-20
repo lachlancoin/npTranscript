@@ -107,7 +107,7 @@ runDE <- function(count_list, cell, time1, time2) {
   #dev.off()
 
   #pdf(paste0("volcanoplot_", output, ".pdf"), 18, 18, pointsize=20)
-  vp <- volcanoplot(resdata, lfcthresh=0.5, sigthresh=0.05, textcx=0.8, xlim=c(-10, 10), legendpos="topright", main = paste('DESeq2', cell1, time1, 'vs', cell2, time2))
+  vp <- volcanoplot(resdata, lfcthresh=0.5, sigthresh=0.05, textcx=0.8, xlim=c(-10, 10), legendpos="topright", main = paste('DESeq2', cell, time1, 'vs', cell, time2))
   
   #dev.off()
   
