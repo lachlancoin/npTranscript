@@ -56,7 +56,7 @@ reorder=T
     names(l) = junctlev
   }else{
   l[[1]] = grep(group_by,x1,v=T)
-  l[[2]] = grep(group_by, x1,inv=T,v=t )
+  l[[2]] = grep(group_by, x1,inv=T,v=T )
   names(l) = c(group_by,paste("!",group_by))
   }
   l[ unlist(lapply(l, length))>0]
