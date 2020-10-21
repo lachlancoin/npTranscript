@@ -678,8 +678,11 @@ shinyServer(function(input, output,session) {
     infilesAnnot = paste(currdir,"0.annot.txt.gz", sep="/")
     total_reads = session$userData$total_reads
     type_nme= names(total_reads)
-    total_reads1=countsTotal$count[match(type_nme,countsTotal$sample)]
-    names(total_reads1) = type_nme
+    total_reads1 = total_reads
+    if(!is.null(countsTotal)){
+      total_reads1=countsTotal$count[match(type_nme,countsTotal$sample)]
+      names(total_reads1) = type_nme
+    }
     if(file.exists(infilesAnnot)){
       molecules=input$molecules; cells=input$cells; times = input$times;
       

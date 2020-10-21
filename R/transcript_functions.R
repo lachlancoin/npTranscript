@@ -243,12 +243,12 @@ getKmer<-function(base, pos,v = c(-1,0,1)){
 if(is.null(levels)){
   levels=type_nme
 }
-  if(!norm){
-    total_reads = rep(1,length(total_reads))
-    names(total_reads) = type_name
-  }else{
-    total_reads = total_reads/1e6
-  }
+  #if(!norm){
+  #  total_reads = rep(1,length(total_reads))
+  #  names(total_reads) = type_name
+  #}else{
+  #  total_reads = total_reads/1e6
+  #}
   toinclude=which(type_nme %in% levels)
   spi  = grep("Spliced", names(annot))
   uspi = grep("Unspliced", names(annot))
@@ -268,7 +268,8 @@ if(is.null(levels)){
   for(i in toinclude){
     sumr = annot[,spi[i]] + annot[,uspi[i]]
     confints =   binom.confint(annot[,spi[i]],sumr ,method="logit",conf.level=conf.level)
-    confints1 =   binom.confint(sumr ,rep(total_reads1[i], length(sumr)), method="logit",conf.level=conf.level)
+  
+    confints1 = confints#  binom.confint(sumr ,rep(total_reads[i], length(sumr)), method="logit",conf.level=conf.level)
     
     #confints[,4:6]*sumr
     nme = c(nme,paste(c("mean","lower","upper"), type_nme[i],sep="_"))
@@ -284,7 +285,7 @@ if(is.null(levels)){
     ratio1[ranges,8] =  annot[,uspi[i]];#/total_reads[i]
   
     ratio1[ranges,9] = apply(-log2(confints[,4:6]),1,paste,collapse=":")
-    ratio1[ranges,10] = apply(log2(confints1[,4:6]*1e6),1,paste,collapse=":")
+    ratio1[ranges,10] = apply(log2(confints[,4:6]*1e6),1,paste,collapse=":")
     #ratio1[ranges,7:9] = mixt[,indsi]
     offset = offset + length(ranges)
   }
