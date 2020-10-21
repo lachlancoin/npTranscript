@@ -118,7 +118,7 @@ runDE <- function(count_list, cell1, cell2, time1, time2) {
   
   # PCA
   #pdf(paste0("pca_1_2_", output, ".pdf"), 18, 18, pointsize=50)
-  rpca_command <- list(rld = rld, colors=mycols, intgroup="condition", xlim=c(-1, 1), ylim=c(-1, 1), main = paste('PCA', cell1, time1, 'vs', cell2, time2))
+  rpca_command <- list(rld = rld, colors=mycols, intgroup="condition", xlim=c(-10, 10), ylim=c(-10, 10), main = paste('PCA', cell1, time1, 'vs', cell2, time2))
   #dev.off()
   
   #Volcano
