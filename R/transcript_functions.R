@@ -255,7 +255,8 @@ if(is.null(levels)){
   ratio = data.frame(matrix(nrow = dim(annot)[1], ncol = length(spi)*3))
   mixt = data.frame(matrix(nrow = dim(annot)[1], ncol = length(spi)*3))
   
- nme_r = c("ORF", "Start", "Ratio","lower","upper", "type","spliced","unspliced","logdiff","logtotal")
+ nme_r = c("ORF", "Start", "Ratio","lower","upper", "type","spliced","unspliced","logdiff",
+           "logtotal")
   
   offset = 0
   if(is.null(type_nme)) type_nme = 1:length(spi)
@@ -265,20 +266,25 @@ if(is.null(levels)){
   
   names(ratio1) = nme_r
   for(i in toinclude){
-    confints =   binom.confint(annot[,spi[i]],(annot[,spi[i]]+ annot[,uspi[i]]) ,method="logit",conf.level=conf.level)
+    sumr = annot[,spi[i]] + annot[,uspi[i]]
+    confints =   binom.confint(annot[,spi[i]],sumr ,method="logit",conf.level=conf.level)
+    confints1 =   binom.confint(sumr ,rep(total_reads1[i], length(sumr)), method="logit",conf.level=conf.level)
+    
+    #confints[,4:6]*sumr
     nme = c(nme,paste(c("mean","lower","upper"), type_nme[i],sep="_"))
    # print(nme)
     indsi = ((i-1)*3+1):((i)*3)
-    ratio[,indsi ]= confints[,4:6]
+  #  ratio[,indsi ]= confints[,4:6]
     ranges = offset + 1:length(annot$Gene)
     ratio1[ranges,1] = as.character(annot$Gene)
     ratio1[ranges,2] = as.numeric(as.character(annot$Start))
     ratio1[ranges,3:5] = confints[,4:6]
     ratio1[ranges,6] = rep(type_nme[i], length(ranges))
-    ratio1[ranges,7] = annot[,spi[i]]/total_reads[i]
-    ratio1[ranges,8] =  annot[,uspi[i]]/total_reads[i]
-    ratio1[ranges,9] = -log2(ratio1[ranges,7]/(ratio1[ranges,7]+ratio1[ranges,8]))
-    ratio1[ranges,10] = log2((ratio1[ranges,7]+ratio1[ranges,8])/total_reads[i])
+    ratio1[ranges,7] = annot[,spi[i]]; #/total_reads[i]
+    ratio1[ranges,8] =  annot[,uspi[i]];#/total_reads[i]
+  
+    ratio1[ranges,9] = apply(-log2(confints[,4:6]),1,paste,collapse=":")
+    ratio1[ranges,10] = apply(log2(confints1[,4:6]*1e6),1,paste,collapse=":")
     #ratio1[ranges,7:9] = mixt[,indsi]
     offset = offset + length(ranges)
   }
@@ -289,33 +295,54 @@ if(is.null(levels)){
  ratio1
 }
 #  ggp= NULL
-.plotAnnotFile<-function(ratio1, levels=NULL,barchart=F,showEB = F,showSecondAxis=F,coeff=2,diff=0, y_text="Ratio"){
+.plotAnnotFile<-function(ratio1, levels=NULL,barchart=F,showEB = F,showSecondAxis=F,coeff=1,diff=0, y_text="Ratio"){
   if(!barchart){
     timevec=c("0hpi","2hpi","24hpi","48hpi")
     ratio3= separate(ratio1,6, c('molecule_type', 'cell', 'time'), sep='_', remove = T) %>%
       transform(  molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time,levels=timevec))
-    # if(is.null(orfs_include)) orfs_include = levels(factor(ratio3$ORF))
- 
-    if(!showSecondAxis){
-      ggp1<-ggplot(ratio3, aes(x=time))
-      data=ratio3
-    ggp1<-ggp1+geom_line(aes(y=logdiff ,group=interaction(molecule_type, cell, ORF), color = cell))
-    ggp1<-ggp1+geom_point(aes(y=logdiff ,group=interaction(molecule_type, cell, ORF), color = cell, shape=ORF,size=10))
-    ggp1<-ggp1+ scale_y_continuous( name = "Log2 (total - sub-genomics)")
     
+    ratio5=
+      separate(ratio3,logdiff, c('value', 'lower', 'upper'), sep=':', remove = T) %>%
+      transform( lower=as.numeric(lower),upper=as.numeric(upper),value=as.numeric(value)  ) 
+    ratio5 = ratio5[!( is.infinite((ratio5$value)) | is.na(ratio5$value)),]
+    
+    # if(is.null(orfs_include)) orfs_include = levels(factor(ratio3$ORF))
+    lims = c(0,max(ratio5$value[is.finite(ratio5$value)],na.rm=T))
+    
+    if(!showSecondAxis){
+      ggp1<-ggplot(ratio5, aes(x=time))
+    #  data=ratio3
+     # print(head(data))
+    #  print(max(data$logdiff,na.rm=T))
+      
+    ggp1<-ggp1+geom_line(aes(y=value ,group=interaction(molecule_type, cell, ORF), color = cell))
+    ggp1<-ggp1+geom_point(aes(y=value ,group=interaction(molecule_type, cell, ORF), color = cell, shape=ORF,size=10))
+    ggp1<-ggp1+ scale_y_continuous( name = "Log2 (total - sub-genomics)", limits=lims)
+    if(showEB) ggp1<-ggp1+geom_ribbon(aes(ymin=lower, ymax=upper, group=interaction(molecule_type, cell, ORF), color = cell), linetype=1, alpha=0.1)
     }else{
-      ratio3$logtotal = (ratio3$logtotal-diff)/coeff
-      ratio4 = melt(ratio3,id.vars=c("ORF","molecule_type","cell","time"), measure.vars=c("logdiff","logtotal"))
+  #    ratio3$logtotal = (ratio3$logtotal-diff)/coeff
+      ratio4 = melt(ratio3,id.vars=c("ORF","molecule_type","cell","time"), measure.vars=c("logdiff","logtotal")) %>%
+        separate(value, c('value', 'lower', 'upper'), sep=':', remove = T) %>%
+        transform( lower=as.numeric(lower),upper=as.numeric(upper),value=as.numeric(value)  ) 
+     ratio4 = ratio4[!( is.infinite((ratio4$value)) | is.na(ratio4$value)),]
+      indst = ratio4$variable=="logtotal"
+      ratio4$value[indst] = (ratio4$value[indst]-diff)/coeff
+      ratio4$lower[indst] = (ratio4$lower[indst]-diff)/coeff
+      ratio4$upper[indst] = (ratio4$upper[indst]-diff)/coeff
+      
       data=ratio4
+      #print(head(data))
       ggp1<-ggplot(ratio4, aes(x=time))
       ggp1<-ggp1+geom_line(aes(y=value ,group=interaction(molecule_type, cell, ORF,variable), color = cell, linetype=variable))
       ggp1<-ggp1+geom_point(aes(y=value ,group=interaction(molecule_type, cell, ORF,variable), color = cell, shape=ORF,size=10))
+      if(showEB) ggp1<-ggp1+geom_ribbon(aes(ymin=lower, ymax=upper, group=interaction(molecule_type, cell, ORF,variable), color = cell, linetype=variable),  alpha=0.1)
+
        #ggp1<-ggp1+geom_line(aes(y=(logtotal-diff)/coeff ,group=interaction(molecule_type, cell, ORF), color = cell, linetype="dashed"))
        #ggp1<-ggp1+geom_point(aes(y=(logtotal-diff)/coeff ,group=interaction(molecule_type, cell, ORF), color = cell, shape=ORF,size=10))
        
        ggp1<-ggp1+ scale_y_continuous(
       name = "Log2 (total - sub-genomics)",
-      sec.axis = sec_axis(~.*coeff+diff, name="Log2 Total")
+      sec.axis = sec_axis(~.*coeff+diff, name="Log2 TPM")
     )
      }
      

@@ -267,11 +267,13 @@ shinyServer(function(input, output,session) {
      for(ij in inds_a) countsHostVirus[,ij] = countsHostVirus[,ij] * 1e4
      sample= apply(countsHostVirus[,1:3],1,paste,collapse="_")
      countsHostVirus=cbind(sample,countsHostVirus)
+     vars = c(names(countsHostVirus[inds_a]), "Total")
      countsHostVirus=
       melt(countsHostVirus,id.vars=c("sample"),
-                   measure.vars=grep("Map.to",names(countsHostVirus),v=T), variable.name="ID", value.name="count") %>%
+                   measure.vars=which(names(countsHostVirus) %in% vars), variable.name="ID", value.name="count") %>%
        transform(sample=factor(sample), ID=factor(ID))
-     session$userData$countsHostVirus = countsHostVirus
+     session$userData$countsHostVirus = countsHostVirus[countsHostVirus$ID!="Total",]
+     session$userData$countsTotal = countsHostVirus[countsHostVirus$ID=="Total",]
      
    }
      
@@ -672,22 +674,25 @@ shinyServer(function(input, output,session) {
     reverseOrder="reverseOrder" %in% input$options1
     showSecondAxis="showSecondAxis" %in% input$options1
     conf.int=input$conf.int
-    
+    countsTotal=session$userData$countsTotal
     infilesAnnot = paste(currdir,"0.annot.txt.gz", sep="/")
     total_reads = session$userData$total_reads
+    type_nme= names(total_reads)
+    total_reads1=countsTotal$count[match(type_nme,countsTotal$sample)]
+    names(total_reads1) = type_nme
     if(file.exists(infilesAnnot)){
       molecules=input$molecules; cells=input$cells; times = input$times;
-      type_nme= names(total_reads)
       
       
       levels1 = .getlevels(type_nme,molecules, cells, times,reverseOrder)
       orfs=input$orfs
       norm=F
-      ratio1 = .readAnnotFile(infilesAnnot,total_reads,norm=norm,levels= levels1, conf.level=conf.int, orfs=orfs)
+      ratio1 = .readAnnotFile(infilesAnnot,total_reads1,norm=norm,levels= levels1, conf.level=conf.int, orfs=orfs)
       #.plotAnnotFile<-function(ratio1,molecule_type, cell, time, levels=NULL,barchart=F,showEB = F,showSecondAxis=F){
       y_text="Ratio"
       #   y_text="spliced"
-      annots1=.plotAnnotFile(ratio1,barchart=barchart,showSecondAxis=showSecondAxis,showEB=T, levels=levels1, y_text=y_text)
+      annots1=.plotAnnotFile(ratio1,barchart=barchart,showSecondAxis=showSecondAxis,showEB=T, levels=levels1, y_text=y_text,
+                             diff=0, coeff=5)
      
 #      resall = 
      # names(resall) =   session$userData$dirname
