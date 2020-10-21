@@ -312,19 +312,20 @@ if(is.null(levels)){
     
     if(!showSecondAxis){
       ggp1<-ggplot(ratio5, aes(x=time))
-      ggp1<-ggp1+geom_line(aes(y=value ,group=interaction(molecule_type, cell, ORF), color = cell))
-      ggp1<-ggp1+ scale_y_continuous( name = "Log2 (total - sub-genomics)", limits=lims)
-      ggp1<-ggp1+geom_point(position=position_dodge(width=0.1),aes(y=value ,group=interaction(molecule_type, cell, ORF), color = cell, shape=ORF,size=10))
+      ggp1<-ggp1+geom_line(position=position_dodge(width=0.1),aes(y=value ,group=interaction(molecule_type, cell, ORF), color = cell))
       
     if(showEB) {
       ggp1<-ggp1+ geom_errorbar(aes(ymin=lower, ymax=upper, group=interaction(molecule_type, cell, ORF), color = cell),
                                 position=position_dodge(width=0.1)) #,colour="black")
+      ggp1<-ggp1+geom_point(position=position_dodge(width=0.1),aes(y=value ,group=interaction(molecule_type, cell, ORF), color = cell, shape=ORF,size=10))
       
      # ggp1<-ggp1+geom_ribbon(aes(ymin=lower, ymax=upper, group=interaction(molecule_type, cell, ORF), color = cell), linetype=1, alpha=0.1)
     }else{
       ggp1<-ggp1+geom_point(aes(y=value ,group=interaction(molecule_type, cell, ORF), color = cell, shape=ORF,size=10))
       
     }
+      ggp1<-ggp1+ scale_y_continuous( name = "Log2 (total - sub-genomics)", limits=lims)
+      
         }else{
   #    ratio3$logtotal = (ratio3$logtotal-diff)/coeff
       ratio4 = melt(ratio3,id.vars=c("ORF","molecule_type","cell","time"), measure.vars=c("logdiff","logtotal")) %>%
@@ -803,7 +804,8 @@ split1<-function(fi) strsplit(fi,"_")[[1]][1]
 
 
 
-plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = T, linetype="sampID", colour="clusterID", title = "", ylab=if(rawdepth)  "depth" else "TPM", logy=F, leg_size = 6, xlim  = NULL, show=F, updatenmes = F, fill = F, alpha=0.5){
+plotClusters<-function(df, k1, totalReadCount, t, fimo, peptides,rawdepth = T, linetype="sampID", colour="clusterID", title = "", ylab=if(rawdepth)  "depth" else "TPM", logy=F, 
+                       leg_size = 6, xlim  = NULL, show=F, updatenmes = F, fill = F, alpha=0.5){
   if(!is.factor(df$clusterID)) df$clusterID = as.factor(df$clusterID)  #types[df$type]
  # names(df)[3] = "depth"
   #ids =  as.character(rel_count$ID)
@@ -860,6 +862,12 @@ legend.title=element_text(size=leg_size), legend.text=element_text(size=leg_size
     ggp<-ggp+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id=='TRS_long')], linetype="dotdash", color="black")
     #ggp<-ggp+geom_vline(xintercept = fimo$start[fimo$strand=="-"], linetype="dotted", color="grey")
   }
+
+if(!is.null(peptides)){
+  ggp<-ggp+geom_vline(xintercept = peptides[,1], linetype="dashed", color="blue")
+  ggp<-ggp+geom_vline(xintercept = peptides[,2], linetype="dotted", color="blue")
+  #ggp<-ggp+geom_vline(xintercept = fimo$start[fimo$strand=="-"], linetype="dotted", color="grey")
+}
   #abline(v = t$Maximum, col=3)
   if(!is.null(xlim)) ggp<-ggp+xlim(xlim)
  # ggp<-ggp

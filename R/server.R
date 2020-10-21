@@ -100,7 +100,7 @@ h5file = NULL
 }
 #run_depth(h5file, total_reads=total_reads)
 run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", gapthresh=100, mergeGroups=NULL,molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
-                    span = 0.01, sumAll=F, xlim=null, fimo=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,showORFs = F, path="depth"){
+                    span = 0.01, sumAll=F, xlim=null, fimo=NULL,peptides=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,showORFs = F, path="depth"){
 
   	header =.getHeaderH5(h5file,toreplace)
   	if(path=="depth"){
@@ -170,7 +170,7 @@ ylab="depth"
 if(!is.null(total_reads)) ylab="depth per million mapped reads"
  plotClusters(tpm_df, 4,  1, 
               t,
-             fimo,
+             fimo,peptides,
                rawdepth = rawdepth, linetype=linetype, colour=colour, alpha=alpha, xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =leg_size1, show=show, fill =fill)
 }
 
@@ -289,6 +289,14 @@ shinyServer(function(input, output,session) {
     }else{
       orfs = c()
     }
+    peptide_file =paste(currdir,"peptides.csv",sep="/")
+    if(file.exists(peptide_file)){
+      peptide=read.csv(peptide_file,  head=F)
+      peptide = peptide[!duplicated(peptide[,2]),-1,drop=F]
+      names(peptide)=c("start","end")
+      session$userData$peptide = peptide
+      
+    }
     session$userData$dirname = gsub("/","_",input$dirname)
     session$userData$currdir=currdir
     session$userData$datafile=datafile
@@ -365,12 +373,14 @@ shinyServer(function(input, output,session) {
     showORFs="showORFs" %in% input$options3
     showMotifs="showMotifs" %in% input$options3
     mergeCounts='mergeCounts' %in% input$options3
+    showPeptides="showPeptides" %in% input$options3
     
     tpm = "TPM" %in% input$options3
     h5file=session$userData$h5file
     total_reads = NULL
     fimo = NULL
     t = NULL
+    peptides=NULL
    # print(showMotifs)
     if(showMotifs){
     fimo = session$userData$fimo
@@ -378,6 +388,9 @@ shinyServer(function(input, output,session) {
     #print(fimo)
     if(showORFs){
     t = session$userData$t
+    }
+    if(showPeptides){
+      peptides=session$userData$peptide
     }
     if(tpm){
       total_reads = session$userData$total_reads
@@ -432,7 +445,7 @@ shinyServer(function(input, output,session) {
         #xlim= NULL
         if(xlim[2]<=xlim[1]) xlim = NULL
           ggplot=run_depth(h5file,total_reads,toplot, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
-                    showORFs = showORFs, fimo=fimo,xlim =xlim, t=t,path=plot_type, showMotifs =showMotifs, alpha=alpha) 
+                    showORFs = showORFs, fimo=fimo,peptides=peptides,xlim =xlim, t=t,path=plot_type, showMotifs =showMotifs, alpha=alpha) 
         }
         #run_depth(h5file,toplot=c("leader_leader,N_end")) 
       }
