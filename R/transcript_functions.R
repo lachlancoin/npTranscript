@@ -864,8 +864,8 @@ legend.title=element_text(size=leg_size), legend.text=element_text(size=leg_size
   }
 
 if(!is.null(peptides)){
-  ggp<-ggp+geom_vline(xintercept = peptides[,1], linetype="dashed", color="blue")
-  ggp<-ggp+geom_vline(xintercept = peptides[,2], linetype="dotted", color="blue")
+  ggp<-ggp+geom_vline(xintercept = peptides[,1], linetype="dotted", color="blue")
+  ggp<-ggp+geom_vline(xintercept = peptides[,2], linetype="dashed", color="blue")
   #ggp<-ggp+geom_vline(xintercept = fimo$start[fimo$strand=="-"], linetype="dotted", color="grey")
 }
   #abline(v = t$Maximum, col=3)

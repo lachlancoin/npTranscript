@@ -168,6 +168,8 @@ linetype="sampleID"
 }
 ylab="depth"
 if(!is.null(total_reads)) ylab="depth per million mapped reads"
+session$userData$dataDepth[[which(names(session$userData$dataDepth)==path)]] = tpm_df
+
  plotClusters(tpm_df, 4,  1, 
               t,
              fimo,peptides,
@@ -230,6 +232,8 @@ shinyServer(function(input, output,session) {
 	readDir <- function() {
     print(input$dir)
     print(" updating input dir")
+    session$userData$dataDept = list("depth"=data.frame(), "depthStart"=data.frame(), "depthEnd"=data.frame())
+    
     currdir = paste(basedir,input$dir,sep="/")
     datafile = paste(currdir,"0.isoforms.h5",sep="/")
     h5file=paste(currdir,"0.clusters.h5",sep="/")   
