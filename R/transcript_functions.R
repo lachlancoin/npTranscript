@@ -939,7 +939,7 @@ legend.title=element_text(size=leg_size), legend.text=element_text(size=leg_size
   }
   if(!is.null(motifpos)){
     for(jk in 1:length(motifpos)){
-    ggp<-ggp+geom_vline(xintercept = motifpos[[jk]], linetype=jk, color="black")
+    ggp<-ggp+geom_vline(xintercept = motifpos[[jk]], linetype=jk+1, color="black")
     }
   #  ggp<-ggp+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id=='TRS_long')], linetype="dotdash", color="black")
     #ggp<-ggp+geom_vline(xintercept = fimo$start[fimo$strand=="-"], linetype="dotted", color="grey")
