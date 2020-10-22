@@ -100,7 +100,7 @@ h5file = NULL
 }
 #run_depth(h5file, total_reads=total_reads)
 run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", gapthresh=100, mergeGroups=NULL,molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
-                    span = 0.01, sumAll=F, xlim=null, fimo=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,showORFs = F, path="depth"){
+                    span = 0.01, sumAll=F, xlim=null, fimo=NULL,peptides=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,showORFs = F, path="depth"){
 
   	header =.getHeaderH5(h5file,toreplace)
   	if(path=="depth"){
@@ -170,7 +170,7 @@ ylab="depth"
 if(!is.null(total_reads)) ylab="depth per million mapped reads"
  plotClusters(tpm_df, 4,  1, 
               t,
-             fimo,
+             fimo,peptides,
                rawdepth = rawdepth, linetype=linetype, colour=colour, alpha=alpha, xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =leg_size1, show=show, fill =fill)
 }
 
@@ -267,11 +267,13 @@ shinyServer(function(input, output,session) {
      for(ij in inds_a) countsHostVirus[,ij] = countsHostVirus[,ij] * 1e4
      sample= apply(countsHostVirus[,1:3],1,paste,collapse="_")
      countsHostVirus=cbind(sample,countsHostVirus)
+     vars = c(names(countsHostVirus[inds_a]), "Total")
      countsHostVirus=
       melt(countsHostVirus,id.vars=c("sample"),
-                   measure.vars=grep("Map.to",names(countsHostVirus),v=T), variable.name="ID", value.name="count") %>%
+                   measure.vars=which(names(countsHostVirus) %in% vars), variable.name="ID", value.name="count") %>%
        transform(sample=factor(sample), ID=factor(ID))
-     session$userData$countsHostVirus = countsHostVirus
+     session$userData$countsHostVirus = countsHostVirus[countsHostVirus$ID!="Total",]
+     session$userData$countsTotal = countsHostVirus[countsHostVirus$ID=="Total",]
      
    }
      
@@ -286,6 +288,14 @@ shinyServer(function(input, output,session) {
       session$userData$fimo = fimo
     }else{
       orfs = c()
+    }
+    peptide_file =paste(currdir,"peptides.csv",sep="/")
+    if(file.exists(peptide_file)){
+      peptide=read.csv(peptide_file,  head=F)
+      peptide = peptide[!duplicated(peptide[,2]),-1,drop=F]
+      names(peptide)=c("start","end")
+      session$userData$peptide = peptide
+      
     }
     session$userData$dirname = gsub("/","_",input$dirname)
     session$userData$currdir=currdir
@@ -363,12 +373,14 @@ shinyServer(function(input, output,session) {
     showORFs="showORFs" %in% input$options3
     showMotifs="showMotifs" %in% input$options3
     mergeCounts='mergeCounts' %in% input$options3
+    showPeptides="showPeptides" %in% input$options3
     
     tpm = "TPM" %in% input$options3
     h5file=session$userData$h5file
     total_reads = NULL
     fimo = NULL
     t = NULL
+    peptides=NULL
    # print(showMotifs)
     if(showMotifs){
     fimo = session$userData$fimo
@@ -376,6 +388,9 @@ shinyServer(function(input, output,session) {
     #print(fimo)
     if(showORFs){
     t = session$userData$t
+    }
+    if(showPeptides){
+      peptides=session$userData$peptide
     }
     if(tpm){
       total_reads = session$userData$total_reads
@@ -430,7 +445,7 @@ shinyServer(function(input, output,session) {
         #xlim= NULL
         if(xlim[2]<=xlim[1]) xlim = NULL
           ggplot=run_depth(h5file,total_reads,toplot, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
-                    showORFs = showORFs, fimo=fimo,xlim =xlim, t=t,path=plot_type, showMotifs =showMotifs, alpha=alpha) 
+                    showORFs = showORFs, fimo=fimo,peptides=peptides,xlim =xlim, t=t,path=plot_type, showMotifs =showMotifs, alpha=alpha) 
         }
         #run_depth(h5file,toplot=c("leader_leader,N_end")) 
       }
@@ -672,22 +687,28 @@ shinyServer(function(input, output,session) {
     reverseOrder="reverseOrder" %in% input$options1
     showSecondAxis="showSecondAxis" %in% input$options1
     conf.int=input$conf.int
-    
+    countsTotal=session$userData$countsTotal
     infilesAnnot = paste(currdir,"0.annot.txt.gz", sep="/")
     total_reads = session$userData$total_reads
+    type_nme= names(total_reads)
+    total_reads1 = total_reads
+    if(!is.null(countsTotal)){
+      total_reads1=countsTotal$count[match(type_nme,countsTotal$sample)]
+      names(total_reads1) = type_nme
+    }
     if(file.exists(infilesAnnot)){
       molecules=input$molecules; cells=input$cells; times = input$times;
-      type_nme= names(total_reads)
       
       
       levels1 = .getlevels(type_nme,molecules, cells, times,reverseOrder)
       orfs=input$orfs
       norm=F
-      ratio1 = .readAnnotFile(infilesAnnot,total_reads,norm=norm,levels= levels1, conf.level=conf.int, orfs=orfs)
+      ratio1 = .readAnnotFile(infilesAnnot,total_reads1,norm=norm,levels= levels1, conf.level=conf.int, orfs=orfs)
       #.plotAnnotFile<-function(ratio1,molecule_type, cell, time, levels=NULL,barchart=F,showEB = F,showSecondAxis=F){
       y_text="Ratio"
       #   y_text="spliced"
-      annots1=.plotAnnotFile(ratio1,barchart=barchart,showSecondAxis=showSecondAxis,showEB=T, levels=levels1, y_text=y_text)
+      annots1=.plotAnnotFile(ratio1,barchart=barchart,showSecondAxis=showSecondAxis,showEB=T, levels=levels1, y_text=y_text,
+                             diff=0, coeff=5)
      
 #      resall = 
      # names(resall) =   session$userData$dirname
