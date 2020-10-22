@@ -232,7 +232,7 @@ shinyServer(function(input, output,session) {
 	readDir <- function() {
     print(input$dir)
     print(" updating input dir")
-    session$userData$dataDept = list("depth"=data.frame(), "depthStart"=data.frame(), "depthEnd"=data.frame())
+    session$userData$dataDepth = list("depth"=data.frame(), "depthStart"=data.frame(), "depthEnd"=data.frame())
     
     currdir = paste(basedir,input$dir,sep="/")
     datafile = paste(currdir,"0.isoforms.h5",sep="/")
