@@ -7,6 +7,7 @@ library(RColorBrewer)
 library(binom)
 library(writexl)
 library(shinyjs)
+library(seqinr)
 
 source( "transcript_functions.R")
 source("shiny-DE.R")
@@ -60,82 +61,7 @@ h5file = NULL
   levels1
 }
 #run_depth(h5file, total_reads=total_reads)
-run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", gapthresh=100, mergeGroups=NULL,molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
-                    span = 0.01, sumAll=F, xlim=null, fimo=NULL,peptides=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,showORFs = F, path="depth"){
 
-  	header =.getHeaderH5(h5file,toreplace)
-  	if(path=="depth"){
-	dinds  = 2*(2:(length(header))-2)+2
-  	}else{
-  	  dinds = 2:(length(header))
-  	}
-	type_nme = header[-1]
-  types_=data.frame(t(data.frame(strsplit(type_nme,"_"))))
-  names(types_) = c("molecules","cell","time")
- inds1 =  which(types_$molecules %in% molecules & types_$cell %in% cells & types_$time %in% times)
- types1_ = types_[inds1,,drop=F]
- ord = order(as.numeric(factor(types1_$time, levels=c("0hpi", "2hpi","24hpi","48hpi"))),types1_$cell,types1_$molecules)
- levs=type_nme[inds1][ord]
- toAdd=0
- if(logy)toAdd=0.001
- 
- facts =  apply(types1_,2,function(v) levels(factor(v)))
-  same_inds = which(unlist(lapply(facts,length))==1)
-  sumID='all'
-  if(length(same_inds)>0){
-   sumID = paste(unlist(facts[same_inds]),collapse="_")
-  }
- #print(inds1)
- id_cols = c("molecule","cell","time")
- tot_reads=NULL
- if(!is.null(total_reads)){
-   
-   tot_reads =  total_reads[inds1]/rep(1e6,length(inds1))
- }
- #print(tot_reads)
-   	clusters_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]),toAdd = toAdd, mergeGroups=mergeGroups,sumID=sumID, path=path,toplot,id_cols=id_cols, gapthresh=gapthresh, dinds = dinds[inds1], pos =NULL, span = span, cumul=F, sumAll=sumAll)
-#print(clusters_)
-
-  # if(!is.null(xlim)){
-  #   minx = min(clusters_$pos)
-  #   maxx = max(clusters_$pos)
-  #   xlim[1] = max(minx,xlim[1])
-  #   xlim[2] = min(maxx, xlim[2])
-  # }
-   	if(is.null(clusters_)){
-  print(paste("could not read ",toplot))
- return (ggplot())
-   	}
-   	
-   	if(sumAll) levs=names(clusters_)[3]
-   	
-   	tpm_df = melt(clusters_,id.vars=c("clusterID","pos"), measure.vars=names(clusters_)[-(1:2)], variable.name="sampleID",value.name='count') %>%
-   	transform(sampleID=factor(sampleID,levels=levs))
-   	  #  separate(variable, c('molecule_type', 'cell', 'time'), sep='_', remove = T)  %>%
-   	 # transform( count=as.numeric(count), molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time, levels = time_vec)) 
-   	
-   		if(sumAll) type_nme = "combined"
-	#mat=t(h5read(h5file,paste("depth", toplot[1],sep="/")))
-rawdepth = T
-leg_size1=10
-show=T
-fill=F
-k = 1
-linetype="clusterID"
-colour="sampleID"
-if(sumAll){
-colour="clusterID"
-linetype="sampleID"
-}
-ylab="depth"
-if(!is.null(total_reads)) ylab="depth per million mapped reads"
-session$userData$dataDepth[[which(names(session$userData$dataDepth)==path)]] = tpm_df
-
- plotClusters(tpm_df, 4,  1, 
-              t,
-             fimo,peptides,
-               rawdepth = rawdepth, linetype=linetype, colour=colour, alpha=alpha, xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =leg_size1, show=show, fill =fill)
-}
 
 .getCIs<-function(subs,sample, total_reads1,method, showTPM=F,prefix="",suffix="", after=TRUE){
   if(nchar(prefix)>0){
@@ -190,6 +116,75 @@ shinyServer(function(input, output,session) {
 	#source("shiny-DE.R")
 	
 	
+  run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", 
+                      gapthresh=100, mergeGroups=NULL,molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
+                      span = 0.01, sumAll=F, xlim=null, motifpos=NULL,peptides=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,showORFs = F,
+                      path="depth"){
+    
+    header =.getHeaderH5(h5file,toreplace)
+    if(path=="depth"){
+      dinds  = 2*(2:(length(header))-2)+2
+    }else{
+      dinds = 2:(length(header))
+    }
+    type_nme = header[-1]
+    types_=data.frame(t(data.frame(strsplit(type_nme,"_"))))
+    names(types_) = c("molecules","cell","time")
+    inds1 =  which(types_$molecules %in% molecules & types_$cell %in% cells & types_$time %in% times)
+    types1_ = types_[inds1,,drop=F]
+    ord = order(as.numeric(factor(types1_$time, levels=c("0hpi", "2hpi","24hpi","48hpi"))),types1_$cell,types1_$molecules)
+    levs=type_nme[inds1][ord]
+    toAdd=0
+    if(logy)toAdd=0.001
+    
+    facts =  apply(types1_,2,function(v) levels(factor(v)))
+    same_inds = which(unlist(lapply(facts,length))==1)
+    sumID='all'
+    if(length(same_inds)>0){
+      sumID = paste(unlist(facts[same_inds]),collapse="_")
+    }
+    id_cols = c("molecule","cell","time")
+    tot_reads=NULL
+    if(!is.null(total_reads)){
+      
+      tot_reads =  total_reads[inds1]/rep(1e6,length(inds1))
+    }
+    clusters_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]),toAdd = toAdd, mergeGroups=mergeGroups,sumID=sumID, path=path,toplot,id_cols=id_cols, gapthresh=gapthresh, dinds = dinds[inds1], pos =NULL, span = span, cumul=F, sumAll=sumAll)
+    
+    if(is.null(clusters_)){
+      print(paste("could not read ",toplot))
+      return (ggplot())
+    }
+    
+    if(sumAll) levs=names(clusters_)[3]
+    
+    tpm_df = melt(clusters_,id.vars=c("clusterID","pos"), measure.vars=names(clusters_)[-(1:2)], variable.name="sampleID",value.name='count') %>%
+      transform(sampleID=factor(sampleID,levels=levs))
+    
+    if(sumAll) type_nme = "combined"
+    rawdepth = T
+    leg_size1=10
+    show=T
+    fill=F
+    k = 1
+    linetype="clusterID"
+    colour="sampleID"
+    if(sumAll){
+      colour="clusterID"
+      linetype="sampleID"
+    }
+    ylab="depth"
+    if(!is.null(total_reads)) ylab="depth per million mapped reads"
+    invisible(tpm_df)
+    session$userData$dataDepth[[which(names(session$userData$dataDepth)==path)]] = tpm_df
+    
+    plotClusters(tpm_df, 4,  1, 
+                 t,
+                 motifpos,peptides,
+                 rawdepth = rawdepth, linetype=linetype, colour=colour, alpha=alpha, xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =leg_size1, show=show, fill =fill)
+    
+  }
+  
 	readDir <- function() {
     print(input$dir)
     print(" updating input dir")
@@ -253,6 +248,13 @@ shinyServer(function(input, output,session) {
       session$userData$fimo = fimo
     }else{
       orfs = c()
+    }
+    fastafile = grep("extra",grep("fasta.gz",dir(currdir),v=T),v=T,inv=T)
+    if(length(fastafile)>=1){
+      fastaseq = read.fasta(paste(currdir,fastafile[1],sep="/"))
+      session$userData$fastaseq = paste(fastaseq[[1]],collapse="")
+    }else{
+      session$userData$fastaseq=NULL
     }
     peptide_file =paste(currdir,"peptides.csv",sep="/")
     if(file.exists(peptide_file)){
@@ -338,22 +340,26 @@ shinyServer(function(input, output,session) {
     logy = "logy" %in% input$options3
     group_by=input$group_by
   #  plot_type=input$depth_plot_type
-    
+    motif = isolate(input$motif)
+    fastaseq =session$userData$fastaseq
     showORFs="showORFs" %in% input$options3
-    showMotifs="showMotifs" %in% input$options3
+    motifpos=NULL
+    if(nchar(motif>0) && !is.null(fastaseq)){
+      motifpos= lapply(strsplit(motif,"\\|")[[1]], function(x) gregexpr(x,fastaseq, ignore.case=T)[[1]])
+    }
     mergeCounts='mergeCounts' %in% input$options3
     showPeptides="showPeptides" %in% input$options3
     
     tpm = "TPM" %in% input$options3
     h5file=session$userData$h5file
     total_reads = NULL
-    fimo = NULL
+   # fimo = NULL
     t = NULL
     peptides=NULL
    # print(showMotifs)
-    if(showMotifs){
-    fimo = session$userData$fimo
-    }
+    #if(showMotifs){
+    #fimo = session$userData$fimo
+    #}
     #print(fimo)
     if(showORFs){
     t = session$userData$t
@@ -409,12 +415,9 @@ shinyServer(function(input, output,session) {
           times = input$times
         xlim =   c(isolate(input$min_x), isolate(input$max_x))
         alpha = isolate(input$alpha)
-        #print("xlim")
-        #print(xlim)
-        #xlim= NULL
         if(xlim[2]<=xlim[1]) xlim = NULL
           ggplot=run_depth(h5file,total_reads,toplot, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
-                    showORFs = showORFs, fimo=fimo,peptides=peptides,xlim =xlim, t=t,path=plot_type, showMotifs =showMotifs, alpha=alpha) 
+                    showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type, showMotifs =showMotifs, alpha=alpha) 
         }
         #run_depth(h5file,toplot=c("leader_leader,N_end")) 
       }

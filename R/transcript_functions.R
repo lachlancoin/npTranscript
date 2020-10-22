@@ -883,7 +883,8 @@ split1<-function(fi) strsplit(fi,"_")[[1]][1]
 
 
 
-plotClusters<-function(df, k1, totalReadCount, t, fimo, peptides,rawdepth = T, linetype="sampID", colour="clusterID", title = "", ylab=if(rawdepth)  "depth" else "TPM", logy=F, 
+plotClusters<-function(df, k1, totalReadCount, t, motifpos, peptides,rawdepth = T, 
+                       linetype="sampID", colour="clusterID", title = "", ylab=if(rawdepth)  "depth" else "TPM", logy=F, 
                        leg_size = 6, xlim  = NULL, show=F, updatenmes = F, fill = F, alpha=0.5){
   if(!is.factor(df$clusterID)) df$clusterID = as.factor(df$clusterID)  #types[df$type]
  # names(df)[3] = "depth"
@@ -936,9 +937,11 @@ legend.title=element_text(size=leg_size), legend.text=element_text(size=leg_size
     ggp<-ggp+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols)
   
   }
-  if(!is.null(fimo)){
-    ggp<-ggp+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id=='TRS_short')], linetype="dotted", color="black")
-    ggp<-ggp+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id=='TRS_long')], linetype="dotdash", color="black")
+  if(!is.null(motifpos)){
+    for(jk in 1:length(motifpos)){
+    ggp<-ggp+geom_vline(xintercept = motifpos[[jk]], linetype=jk, color="black")
+    }
+  #  ggp<-ggp+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id=='TRS_long')], linetype="dotdash", color="black")
     #ggp<-ggp+geom_vline(xintercept = fimo$start[fimo$strand=="-"], linetype="dotted", color="grey")
   }
 

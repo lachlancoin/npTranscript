@@ -55,7 +55,7 @@ totick1 = c("showCI" ,"barchart")
 #options2 = c("logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts")
  options2 = c("logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder")
 totick2 = c("TPM","ribbonCI","barchart")
-options3 = c("show_depth","logy", "TPM","showMotifs","showORFs", "sumDepth","mergeCounts", "showPeptides")
+options3 = c("show_depth","logy", "TPM","showORFs", "sumDepth","mergeCounts", "showPeptides")
 totick3 = c( "mergeCounts", "sumDepth")
 
 coordsFile = paste(currdir, "Coordinates.csv",sep="/")
@@ -111,7 +111,11 @@ shinyUI(fluidPage(
   numericInput("max_x", label = "Max position", value = 30000),
   numericInput("loess", label = "Loess span", value = 0.0,max=1,min=0),
  numericInput("alpha", label = "Transparency", value = 1.0),
-   
+ textInput("motif", label="Show motif", value = "ACGAAC|ACGATC|ATGAAC"),
+ 
+ 
+ 
+ 
    checkboxInput('LoadDE', label = 'Activate DE'),
    selectInput("DE_cell1", label = "DE in cell 1", choices = c()),
    selectInput("DE_cell2", label = "DE in cell 2", choices = c()),
