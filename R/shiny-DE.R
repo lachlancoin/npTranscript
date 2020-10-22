@@ -11,6 +11,7 @@ suppressPackageStartupMessages({
   library(readr)
   library(dplyr)
   library(tibble)
+  library(ggrepel)
     })
 
 loadDE <- function() {
@@ -57,17 +58,62 @@ rld_pca <- function (rld, intgroup = "condition", ntop = 500, colors=NULL, legen
   legend(legendpos, legend=levels(fac), col=colors, pch=20)
 }
 
+
+.volcano<-function(df, logFCthresh = 0.5, top=20, prefix="", useadj=TRUE,exclude=NULL, main){
+  if(dim(df)[[1]]==0) return(NULL)
+  if(!is.null(exclude)){
+    df = df[!(df$grp %in% exclude),,drop=F]
+  }
+  if(useadj){
+    pthresh = sort(df$padj)[top]
+    ggp<-ggplot(df, aes(x =log2FoldChange, y = -log10(padj),color = ifelse(abs(log2FoldChange)>0.6,"red","grey")))  + theme_bw()
+    ggp<-ggp+  geom_point() +  xlab(expression("Fold Change, Log"[2]*"")) +  ylab(expression("Adjusted P value, Log"[10]*"")) 
+  }else{
+    pthresh = sort(df$pvalue)[top]
+    ggp<-ggplot(df, aes(x =log2FoldChange, y = -log10(pvalue),color = ifelse(abs(log2FoldChange)>0.6,"red","grey"))) + theme_bw()
+    ggp<-ggp+  geom_point() +  xlab(expression("Fold Change, Log"[2]*"")) +  ylab(expression(" P value, Log"[10]*"")) 
+  }
+  print(paste("pthresh",pthresh))
+  ggp<-ggp+  geom_vline(
+    xintercept = c(-0.6,0.6),
+    col = "red",
+    linetype = "dotted",
+    size = 1) 
+  ggp<-ggp+  geom_hline(
+    yintercept = c(-log10(0.01),-log10(0.05)),
+    col = "red",
+    linetype = "dotted",
+    size = 1)
+  ggp<-ggp+  theme(
+    plot.title = element_text(size=20)
+  )
+  ggp<-ggp+  theme(legend.position = "none")+
+    scale_colour_manual(values = c("grey", "red")) 
+  if(useadj){
+    ggp<-ggp+  geom_text_repel(data=subset(df,abs(log2FoldChange) >= logFCthresh & padj < pthresh),
+                               aes(log2FoldChange, -log10(padj), label = Row.names),size = 3, color="steelblue")
+  }else{
+    ggp<-ggp+  geom_text_repel(data=subset(df,abs(log2FoldChange) >= logFCthresh & pvalue < pthresh),
+                               aes(log2FoldChange, -log10(pvalue), label = Row.names),size = 3, color="steelblue")
+  }
+  ggp<-ggp+ggtitle(main)
+  ggp
+}
+
+
+
 # Volcano Plot
-volcanoplot <- function (res, lfcthresh=0.5, sigthresh=0.05, main="Volcano Plot", legendpos="bottomright", labelsig=FALSE, textcx=0.8, ...) {
+volcanoplot <- function (res, lfcthresh=0.5, sigthresh=0.05, main="Volcano Plot", legendpos="bottomright", labelsig=T, textcx=0.8, ...) {
+
   with(res, plot(log2FoldChange, -log10(pvalue), pch=20, main=main, ...))
   with(subset(res, padj<sigthresh ), points(log2FoldChange, -log10(pvalue), pch=20, col="blue", ...))
   with(subset(res, abs(log2FoldChange)>lfcthresh), points(log2FoldChange, -log10(pvalue), pch=20, col="orange", ...))
   with(subset(res, padj<sigthresh & abs(log2FoldChange)>lfcthresh), points(log2FoldChange, -log10(pvalue), pch=20, col="green", ...))
   if (labelsig) {
     require(calibrate)
-    with(subset(res, padj<sigthresh & abs(log2FoldChange)>lfcthresh), textxy(log2FoldChange, -log10(pvalue), labs=Gene, cex=textcx, ...))
+    with(subset(res, padj<sigthresh & abs(log2FoldChange)>lfcthresh), textxy(log2FoldChange, -log10(pvalue), labs=Row.names, cex=textcx, ...))
   }
-  legend(legendpos, xjust=1, yjust=1, legend=c(paste("p-adj<",sigthresh,sep=""), paste("|LogFC|>",lfcthresh,sep=""), "both"), pch=20, col=c("red","orange","green"))
+  #legend(legendpos, xjust=1, yjust=1, legend=c(paste("p-adj<",sigthresh,sep=""), paste("|LogFC|>",lfcthresh,sep=""), "both"), pch=20, col=c("red","orange","green"))
 }
 
 
@@ -124,9 +170,10 @@ runDE <- function(count_list, cell1, cell2, time1, time2) {
   #Volcano
   #pdf(paste0("volcanoplot_", output, ".pdf"), 18, 18, pointsize=20)
   vp_command <- list(res = resdata, lfcthresh=0.5, sigthresh=0.05, textcx=0.8, xlim=c(-10, 10), legendpos="topright", main = paste('DESeq2', cell1, time1, 'vs', cell2, time2))
+  vp_ggp_command <- list(df = resdata, main = paste('DESeq2', cell1, time1, 'vs', cell2, time2))
   #dev.off()
   
-  return(list(data = resdata, rld_pca_params = rpca_command, volcano_params = vp_command))
+  return(list(data = resdata, rld_pca_params = rpca_command, volcano_params = vp_command, volcano_ggp_params = vp_ggp_command))
 }
 
 #DE_out <- main()
