@@ -133,33 +133,112 @@ unlist(v)
   cnts = h5read(isofile, paste(group, x,sep="/"))
   c(cnts, rep(0,len -length(cnts)))
 }
+
 .findEntries<-function(x,isofile, group ,tojoin="OR"){
   mat = h5ls(isofile)
   mat = mat[mat$group==group,,drop=F]
+  .findEntries1(x,mat$name, tojoin)
+}
+
+
+.getGroups<-function(x1, group_bys){
+  group_l = unlist(strsplit(group_bys,":")[[1]])
+  l1 = list(x1)
+  for(i in 1:length(group_l)){
+    l1 = unlist(lapply(l1,.getGroupsInner,group_l[i]),recursive=F)
+  }
+  l1
+}
+
+.getGroupsInner<-function(x1,group_by){
+  l = list()
+  if(group_by=="all"){
+    l = list("all"=x1)    
+  }else if(group_by=="type"){
+    l = list(
+      grep("end",grep("start|leader",x1,v=T),v=T),
+      grep("end",grep("start|leader",x1,v=T),v=T,inv=T),
+      grep("end",grep("start|leader", x1,v=T,inv=T),v=T),
+      grep("end",grep("start|leader", x1,v=T,inv=T),v=T,inv=T)
+    )
+    #l = vals #lapply(vals,function(x) which(x1 %in% x))
+    names(l) = c("5_3", "5_no3","no5_3","no5_no3") 
+  }else if(group_by=="juncts"){
+    juncts = factor( unlist(lapply(x1,function(x)-1+length(strsplit(x,",")[[1]]))))
+    junctlev = levels(juncts)
+    #  print(juncts)
+    #  print(junctlev)
+    l = list()
+    for(k in 1:length(junctlev)){
+      l[[k]] = x1[which(juncts==junctlev[k])]
+    }
+    names(l) = junctlev
+  }else{
+    l[[1]] = grep(group_by,x1,v=T)
+    l[[2]] = grep(group_by, x1,inv=T,v=T )
+    names(l) = c(group_by,paste("!",group_by))
+  }
+  l[ unlist(lapply(l, length))>0]
+}
+
+
+
+
+
+  
+.subsetFCFile<-function(mat, toplot5,toplot7, toplot8, tojoin="OR",group_by="No grouping"){
+  toplot=toplot5
+  toplot = toplot[toplot!="-"]
+  matname = dimnames(mat)[[1]]
+  
+  if(length(toplot)==0){
+    toplot = c(toplot7, toplot8)
+    toplot = toplot[unlist(lapply(toplot,nchar))>2]
+    if(toplot!="all"){
+      mat= mat[matname %in% .findEntries1(toincl,matname,tojoin=tojoin),,drop=F]
+    }
+    if(group_by != "No grouping"){
+      ncol = dim(mat)[[2]]
+      grps = .getGroups(matname,group_by)
+      mat1 = matrix(nrow = length(grps), ncol = ncol)
+      for(i in 1:length(grps)){
+        mat1[i,] = apply(mat[grps[[i]],,drop=F],2,sum)
+      }
+      dimnames(mat1) = list(names(grps), dimnames(mat)[[2]])
+      mat = mat1
+    }
+  }else{
+    mat = mat[matname %in% toplot,,drop=F]
+  }
+  
+  mat
+}
+.findEntries1<-function(x,matname ,tojoin="OR"){
+
   join_and = tojoin=="AND"
-  join_not = tojoin=="NOT"
-if(join_and || join_not)  x2 =  mat$name else   x2 =  c()
+  join_not = tojoin=="AND NOT"
+if(join_and || join_not)  x2 =  matname else   x2 =  c()
   for(j in 1:length(x)){
     if(x[j]=="all"){
-      x1 = mat$name
+      x1 = matname
     }else if(x[j]=="no3"){
-      x1=mat[grep("end",mat$name,inv=T),,drop=F]$name
+      x1=mat[grep("end",matname,inv=T),,drop=F]$name
     }else if(x[j]=="no5"){
-      x1=mat[grep("leader",mat$name,inv=T),,drop=F]$name
+      x1=mat[grep("leader",matname,inv=T),,drop=F]$name
     }else if(x[j]=="no5_no3"){
       ##need to fix this
-      x1 = grep("end",grep("leader",mat$name,inv=T,v=T),inv=T,v=T)
+      x1 = grep("end",grep("leader",matname,inv=T,v=T),inv=T,v=T)
     }else if(x[j]=="no5_3"){
-      x1 = grep("end",grep("leader",mat$name,inv=T,v=T),inv=F,v=T)
+      x1 = grep("end",grep("leader",matname,inv=T,v=T),inv=F,v=T)
     }else if(x[j]=="5_no3"){
-      x1 = grep("end",grep("leader",mat$name,inv=F,v=T),inv=T,v=T)
+      x1 = grep("end",grep("leader",matname,inv=F,v=T),inv=T,v=T)
     }else if(x[j]=="5_3"){
-      x1 = grep("end",grep("leader",mat$name,inv=F,v=T),inv=F,v=T)
+      x1 = grep("end",grep("leader",matname,inv=F,v=T),inv=F,v=T)
     }else if(length(grep("juncts",x[j]))>0){
       num = as.numeric(strsplit(x[j],":")[[1]][2])
-      x1=mat$name[unlist(lapply(strsplit(mat$name,","),length))==(num+1)]
+      x1=matname[unlist(lapply(strsplit(matname,","),length))==(num+1)]
     }else{
-     x1=mat[grep(x[j],mat$name),,drop=F]$name
+     x1=mat[grep(x[j],matname),,drop=F]$name
     }
     if(join_and) x2 = x2[x2 %in% x1] else if (join_not) x2 = x2[!(x2 %in% x1)] else x2 = c(x2, x1[!(x1 %in% x2)])
 }

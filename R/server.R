@@ -22,45 +22,6 @@ names(toreplace) = replace[,1]
 
 reorder=T
 
-.getGroups<-function(x1, group_bys){
-  group_l = unlist(strsplit(group_bys,":")[[1]])
-  l1 = list(x1)
-  for(i in 1:length(group_l)){
-    l1 = unlist(lapply(l1,.getGroupsInner,group_l[i]),recursive=F)
-  }
-  l1
-}
-
-.getGroupsInner<-function(x1,group_by){
-  l = list()
-  if(group_by=="all"){
-  l = list("all"=x1)    
-  }else if(group_by=="type"){
-    l = list(
-      grep("end",grep("start|leader",x1,v=T),v=T),
-      grep("end",grep("start|leader",x1,v=T),v=T,inv=T),
-      grep("end",grep("start|leader", x1,v=T,inv=T),v=T),
-      grep("end",grep("start|leader", x1,v=T,inv=T),v=T,inv=T)
-    )
-    #l = vals #lapply(vals,function(x) which(x1 %in% x))
-    names(l) = c("5_3", "5_no3","no5_3","no5_no3") 
-  }else if(group_by=="juncts"){
-    juncts = factor( unlist(lapply(x1,function(x)-1+length(strsplit(x,",")[[1]]))))
-    junctlev = levels(juncts)
-  #  print(juncts)
-  #  print(junctlev)
-   l = list()
-    for(k in 1:length(junctlev)){
-      l[[k]] = x1[which(juncts==junctlev[k])]
-    }
-    names(l) = junctlev
-  }else{
-  l[[1]] = grep(group_by,x1,v=T)
-  l[[2]] = grep(group_by, x1,inv=T,v=T )
-  names(l) = c(group_by,paste("!",group_by))
-  }
-  l[ unlist(lapply(l, length))>0]
-}
 #dirs = list.dirs(basedir,full.names=F, rec=T)
 #dirs=dirs[which(unlist(lapply(dirs,function(x) file.exists(paste(basedir,x,"0.isoforms.h5",sep="/")))))]
 #seldir=1
@@ -348,7 +309,8 @@ shinyServer(function(input, output,session) {
   
   # Import data 
   message(paste('importing DE Data'))
-  count_files <- list.files(path = file.path(session$userData$currdir, 'DE'), recursive = T, full.names = T)
+    currdir = session$userData$currdir
+  count_files <- list.files(path = file.path(currdir, 'DE'), recursive = T, full.names = T)
   cell_types <- lapply(strsplit(x = count_files, split = '/'), rev) %>% sapply('[', 2) 
   print(cell_types)
   
@@ -358,6 +320,9 @@ shinyServer(function(input, output,session) {
                         function(x) {read.table((gzfile(x)), header = T, row.names = 1) %>%
                               subset(select = -c(1:5)) %>% 
                                 as.matrix() } )
+  
+ # .subsetFCFile(countdata[[1]], toplot5,toplot7, toplot8, tojoin="OR",group_by="No grouping")
+    
   names(countdata) <- cell_types
   return(countdata)
 }
