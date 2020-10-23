@@ -784,10 +784,11 @@ toggle("DE_time2")
 	#head(DE$counts)
    plot_params = list(toplot5=input$toplot5, toplot2=c(input$toplot7, input$toplot8), 
                       tojoin=input$tojoin, group_by=input$group_by)
-	DE$main_out <- runDE(count_list = DE$counts, cell1 = input$DE_cell1 ,
+	DE$main_out <- try(runDE(count_list = DE$counts, cell1 = input$DE_cell1 ,
 	                     cell2 = input$DE_cell2, time1 = input$DE_time1, 
 	                     time2 = input$DE_time2,  thresh=input$mean_count_thresh,
-	                     plot_params=plot_params)
+	                     plot_params=plot_params))
+	if(!inherits(DE$main_out,"try-error")) {
 	print(paste('DEout done', names(DE$main_out)))
 	
 	
@@ -801,7 +802,7 @@ toggle("DE_time2")
 	DE$main_out[['rld_pca_params']]
 	)
 	})
-	
+	}
 	
 		}
 	 } )
