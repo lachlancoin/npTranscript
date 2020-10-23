@@ -219,14 +219,14 @@ unlist(v)
   join_not = tojoin=="AND NOT"
 if(join_and || join_not)  x2 =  matname else   x2 =  c()
   for(j in 1:length(x)){
+    
     if(x[j]=="all"){
       x1 = matname
     }else if(x[j]=="no3"){
-      x1=mat[grep("end",matname,inv=T),,drop=F]$name
+      x1=grep("end",matname,inv=T,v=T)
     }else if(x[j]=="no5"){
-      x1=mat[grep("leader",matname,inv=T),,drop=F]$name
+      x1=grep("leader",matname,inv=T,v=T)
     }else if(x[j]=="no5_no3"){
-      ##need to fix this
       x1 = grep("end",grep("leader",matname,inv=T,v=T),inv=T,v=T)
     }else if(x[j]=="no5_3"){
       x1 = grep("end",grep("leader",matname,inv=T,v=T),inv=F,v=T)
@@ -238,7 +238,7 @@ if(join_and || join_not)  x2 =  matname else   x2 =  c()
       num = as.numeric(strsplit(x[j],":")[[1]][2])
       x1=matname[unlist(lapply(strsplit(matname,","),length))==(num+1)]
     }else{
-     x1=mat[grep(x[j],matname),,drop=F]$name
+     x1=grep(x[j],matname,v=T)
     }
     if(join_and) x2 = x2[x2 %in% x1] else if (join_not) x2 = x2[!(x2 %in% x1)] else x2 = c(x2, x1[!(x1 %in% x2)])
 }
@@ -937,7 +937,7 @@ legend.title=element_text(size=leg_size), legend.text=element_text(size=leg_size
     ggp<-ggp+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols)
   
   }
-  if(!is.null(motifpos)){
+  if(length(motifpos)>0){
     for(jk in 1:length(motifpos)){
     ggp<-ggp+geom_vline(xintercept = motifpos[[jk]], linetype=jk+1, color="black")
     }

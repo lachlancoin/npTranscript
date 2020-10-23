@@ -118,7 +118,7 @@ shinyServer(function(input, output,session) {
 	
   run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", 
                       gapthresh=100, mergeGroups=NULL,molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
-                      span = 0.01, sumAll=F, xlim=null, motifpos=NULL,peptides=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,showORFs = F,
+                      span = 0.01, sumAll=F, xlim=null, motifpos=list(),peptides=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,showORFs = F,
                       path="depth"){
     
     header =.getHeaderH5(h5file,toreplace)
@@ -343,7 +343,7 @@ shinyServer(function(input, output,session) {
     motif = isolate(input$motif)
     fastaseq =session$userData$fastaseq
     showORFs="showORFs" %in% input$options3
-    motifpos=NULL
+    motifpos=list()
     if(nchar(motif>0) && !is.null(fastaseq)){
       motifpos= lapply(strsplit(motif,"\\|")[[1]], function(x) gregexpr(x,fastaseq, ignore.case=T)[[1]])
     }
