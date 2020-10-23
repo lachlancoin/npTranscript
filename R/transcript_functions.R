@@ -186,16 +186,17 @@ unlist(v)
 
 
   
-.subsetFCFile<-function(mat, toplot5,toplot7, toplot8, tojoin="OR",group_by="No grouping"){
-  toplot=toplot5
+.subsetFCFile<-function(mat, plot_params){
+  toplot=plot_params$toplot5
   toplot = toplot[toplot!="-"]
   matname = dimnames(mat)[[1]]
-  
-  if(length(toplot)==0){
-    toplot = c(toplot7, toplot8)
-    toplot = toplot[unlist(lapply(toplot,nchar))>2]
+  toplot2 = plot_params$toplot2
+  toplot2 = toplot2[unlist(lapply(toplot2,nchar))>2]
+  group_by = plot_params$group_by
+  if(length(toplot)==0 && length(toplot2)>0){
+    toplot = toplot2
     if(toplot!="all"){
-      mat= mat[matname %in% .findEntries1(toincl,matname,tojoin=tojoin),,drop=F]
+      mat= mat[matname %in% .findEntries1(toincl,matname,tojoin=plot_params$tojoin),,drop=F]
     }
     if(group_by != "No grouping"){
       ncol = dim(mat)[[2]]
@@ -207,7 +208,7 @@ unlist(v)
       dimnames(mat1) = list(names(grps), dimnames(mat)[[2]])
       mat = mat1
     }
-  }else{
+  }else if(length(toplot>0)){
     mat = mat[matname %in% toplot,,drop=F]
   }
   

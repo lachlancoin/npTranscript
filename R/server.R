@@ -11,7 +11,6 @@ library(seqinr)
 
 source( "transcript_functions.R")
 source("shiny-DE.R")
-
 basedir="../data"
 #toreplace=list(virion="RNA_virion_0hpi", whole_genome_mapped="RNA_vero_24hpi")
 decodeFile = paste(basedir,"decode.txt",sep='/')
@@ -187,6 +186,7 @@ shinyServer(function(input, output,session) {
   
 	readDir <- function() {
     print(input$dir)
+	  h5closeAll()
     print(" updating input dir")
     session$userData$dataDepth = list("depth"=data.frame(), "depthStart"=data.frame(), "depthEnd"=data.frame())
     
@@ -307,7 +307,7 @@ shinyServer(function(input, output,session) {
 	
   }
   
-  loadDE <- function() {
+  loadDE <- function(thresh) {
   
   # Import data 
   message(paste('importing DE Data'))
@@ -322,10 +322,12 @@ shinyServer(function(input, output,session) {
                         function(x) {read.table((gzfile(x)), header = T, row.names = 1) %>%
                               subset(select = -c(1:5)) %>% 
                                 as.matrix() } )
-  
- # .subsetFCFile(countdata[[1]], toplot5,toplot7, toplot8, tojoin="OR",group_by="No grouping")
-    
   names(countdata) <- cell_types
+  
+ #countdata=lapply(countdata,
+  #                function(x) .subsetFCFile(x,toplot5,toplot7,toplot8,tojoin,group_by)) 
+ 
+ #print(head(countdata[[1]]))
   return(countdata)
 }
   
@@ -752,7 +754,12 @@ DE <- reactiveValues(counts = NULL, main_out = NULL)
 
 observeEvent( input$LoadDE,	
 {
+  if(input$LoadDE){
 	DE$counts = loadDE()
+  }else{
+    print("disactivating DE")
+    DE$counts = list()
+  }
 	print(paste('loadDE output'))
 	updateSelectInput(session, "DE_cell1",  choices = names(DE$counts))
 	updateSelectInput(session, "DE_cell2", choices = names(DE$counts))
@@ -774,8 +781,13 @@ toggle("DE_time2")
  observeEvent(input$plotDE, {
  head(DE$counts)
  if (is.null(DE$counts)) {print('DE_countdata is null') } else {
-	head(DE$counts)
-	DE$main_out <- runDE(count_list = DE$counts, cell1 = input$DE_cell1 , cell2 = input$DE_cell2, time1 = input$DE_time1, time2 = input$DE_time2)
+	#head(DE$counts)
+   plot_params = list(toplot5=input$toplot5, toplot2=c(input$toplot7, input$toplot8), 
+                      tojoin=input$tojoin, group_by=input$group_by)
+	DE$main_out <- runDE(count_list = DE$counts, cell1 = input$DE_cell1 ,
+	                     cell2 = input$DE_cell2, time1 = input$DE_time1, 
+	                     time2 = input$DE_time2,  thresh=input$mean_count_thresh,
+	                     plot_params=plot_params)
 	print(paste('DEout done', names(DE$main_out)))
 	
 	

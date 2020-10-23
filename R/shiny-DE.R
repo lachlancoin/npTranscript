@@ -117,7 +117,7 @@ volcanoplot <- function (res, lfcthresh=0.5, sigthresh=0.05, main="Volcano Plot"
 }
 
 
-runDE <- function(count_list, cell1, cell2, time1, time2) {
+runDE <- function(count_list, cell1, cell2, time1, time2, thresh=50, plot_params= NULL) {
   
   #Trim to relevant columns
   print(paste('DE', cell1, cell2, time1, time2))
@@ -131,7 +131,10 @@ runDE <- function(count_list, cell1, cell2, time1, time2) {
                        by = "row.names", sort = FALSE) %>% 
                 transform(row.names=Row.names, Row.names=NULL) %>%
               as.matrix()
-  
+
+if(!is.null(plot_params))  count_trim=.subsetFCFile(count_trim,plot_params)
+  count_trim=count_trim[apply(count_trim,1,sum)>thresh*dim(count_trim)[2],,drop=F] 
+ # print(head(count_trim))
   #uncomment below if all = T in merge
   #count_trim[is.na(count_trim)] <- 0
 
