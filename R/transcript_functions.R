@@ -884,7 +884,7 @@ split1<-function(fi) strsplit(fi,"_")[[1]][1]
 
 
 
-plotClusters<-function(df, k1, totalReadCount, t, motifpos, peptides,rawdepth = T, 
+plotClusters<-function(df,seq_df, k1, totalReadCount, t, motifpos, peptides,rawdepth = T, 
                        linetype="sampID", colour="clusterID", title = "", ylab=if(rawdepth)  "depth" else "TPM", logy=F, 
                        leg_size = 6, xlim  = NULL, show=F, updatenmes = F, fill = F, alpha=0.5){
   if(!is.factor(df$clusterID)) df$clusterID = as.factor(df$clusterID)  #types[df$type]
@@ -905,13 +905,21 @@ plotClusters<-function(df, k1, totalReadCount, t, motifpos, peptides,rawdepth = 
   if(is.null(xlim)){
     xlim = c(min(df$pos), max(df$pos))
 
-    ylim = c(min(df[,k1], na.rm=T),max(df[,k1], na.rm=T))
+    ylim = c(max(0,min(df[,k1], na.rm=T)),max(1,max(df[,k1], na.rm=T)))
   }else{
     xincl = df$pos <= xlim[2] & df$pos >=xlim[1]
-    ylim = c(min(df[xincl,k1], na.rm=T),max(df[xincl,k1], na.rm=T))
+    ylim = c(max(0,min(df[xincl,k1], na.rm=T)),max(1,max(df[xincl,k1], na.rm=T)))
   }
-  ggp<-ggplot(df, aes_string(x="pos", fill="clusterID", colour = colour, linetype=linetype, y = names(df)[k1])) +theme_bw()
-  ggp<-ggp+geom_line(inherit.aes=T, aes(alpha=alpha)) 
+  ggp<-ggplot()
+  ggp<-ggp+geom_line(data=df, aes_string(x="pos", fill="clusterID", colour = colour, linetype=linetype, y = names(df)[k1], alpha=alpha)) +theme_bw()
+  if(!is.null(seq_df)){
+   seqy = seq_df$seqy
+    seq_df$seqy = rep(ylim[2],length(seqy))
+  #  seq_df$seqy = seqy 
+    print(seq_df)
+    ggp<-ggp+geom_text(data=seq_df,aes(x=pos, y=seqy, color=sequence, label=sequence))
+  }
+   # ggp<-ggp+geom_line(inherit.aes=T, aes(alpha=alpha)) 
 if(fill) ggp<-ggp+geom_area()
   ggp<-ggp+ggtitle(title)
   if(logy) ggp<-ggp+scale_y_continuous(name=ylab,trans='log10') #, limits=ylim)

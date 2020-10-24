@@ -118,7 +118,7 @@ shinyServer(function(input, output,session) {
   run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", 
                       gapthresh=100, mergeGroups=NULL,molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
                       span = 0.01, sumAll=F, xlim=null, motifpos=list(),peptides=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,showORFs = F,
-                      path="depth"){
+                      path="depth",seq_df = NULL){
     
     header =.getHeaderH5(h5file,toreplace)
     if(path=="depth"){
@@ -149,7 +149,7 @@ shinyServer(function(input, output,session) {
       tot_reads =  total_reads[inds1]/rep(1e6,length(inds1))
     }
     clusters_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]),toAdd = toAdd, mergeGroups=mergeGroups,sumID=sumID, path=path,toplot,id_cols=id_cols, gapthresh=gapthresh, dinds = dinds[inds1], pos =NULL, span = span, cumul=F, sumAll=sumAll)
-    
+
     if(is.null(clusters_)){
       print(paste("could not read ",toplot))
       return (ggplot())
@@ -159,6 +159,8 @@ shinyServer(function(input, output,session) {
     
     tpm_df = melt(clusters_,id.vars=c("clusterID","pos"), measure.vars=names(clusters_)[-(1:2)], variable.name="sampleID",value.name='count') %>%
       transform(sampleID=factor(sampleID,levels=levs))
+    
+   
     
     if(sumAll) type_nme = "combined"
     rawdepth = T
@@ -177,7 +179,7 @@ shinyServer(function(input, output,session) {
     invisible(tpm_df)
     session$userData$dataDepth[[which(names(session$userData$dataDepth)==path)]] = tpm_df
     
-    plotClusters(tpm_df, 4,  1, 
+    plotClusters(tpm_df,seq_df, 4,  1, 
                  t,
                  motifpos,peptides,
                  rawdepth = rawdepth, linetype=linetype, colour=colour, alpha=alpha, xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =leg_size1, show=show, fill =fill)
@@ -252,9 +254,12 @@ shinyServer(function(input, output,session) {
     fastafile = grep("extra",grep("fasta.gz",dir(currdir),v=T),v=T,inv=T)
     if(length(fastafile)>=1){
       fastaseq = read.fasta(paste(currdir,fastafile[1],sep="/"))
+      session$userData$fasta =fastaseq[[1]]
+      
       session$userData$fastaseq = paste(fastaseq[[1]],collapse="")
     }else{
       session$userData$fastaseq=NULL
+      session$userData$fasta=NULL
     }
     peptide_file =paste(currdir,"peptides.csv",sep="/")
     if(file.exists(peptide_file)){
@@ -344,7 +349,9 @@ shinyServer(function(input, output,session) {
   #  plot_type=input$depth_plot_type
     motif = isolate(input$motif)
     fastaseq =session$userData$fastaseq
+    fasta=session$userData$fasta
     showORFs="showORFs" %in% input$options3
+    showSequence="showSequence" %in% input$options3
     motifpos=list()
     if(nchar(motif>0) && !is.null(fastaseq)){
       motifpos= lapply(strsplit(motif,"\\|")[[1]], function(x) gregexpr(x,fastaseq, ignore.case=T)[[1]])
@@ -418,7 +425,15 @@ shinyServer(function(input, output,session) {
         xlim =   c(isolate(input$min_x), isolate(input$max_x))
         alpha = isolate(input$alpha)
         if(xlim[2]<=xlim[1]) xlim = NULL
-          ggplot=run_depth(h5file,total_reads,toplot, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
+       seq_df= NULL
+        if(!is.null(xlim) && xlim[2]-xlim[1] <= 1000 && showSequence){
+          pos = xlim[1]:xlim[2]
+          sequence =  fasta[pos]
+          seqy = rep(1,length(pos))
+          seq_df = data.frame(pos,sequence, seqy) %>%
+            transform(pos=as.numeric(pos), sequence=factor(sequence, levels=c("a","c","t","g")))
+        }
+          ggplot=run_depth(h5file,total_reads,toplot, seq_df=seq_df, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
                     showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type, showMotifs =showMotifs, alpha=alpha) 
         }
         #run_depth(h5file,toplot=c("leader_leader,N_end")) 
