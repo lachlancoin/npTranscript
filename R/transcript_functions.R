@@ -236,8 +236,15 @@ if(join_and || join_not)  x2 =  matname else   x2 =  c()
     }else if(x[j]=="5_3"){
       x1 = grep("end",grep("leader",matname,inv=F,v=T),inv=F,v=T)
     }else if(length(grep("juncts",x[j]))>0){
-      num = as.numeric(strsplit(x[j],":")[[1]][2])
+      if(length(grep("=",x[j]))>0){
+         num = as.numeric(strsplit(x[j],"=")[[1]][2])
       x1=matname[unlist(lapply(strsplit(matname,","),length))==(num+1)]
+      }else if(length(grep("<",x[j]))>0){
+        x1=matname[unlist(lapply(strsplit(matname,","),length))<(num+1)]
+      }else if(length(grep(">",x[j]))>0){
+        x1=matname[unlist(lapply(strsplit(matname,","),length))>(num+1)]
+      }
+      
     }else{
      x1=grep(x[j],matname,v=T)
     }
