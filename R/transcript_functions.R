@@ -240,8 +240,12 @@ if(join_and || join_not)  x2 =  matname else   x2 =  c()
          num = as.numeric(strsplit(x[j],"=")[[1]][2])
       x1=matname[unlist(lapply(strsplit(matname,","),length))==(num+1)]
       }else if(length(grep("<",x[j]))>0){
+        num = as.numeric(strsplit(x[j],"<")[[1]][2])
+        
         x1=matname[unlist(lapply(strsplit(matname,","),length))<(num+1)]
       }else if(length(grep(">",x[j]))>0){
+        num = as.numeric(strsplit(x[j],">")[[1]][2])
+        
         x1=matname[unlist(lapply(strsplit(matname,","),length))>(num+1)]
       }
       
