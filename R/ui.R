@@ -50,13 +50,13 @@ plot_type_ch =   sub("/","",grep("depth",unique(h5ls(h5file)[,1]),v=T))
   plot_type_ch  = c("-");
 }
 
-options1=c("showCI" ,"barchart", "reverseOrder") #"showSecondAxis", 
+options1=c("showInfectivity" , "showCI" ,"barchart", "reverseOrder") #"showSecondAxis", 
 totick1 = c("showCI" ,"barchart")
 #options2 = c("logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts")
  options2 = c("logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder")
-totick2 = c("TPM","ribbonCI","barchart")
+totick2 = c("showTranscriptPlot","TPM","ribbonCI","barchart")
 options3 = c("show_depth","logy", "TPM","showORFs", "sumDepth","mergeCounts", "showPeptides", "showSequence")
-totick3 = c( "mergeCounts", "sumDepth", "show_depth")
+totick3 = c( "mergeCounts", "sumDepth")
 
 coordsFile = paste(currdir, "Coordinates.csv",sep="/")
 if(file.exists(coordsFile)){
@@ -94,7 +94,8 @@ shinyUI(fluidPage(
     
     textInput("toplot8", label="All transcripts matching", value = ""),
   selectInput("group_by", label="Group transcripts by", choices = c('No grouping' ,'all', 'type', 'juncts',',ORF10','ORF1ab,','type:juncts'), selected = 'No grouping'),
-      actionButton("plotButton", "Generate plots"),
+  textInput("merge_by", label="Transcript group to collapse", value = ""),
+       actionButton("plotButton", "Generate plots"),
    checkboxGroupInput("molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules),
    checkboxGroupInput("cells", label = "Cell type",  choices = info$cells, selected = info$cells),
    checkboxGroupInput("times", label = "Time points",  choices = info$times, selected = info$times),

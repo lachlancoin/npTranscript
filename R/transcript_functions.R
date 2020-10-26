@@ -134,12 +134,27 @@ unlist(v)
   c(cnts, rep(0,len -length(cnts)))
 }
 
-.findEntries<-function(x,isofile, group ,tojoin="OR"){
-  mat = h5ls(isofile)
-  mat = mat[mat$group==group,,drop=F]
-  .findEntries1(x,mat$name, tojoin)
+.mergeGroups<-function(matname,merge_by_all, ord = NULL, max_trans=10){
+  x=matname
+  merge_all =strsplit(merge_by_all,"\\|")[[1]]
+  tomerge = lapply(merge_all,.findEntries1, matname)
+  names(tomerge) = merge_all
+  others = x
+  for(i in 1:length(tomerge)){
+    indsx = !(others %in% tomerge[[i]])
+    others=x[indsx]
+    if(!is.null(ord))  ord = ord[indsx]
+  }
+  if(!is.null(ord)){
+    if(length(others)>max_trans){
+      others = others[ord[1:max_trans]]
+    }
+  }
+  
+  names(others) = others
+  l = c(tomerge,as.list(others))
+  l
 }
-
 
 .getGroups<-function(x1, group_bys){
   group_l = unlist(strsplit(group_bys,":")[[1]])
@@ -187,18 +202,35 @@ unlist(v)
 
   
 .subsetFCFile<-function(mat, plot_params){
+  print("getting subset")
+  print(plot_params)
   toplot=plot_params$toplot5
   toplot = toplot[toplot!="-"]
   matname = dimnames(mat)[[1]]
   toplot2 = plot_params$toplot2
   toplot2 = toplot2[unlist(lapply(toplot2,nchar))>2]
   group_by = plot_params$group_by
+  merge_by = plot_params$merge_by
   if(length(toplot)==0 && length(toplot2)>0){
     toplot = toplot2
     if(toplot!="all"){
       mat= mat[matname %in% .findEntries1(toincl,matname,tojoin=plot_params$tojoin),,drop=F]
     }
-    if(group_by != "No grouping"){
+    if(merge_by!=""){
+      ncol = dim(mat)[[2]]
+      print("MERGING!!!")
+      print(merge_by)
+      
+      grps=.mergeGroups(matname,merge_by)
+    #  print(grps[[1]])
+    #  print(names(grps))
+      mat1 = matrix(nrow = length(grps), ncol = ncol)
+      for(i in 1:length(grps)){
+        mat1[i,] = apply(mat[grps[[i]],,drop=F],2,sum)
+      }
+      dimnames(mat1) = list(names(grps), dimnames(mat)[[2]])
+      mat = mat1
+    }else if(group_by != "No grouping"){
       ncol = dim(mat)[[2]]
       grps = .getGroups(matname,group_by)
       mat1 = matrix(nrow = length(grps), ncol = ncol)
@@ -211,9 +243,16 @@ unlist(v)
   }else if(length(toplot>0)){
     mat = mat[matname %in% toplot,,drop=F]
   }
-  
+ # print(dimnames(mat))
   mat
 }
+
+.findEntries<-function(x,isofile, group ,tojoin="OR", merge=F){
+  mat = h5ls(isofile)
+  mat = mat[mat$group==group,,drop=F]
+  .findEntries1(x,mat$name, tojoin) 
+}
+
 .findEntries1<-function(x,matname ,tojoin="OR"){
 
   join_and = tojoin=="AND"
