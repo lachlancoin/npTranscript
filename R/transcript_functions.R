@@ -140,9 +140,9 @@ unlist(v)
   tomerge = lapply(merge_all,.findEntries1, matname)
   names(tomerge) = merge_all
  
-    indsx = !(others %in% unlist(tomerge))
+    indsx = !(x %in% unlist(tomerge))
     if(!is.null(ord))  ord = ord[indsx]
-    others = others[indsx]
+    others = x[indsx]
   if(!is.null(ord)){
     if(length(others)>max_trans){
       others = others[ord[1:max_trans]]
@@ -209,9 +209,10 @@ unlist(v)
   toplot2 = toplot2[unlist(lapply(toplot2,nchar))>2]
   group_by = plot_params$group_by
   merge_by = plot_params$merge_by
-  if(length(toplot)==0){
+  if(length(toplot)==0 ){
+    if(length(toplot2)==0) toplot2 = "all"
     toplot = toplot2
-    if(toplot!="all" && length(toplot)>0){
+    if(toplot!="all"){
       mat= mat[matname %in% .findEntries1(toincl,matname,tojoin=plot_params$tojoin),,drop=F]
     }
     if(merge_by!=""){
