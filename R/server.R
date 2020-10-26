@@ -383,8 +383,8 @@ shinyServer(function(input, output,session) {
     # print(h5file)
     ggp=ggplot()
     if(length(grep(plot_type,h5ls(h5file)$group))<=0) return (ggp)
-    span = 0
-    if(plot_type=="depth") span=input$loess
+  #  span = 0
+    span=input$loess
     if(showDepth  && !is.null(h5file)){
       if(file.exists(h5file)){
         toplot = c(isolate(input$toplot5))#,isolate(input$toplot6))#,isolate(input$toplot7),isolate(input$toplot8))
