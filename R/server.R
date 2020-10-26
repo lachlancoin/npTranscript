@@ -346,7 +346,7 @@ shinyServer(function(input, output,session) {
     showDepth  = "show_depth" %in% input$options3
     logy = "logy" %in% input$options3
     group_by=input$group_by
-    merge_by=input$merge_by
+    merge_by="" #input$merge_by
   #  plot_type=input$depth_plot_type
     motif = isolate(input$motif)
     fastaseq =session$userData$fastaseq
@@ -410,7 +410,7 @@ shinyServer(function(input, output,session) {
           if("sumDepth" %in% input$options3) sumAll=TRUE
           mergeGroups=NULL
           if(mergeCounts) group_by="all"
-          if(merge_by!=""){
+          if(nchar(merge_by)>0){
             mergeGroups=.mergeGroups(toplot,merge_by)
           
           }else if(group_by != 'No grouping'){
@@ -480,7 +480,7 @@ shinyServer(function(input, output,session) {
     reverseOrder="reverseOrder" %in% input$options2
     stack = "stacked" %in% input$options2
     group_by=input$group_by
-    merge_by=input$merge_by
+    merge_by=""  #input$merge_by
     max_trans = input$maxtrans
     conf.int=input$conf.int
     method="logit";
@@ -508,7 +508,7 @@ shinyServer(function(input, output,session) {
       if(is.null(dim(mat))) mat = matrix(mat,nrow=1,ncol=length(header))
       if(merge){
         mat = matrix(apply(mat,2,sum),nrow=1,ncol=dim(mat)[2])
-      }else if(merge_by!=""){ 
+      }else if(nchar(merge_by)>0){ 
           ord=order(apply(mat,1,sum),decreasing=T)
           groups=.mergeGroups(x1,merge_by, ord=ord, max_trans = max_trans)
           

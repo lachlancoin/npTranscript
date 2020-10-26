@@ -94,7 +94,6 @@ shinyUI(fluidPage(
     
     textInput("toplot8", label="All transcripts matching", value = ""),
   selectInput("group_by", label="Group transcripts by", choices = c('No grouping' ,'all', 'type', 'juncts',',ORF10','ORF1ab,','type:juncts'), selected = 'No grouping'),
-  textInput("merge_by", label="Transcript group to collapse", value = ""),
        actionButton("plotButton", "Generate plots"),
    checkboxGroupInput("molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules),
    checkboxGroupInput("cells", label = "Cell type",  choices = info$cells, selected = info$cells),
@@ -123,7 +122,7 @@ shinyUI(fluidPage(
    selectInput("DE_time1", label = "Time 1", choices = c()),
    selectInput("DE_time2", label = "Time 2", choices = c()),
  numericInput("mean_count_thresh", label = "Mean count thresh", value = 0.0,max=500,min=0),
- 
+ textInput("merge_by", label="Transcript group to collapse", value = ""),
      actionButton('plotDE', 'Do DE')
   ),
  
