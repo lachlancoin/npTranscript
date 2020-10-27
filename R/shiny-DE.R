@@ -148,14 +148,31 @@ if(!is.null(plot_params))  count_trim=.subsetFCFile(count_trim,plot_params)
   keep <- rowSums(counts(dds)) >= 5
   dds <- dds[keep,]
   
+  
+  
+  
   # Run DESeq2 pipeline and save the results
   dds <- DESeq(dds)
   res <- DESeq2::results(dds)
   
+  #For flagging of spurious results
+count_results_with_mean <- counts(dds, normalized=TRUE) %>%
+    `colnames<-`(condition) %>%
+    reshape2::melt(measure.vars = cols) %>%
+    group_by(Var1, Var2) %>%
+    dcast(Var1 ~ Var2, fun.aggregate = mean, ) %>%
+    mutate(diff_mean =  .[[3]]- .[[2]]) %>%
+      transform(row.names=Var1, Var1=NULL)
+
+count_results_with_mean <- merge(x = as.data.frame(counts(dds, normalized=TRUE)), y = count_results_with_mean, by = 'row.names') %>%
+  transform(row.names = Row.names, Row.names = NULL)
+  
+
+  
   ## Order by adjusted p-value
   res <- res[order(res$padj), ]
   ## Merge with normalized count data
-  resdata <- merge(as.data.frame(res), as.data.frame(counts(dds, normalized=TRUE)), by="row.names", sort=FALSE)
+  resdata <- merge(as.data.frame(res), count_results_with_mean, by="row.names", sort=FALSE) %>% mutate(spurious = ifelse(diff_mean * log2FoldChange > 0, F, T ))
   ## Write results
   #write.csv(resdata, paste0("diff_expr_", output, ".csv"))
   
