@@ -9,9 +9,11 @@ library(writexl)
 library(shinyjs)
 library(seqinr)
 
-source( "transcript_functions.R")
-source("shiny-DE.R")
+#source( "transcript_functions.R")
+#source("shiny-DE.R")
+
 basedir="../data"
+
 #toreplace=list(virion="RNA_virion_0hpi", whole_genome_mapped="RNA_vero_24hpi")
 decodeFile = paste(basedir,"decode.txt",sep='/')
 replace=read.table(decodeFile,sep="\t",head=F)
@@ -114,6 +116,8 @@ shinyServer(function(input, output,session) {
 	
 	#source("shiny-DE.R")
 	
+	source( "transcript_functions.R")
+	source("shiny-DE.R")
 	
   run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", 
                       gapthresh=100, mergeGroups=NULL,molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
