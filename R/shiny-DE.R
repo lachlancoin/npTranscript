@@ -103,8 +103,12 @@ rld_pca <- function (rld, intgroup = "condition", ntop = 500, colors=NULL, legen
 
 
 # Volcano Plot
-volcanoplot <- function (res, lfcthresh=0.5, sigthresh=0.05, main="Volcano Plot", legendpos="bottomright", labelsig=T, textcx=0.8, ...) {
-
+volcanoplot <- function (res, lfcthresh=0.5, sigthresh=0.05, main="Volcano Plot", legendpos="bottomright", labelsig=T, textcx=0.8, remove_spurious = F, ...) {
+  print(remove_spurious)
+  if (remove_spurious == T) {
+    res <- subset(res, spurious == F)
+  }
+  
   with(res, plot(log2FoldChange, -log10(pvalue), pch=20, main=main, ...))
   with(subset(res, padj<sigthresh ), points(log2FoldChange, -log10(pvalue), pch=20, col="blue", ...))
   with(subset(res, abs(log2FoldChange)>lfcthresh), points(log2FoldChange, -log10(pvalue), pch=20, col="orange", ...))
@@ -152,7 +156,15 @@ if(!is.null(plot_params))  count_trim=.subsetFCFile(count_trim,plot_params)
   
   
   # Run DESeq2 pipeline and save the results
-  dds <- DESeq(dds)
+  dds <- tryCatch( {
+    DESeq(dds, fitType = 'parametric') },
+    error = function(cond) {
+      message(paste('Parametric fit failure :', cond))
+      message(paste('attempting DE with fitType = mean'))
+      DESeq(dds, fitType = 'mean') }
+    
+  )
+                  
   res <- DESeq2::results(dds)
   
 ##For flagging of spurious results
@@ -180,7 +192,8 @@ count_results_with_mean <- merge(x = count_results_melt, y = num_zeros, by = 'Va
   res <- res[order(res$padj), ]
   ## Merge with normalized count data
   resdata <- merge(as.data.frame(res), count_results_with_mean, by="row.names", sort=FALSE) %>% 
-    mutate(rev_direction =  ifelse(diff_mean * log2FoldChange < 0, T, F), spurious = ifelse(rev_direction == T & .[[17]] + .[[18]] >1, T, F ))
+    mutate(rev_direction =  ifelse(diff_mean * log2FoldChange < 0, T, F)  , 
+           spurious = ifelse(rev_direction == T & .[[length(.)-1]] + .[[length(.)-2]] >1 , T, F ))
   
   
   ## Write results

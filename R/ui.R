@@ -121,6 +121,7 @@ shinyUI(fluidPage(
    selectInput("DE_cell2", label = "DE in cell 2", choices = c()),
    selectInput("DE_time1", label = "Time 1", choices = c()),
    selectInput("DE_time2", label = "Time 2", choices = c()),
+   checkboxInput("remove_spurious", label = "Remove spurious results"),
  numericInput("mean_count_thresh", label = "Mean count thresh", value = 0.0,max=500,min=0),
  textInput("merge_by", label="Transcript group to collapse", value = ""),
      actionButton('plotDE', 'Do DE')

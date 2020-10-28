@@ -824,8 +824,9 @@ toggle("DE_time2")
 	
 	
 	output$DEPlot_volcano <- renderPlot( {
-	do.call(.volcano, 
-	DE$main_out[['volcano_ggp_params']] )
+	DE$main_out[['volcano_params']][['remove_spurious']] <- input$remove_spurious 
+	do.call(volcanoplot, 
+	DE$main_out[['volcano_params']] )
 	})
 	
 	output$DEPlot_PCA <- renderPlot( {
