@@ -155,24 +155,34 @@ if(!is.null(plot_params))  count_trim=.subsetFCFile(count_trim,plot_params)
   dds <- DESeq(dds)
   res <- DESeq2::results(dds)
   
-  #For flagging of spurious results
-count_results_with_mean <- counts(dds, normalized=TRUE) %>%
+##For flagging of spurious results
+count_results_melt <- counts(dds, normalized=TRUE) %>%
     `colnames<-`(condition) %>%
-    reshape2::melt(measure.vars = cols) %>%
-    group_by(Var1, Var2) %>%
-    dcast(Var1 ~ Var2, fun.aggregate = mean, ) %>%
-    mutate(diff_mean =  .[[3]]- .[[2]]) %>%
-      transform(row.names=Var1, Var1=NULL)
-
-count_results_with_mean <- merge(x = as.data.frame(counts(dds, normalized=TRUE)), y = count_results_with_mean, by = 'row.names') %>%
+    reshape2::melt(measure.vars = cols)  %>%
+    group_by(Var1, Var2)
+#find num of zero counts per group
+num_zeros <- mutate(count_results_melt, is_zero = ifelse(value ==0, 1, 0)) %>% 
+      mutate(value = NULL) %>% 
+      dcast(Var1 ~ Var2, fun.aggregate = sum, value.var = 'is_zero')
+#get difference in mean counts
+count_results_melt <-   dcast(count_results_melt, Var1 ~ Var2, fun.aggregate = mean, ) %>% 
+      mutate(diff_mean =  .[[3]]- .[[2]])
+#merge flag data
+count_results_with_mean <- merge(x = count_results_melt, y = num_zeros, by = 'Var1', suffixes = c('.mean', '.zero_counts')) %>% 
+  transform(row.names = Var1, Var1=NULL) %>%
+  merge(x = as.data.frame(counts(dds, normalized=TRUE)), y = ., by = 'row.names') %>%
   transform(row.names = Row.names, Row.names = NULL)
   
+
 
   
   ## Order by adjusted p-value
   res <- res[order(res$padj), ]
   ## Merge with normalized count data
-  resdata <- merge(as.data.frame(res), count_results_with_mean, by="row.names", sort=FALSE) %>% mutate(spurious = ifelse(diff_mean * log2FoldChange > 0, F, T ))
+  resdata <- merge(as.data.frame(res), count_results_with_mean, by="row.names", sort=FALSE) %>% 
+    mutate(rev_direction =  ifelse(diff_mean * log2FoldChange < 0, T, F), spurious = ifelse(rev_direction == T & .[[17]] + .[[18]] >1, T, F ))
+  
+  
   ## Write results
   #write.csv(resdata, paste0("diff_expr_", output, ".csv"))
   
