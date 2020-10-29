@@ -244,6 +244,7 @@ shinyServer(function(input, output,session) {
    }
      
     coords_file = paste(currdir, "Coordinates.csv",sep="/")
+    motifText = ""
     if(file.exists(coords_file)){
       t = readCoords(coords_file)
       session$userData$t=t
@@ -251,9 +252,12 @@ shinyServer(function(input, output,session) {
    
       fimo_file = paste(currdir,"fimo.tsv",sep="/")
       fimo=read.table(fimo_file, sep="\t", head=T)
+      print(names(fimo))
+      motifText = paste(levels(factor(fimo$matched_sequence)),collapse="|")
       session$userData$fimo = fimo
     }else{
       orfs = c()
+     
     }
     fastafile = grep("extra",grep("fasta.gz",dir(currdir),v=T),v=T,inv=T)
     if(length(fastafile)>=1){
@@ -267,8 +271,16 @@ shinyServer(function(input, output,session) {
     }
     peptide_file =paste(currdir,"peptides.csv",sep="/")
     if(file.exists(peptide_file)){
-      peptide=read.csv(peptide_file,  head=F)
+      
+      peptide=read.csv(peptide_file,  head=F, comment.char="#")
+      trans_vals= as.numeric(sub("#","",read.csv(peptide_file, head=F,nrow=1)))
       peptide = peptide[!duplicated(peptide[,2]),-1,drop=F]
+      
+      peptide= apply(peptide,c(1,2),function(x) (x-1)*trans_vals[2]+trans_vals[1])
+      
+      
+     # peptide=read.csv(peptide_file,  head=F)
+    #  peptide = peptide[!duplicated(peptide[,2]),-1,drop=F]
       names(peptide)=c("start","end")
       session$userData$peptide = peptide
       
@@ -311,7 +323,9 @@ shinyServer(function(input, output,session) {
     updateCheckboxGroupInput(session,"times", label = "Time points",  choices = info$times, selected = info$times)
     updateTextInput(session,"orfs", label="ORFs to include", value = orfs)
    # updateSelectInput(session, "depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="depth")
-    
+    updateTextInput(session,"motif", label="Show motif", value = motifText)
+    #CTAAAC|TTAAAC
+    #ACGAAC|ACGATC|ATGAAC
 	
 	
   }
