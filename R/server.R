@@ -182,7 +182,7 @@ shinyServer(function(input, output,session) {
       ggp<-ggplot(df1)
       trans="identity"
       if(logy) trans="log10"
-      ggp<-ggp+scale_y_continuous(trans=trans,name=othername)+scale_x_continuous(trans=trans)+ggtitle(path)
+      ggp<-ggp+scale_y_continuous(trans=trans)+scale_x_continuous(trans=trans)+ggtitle(path)
       print(names(df1))
       if(length(sums)==2){
         ggp<-ggp+geom_point(aes(x = x, y = y, color=pos, shape=types))
