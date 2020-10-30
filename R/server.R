@@ -121,7 +121,8 @@ shinyServer(function(input, output,session) {
 	
   run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", 
                       gapthresh=100, mergeGroups=NULL,molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
-                      span = 0.01, sumAll=F, xlim=null, motifpos=list(),peptides=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,showORFs = F,
+                      span = 0.01, sumAll=F, xlim=null, motifpos=list(),peptides=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,
+                      showORFs = F,showWaterfall=FALSE,waterfallKmer=3,waterfallOffset=0,top10=10,
                       path="depth",seq_df = NULL){
     
     header =.getHeaderH5(h5file,toreplace)
@@ -139,7 +140,6 @@ shinyServer(function(input, output,session) {
     levs=type_nme[inds1][ord]
     toAdd=0
     if(logy)toAdd=0.001
-    
     facts =  apply(types1_,2,function(v) levels(factor(v)))
     same_inds = which(unlist(lapply(facts,length))==1)
     sumID='all'
@@ -180,15 +180,43 @@ shinyServer(function(input, output,session) {
     }
     ylab="depth"
     if(!is.null(total_reads)) ylab="depth per million mapped reads"
-    invisible(tpm_df)
+    #invisible(tpm_df)
+   if(showWaterfall && !is.null(seq_df)){
+    allpos =  seq_df$pos
+  #  print(seq_df$sequence[xlim[1]:xlim[2]])
+    kstart = (waterfallKmer-1)/2
+    kmers = getKmer(as.character(seq_df$sequence),1:length(seq_df$sequence),v=-kstart:kstart + waterfallOffset)
+  #  print(head(kmers))
+    levsk = levels(factor(kmers))
+   # print(levsk)
+    cnts = unlist(lapply(levsk, function(x)sum(tpm_df$count[tpm_df$pos %in% allpos[which(kmers==x)]])  ))
+  #  cnts = cnts/sum(cnts)
+    print(cnts)
+   cnt_df =  data.frame(cnts=cnts, kmers=levsk)
+   top10 = min(top10,length(cnts))
+  # print(top10)
+    cnt_df = cnt_df[order(cnt_df$cnts,decreasing = T)[1:top10],,drop=F]
+    print(cnt_df)
+    id = 1:dim(cnt_df)[1]
+    end = cumsum(cnt_df$cnts)
+    start = c(0,end[1:(length(end)-1)])
+    cnt_df = cbind(id,start,end,cnt_df)
+    print(cnt_df)
+    cnt_df$kmers = factor(as.character(cnt_df$kmers),levels = as.character(cnt_df$kmers))
+    session$userData$dataDepth[[which(names(session$userData$dataDepth)==path)]] = cnt_df
+    ggp<-ggplot(cnt_df, aes(kmers, fill = kmers))
+    ggp<-ggp+ geom_rect(aes(x = kmers,xmin = id - 0.45, xmax = id + 0.45, ymin = end,ymax = start))+ggtitle(path)
+    ggp<-ggp+scale_colour_manual(values = rainbow(dim(cnt_df)[1]))
+   }else{
     session$userData$dataDepth[[which(names(session$userData$dataDepth)==path)]] = tpm_df
-    
-    plotClusters(tpm_df,seq_df, 4,  1, 
+    ggp<-plotClusters(tpm_df,seq_df, 4,  1, 
                  t,
                  motifpos,peptides,
                  rawdepth = rawdepth, linetype=linetype, colour=colour, alpha=alpha, xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =leg_size1, show=show, fill =fill)
     
-  }
+   }
+    ggp
+    }
   
 	readDir <- function() {
     print(input$dir)
@@ -369,8 +397,13 @@ shinyServer(function(input, output,session) {
     motif = isolate(input$motif)
     fastaseq =session$userData$fastaseq
     fasta=session$userData$fasta
+    maxKmers=isolate(input$maxKmers)
     showORFs="showORFs" %in% input$options3
     showSequence="showSequence" %in% input$options3
+    if(plot_type=="depth") showWaterfall=F else showWaterfall="showWaterfall" %in% input$options3
+    waterfallKmer=isolate(input$waterfallKmer)
+   waterfallOffset=isolate(input$waterfallOffset)
+    
     motifpos=list()
     if(nchar(motif>0) && !is.null(fastaseq)){
       motifpos= lapply(strsplit(motif,"\\|")[[1]], function(x) gregexpr(x,fastaseq, ignore.case=T)[[1]])
@@ -448,15 +481,21 @@ shinyServer(function(input, output,session) {
         alpha = isolate(input$alpha)
         if(xlim[2]<=xlim[1]) xlim = NULL
        seq_df= NULL
-        if(!is.null(xlim) && xlim[2]-xlim[1] <= 1000 && showSequence){
+        if( showSequence || showWaterfall){
+          if(xlim[1]<1) xlim[1] = 1
+          if(xlim[2]>length(fasta)) xlim[2] = length(fasta)
           pos = xlim[1]:xlim[2]
           sequence =  fasta[pos]
           seqy = rep(1,length(pos))
           seq_df = data.frame(pos,sequence, seqy) %>%
             transform(pos=as.numeric(pos), sequence=factor(sequence, levels=c("a","c","t","g")))
         }
-          ggplot=run_depth(h5file,total_reads,toplot, seq_df=seq_df, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
-                    showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type, showMotifs =showMotifs, alpha=alpha) 
+          ggp=run_depth(h5file,total_reads,toplot, seq_df=seq_df, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
+                    showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type,
+                    showMotifs =showMotifs, alpha=alpha,
+                    showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers
+                    )
+          return(ggp)
         }
         #run_depth(h5file,toplot=c("leader_leader,N_end")) 
       }

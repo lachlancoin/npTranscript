@@ -932,7 +932,8 @@ split1<-function(fi) strsplit(fi,"_")[[1]][1]
 
 plotClusters<-function(df,seq_df, k1, totalReadCount, t, motifpos, peptides,rawdepth = T, 
                        linetype="sampID", colour="clusterID", title = "", ylab=if(rawdepth)  "depth" else "TPM", logy=F, 
-                       leg_size = 6, xlim  = NULL, show=F, updatenmes = F, fill = F, alpha=0.5){
+                       leg_size = 6, xlim  = NULL, show=F, updatenmes = F, fill = F, alpha=0.5,
+                       showSeqThresh=500){
   if(!is.factor(df$clusterID)) df$clusterID = as.factor(df$clusterID)  #types[df$type]
  # names(df)[3] = "depth"
   #ids =  as.character(rel_count$ID)
@@ -958,7 +959,7 @@ plotClusters<-function(df,seq_df, k1, totalReadCount, t, motifpos, peptides,rawd
   }
   ggp<-ggplot()
   ggp<-ggp+geom_line(data=df, aes_string(x="pos", fill="clusterID", colour = colour, linetype=linetype, y = names(df)[k1], alpha=alpha)) +theme_bw()
-  if(!is.null(seq_df)){
+  if(!is.null(seq_df) && dim(seq_df)[1]<showSeqThresh){
    seqy = seq_df$seqy
     seq_df$seqy = rep(ylim[2],length(seqy))
   #  seq_df$seqy = seqy 
