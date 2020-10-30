@@ -178,7 +178,7 @@ shinyServer(function(input, output,session) {
       for(i in others){
         midi = median(df[,i])
         ggp<-ggp+geom_point(aes_string(x = names(df)[k], y = names(df)[i]), color=i)
-        ggp<-ggp+annotate(geom="text", x=midk, y=midi, label=paste("corr",floor(100*cor[k,i])/100,sep="="),  color=i)
+        ggp<-ggp+annotate(geom="text", x=midk, y=midi, label=paste(names(df)[i],"corr=",floor(100*cor[k,i])/100,sep=" "),  color=i)
                
       }
     }
