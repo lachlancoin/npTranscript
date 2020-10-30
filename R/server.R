@@ -165,6 +165,12 @@ shinyServer(function(input, output,session) {
     if(len>1){
       print(names(df))
       cor = cor(df[,-1])
+      if(TRUE){
+      df2 = melt(cor)
+      ggp<-ggplot(data =df2, aes(x=Var1, y=Var2, fill=value)) +  geom_tile()+ggtitle(path)
+      return(ggp)
+      }else{       
+      
       if(!is.matrix(cor)) cor = as.matrix(cor)
       df1 = data.frame(matrix(nrow=0,ncol = 3))
      
@@ -194,6 +200,7 @@ shinyServer(function(input, output,session) {
         ggp<-ggp+geom_point(aes(x = x, y = y, color=types))
       }
       return(ggp)
+      }
     }
   }
     if(is.null(clusters_)){
