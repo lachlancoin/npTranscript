@@ -8,7 +8,7 @@ library(binom)
 library(writexl)
 library(shinyjs)
 library(seqinr)
-library(GGally)
+#library(GGally)
 
 #source( "transcript_functions.R")
 #source("shiny-DE.R")
@@ -156,7 +156,32 @@ shinyServer(function(input, output,session) {
     clusters_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]),toAdd = toAdd, mergeGroups=mergeGroups,sumID=sumID, path=path,toplot,id_cols=id_cols, gapthresh=gapthresh, dinds = dinds[inds1], pos =NULL, span = span, cumul=F, sumAll=sumAll)
   if(plotCorr){
     indsp = clusters_$pos <=xlim[2] & clusters_$pos >= xlim[1]
-    ggp=ggpairs(clusters_[indsp,,drop=F],3:(dim(clusters_)[2]))
+    df = clusters_[indsp,3:dim(clusters_)[2],drop=F]
+   # ggp=ggpairs(df)
+    print(cor(df))
+    print(dim(df))
+    trans="log10"
+    ggp<-ggplot(df)
+    sums=apply(df,2,sum)
+    maxi = which(sums==max(sums))
+    others = 1:length(sums)
+    others = others[-maxi]
+    print(sums)
+    print(others)
+    if(logy) ggp<-ggp+scale_y_continuous(trans=trans)+scale_x_continuous(trans=trans)+ggtext(path)
+    len = dim(df)[2]
+    if(len>1){
+      cor = cor(df)
+      if(!is.matrix(cor)) cor = as.matrix(cor)
+      k=maxi
+      midk = quantile(df[,k],0.33)
+      for(i in others){
+        midi = median(df[,i])
+        ggp<-ggp+geom_point(aes_string(x = names(df)[k], y = names(df)[i]), color=i)
+        ggp<-ggp+annotate(geom="text", x=midk, y=midi, label=paste("corr",floor(100*cor[k,i])/100,sep="="),  color=i)
+               
+      }
+    }
     return(ggp)
   }
     if(is.null(clusters_)){
