@@ -157,32 +157,43 @@ shinyServer(function(input, output,session) {
   if(plotCorr){
     indsp = clusters_$pos <=xlim[2] & clusters_$pos >= xlim[1]
     df = clusters_[indsp,3:dim(clusters_)[2],drop=F]
-   # ggp=ggpairs(df)
-    print(cor(df))
-    print(dim(df))
-    trans="log10"
-    ggp<-ggplot(df)
+    nrows = length(which(indsp))
+   
     sums=apply(df,2,sum)
     maxi = which(sums==max(sums))
     others = 1:length(sums)
     others = others[-maxi]
-    print(sums)
-    print(others)
-    if(logy) ggp<-ggp+scale_y_continuous(trans=trans)+scale_x_continuous(trans=trans)+ggtext(path)
+    othername="others"
+    if(length(others)==1) othername = names(df)[others[1]]
     len = dim(df)[2]
     if(len>1){
       cor = cor(df)
       if(!is.matrix(cor)) cor = as.matrix(cor)
       k=maxi
-      midk = quantile(df[,k],0.33)
-      for(i in others){
-        midi = median(df[,i])
-        ggp<-ggp+geom_point(aes_string(x = names(df)[k], y = names(df)[i]), color=i)
-        ggp<-ggp+annotate(geom="text", x=midk, y=midi, label=paste(names(df)[i],"corr=",floor(100*cor[k,i])/100,sep=" "),  color=i)
-               
+      starti = 1
+      df1 = data.frame(matrix(nrow=nrows*length(others),ncol = 2))
+      names(df1) = c(names(df)[k], othername)
+      types = c()
+      for(i in 1:length(others)){
+        i1 = others[i]
+        endi = starti+nrows-1
+        indsi1 = starti:endi
+        types =c(types,  rep(paste(names(df)[i1],"corr=",floor(100*cor[k,i1])/100,sep=" "), nrows))
+       df1[indsi1,] = df[,c(k, i1),drop=F]
+        starti = endi+1
       }
+      types = factor(types)
+      df1 = cbind(df1,types)
+      print(head(df1))
+      ggp<-ggplot(df1)
+      trans="identity"
+      if(logy) trans="log10"
+      ggp<-ggp+scale_y_continuous(trans=trans,name=othername)+scale_x_continuous(trans=trans)+ggtitle(path)
+      print(names(df1))
+      ggp<-ggp+geom_point(aes_string(x = names(df1)[1], y = names(df1)[2], color=names(df1)[3]))
+    #  ggp<-ggp+annotate(geom="text", x=midk, y=midi, label=,  color=i)
+      return(ggp)
     }
-    return(ggp)
   }
     if(is.null(clusters_)){
       print(paste("could not read ",toplot))
