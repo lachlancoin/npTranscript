@@ -163,6 +163,7 @@ shinyServer(function(input, output,session) {
     df = df[,c(1,1+order(sums, decreasing=T))]
     len = dim(df)[2]-1
     if(len>1){
+      print(names(df))
       cor = cor(df[,-1])
       if(!is.matrix(cor)) cor = as.matrix(cor)
       df1 = data.frame(matrix(nrow=0,ncol = 3))
@@ -171,7 +172,9 @@ shinyServer(function(input, output,session) {
       for(k in 1:(length(sums)-1)){
         for(i in (k+1):length(sums)){
           types =c(types,  rep(paste(names(df)[k+1], names(df)[i+1],"corr=",floor(100*cor[k,i])/100,sep=" "), nrows))
-          df1 = rbind(df1,df[,c(1,k+1, i+1),drop=F])
+          df_i = df[,c(1,k+1, i+1),drop=F]
+          names(df_i) = c("pos","x","y")
+          df1 = rbind(df1,df_i)
         }
       }
       names(df1) = c("pos","x","y")
