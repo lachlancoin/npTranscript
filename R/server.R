@@ -406,6 +406,7 @@ shinyServer(function(input, output,session) {
     fasta=session$userData$fasta
     maxKmers=isolate(input$maxKmers)
     showORFs="showORFs" %in% input$options3
+    plotCorr = "plotCorr" %in% input$options3
     showSequence="showSequence" %in% input$options3
     if(plot_type=="depth") showWaterfall=F else showWaterfall="showWaterfall" %in% input$options3
     waterfallKmer=isolate(input$waterfallKmer)
@@ -499,7 +500,7 @@ shinyServer(function(input, output,session) {
         }
           ggp=run_depth(h5file,total_reads,toplot, seq_df=seq_df, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
                     showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type,
-                    showMotifs =showMotifs, alpha=alpha,
+                    showMotifs =showMotifs, alpha=alpha,plotCorr=plotCorr,
                     showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers
                     )
           return(ggp)
