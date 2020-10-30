@@ -6,6 +6,7 @@ library(RColorBrewer)
 library(writexl)
 library(shinycssloaders)
 library(shinyjs)
+library(GGally)
 
 source( "transcript_functions.R")
 
@@ -55,7 +56,7 @@ totick1 = c("showCI" ,"barchart","showInfectivity")
 #options2 = c("logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts")
  options2 = c("showTranscriptPlot","logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder")
 totick2 = c("showTranscriptPlot","TPM","ribbonCI","barchart")
-options3 = c("show_depth","logy", "TPM","showORFs", "sumDepth","mergeCounts", "showPeptides", "showSequence","showWaterfall")
+options3 = c("show_depth","logy", "TPM","showORFs", "sumDepth","mergeCounts", "showPeptides", "showSequence","showWaterfall", "plotCorr")
 totick3 = c("show_depth", "mergeCounts", "sumDepth")
 
 coordsFile = paste(currdir, "Coordinates.csv",sep="/")

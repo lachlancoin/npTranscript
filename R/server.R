@@ -8,6 +8,7 @@ library(binom)
 library(writexl)
 library(shinyjs)
 library(seqinr)
+library(GGally)
 
 #source( "transcript_functions.R")
 #source("shiny-DE.R")
@@ -123,7 +124,7 @@ shinyServer(function(input, output,session) {
                       gapthresh=100, mergeGroups=NULL,molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
                       span = 0.01, sumAll=F, xlim=null, motifpos=list(),peptides=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,
                       showORFs = F,showWaterfall=FALSE,waterfallKmer=3,waterfallOffset=0,top10=10,
-                      path="depth",seq_df = NULL){
+                      path="depth",seq_df = NULL, plotCorr=F){
     
     header =.getHeaderH5(h5file,toreplace)
     if(path=="depth"){
@@ -153,7 +154,11 @@ shinyServer(function(input, output,session) {
       tot_reads =  total_reads[inds1]/rep(1e6,length(inds1))
     }
     clusters_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]),toAdd = toAdd, mergeGroups=mergeGroups,sumID=sumID, path=path,toplot,id_cols=id_cols, gapthresh=gapthresh, dinds = dinds[inds1], pos =NULL, span = span, cumul=F, sumAll=sumAll)
-
+  if(plotCorr){
+    indsp = clusters_$pos <=xlim[2] & clusters_$pos >= xlim[1]
+    ggp=ggpairs(clusters_[indsp,,drop=F],3:(dim(clusters_)[2]))
+    return(ggp)
+  }
     if(is.null(clusters_)){
       print(paste("could not read ",toplot))
       return (ggplot())
@@ -196,17 +201,19 @@ shinyServer(function(input, output,session) {
    top10 = min(top10,length(cnts))
   # print(top10)
     cnt_df = cnt_df[order(cnt_df$cnts,decreasing = T)[1:top10],,drop=F]
-    print(cnt_df)
+    #print(cnt_df)
     id = 1:dim(cnt_df)[1]
     end = cumsum(cnt_df$cnts)
     start = c(0,end[1:(length(end)-1)])
     cnt_df = cbind(id,start,end,cnt_df)
-    print(cnt_df)
+    #print(cnt_df)
     cnt_df$kmers = factor(as.character(cnt_df$kmers),levels = as.character(cnt_df$kmers))
     session$userData$dataDepth[[which(names(session$userData$dataDepth)==path)]] = cnt_df
     ggp<-ggplot(cnt_df, aes(kmers, fill = kmers))
     ggp<-ggp+ geom_rect(aes(x = kmers,xmin = id - 0.45, xmax = id + 0.45, ymin = end,ymax = start))+ggtitle(path)
     ggp<-ggp+scale_colour_manual(values = rainbow(dim(cnt_df)[1]))
+  #  ggp<-ggp+theme(text = element_text(size=10), axis.text.x = element_text(size = rel(0.7), angle = 25, hjust=0.75))
+    
    }else{
     session$userData$dataDepth[[which(names(session$userData$dataDepth)==path)]] = tpm_df
     ggp<-plotClusters(tpm_df,seq_df, 4,  1, 
