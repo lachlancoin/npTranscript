@@ -156,42 +156,40 @@ shinyServer(function(input, output,session) {
     clusters_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]),toAdd = toAdd, mergeGroups=mergeGroups,sumID=sumID, path=path,toplot,id_cols=id_cols, gapthresh=gapthresh, dinds = dinds[inds1], pos =NULL, span = span, cumul=F, sumAll=sumAll)
   if(plotCorr){
     indsp = clusters_$pos <=xlim[2] & clusters_$pos >= xlim[1]
-    df = clusters_[indsp,3:dim(clusters_)[2],drop=F]
+    df = clusters_[indsp,2:dim(clusters_)[2],drop=F]
     nrows = length(which(indsp))
    
-    sums=apply(df,2,sum)
-    maxi = which(sums==max(sums))
-    others = 1:length(sums)
-    others = others[-maxi]
-    othername="others"
-    if(length(others)==1) othername = names(df)[others[1]]
-    len = dim(df)[2]
+    sums=apply(df[-1],2,sum)
+    df = df[,c(1,1+order(sums, decreasing=T))]
+    len = dim(df)[2]-1
     if(len>1){
-      cor = cor(df)
+      cor = cor(df[,-1])
       if(!is.matrix(cor)) cor = as.matrix(cor)
-      k=maxi
-      starti = 1
-      df1 = data.frame(matrix(nrow=nrows*length(others),ncol = 2))
-      names(df1) = c(names(df)[k], othername)
+      df1 = data.frame(matrix(nrow=0,ncol = 3))
+     
       types = c()
-      for(i in 1:length(others)){
-        i1 = others[i]
-        endi = starti+nrows-1
-        indsi1 = starti:endi
-        types =c(types,  rep(paste(names(df)[i1],"corr=",floor(100*cor[k,i1])/100,sep=" "), nrows))
-       df1[indsi1,] = df[,c(k, i1),drop=F]
-        starti = endi+1
+      for(k in 1:(length(sums)-1)){
+        for(i in (k+1):length(sums)){
+          types =c(types,  rep(paste(names(df)[k+1], names(df)[i+1],"corr=",floor(100*cor[k,i])/100,sep=" "), nrows))
+          df1 = rbind(df1,df[,c(1,k+1, i+1),drop=F])
+        }
       }
+      names(df1) = c("pos","x","y")
       types = factor(types)
+      
       df1 = cbind(df1,types)
-      print(head(df1))
+     # print(head(df1))
       ggp<-ggplot(df1)
       trans="identity"
       if(logy) trans="log10"
       ggp<-ggp+scale_y_continuous(trans=trans,name=othername)+scale_x_continuous(trans=trans)+ggtitle(path)
       print(names(df1))
-      ggp<-ggp+geom_point(aes_string(x = names(df1)[1], y = names(df1)[2], color=names(df1)[3]))
-    #  ggp<-ggp+annotate(geom="text", x=midk, y=midi, label=,  color=i)
+      if(length(sums)==2){
+        ggp<-ggp+geom_point(aes(x = x, y = y, color=pos, shape=types))
+      }
+      else{
+        ggp<-ggp+geom_point(aes(x = x, y = y, color=types))
+      }
       return(ggp)
     }
   }
