@@ -6,6 +6,7 @@ library(RColorBrewer)
 library(writexl)
 library(shinycssloaders)
 library(shinyjs)
+library(GGally)
 
 source( "transcript_functions.R")
 
@@ -55,7 +56,7 @@ totick1 = c("showCI" ,"barchart","showInfectivity")
 #options2 = c("logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts")
  options2 = c("showTranscriptPlot","logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder")
 totick2 = c("showTranscriptPlot","TPM","ribbonCI","barchart")
-options3 = c("show_depth","logy", "TPM","showORFs", "sumDepth","mergeCounts", "showPeptides", "showSequence")
+options3 = c("show_depth","logy", "TPM","showORFs", "sumDepth","mergeCounts", "showPeptides", "showSequence","showWaterfall", "plotCorr")
 totick3 = c("show_depth", "mergeCounts", "sumDepth")
 
 coordsFile = paste(currdir, "Coordinates.csv",sep="/")
@@ -93,7 +94,7 @@ shinyUI(fluidPage(
     selectInput("tojoin", label ="Join", choices=c("AND","OR","AND NOT"), selected="OR"),
     
     textInput("toplot8", label="All transcripts matching", value = ""),
-  selectInput("group_by", label="Group transcripts by", choices = c('No grouping' ,'all', 'type', 'juncts',',ORF10','ORF1ab,','type:juncts'), selected = 'No grouping'),
+  selectInput("group_by", label="Group transcripts by", choices = c('No grouping' ,'all', 'type', 'juncts','leader,',',ORF10','ORF1ab,','type:juncts'), selected = 'No grouping'),
        actionButton("plotButton", "Generate plots"),
    checkboxGroupInput("molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules),
    checkboxGroupInput("cells", label = "Cell type",  choices = info$cells, selected = info$cells),
@@ -110,9 +111,15 @@ shinyUI(fluidPage(
   numericInput("min_x", label = "Min position", value = 0),
   numericInput("max_x", label = "Max position", value = 30000),
   numericInput("loess", label = "Loess span", value = 0.0,max=1,min=0),
- numericInput("alpha", label = "Transparency", value = 1.0),
- textInput("motif", label="Show motif", value = "ACGAAC|ACGATC|ATGAAC"),
+ numericInput("waterfallKmer", label = "Kmer for waterfall plot", value = 3,max=11,min=1,step=2),
+ numericInput("waterfallOffset", label = "Offset for waterfall plot", value = 0,min=-50,max=50),
+ numericInput("maxKmers", label = "Max kmers for waterfall plot", value = 20,max=100,min=2),
  
+ 
+ numericInput("alpha", label = "Transparency", value = 1.0),
+ textInput("motif", label="Show motif", value = ""),
+ #CTAAAC|TTAAAC
+ #ACGAAC|ACGATC|ATGAAC
  
  
  
