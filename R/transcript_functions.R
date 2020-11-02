@@ -42,7 +42,7 @@ unlist(v)
      grep("end",grep("start|leader", orf_entries,v=T,inv=T),v=T),
      grep("end",grep("start|leader", orf_entries,v=T,inv=T),v=T,inv=T)
   )
-  names(vals) = c("5_3", "5_no3","no5_3","no5_no3") 
+  names(vals) = c("5_3", "5_non3","non5_3","non5_non3") 
  vals_ind= lapply(vals,function(x) which(orf_entries %in% x))
   type_name=rep("NA", length(num_breaks))
   for(i in 1:length(vals_ind)){
@@ -59,7 +59,7 @@ unlist(v)
   exps = isoInfo$experiments
  # choices = lapply(levels(ORFs$num_breaks), function(x) sort(as.character(ORFs$ORFs[ORFs$num_breaks==x])))
   choices1 = lapply(levels(ORFs$type_name),function(x) as.character(ORFs$ORFs[ORFs$type_name==x]))
-  nmes1 = c("5_3","5_no3","no5_3","no5_no3")
+  nmes1 = c("5_3","5_non3","non5_3","non5_non3")
 #  choices1= vector("list", length(nmes1))
   cmax = max(as.numeric(levels(ORFs$num_breaks)))
 #  c1 = vector("list",cmax+1)
@@ -175,7 +175,7 @@ unlist(v)
       grep("end",grep("start|leader", x1,v=T,inv=T),v=T,inv=T)
     )
     #l = vals #lapply(vals,function(x) which(x1 %in% x))
-    names(l) = c("5_3", "5_no3","no5_3","no5_no3") 
+    names(l) = c("5_3", "5_non3","non5_3","non5_non3") 
   }else if(group_by=="juncts"){
     juncts = factor( unlist(lapply(x1,function(x)-1+length(strsplit(x,",")[[1]]))))
     junctlev = levels(juncts)
@@ -261,15 +261,15 @@ if(join_and || join_not)  x2 =  matname else   x2 =  c()
     
     if(x[j]=="all"){
       x1 = matname
-    }else if(x[j]=="no3"){
+    }else if(x[j]=="non3"){
       x1=grep("end",matname,inv=T,v=T)
-    }else if(x[j]=="no5"){
+    }else if(x[j]=="non5"){
       x1=grep("leader",matname,inv=T,v=T)
-    }else if(x[j]=="no5_no3"){
+    }else if(x[j]=="non5_non3"){
       x1 = grep("end",grep("leader",matname,inv=T,v=T),inv=T,v=T)
-    }else if(x[j]=="no5_3"){
+    }else if(x[j]=="non5_3"){
       x1 = grep("end",grep("leader",matname,inv=T,v=T),inv=F,v=T)
-    }else if(x[j]=="5_no3"){
+    }else if(x[j]=="5_non3"){
       x1 = grep("end",grep("leader",matname,inv=F,v=T),inv=T,v=T)
     }else if(x[j]=="5_3"){
       x1 = grep("end",grep("leader",matname,inv=F,v=T),inv=F,v=T)
