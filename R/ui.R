@@ -6,7 +6,7 @@ library(RColorBrewer)
 library(writexl)
 library(shinycssloaders)
 library(shinyjs)
-library(GGally)
+#library(GGally)
 
 source( "transcript_functions.R")
 

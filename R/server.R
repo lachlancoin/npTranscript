@@ -168,6 +168,14 @@ shinyServer(function(input, output,session) {
       if(TRUE){
       df2 = melt(cor)
       ggp<-ggplot(data =df2, aes(x=Var1, y=Var2, fill=value)) +  geom_tile()+ggtitle(path)
+      ggp<-ggp+scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                                    midpoint = 0, limit = c(-1,1), space = "Lab", 
+                                    name="Pearson\nCorrelation") +
+        theme_minimal()+ 
+        theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                         size = 20, hjust = 1))+
+        coord_fixed()
+      
       return(ggp)
       }else{       
       
@@ -199,6 +207,8 @@ shinyServer(function(input, output,session) {
       else{
         ggp<-ggp+geom_point(aes(x = x, y = y, color=types))
       }
+      ggp<-ggp+theme(text = element_text(size=20))
+      
       return(ggp)
       }
     }
@@ -217,7 +227,7 @@ shinyServer(function(input, output,session) {
     
     if(sumAll) type_nme = "combined"
     rawdepth = T
-    leg_size1=10
+    leg_size1=15
     show=T
     fill=F
     k = 1
@@ -256,13 +266,15 @@ shinyServer(function(input, output,session) {
     ggp<-ggplot(cnt_df, aes(kmers, fill = kmers))
     ggp<-ggp+ geom_rect(aes(x = kmers,xmin = id - 0.45, xmax = id + 0.45, ymin = end,ymax = start))+ggtitle(path)
     ggp<-ggp+scale_colour_manual(values = rainbow(dim(cnt_df)[1]))
+    ggp<-ggp+theme(text = element_text(size=20))
+    
   #  ggp<-ggp+theme(text = element_text(size=10), axis.text.x = element_text(size = rel(0.7), angle = 25, hjust=0.75))
     
    }else{
     session$userData$dataDepth[[which(names(session$userData$dataDepth)==path)]] = tpm_df
     ggp<-plotClusters(tpm_df,seq_df, 4,  1, 
                  t,
-                 motifpos,peptides,
+                 motifpos,peptides,size=20,
                  rawdepth = rawdepth, linetype=linetype, colour=colour, alpha=alpha, xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =leg_size1, show=show, fill =fill)
     
    }
@@ -751,7 +763,7 @@ shinyServer(function(input, output,session) {
             ggp<-ggp+geom_errorbar(position=position_dodge(width=0.9),colour="black")
           } #ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="lower", ymax="upper"), width=.2)#, position="dodge")
         }
-        ggp<-ggp+theme(text = element_text(size=18), axis.text.x = element_text(size = rel(0.7), angle = 25, hjust=0.75))
+        ggp<-ggp+theme(text = element_text(size=18), axis.text.x = element_text(size = rel(1.0), angle = 25, hjust=0.75))
         
         #geom_bar(aes_string(x=x1, y="Ratio", fill = "type", colour = "type"),stat="identity", position = "dodge")
        
@@ -777,7 +789,9 @@ shinyServer(function(input, output,session) {
           ggp<-ggplot(subs, aes(x=time, y=TPM ,group=interaction(molecule_type, cell, ID), color = cell, linetype=ID))
           ggp<-ggp+ geom_line()  + geom_point(inherit.aes=T,aes(shape = molecule_type,size=10))
         }
-        ggp<-ggp+theme_bw();#+ylim(c(min(subs$TPM, na.rm=T), max(subs$TPM, na.rm=T)))
+      
+        
+       # ggp<-ggp+theme_bw();#+ylim(c(min(subs$TPM, na.rm=T), max(subs$TPM, na.rm=T)))
         if(!showTPM)ggp<-ggp+ylab("Counts")
         # ggp<-ggp+ geom_errorbar(aes(linetype=molecule_type))
         if(logy){
@@ -787,6 +801,7 @@ shinyServer(function(input, output,session) {
     }else{
       ggp = ggplot()
     }
+    ggp<-ggp+theme(text = element_text(size=20))
     ggp
   }
   
