@@ -319,11 +319,20 @@ shinyServer(function(input, output,session) {
    counts_file = paste(currdir, "Counts_genome1.csv",sep="/")
    if(file.exists(counts_file)){
      countsHostVirus= read.csv(counts_file)
+     
      names(countsHostVirus) =  gsub("X.","",names(countsHostVirus))
      inds_a = grep("Map.to", names(countsHostVirus))
      for(ij in inds_a) countsHostVirus[,ij] = countsHostVirus[,ij] * 1e4
      sample= apply(countsHostVirus[,1:3],1,paste,collapse="_")
      countsHostVirus=cbind(sample,countsHostVirus)
+     torem = c()
+     v1 = sample
+     dupl = lapply(unique(v1[duplicated(v1)]), function(x)which(v1 ==x))
+     for(j in dupl){
+       #  countsHostVirus[j[1], sum_inds] = apply(countsHostVirus[dupl[[1]],sum_inds],1,sum)
+       torem = c(torem, j[-1])
+     }   
+     countsHostVirus = countsHostVirus[-torem,]
      vars = c(names(countsHostVirus[inds_a]), "Total")
      countsHostVirus=
       melt(countsHostVirus,id.vars=c("sample"),
