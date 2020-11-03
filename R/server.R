@@ -745,12 +745,20 @@ shinyServer(function(input, output,session) {
         if(stack){
           
           ggp<-ggplot()
-          ggp<-ggp+geom_bar(data=subs,aes_string(x="sample",y=y_text,fill=ORF,color=ORF),position="stack",stat='identity')
+          ggp<-ggp+geom_bar(data=subs,aes(x=sample,y=TPM,fill=ID,color=ID),position="stack",stat='identity')
+          
           if(!is.null(session$userData$countsHostVirus) && showTPM && !logy){
               countsHostVirus= session$userData$countsHostVirus
               countsHostVirus = countsHostVirus[which(countsHostVirus$sample %in% subs$sample),,drop=F]
-            ggp<-ggp+geom_point(data=countsHostVirus, aes_string(x="sample",color="ID",y="count"),stat="identity")
-            ggp<-ggp+geom_line(data=countsHostVirus, aes_string(x="sample",color="ID",y="count", group="ID"),stat="identity")
+              names(countsHostVirus)[2]="Type"
+              names(countsHostVirus)[3]="Reads"
+              types=c("Host","Virus","Sequin")
+              cols=c("Black","Red","Blue")
+              for(kk in 1:length(cols)){
+              ggp<-ggp+geom_point(data=countsHostVirus[grep(types[kk],countsHostVirus$Type),], aes(x=sample,y=Reads),color=cols[kk],stat="identity")
+              ggp<-ggp+geom_line(data=countsHostVirus[grep(types[kk],countsHostVirus$Type),], aes(x=sample,y=Reads, group=Type),color=cols[kk],stat="identity")
+              }
+          #   ggp<-ggp+geom_line(data=countsHostVirus, aes(x=sample,color=Type,y=Reads, group=Type),stat="identity")
             ggp<-ggp+ scale_y_continuous(
               name = "TPM",
               sec.axis = sec_axis(~.*1e-4, name="Proportion (%)"))
