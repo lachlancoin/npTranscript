@@ -173,7 +173,9 @@ shinyServer(function(input, output,session) {
                                     name="Pearson\nCorrelation") +
         theme_minimal()+ 
         theme(axis.text.x = element_text(angle = 45, vjust = 1, 
-                                         size = 20, hjust = 1))+
+                                         size = 15, hjust = 1),
+              axis.text.y = element_text( 
+                                         size = 15))+
         coord_fixed()
       
       return(ggp)
