@@ -124,7 +124,7 @@ shinyServer(function(input, output,session) {
                       gapthresh=100, mergeGroups=NULL,molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
                       span = 0.01, sumAll=F, xlim=null, motifpos=list(),peptides=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,
                       showORFs = F,showWaterfall=FALSE,waterfallKmer=3,waterfallOffset=0,top10=10,
-                      path="depth",seq_df = NULL, plotCorr=F, linesize=0.1){
+                      path="depth",seq_df = NULL, plotCorr=F, linesize=0.1, reverseOrder=F){
     
     header =.getHeaderH5(h5file,toreplace)
     if(path=="depth"){
@@ -164,7 +164,9 @@ shinyServer(function(input, output,session) {
     len = dim(df)[2]-1
     if(len>1){
       print(names(df))
-      cor = cor(df[,-1])
+      #reverseOrder=F
+      levels1 = .getlevels(names(df)[-1],molecules, cells, times,reverseOrder)
+      cor = cor(df[,match( levels1,names(df))])
       if(TRUE){
       df2 = melt(cor)
       ggp<-ggplot(data =df2, aes(x=Var1, y=Var2, fill=value)) +  geom_tile()+ggtitle(path)
@@ -466,6 +468,7 @@ shinyServer(function(input, output,session) {
     showDepth  = "show_depth" %in% input$options3
     logy = "logy" %in% input$options3
     group_by=input$group_by
+    reverseOrder=F
     merge_by="" #input$merge_by
   #  plot_type=input$depth_plot_type
     motif = isolate(input$motif)
@@ -568,7 +571,7 @@ shinyServer(function(input, output,session) {
         }
           ggp=run_depth(h5file,total_reads,toplot, seq_df=seq_df, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
                     showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type,
-                    showMotifs =showMotifs, alpha=alpha,plotCorr=plotCorr,linesize=linesize,
+                    showMotifs =showMotifs, alpha=alpha,plotCorr=plotCorr,linesize=linesize, reverseOrder=reverseOrder,
                     showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers
                     )
           return(ggp)
