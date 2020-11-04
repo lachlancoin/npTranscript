@@ -124,7 +124,7 @@ shinyServer(function(input, output,session) {
                       gapthresh=100, mergeGroups=NULL,molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
                       span = 0.01, sumAll=F, xlim=null, motifpos=list(),peptides=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,
                       showORFs = F,showWaterfall=FALSE,waterfallKmer=3,waterfallOffset=0,top10=10,
-                      path="depth",seq_df = NULL, plotCorr=F){
+                      path="depth",seq_df = NULL, plotCorr=F, linesize=0.1){
     
     header =.getHeaderH5(h5file,toreplace)
     if(path=="depth"){
@@ -274,7 +274,7 @@ shinyServer(function(input, output,session) {
     session$userData$dataDepth[[which(names(session$userData$dataDepth)==path)]] = tpm_df
     ggp<-plotClusters(tpm_df,seq_df, 4,  1, 
                  t,
-                 motifpos,peptides,size=20,
+                 motifpos,peptides,size=20,linesize=linesize,
                  rawdepth = rawdepth, linetype=linetype, colour=colour, alpha=alpha, xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =leg_size1, show=show, fill =fill)
     
    }
@@ -552,6 +552,7 @@ shinyServer(function(input, output,session) {
           times = input$times
         xlim =   c(isolate(input$min_x), isolate(input$max_x))
         alpha = isolate(input$alpha)
+        linesize=0.001  #isolate(input$linesize)
         if(xlim[2]<=xlim[1]) xlim = NULL
        seq_df= NULL
         if( showSequence || showWaterfall){
@@ -565,7 +566,7 @@ shinyServer(function(input, output,session) {
         }
           ggp=run_depth(h5file,total_reads,toplot, seq_df=seq_df, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
                     showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type,
-                    showMotifs =showMotifs, alpha=alpha,plotCorr=plotCorr,
+                    showMotifs =showMotifs, alpha=alpha,plotCorr=plotCorr,linesize=linesize,
                     showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers
                     )
           return(ggp)
@@ -780,7 +781,7 @@ shinyServer(function(input, output,session) {
             ggp<-ggp+geom_errorbar(position=position_dodge(width=0.9),colour="black")
           } #ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="lower", ymax="upper"), width=.2)#, position="dodge")
         }
-        ggp<-ggp+theme(text = element_text(size=18), axis.text.x = element_text(size = rel(1.0), angle = 25, hjust=0.75))
+        ggp<-ggp+theme_bw()+theme(text = element_text(size=18), axis.text.x = element_text(size = rel(1.0), angle = 25, hjust=0.75))
         
         #geom_bar(aes_string(x=x1, y="Ratio", fill = "type", colour = "type"),stat="identity", position = "dodge")
        
@@ -818,7 +819,7 @@ shinyServer(function(input, output,session) {
     }else{
       ggp = ggplot()
     }
-    ggp<-ggp+theme(text = element_text(size=20))
+    ggp<-ggp+theme_bw()+theme(text = element_text(size=20))
     ggp
   }
   

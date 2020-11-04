@@ -422,8 +422,8 @@ if(is.null(levels)){
  ratio1
 }
 #  ggp= NULL
-.plotAnnotFile<-function(ratio1, levels=NULL,barchart=F,showEB = F,showSecondAxis=F,coeff=1,diff=0, y_text="Ratio", size=20){
-  if(!barchart){
+.plotAnnotFile<-function(ratio1, levels=NULL,barchart=F,showEB = F,showSecondAxis=F,coeff=1,diff=0, y_text="Ratio", size=20, linesize=2){
+   if(!barchart){
     timevec=c("0hpi","2hpi","24hpi","48hpi")
     ratio3= separate(ratio1,6, c('molecule_type', 'cell', 'time'), sep='_', remove = T) %>%
       transform(  molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time,levels=timevec))
@@ -438,7 +438,7 @@ if(is.null(levels)){
     
     if(!showSecondAxis){
       ggp1<-ggplot(ratio5, aes(x=time))
-      ggp1<-ggp1+geom_line(position=position_dodge(width=0.1),aes(y=value ,group=interaction(molecule_type, cell, ORF), color = cell))
+      ggp1<-ggp1+geom_line(position=position_dodge(width=0.1),aes(y=value ,group=interaction(molecule_type, cell, ORF), color = cell, size=linesize))
       
     if(showEB) {
       ggp1<-ggp1+ geom_errorbar(aes(ymin=lower, ymax=upper, group=interaction(molecule_type, cell, ORF), color = cell),
@@ -476,10 +476,11 @@ if(is.null(levels)){
        ggp1<-ggp1+ scale_y_continuous(
       name = "Log2 (total - sub-genomics)",
       sec.axis = sec_axis(~.*coeff+diff, name="Log2 TPM")
+    
     )
         }
     
-    ggp1<-ggp1+theme(text = element_text(size=size), axis.text.x = element_text(size = rel(1.0),angle = 25, hjust=0.75))
+    ggp1<-ggp1+theme_bw()+theme(text = element_text(size=size), axis.text.x = element_text(size = rel(1.0),angle = 25, hjust=0.75))
     
     return(list(ggp=ggp1, data=data))
   }else{
@@ -498,7 +499,7 @@ if(is.null(levels)){
     
      ggp<-ggp+ggtitle("Percentage of ORF covering reads which include leader")
      ggp<-ggp+xlab("ORF")
-     ggp<-ggp+theme(text = element_text(size=size), axis.text.x = element_text(size = rel(1.0),angle = 25, hjust=0.75))
+     ggp<-ggp+theme_bw()+theme(text = element_text(size=size), axis.text.x = element_text(size = rel(1.0),angle = 25, hjust=0.75))
     return(list(ggp=ggp, data =ratio1) )
   }
 }
@@ -936,7 +937,7 @@ split1<-function(fi) strsplit(fi,"_")[[1]][1]
 plotClusters<-function(df,seq_df, k1, totalReadCount, t, motifpos, peptides,rawdepth = T, 
                        linetype="sampID", colour="clusterID", title = "", ylab=if(rawdepth)  "depth" else "TPM", logy=F, 
                        leg_size = 6, xlim  = NULL, show=F, updatenmes = F, fill = F, alpha=0.5,
-                       showSeqThresh=500, size=20){
+                       showSeqThresh=500, size=20, linesize=0.1){
   if(!is.factor(df$clusterID)) df$clusterID = as.factor(df$clusterID)  #types[df$type]
  # names(df)[3] = "depth"
   #ids =  as.character(rel_count$ID)
@@ -961,6 +962,7 @@ plotClusters<-function(df,seq_df, k1, totalReadCount, t, motifpos, peptides,rawd
     ylim = c(max(0,min(df[xincl,k1], na.rm=T)),max(1,max(df[xincl,k1], na.rm=T)))
   }
   ggp<-ggplot()
+  print(paste("linesize",linesize))
   ggp<-ggp+geom_line(data=df, aes_string(x="pos", fill="clusterID", colour = colour, linetype=linetype, y = names(df)[k1], alpha=alpha)) +theme_bw()
   if(!is.null(seq_df) && dim(seq_df)[1]<showSeqThresh){
    seqy = seq_df$seqy
@@ -994,21 +996,21 @@ legend.title=element_text(size=leg_size), legend.text=element_text(size=leg_size
   }
   
   if(!is.null(t$sideCols)){
-    ggp<-ggp+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols)
-    ggp<-ggp+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols)
+    ggp<-ggp+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols, alpha=0.5)
+    ggp<-ggp+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols, alpha=0.5)
   
   }
   if(length(motifpos)>0){
     for(jk in 1:length(motifpos)){
-    ggp<-ggp+geom_vline(xintercept = motifpos[[jk]], linetype=jk+1, color="black")
+    ggp<-ggp+geom_vline(xintercept = motifpos[[jk]], linetype=jk+1, color="black", alpha=0.5)
     }
   #  ggp<-ggp+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id=='TRS_long')], linetype="dotdash", color="black")
     #ggp<-ggp+geom_vline(xintercept = fimo$start[fimo$strand=="-"], linetype="dotted", color="grey")
   }
 
 if(!is.null(peptides)){
-  ggp<-ggp+geom_vline(xintercept = peptides[,1], linetype="dotted", color="blue")
-  ggp<-ggp+geom_vline(xintercept = peptides[,2], linetype="dashed", color="blue")
+  ggp<-ggp+geom_vline(xintercept = peptides[,1], linetype="dotted", color="blue", alpha=0.5)
+  ggp<-ggp+geom_vline(xintercept = peptides[,2], linetype="dashed", color="blue", alpha=0.5)
   #ggp<-ggp+geom_vline(xintercept = fimo$start[fimo$strand=="-"], linetype="dotted", color="grey")
 }
   #abline(v = t$Maximum, col=3)
@@ -1754,14 +1756,14 @@ plotBreakPIntrons<-function(breakP1, t=NULL, fimo=NULL, region =  c(1,5000,100,2
     ggp1<-blankGraph(startc[1:2],"pos", depth_str, title = title2);
   }else{
     ggp1<-ggplot(df,aes_string(x="pos",y=depth_str,fill =  "s_e" , colour = "s_e" ))+geom_point() + theme_bw()+ggtitle(title2)
-    ggp1<-ggp1+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols)
-    ggp1<-ggp1+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols)
+    ggp1<-ggp1+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols, alpha =0.5)
+    ggp1<-ggp1+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols, alpha =0.5)
     if(!is.null(fimo)){
-    	ggp1<-ggp1+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id == 'TRS_short')], linetype="dotted", color="black")
-    	ggp1<-ggp1+geom_vline(xintercept = fimo$stop[(fimo$strand=="+") & (fimo$motif_id == 'TRS_short')], linetype="dotted", color="grey")
+    	ggp1<-ggp1+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id == 'TRS_short')], linetype="dotted", color="black", alpha = 0.5)
+    	ggp1<-ggp1+geom_vline(xintercept = fimo$stop[(fimo$strand=="+") & (fimo$motif_id == 'TRS_short')], linetype="dotted", color="grey" , alpha=0.5)
 		
-		ggp1<-ggp1+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id == 'TRS_long')], linetype="dotdash", color="black")
-    	ggp1<-ggp1+geom_vline(xintercept = fimo$stop[(fimo$strand=="+") & (fimo$motif_id == 'TRS_long')], linetype="dotdash", color="grey")
+		ggp1<-ggp1+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id == 'TRS_long')], linetype="dotdash", color="black", alpha=0.5)
+    	ggp1<-ggp1+geom_vline(xintercept = fimo$stop[(fimo$strand=="+") & (fimo$motif_id == 'TRS_long')], linetype="dotdash", color="grey", alpha=0.5)
 		
 		
     }
@@ -1776,11 +1778,11 @@ plotBreakPIntrons<-function(breakP1, t=NULL, fimo=NULL, region =  c(1,5000,100,2
     ggp2<-ggp2+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols)
     ggp2<-ggp2+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols)
  if(!is.null(fimo)){
-    ggp2<-ggp2+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id == 'TRS_short')], linetype="dotted", color="black")
-    ggp2<-ggp2+geom_vline(xintercept = fimo$stop[(fimo$strand=="+") & (fimo$motif_id == 'TRS_short')], linetype="dotted", color="grey")
+    ggp2<-ggp2+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id == 'TRS_short')], linetype="dotted", color="black", alpha=0.5)
+    ggp2<-ggp2+geom_vline(xintercept = fimo$stop[(fimo$strand=="+") & (fimo$motif_id == 'TRS_short')], linetype="dotted", color="grey", alpha=0.5)
 	
-    ggp2<-ggp2+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id == 'TRS_long')], linetype="dotdash", color="black")
-    ggp2<-ggp2+geom_vline(xintercept = fimo$stop[(fimo$strand=="+") & (fimo$motif_id == 'TRS_long')], linetype="dotdash", color="grey")
+    ggp2<-ggp2+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id == 'TRS_long')], linetype="dotdash", color="black", alpha=0.5)
+    ggp2<-ggp2+geom_vline(xintercept = fimo$stop[(fimo$strand=="+") & (fimo$motif_id == 'TRS_long')], linetype="dotdash", color="grey", alpha=0.5)
 
 }
     if(logT) ggp2<-ggp2+scale_y_continuous(trans='log10') 
