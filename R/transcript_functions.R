@@ -422,7 +422,7 @@ if(is.null(levels)){
  ratio1
 }
 #  ggp= NULL
-.plotAnnotFile<-function(ratio1, levels=NULL,barchart=F,showEB = F,showSecondAxis=F,coeff=1,diff=0, y_text="Ratio", size=20, linesize=2){
+.plotAnnotFile<-function(ratio1, levels=NULL,barchart=F,showEB = F,showSecondAxis=F,coeff=1,diff=0, y_text="Ratio", size=20, linesize=1.5){
    if(!barchart){
     timevec=c("0hpi","2hpi","24hpi","48hpi")
     ratio3= separate(ratio1,6, c('molecule_type', 'cell', 'time'), sep='_', remove = T) %>%
@@ -438,7 +438,7 @@ if(is.null(levels)){
     
     if(!showSecondAxis){
       ggp1<-ggplot(ratio5, aes(x=time))
-      ggp1<-ggp1+geom_line(position=position_dodge(width=0.1),aes(y=value ,group=interaction(molecule_type, cell, ORF), color = cell, size=linesize))
+      ggp1<-ggp1+geom_line(position=position_dodge(width=0.1),aes(y=value ,group=interaction(molecule_type, cell, ORF), color = cell), size=linesize)
       
     if(showEB) {
       ggp1<-ggp1+ geom_errorbar(aes(ymin=lower, ymax=upper, group=interaction(molecule_type, cell, ORF), color = cell),

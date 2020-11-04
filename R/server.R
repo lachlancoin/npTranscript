@@ -745,7 +745,7 @@ shinyServer(function(input, output,session) {
           trans="log10"
         }
         ggp<-ggp+ scale_y_continuous(trans=trans,name=splitby_vec[2], limits=ylim)+ scale_x_continuous(limits = ylim,trans=trans,name=splitby_vec[1])
-        
+        ggp<-ggp+theme_bw()+theme(text = element_text(size=20))
       }else if(barchart){
         ORF="ID"
         y_text="TPM"
@@ -808,7 +808,7 @@ shinyServer(function(input, output,session) {
           ggp<-ggp+ geom_line()  + geom_point(inherit.aes=T,aes(shape = molecule_type,size=10))
         }
       
-        
+        ggp<-ggp+theme_bw()+theme(text = element_text(size=20))
        # ggp<-ggp+theme_bw();#+ylim(c(min(subs$TPM, na.rm=T), max(subs$TPM, na.rm=T)))
         if(!showTPM)ggp<-ggp+ylab("Counts")
         # ggp<-ggp+ geom_errorbar(aes(linetype=molecule_type))
@@ -819,7 +819,7 @@ shinyServer(function(input, output,session) {
     }else{
       ggp = ggplot()
     }
-    ggp<-ggp+theme_bw()+theme(text = element_text(size=20))
+    
     ggp
   }
   
