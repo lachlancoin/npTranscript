@@ -253,7 +253,7 @@ unlist(v)
 }
 
 .findEntries1<-function(x,matname ,tojoin="OR"){
-
+  print(paste("tojoin",tojoin))
   join_and = tojoin=="AND"
   join_not = tojoin=="AND NOT"
 if(join_and || join_not)  x2 =  matname else   x2 =  c()
@@ -422,7 +422,7 @@ if(is.null(levels)){
  ratio1
 }
 #  ggp= NULL
-.plotAnnotFile<-function(ratio1, levels=NULL,barchart=F,showEB = F,showSecondAxis=F,coeff=1,diff=0, y_text="Ratio", size=20, linesize=1.5){
+.plotAnnotFile<-function(ratio1, levels=NULL,barchart=F,showEB = F,showSecondAxis=F,coeff=1,diff=0, y_text="Ratio", size=20,textsize=20, linesize=1.5){
    if(!barchart){
     timevec=c("0hpi","2hpi","24hpi","48hpi")
     ratio3= separate(ratio1,6, c('molecule_type', 'cell', 'time'), sep='_', remove = T) %>%
@@ -480,7 +480,7 @@ if(is.null(levels)){
     )
         }
     
-    ggp1<-ggp1+theme_bw()+theme(text = element_text(size=size), axis.text.x = element_text(size = rel(1.0),angle = 25, hjust=0.75))
+    ggp1<-ggp1+theme_bw()+theme(text = element_text(size=textsize), axis.text.x = element_text(size = rel(1.0),angle = 25, hjust=0.75))
     
     return(list(ggp=ggp1, data=data))
   }else{
@@ -499,7 +499,7 @@ if(is.null(levels)){
     
      ggp<-ggp+ggtitle("Percentage of ORF covering reads which include leader")
      ggp<-ggp+xlab("ORF")
-     ggp<-ggp+theme_bw()+theme(text = element_text(size=size), axis.text.x = element_text(size = rel(1.0),angle = 25, hjust=0.75))
+     ggp<-ggp+theme_bw()+theme(text = element_text(size=textsize), axis.text.x = element_text(size = rel(1.0),angle = 25, hjust=0.75))
     return(list(ggp=ggp, data =ratio1) )
   }
 }
@@ -937,7 +937,7 @@ split1<-function(fi) strsplit(fi,"_")[[1]][1]
 plotClusters<-function(df,seq_df, k1, totalReadCount, t, motifpos, peptides,rawdepth = T, 
                        linetype="sampID", colour="clusterID", title = "", ylab=if(rawdepth)  "depth" else "TPM", logy=F, 
                        leg_size = 6, xlim  = NULL, show=F, updatenmes = F, fill = F, alpha=0.5,
-                       showSeqThresh=500, size=20, linesize=0.1){
+                       showSeqThresh=500, size=20, linesize=0.1, textsize=20){
   if(!is.factor(df$clusterID)) df$clusterID = as.factor(df$clusterID)  #types[df$type]
  # names(df)[3] = "depth"
   #ids =  as.character(rel_count$ID)
@@ -962,7 +962,7 @@ plotClusters<-function(df,seq_df, k1, totalReadCount, t, motifpos, peptides,rawd
     ylim = c(max(0,min(df[xincl,k1], na.rm=T)),max(1,max(df[xincl,k1], na.rm=T)))
   }
   ggp<-ggplot()
-  print(paste("linesize",linesize))
+ # print(paste("linesize",linesize))
   ggp<-ggp+geom_line(data=df, aes_string(x="pos", fill="clusterID", colour = colour, linetype=linetype, y = names(df)[k1], alpha=alpha)) +theme_bw()
   if(!is.null(seq_df) && dim(seq_df)[1]<showSeqThresh){
    seqy = seq_df$seqy
@@ -977,9 +977,9 @@ if(fill) ggp<-ggp+geom_area()
   if(logy) ggp<-ggp+scale_y_continuous(name=ylab,trans='log10') #, limits=ylim)
   else ggp<-ggp+labs(y= ylab)+ylim(ylim)
   if(leg_size==0  || length(levels(as.factor(as.character(df$type))))>20){
-    ggp<-ggp+theme(legend.position="none",text = element_text(size=size))
+    ggp<-ggp+theme(legend.position="none",text = element_text(size=textsize))
   }else{
-    ggp<-ggp+theme(text = element_text(size=size),plot.title = element_text(size = rel(1.0), face = "bold"),legend.position="right",
+    ggp<-ggp+theme(text = element_text(size=textsize),plot.title = element_text(size = rel(1.0), face = "bold"),legend.position="right",
 legend.title=element_text(size=leg_size), legend.text=element_text(size=leg_size))
   }  
   #ggp<-ggp+theme(, axis.text.x = element_text(size = rel(1.0)))

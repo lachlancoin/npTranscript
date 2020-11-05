@@ -123,7 +123,7 @@ shinyServer(function(input, output,session) {
   run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", 
                       gapthresh=100, mergeGroups=NULL,molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
                       span = 0.01, sumAll=F, xlim=null, motifpos=list(),peptides=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,
-                      showORFs = F,showWaterfall=FALSE,waterfallKmer=3,waterfallOffset=0,top10=10,
+                      showORFs = F,showWaterfall=FALSE,waterfallKmer=3,waterfallOffset=0,top10=10,textsize=20,
                       path="depth",seq_df = NULL, plotCorr=F, linesize=0.1, reverseOrder=F){
     
     header =.getHeaderH5(h5file,toreplace)
@@ -175,10 +175,10 @@ shinyServer(function(input, output,session) {
                                     name="Pearson\nCorrelation") +
         theme_minimal()+ 
         theme(axis.text.x = element_text(angle = 45, vjust = 1, 
-                                         size = 15, hjust = 1),
+                                         size = textsize, hjust = 1),
               axis.text.y = element_text( 
-                                         size = 15))+
-        coord_fixed()
+                                         size = textsize))+
+        coord_fixed()+xlab("")+ylab("")
       
       return(ggp)
       }else{       
@@ -211,7 +211,7 @@ shinyServer(function(input, output,session) {
       else{
         ggp<-ggp+geom_point(aes(x = x, y = y, color=types))
       }
-      ggp<-ggp+theme(text = element_text(size=20))
+      ggp<-ggp+theme(text = element_text(size=textsize))
       
       return(ggp)
       }
@@ -231,7 +231,7 @@ shinyServer(function(input, output,session) {
     
     if(sumAll) type_nme = "combined"
     rawdepth = T
-    leg_size1=15
+    leg_size1=textsize
     show=T
     fill=F
     k = 1
@@ -270,7 +270,7 @@ shinyServer(function(input, output,session) {
     ggp<-ggplot(cnt_df, aes(kmers, fill = kmers))
     ggp<-ggp+ geom_rect(aes(x = kmers,xmin = id - 0.45, xmax = id + 0.45, ymin = end,ymax = start))+ggtitle(path)
     ggp<-ggp+scale_colour_manual(values = rainbow(dim(cnt_df)[1]))
-    ggp<-ggp+theme(text = element_text(size=20))
+    ggp<-ggp+theme(text = element_text(size=textsize))
     
   #  ggp<-ggp+theme(text = element_text(size=10), axis.text.x = element_text(size = rel(0.7), angle = 25, hjust=0.75))
     
@@ -278,8 +278,9 @@ shinyServer(function(input, output,session) {
     session$userData$dataDepth[[which(names(session$userData$dataDepth)==path)]] = tpm_df
     ggp<-plotClusters(tpm_df,seq_df, 4,  1, 
                  t,
-                 motifpos,peptides,size=20,linesize=linesize,
-                 rawdepth = rawdepth, linetype=linetype, colour=colour, alpha=alpha, xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =leg_size1, show=show, fill =fill)
+                 motifpos,peptides,size=20,linesize=linesize,textsize=textsize,
+                 rawdepth = rawdepth, linetype=linetype, colour=colour,
+                 alpha=alpha, xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =leg_size1, show=show, fill =fill)
     
    }
     ggp
@@ -467,6 +468,7 @@ shinyServer(function(input, output,session) {
     if(!file.exists(session$userData$h5file)) return(ggplot())
     showDepth  = "show_depth" %in% input$options3
     logy = "logy" %in% input$options3
+    textsize=input$textsize
     group_by=input$group_by
     reverseOrder=F
     merge_by="" #input$merge_by
@@ -572,6 +574,7 @@ shinyServer(function(input, output,session) {
           ggp=run_depth(h5file,total_reads,toplot, seq_df=seq_df, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
                     showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type,
                     showMotifs =showMotifs, alpha=alpha,plotCorr=plotCorr,linesize=linesize, reverseOrder=reverseOrder,
+                    textsize=textsize,
                     showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers
                     )
           return(ggp)
@@ -588,6 +591,7 @@ shinyServer(function(input, output,session) {
     if(!"showTranscriptPlot" %in% input$options2) return(ggplot())
     
 	print(paste('testinput', input$molecules))
+	textsize=input$textsize
     molecules <-  input$molecules 
     cells <- input$cells 
     times<-input$times
@@ -750,7 +754,7 @@ shinyServer(function(input, output,session) {
           trans="log10"
         }
         ggp<-ggp+ scale_y_continuous(trans=trans,name=splitby_vec[2], limits=ylim)+ scale_x_continuous(limits = ylim,trans=trans,name=splitby_vec[1])
-        ggp<-ggp+theme_bw()+theme(text = element_text(size=20))
+        ggp<-ggp+theme_bw()+theme(text = element_text(size=textsize))
       }else if(barchart){
         ORF="ID"
         y_text="TPM"
@@ -786,7 +790,7 @@ shinyServer(function(input, output,session) {
             ggp<-ggp+geom_errorbar(position=position_dodge(width=0.9),colour="black")
           } #ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="lower", ymax="upper"), width=.2)#, position="dodge")
         }
-        ggp<-ggp+theme_bw()+theme(text = element_text(size=18), axis.text.x = element_text(size = rel(1.0), angle = 25, hjust=0.75))
+        ggp<-ggp+theme_bw()+theme(text = element_text(size=textsize), axis.text.x = element_text(size = rel(1.0), angle = 25, hjust=0.75))
         
         #geom_bar(aes_string(x=x1, y="Ratio", fill = "type", colour = "type"),stat="identity", position = "dodge")
        
@@ -813,7 +817,7 @@ shinyServer(function(input, output,session) {
           ggp<-ggp+ geom_line()  + geom_point(inherit.aes=T,aes(shape = molecule_type,size=10))
         }
       
-        ggp<-ggp+theme_bw()+theme(text = element_text(size=20))
+        ggp<-ggp+theme_bw()+theme(text = element_text(size=textsize))
        # ggp<-ggp+theme_bw();#+ylim(c(min(subs$TPM, na.rm=T), max(subs$TPM, na.rm=T)))
         if(!showTPM)ggp<-ggp+ylab("Counts")
         # ggp<-ggp+ geom_errorbar(aes(linetype=molecule_type))
@@ -834,6 +838,7 @@ shinyServer(function(input, output,session) {
     barchart="barchart" %in% input$options1
     reverseOrder="reverseOrder" %in% input$options1
     showSecondAxis="showSecondAxis" %in% input$options1
+    textsize=input$textsize
     conf.int=input$conf.int
     countsTotal=session$userData$countsTotal
     infilesAnnot = paste(currdir,"0.annot.txt.gz", sep="/")
@@ -856,7 +861,7 @@ shinyServer(function(input, output,session) {
       y_text="Ratio"
       #   y_text="spliced"
       annots1=.plotAnnotFile(ratio1,barchart=barchart,showSecondAxis=showSecondAxis,showEB=T, levels=levels1, y_text=y_text,
-                             diff=0, coeff=5)
+                             diff=0, coeff=5, textsize=textsize)
      
 #      resall = 
      # names(resall) =   session$userData$dirname

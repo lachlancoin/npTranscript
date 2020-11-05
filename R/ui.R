@@ -99,6 +99,7 @@ shinyUI(fluidPage(
    checkboxGroupInput("molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules),
    checkboxGroupInput("cells", label = "Cell type",  choices = info$cells, selected = info$cells),
    checkboxGroupInput("times", label = "Time points",  choices = info$times, selected = info$times),
+  numericInput("textsize", label = "Text size", value = 20.0, min=3.0, max=100),
    checkboxGroupInput("options1", label = h3("Top panel"), choices = options1, selected=totick1) ,
    textInput("orfs", label="ORFs to include", value = orfs),
    checkboxGroupInput("options2", label = h3("Middle panel"), choices = options2, selected=totick2) ,
@@ -117,6 +118,8 @@ shinyUI(fluidPage(
  
  
  numericInput("alpha", label = "Transparency", value = 1.0),
+ #numericInput("linesize", label = "Thickness", value = 0.1, min = 0.0,max=1),
+ 
  textInput("motif", label="Show motif", value = ""),
  #CTAAAC|TTAAAC
  #ACGAAC|ACGATC|ATGAAC
