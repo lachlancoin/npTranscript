@@ -78,7 +78,7 @@ h5file = NULL
   subs1 = cbind(subs[,count_ind],total_reads1[inds1])
 #  print(subs1)
   nrows = dim(subs)[1]
-  cis = matrix(0,ncol=3,nrow =nrows )
+  cis = matrix(NA,ncol=3,nrow =nrows )
   dimnames(cis)[[2]] = paste(c("TPM","lower","upper"),suffix,sep="")
   for(i in 1:nrows){
    # print(i)
@@ -322,14 +322,19 @@ shinyServer(function(input, output,session) {
       session$userData$annots=annots
     }
    counts_file = paste(currdir, "Counts_genome1.csv",sep="/")
+   options2 = c("showTranscriptPlot","logy","showCI", "TPM_amongst_viral","barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder")
+   totick2 = c("showTranscriptPlot","ribbonCI","barchart","TPM_amongst_viral")
+   
    if(file.exists(counts_file)){
      countsHostVirus= read.csv(counts_file)
+     options2 = c("showTranscriptPlot","logy","showCI", "TPM_amongst_all" ,"TPM_amongst_viral","barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder")
      
      names(countsHostVirus) =  gsub("X.","",names(countsHostVirus))
-     inds_a = grep("Map.to", names(countsHostVirus))
-     for(ij in inds_a) countsHostVirus[,ij] = countsHostVirus[,ij] * 1e4
+    
      sample= apply(countsHostVirus[,1:3],1,paste,collapse="_")
      countsHostVirus=cbind(sample,countsHostVirus)
+     inds_a = grep("Map.to", names(countsHostVirus))
+     
      torem = c()
      v1 = sample
      dupl = lapply(unique(v1[duplicated(v1)]), function(x)which(v1 ==x))
@@ -429,6 +434,9 @@ shinyServer(function(input, output,session) {
     updateTextInput(session,"orfs", label="ORFs to include", value = orfs)
    # updateSelectInput(session, "depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="depth")
     updateTextInput(session,"motif", label="Show motif", value = motifText)
+    
+    updateCheckboxGroupInput(session,"options2", label = "Middle panel", choices = options2, selected=totick2) 
+    
     #CTAAAC|TTAAAC
     #ACGAAC|ACGATC|ATGAAC
 	
@@ -491,7 +499,7 @@ shinyServer(function(input, output,session) {
     mergeCounts='mergeCounts' %in% input$options3
     showPeptides="showPeptides" %in% input$options3
     
-    tpm = "TPM" %in% input$options3
+    tpm = "TPM_amongst_viral" %in% input$options3
     h5file=session$userData$h5file
     total_reads = NULL
    # fimo = NULL
@@ -613,12 +621,13 @@ shinyServer(function(input, output,session) {
     logy = "logy" %in% input$options2
     showCI = "showCI" %in% input$options2
     ribbon="ribbonCI" %in% input$options2
-    showTPM="TPM" %in% input$options2
+    showTPM="TPM_amongst_viral" %in% input$options2 || "TPM_amongst_all" %in% input$options2
     showCI = "showCI" %in% input$options2
     merge='mergeCounts' %in% input$options2
     barchart="barchart" %in% input$options2
     reverseOrder="reverseOrder" %in% input$options2
     stack = "stacked" %in% input$options2
+    calcTPMFromAll = "TPM_amongst_all"  %in% input$options2
     group_by=input$group_by
     merge_by=""  #input$merge_by
     max_trans = input$maxtrans
@@ -636,6 +645,19 @@ shinyServer(function(input, output,session) {
    
     #  header = session$userData$header
     total_reads = session$userData$total_reads
+    tr = NULL    
+    if(calcTPMFromAll && !is.null(session$userData$countsTotal)){
+       countsHostVirus1 =   session$userData$countsTotal
+       inds1 = match(names(total_reads) ,countsHostVirus1$sample)
+      # print(inds1)
+       tr = countsHostVirus1$count[inds1]
+       tr = as.numeric(as.character(tr))
+       names(tr) = names(total_reads)
+       print(total_reads)
+       print("new total reads")
+       print(tr)
+       total_reads = tr
+    }
     tojoin=isolate(input$tojoin)
     header = names(total_reads)
     if(length(toplot)>0 && !is.null(datafile) ){
@@ -699,11 +721,7 @@ shinyServer(function(input, output,session) {
       } else if(barchart){
         levs1=.getlevels(header,molecules, cells, times, reverseOrder)
         subs =.processTPM(mat, header, toplot, levels=levs1,split=F)
-        
         sample = subs$sample
-      
-       
-        
       }else{
         tpm_df= .processTPM(mat, header, toplot,split=T)
         subs=subset(tpm_df, molecule_type %in% molecules & cell %in% cells & time %in% times)
@@ -720,8 +738,9 @@ shinyServer(function(input, output,session) {
         cis = cbind(cis.x,cis.y)
         
       }else{
+#        print(subs)
+#        print(total_reads)
         cis = .getCIs(subs,sample,total_reads,method, showTPM)
-        
       }
       subs = cbind(subs,cis)
      
@@ -766,11 +785,17 @@ shinyServer(function(input, output,session) {
           ggp<-ggplot()
           ggp<-ggp+geom_bar(data=subs,aes(x=sample,y=TPM,fill=ID,color=ID),position="stack",stat='identity')
           
-          if(!is.null(session$userData$countsHostVirus) && showTPM && !logy){
+          if(!is.null(session$userData$countsHostVirus) && showTPM){
+            scaling_factor = 100/max(subs$TPM)
+            print(paste("scaling ",scaling_factor))
+            
               countsHostVirus= session$userData$countsHostVirus
               countsHostVirus = countsHostVirus[which(countsHostVirus$sample %in% subs$sample),,drop=F]
               names(countsHostVirus)[2]="Type"
               names(countsHostVirus)[3]="Reads"
+              print("hh")
+              print(countsHostVirus)
+              countsHostVirus[3] = countsHostVirus[3] /scaling_factor
               types=c("Host","Virus","Sequin")
               cols=c("Black","Red","Blue")
               for(kk in 1:length(cols)){
@@ -780,7 +805,7 @@ shinyServer(function(input, output,session) {
           #   ggp<-ggp+geom_line(data=countsHostVirus, aes(x=sample,color=Type,y=Reads, group=Type),stat="identity")
             ggp<-ggp+ scale_y_continuous(
               name = "TPM",
-              sec.axis = sec_axis(~.*1e-4, name="Proportion (%)"))
+              sec.axis = sec_axis(~.*scaling_factor, name="Proportion (%)"))
             #ggp<-ggp+ scale_colour_manual(values = c("black","red",  "green","orange","pink"))
           }
         }else{

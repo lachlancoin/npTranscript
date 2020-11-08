@@ -1,4 +1,6 @@
 .calcPropCI<-function(x, conf.int=0.95,  method="prop.test"){
+  if(is.na(x[2])) return (c(NA,NA,NA))
+  if(x[1]>x[2]) return (c(NA,NA,NA))
   v = binom.confint(x[1], x[2], method=method, conf.int=conf.int)[4:6] *(1e6)
 unlist(v)
 }
