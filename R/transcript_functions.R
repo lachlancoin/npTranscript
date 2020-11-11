@@ -482,7 +482,7 @@ if(is.null(levels)){
     )
         }
     
-    ggp1<-ggp1+theme_bw()+theme(text = element_text(size=textsize), axis.text.x = element_text(size = rel(1.0),angle = 25, hjust=0.75))
+    ggp1<-ggp1+theme_bw()+theme(text = element_text(size=textsize), axis.text.x = element_text(size = rel(1.0),angle = 25, hjust=1.0))
     
     return(list(ggp=ggp1, data=data))
   }else{

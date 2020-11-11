@@ -818,7 +818,7 @@ shinyServer(function(input, output,session) {
             ggp<-ggp+geom_errorbar(position=position_dodge(width=0.9),colour="black")
           } #ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="lower", ymax="upper"), width=.2)#, position="dodge")
         }
-        ggp<-ggp+theme_bw()+theme(text = element_text(size=textsize), axis.text.x = element_text(size = rel(1.0), angle = 25, hjust=0.75))
+        ggp<-ggp+theme_bw()+theme(text = element_text(size=textsize), axis.text.x = element_text(size = rel(1.0), angle = 25, hjust=1.0))
         
         #geom_bar(aes_string(x=x1, y="Ratio", fill = "type", colour = "type"),stat="identity", position = "dodge")
        
