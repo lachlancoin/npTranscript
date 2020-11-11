@@ -781,7 +781,10 @@ shinyServer(function(input, output,session) {
         #  ord="Start"
         # x1 =  paste("reorder(", ORF, ",", ord,")", sep="") 
         if(stack){
-          
+          sublevs = levels(subs$ID)
+          if(length(sublevs)==4 && sublevs[[1]]=="5_3"){
+            subs$ID = factor(as.character(subs$ID), levels=rev(c("5_3","non5_3", "5_non3","non5_non3")))
+          }
           ggp<-ggplot()
           ggp<-ggp+geom_bar(data=subs,aes(x=sample,y=TPM,fill=ID,color=ID),position="stack",stat='identity')
           
