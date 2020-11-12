@@ -789,7 +789,7 @@ shinyServer(function(input, output,session) {
           ggp<-ggp+geom_bar(data=subs,aes(x=sample,y=TPM,fill=ID,color=ID),position="stack",stat='identity')
           
           if(!is.null(session$userData$countsHostVirus) && showTPM){
-            scaling_factor = 100/max(subs$TPM)
+            scaling_factor = 100/max(subs$TPM, na.rm=T)
             print(paste("scaling ",scaling_factor))
             
               countsHostVirus= session$userData$countsHostVirus
