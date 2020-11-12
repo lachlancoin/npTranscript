@@ -334,12 +334,17 @@ shinyServer(function(input, output,session) {
      sample= apply(countsHostVirus[,1:3],1,paste,collapse="_")
      countsHostVirus=cbind(sample,countsHostVirus)
      inds_a = grep("Map.to", names(countsHostVirus))
-     
+     sum_inds = names(countsHostVirus) %in% c("Host","Virus","Sequin","Total")
      torem = c()
      v1 = sample
      dupl = lapply(unique(v1[duplicated(v1)]), function(x)which(v1 ==x))
      for(j in dupl){
-       #  countsHostVirus[j[1], sum_inds] = apply(countsHostVirus[dupl[[1]],sum_inds],1,sum)
+       print(countsHostVirus[j,sum_inds,drop=F])
+       summed = apply(countsHostVirus[j,sum_inds,drop=F],2,sum)
+       print(j)
+       print(summed)
+       print(countsHostVirus[j[1],sum_inds])
+         countsHostVirus[j[1], sum_inds] = summed
        torem = c(torem, j[-1])
      }   
      countsHostVirus = countsHostVirus[-torem,]
@@ -791,13 +796,14 @@ shinyServer(function(input, output,session) {
           if(!is.null(session$userData$countsHostVirus) && showTPM){
             scaling_factor = 100/max(subs$TPM, na.rm=T)
             print(paste("scaling ",scaling_factor))
+            print(head(subs))
             
               countsHostVirus= session$userData$countsHostVirus
               countsHostVirus = countsHostVirus[which(countsHostVirus$sample %in% subs$sample),,drop=F]
               names(countsHostVirus)[2]="Type"
               names(countsHostVirus)[3]="Reads"
               print("hh")
-              print(countsHostVirus)
+             # print(countsHostVirus)
               countsHostVirus[3] = countsHostVirus[3] /scaling_factor
               types=c("Host","Virus","Sequin")
               cols=c("Black","Red","Blue")
