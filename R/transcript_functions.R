@@ -537,14 +537,14 @@ if(is.null(levels)){
   .plotError(depth,  thresh = 1000, alpha = alpha, ci = ci, max_num =max_num,t=t, xlim =xlim, pvAsSize=T, logy=T, fisher=fisher, motifpos=motifpos)
 }
 .restrict<-function(x,thresh){
-  print("h")
-  print(x)
+ # print("h")
+#  print(x)
   if(x[1]>thresh){
     ratio=thresh/x[1]
     x = x*ratio
   }
-  print("h1")
-  print(x)
+ # print("h1")
+#  print(x)
   x
   
 }
