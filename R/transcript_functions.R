@@ -509,6 +509,7 @@ if(is.null(levels)){
 
 .calcConf<-function(v, conf.level=0.95, method="bayes"){
   #print(conf.level)
+  if(conf.level<0.0001) return (c(NA, v[2]/v[1],NA))
   res = binom.confint(x=v[2],n=v[1],conf.level=conf.level, method=method)
   as.numeric( c(res$lower,res$mean,res$upper))
   
@@ -516,26 +517,45 @@ if(is.null(levels)){
 .overl<-function(x,y){
   min(x[2]-y[1], y[2] - x[1])
 }
-.plotError<-function(depth,t1, range = 1:dim(depth)[2], method="bayes",
-                     pval_thresh = 1e-5, ci=0.95, thresh = 1000, extend=T, log=F, adj=T, lower_thresh = 0.25, diff_thresh = 0.5){
+.makeCombinedArray<-function(clusters_, errors_, xlim, thresh = 1000, ci = 0.995, max_num= 10, t=NULL,motifpos=list(), fisher=F){
+  
+  dm = dim(clusters_)
+  ij =2
+  if(dm[2]<=3){
+    clusters_ = pivot_wider(clusters_, id_cols=pos, names_from="clusterID", values_from=names(clusters_)[3], values_fill=0)
+    errors_= pivot_wider(errors_, id_cols=pos, names_from="clusterID", values_from=names(errors_)[3], values_fill=0)
+    ij=1
+  }
+  range = which(clusters_[,ij] <= xlim[2] & clusters_[,ij]>=xlim[1])
+  if(length(range)==0) return(ggplot())
+  dn1 = list(c("depth","error"),unlist(clusters_[range,ij]),names(clusters_)[-(1:ij)])
+  depth = array(dim = unlist(lapply(dn1,length)),  dimnames = dn1)
+               
+  depth[1,,] = as.matrix(clusters_[range,-(1:ij)])
+  depth[2,,] = as.matrix(errors_[range,-(1:ij)])
+ # print(dim(depth))
+  .plotError(depth,  thresh = 1000, ci = ci, max_num =max_num,t=t, xlim =xlim, pvAsSize=T, logy=T, fisher=fisher, motifpos=motifpos)
+}
+.plotError<-function(depth,range = 1:dim(depth)[[2]], t1=NULL, method="logit",    max_num = 20, pval_thresh = 1e-3,
+                     ci=0.95, thresh = 1000, extend=T, log=F, adj=T, xlim = NULL,pvAsSize=T, logy=T, fisher=F, motifpos = list()){
   inds1 = apply(depth[1,range,],1,min)>thresh
   range = range[inds1]
-  if(!is.null(t1)){
-    kinds = which(names(t1)%in% c("Minimum","Maximum"))
-    midp = (t1$Maximum+t1$Minimum)/2
-    rp = c(min(range),max(range))
-    inds2 = which(apply(t1[,kinds],1,.overl,rp)>=0)
-    t = t1[inds2,,drop=F]
-    if(dim(t)[1]>0 && extend){
-     range = min(range,min(t[,kinds])):max(range,max(t[,kinds]))
-    }
-  }
+  if(length(range)==0) return(ggplot())
+ 
   inds1 = apply(depth[1,range,],1,min)>thresh
   range = range[inds1]
   dfs = list()
   pos = as.numeric(dimnames(depth)[[2]][range])
-  pval = apply(depth[,range,],2, function(x) chisq.test(x)$p.value)
-  if(adj)pval = p.adjust(pval, method="BH")
+  .testStatistic<-function(x) chisq.test(x)$p.value
+  if(fisher){
+  .testStatistic<-function(x) fisher.test(x)$p.value
+  }
+  pval = apply(depth[,range,],2, .testStatistic)
+  if(adj) pval = p.adjust(pval, method="BH")
+  if(max_num<length(pval)){
+    ord  = order(pval)
+    pval_thresh =  min(pval_thresh,pval[ord[max_num]])
+  }
   for(i in 1:dim(depth)[[3]]){
     print(i)
     dfc = t(apply(depth[,range,i,drop=F],2,.calcConf, method=method,conf.level=ci))
@@ -549,12 +569,13 @@ if(is.null(levels)){
       diffc = apply(dj,1,function(x) x[1]-x[2]) 
       
     }
-    
-    dfs[[i]] = data.frame(dfc,type,pos,pval, diff=diffc)
+    log10pv = -log10(pval)
+    dfs[[i]] = data.frame(dfc,type,pos,pval,log10pv, diff=diffc)
     if(i==2){
       dfs[[1]]$diff = -1*dfs[[2]]$diff
     }
   }
+  
   df = NULL
   
   for(i in 1:length(dfs)){
@@ -565,19 +586,37 @@ if(is.null(levels)){
  df$type=as.factor(df$type)
   ty = levels(df$type)
   ggp<-ggplot(df, aes(x=pos,y=mean,fill=type, colour=type,ymin=lower ,ymax=upper))
-  ggp<-ggp+ geom_point(position=position_dodge(), aes(y=mean),stat="identity")
+  if(pvAsSize){
+  ggp<-ggp+ geom_point(position=position_dodge(), aes(y=mean, size=log10pv),stat="identity")
+  }else{
+    ggp<-ggp+ geom_point(position=position_dodge(), aes(y=mean),stat="identity")
+    
+  }
+  if(ci>0.01){
  ggp<-ggp+geom_errorbar(position=position_dodge(width=0.0),colour="black")
+  }
   ggp<-ggp+ggtitle(paste("Error rate by position (",ci*100,"% binomial CI) ",sep=""))
   ggp<-ggp+ylab("error rate")
   if(log) ggp<-ggp+scale_y_continuous(trans='log10')
-  ggp<-ggp+geom_text_repel(data=subset(df,pval < pval_thresh & diff>0),
-                  aes(pos,upper , label = sprintf("%5.3g" ,pval)),size = 3, color=if(type==ty[1]) "red" else "steelblue")
+  ggp<-ggp+geom_text_repel(data=subset(df,pval <= pval_thresh & diff>0),
+                  aes(pos,upper , label = sprintf("%3.2g" ,log10pv)),size = 3, color=if(type==ty[1]) "red" else "steelblue")
   ##can use pos instead of pval
   if(!extend) ggp<-ggp+xlim(min(range), max(range))
-  if(!is.null(t) && !is.null(t$sideCols)){
-    ggp<-ggp+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols)
-    ggp<-ggp+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols)
+  if(!is.null(t1) ){
+    if( !is.null(t1$sideCols)){
+    ggp<-ggp+geom_vline(xintercept = t1$Minimum, linetype="solid", color=t1$sideCols)
+    ggp<-ggp+geom_vline(xintercept = t1$Maximum, linetype="dashed", color=t1$sideCols)
+    }
   }
+  if(!is.null(xlim)) ggp<-ggp+xlim(xlim)
+  if(logy) ggp<-ggp+scale_y_continuous(trans='log10')
+  if(length(motifpos)>0){
+    for(jk in 1:length(motifpos)){
+      ggp<-ggp+geom_vline(xintercept = motifpos[[jk]], linetype=jk+1, color="black", alpha=0.5)
+    }
+  }
+  
+  ggp
 }
 
 
@@ -1006,8 +1045,6 @@ legend.title=element_text(size=leg_size), legend.text=element_text(size=leg_size
     for(jk in 1:length(motifpos)){
     ggp<-ggp+geom_vline(xintercept = motifpos[[jk]], linetype=jk+1, color="black", alpha=0.5)
     }
-  #  ggp<-ggp+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id=='TRS_long')], linetype="dotdash", color="black")
-    #ggp<-ggp+geom_vline(xintercept = fimo$start[fimo$strand=="-"], linetype="dotted", color="grey")
   }
 
 if(!is.null(peptides)){
@@ -1887,7 +1924,8 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
 #  print(head(mat1))
   cbind(clusterID,mat1)
 }
-readH5<-function(h5file, total_reads, header, toplot, path="depth",gapthresh=100,mergeGroups = NULL,sumID="all", pos = NULL,id_cols = c("molecule","cell","time"), toAdd=0,dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
+readH5<-function(h5file, total_reads, header, toplot, path="depth",gapthresh=100,mergeGroups = NULL,
+                 sumID="all", pos = NULL,id_cols = c("molecule","cell","time"), toAdd=0,dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
  pos_ind = 1
  merge=!is.null(mergeGroups)
  ncols = length(id_cols)
@@ -1907,6 +1945,7 @@ readH5<-function(h5file, total_reads, header, toplot, path="depth",gapthresh=100
 	ID = IDS[i]
 	
 	mat = t(h5read(h5file,paste(path,as.character(ID),sep="/")))
+	#print(head(mat))
 	if(dim(mat)[1]>0){
 	mat=mat[,c(1,dinds),drop=F]
 	if(merge){

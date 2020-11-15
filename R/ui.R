@@ -6,6 +6,8 @@ library(RColorBrewer)
 library(writexl)
 library(shinycssloaders)
 library(shinyjs)
+library(abind)
+library(ggrepel)
 #library(GGally)
 
 source( "transcript_functions.R")
@@ -56,7 +58,7 @@ totick1 = c("showCI" ,"barchart","showInfectivity")
 #options2 = c("logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts")
  options2 = c("showTranscriptPlot","logy","showCI", "TPM_amongst_all" ,"TPM_amongst_viral","barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder")
 totick2 = c("showTranscriptPlot","ribbonCI","barchart","TPM_amongst_viral")
-options3 = c("show_depth","logy", "TPM_amongst_viral","showORFs", "sumDepth","mergeCounts", "showPeptides", "showSequence","showWaterfall", "plotCorr")
+options3 = c("show_depth","logy", "TPM_amongst_viral","showORFs", "sumDepth","mergeCounts", "showPeptides", "showSequence","showWaterfall", "plotCorr", "showErrors", "showCI")
 totick3 = c("show_depth", "mergeCounts", "sumDepth")
 
 coordsFile = paste(currdir, "Coordinates.csv",sep="/")
@@ -115,9 +117,11 @@ shinyUI(fluidPage(
  numericInput("waterfallKmer", label = "Kmer for waterfall plot", value = 3,max=11,min=1,step=2),
  numericInput("waterfallOffset", label = "Offset for waterfall plot", value = 0,min=-50,max=50),
  numericInput("maxKmers", label = "Max kmers for waterfall plot", value = 20,max=100,min=2),
- 
+ selectInput("test", label ="test", choices=c("fisher","chisq"), selected="chisq"),
  
  numericInput("alpha", label = "Transparency", value = 1.0),
+ numericInput("depth_thesh", label = "Depth threshold for errors", value = 1000),
+ 
  #numericInput("linesize", label = "Thickness", value = 0.1, min = 0.0,max=1),
  
  textInput("motif", label="Show motif", value = ""),

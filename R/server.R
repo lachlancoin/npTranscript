@@ -8,9 +8,11 @@ library(binom)
 library(writexl)
 library(shinyjs)
 library(seqinr)
+library(abind)
+library(ggrepel)
 #library(GGally)
 
-#source( "transcript_functions.R")
+source( "transcript_functions.R")
 #source("shiny-DE.R")
 
 basedir="../data"
@@ -122,10 +124,11 @@ shinyServer(function(input, output,session) {
 	
   run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", 
                       gapthresh=100, mergeGroups=NULL,molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
-                      span = 0.01, sumAll=F, xlim=null, motifpos=list(),peptides=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,
+                      span = 0.01, sumAll=F, xlim=NULL, motifpos=list(),peptides=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,
                       showORFs = F,showWaterfall=FALSE,waterfallKmer=3,waterfallOffset=0,top10=10,textsize=20,
-                      path="depth",seq_df = NULL, plotCorr=F, linesize=0.1, reverseOrder=F){
-    
+                      ci = 0.995, depth_thresh = 1000,
+                      path="depth",seq_df = NULL, plotCorr=F, linesize=0.1, reverseOrder=F, calcErrors=F, fisher =F){
+    if(path!="depth") calcErrors = FALSE
     header =.getHeaderH5(h5file,toreplace)
     if(path=="depth"){
       dinds  = 2*(2:(length(header))-2)+2
@@ -153,8 +156,22 @@ shinyServer(function(input, output,session) {
       
       tot_reads =  total_reads[inds1]/rep(1e6,length(inds1))
     }
-    clusters_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]),toAdd = toAdd, mergeGroups=mergeGroups,sumID=sumID, path=path,toplot,id_cols=id_cols, gapthresh=gapthresh, dinds = dinds[inds1], pos =NULL, span = span, cumul=F, sumAll=sumAll)
-  if(plotCorr){
+    if(calcErrors){
+      tot_reads = rep(1,length(tot_reads))  ## we dont want to correct for read depth for errors 
+    }
+    clusters_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]),toAdd = toAdd, 
+                       mergeGroups=mergeGroups,sumID=sumID, path=path,toplot,id_cols=id_cols, 
+                       gapthresh=gapthresh, dinds = dinds[inds1], pos =NULL, span = span, cumul=F, sumAll=sumAll)
+    errors_ = NULL
+    if(calcErrors){
+      offset_ = length(header)-1
+      errors_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]),toAdd = toAdd, mergeGroups=mergeGroups,
+                       sumID=sumID, path=path,toplot,id_cols=id_cols, gapthresh=gapthresh, 
+                       dinds = dinds[inds1]+1, pos =NULL, span = span, cumul=F, sumAll=sumAll)
+      
+      ggp<- .makeCombinedArray(clusters_, errors_, xlim, thresh = depth_thresh, ci = ci, max_num = 10,t=t, fisher = fisher,motifpos=motifpos)
+      return(ggp)
+     }else  if(plotCorr){
     indsp = clusters_$pos <=xlim[2] & clusters_$pos >= xlim[1]
     df = clusters_[indsp,2:dim(clusters_)[2],drop=F]
     nrows = length(which(indsp))
@@ -339,11 +356,11 @@ shinyServer(function(input, output,session) {
      v1 = sample
      dupl = lapply(unique(v1[duplicated(v1)]), function(x)which(v1 ==x))
      for(j in dupl){
-       print(countsHostVirus[j,sum_inds,drop=F])
+      # print(countsHostVirus[j,sum_inds,drop=F])
        summed = apply(countsHostVirus[j,sum_inds,drop=F],2,sum)
-       print(j)
-       print(summed)
-       print(countsHostVirus[j[1],sum_inds])
+      # print(j)
+      # print(summed)
+      # print(countsHostVirus[j[1],sum_inds])
          countsHostVirus[j[1], sum_inds] = summed
        torem = c(torem, j[-1])
      }   
@@ -482,6 +499,12 @@ shinyServer(function(input, output,session) {
     showDepth  = "show_depth" %in% input$options3
     logy = "logy" %in% input$options3
     textsize=input$textsize
+    ci=0
+    if(  "showCI" %in% input$options3){
+      ci=input$conf.int
+    }
+    
+    depth_thresh = input$depth_thresh
     group_by=input$group_by
     reverseOrder=F
     merge_by="" #input$merge_by
@@ -491,6 +514,8 @@ shinyServer(function(input, output,session) {
     fasta=session$userData$fasta
     maxKmers=isolate(input$maxKmers)
     showORFs="showORFs" %in% input$options3
+    fisher = input$test =="fisher"
+    showErrors = "showErrors" %in% input$options3
     plotCorr = "plotCorr" %in% input$options3
     showSequence="showSequence" %in% input$options3
     if(plot_type=="depth") showWaterfall=F else showWaterfall="showWaterfall" %in% input$options3
@@ -587,7 +612,8 @@ shinyServer(function(input, output,session) {
           ggp=run_depth(h5file,total_reads,toplot, seq_df=seq_df, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
                     showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type,
                     showMotifs =showMotifs, alpha=alpha,plotCorr=plotCorr,linesize=linesize, reverseOrder=reverseOrder,
-                    textsize=textsize,
+                    textsize=textsize, calcErrors=showErrors,fisher=fisher,
+                    ci = ci, depth_thresh = depth_thresh,
                     showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers
                     )
           return(ggp)
