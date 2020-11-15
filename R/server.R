@@ -169,7 +169,7 @@ shinyServer(function(input, output,session) {
                        sumID=sumID, path=path,toplot,id_cols=id_cols, gapthresh=gapthresh, 
                        dinds = dinds[inds1]+1, pos =NULL, span = span, cumul=F, sumAll=sumAll)
       
-      ggp<- .makeCombinedArray(clusters_, errors_, xlim, thresh = depth_thresh, ci = ci, max_num = 10,t=t, fisher = fisher,motifpos=motifpos)
+      ggp<- .makeCombinedArray(clusters_, errors_, xlim, thresh = depth_thresh,alpha = alpha,  ci = ci, max_num = 10,t=t, fisher = fisher,motifpos=motifpos)
       return(ggp)
      }else  if(plotCorr){
     indsp = clusters_$pos <=xlim[2] & clusters_$pos >= xlim[1]

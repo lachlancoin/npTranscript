@@ -119,7 +119,7 @@ shinyUI(fluidPage(
  numericInput("maxKmers", label = "Max kmers for waterfall plot", value = 20,max=100,min=2),
  selectInput("test", label ="test", choices=c("fisher","chisq"), selected="chisq"),
  
- numericInput("alpha", label = "Transparency", value = 1.0),
+ numericInput("alpha", label = "Transparency", value = 0.5),
  numericInput("depth_thesh", label = "Depth threshold for errors", value = 1000),
  
  #numericInput("linesize", label = "Thickness", value = 0.1, min = 0.0,max=1),

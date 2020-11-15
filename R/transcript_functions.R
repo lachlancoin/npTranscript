@@ -517,7 +517,7 @@ if(is.null(levels)){
 .overl<-function(x,y){
   min(x[2]-y[1], y[2] - x[1])
 }
-.makeCombinedArray<-function(clusters_, errors_, xlim, thresh = 1000, ci = 0.995, max_num= 10, t=NULL,motifpos=list(), fisher=F){
+.makeCombinedArray<-function(clusters_, errors_, xlim, thresh = 1000, alpha = 1.0, ci = 0.995, max_num= 10, t=NULL,motifpos=list(), fisher=F){
   
   dm = dim(clusters_)
   ij =2
@@ -534,9 +534,9 @@ if(is.null(levels)){
   depth[1,,] = as.matrix(clusters_[range,-(1:ij)])
   depth[2,,] = as.matrix(errors_[range,-(1:ij)])
  # print(dim(depth))
-  .plotError(depth,  thresh = 1000, ci = ci, max_num =max_num,t=t, xlim =xlim, pvAsSize=T, logy=T, fisher=fisher, motifpos=motifpos)
+  .plotError(depth,  thresh = 1000, alpha = alpha, ci = ci, max_num =max_num,t=t, xlim =xlim, pvAsSize=T, logy=T, fisher=fisher, motifpos=motifpos)
 }
-.plotError<-function(depth,range = 1:dim(depth)[[2]], t1=NULL, method="logit",    max_num = 20, pval_thresh = 1e-3,
+.plotError<-function(depth,range = 1:dim(depth)[[2]],alpha = 1.0, t1=NULL, method="logit",    max_num = 20, pval_thresh = 1e-3,
                      ci=0.95, thresh = 1000, extend=T, log=F, adj=T, xlim = NULL,pvAsSize=T, logy=T, fisher=F, motifpos = list()){
   inds1 = apply(depth[1,range,],1,min)>thresh
   range = range[inds1]
@@ -585,11 +585,11 @@ if(is.null(levels)){
   posy = max(df$upper)
  df$type=as.factor(df$type)
   ty = levels(df$type)
-  ggp<-ggplot(df, aes(x=pos,y=mean,fill=type, colour=type,ymin=lower ,ymax=upper))
+  ggp<-ggplot(df, aes(x=pos,y=mean, colour=type,ymin=lower ,ymax=upper))
   if(pvAsSize){
-  ggp<-ggp+ geom_point(position=position_dodge(), aes(y=mean, size=log10pv),stat="identity")
+  ggp<-ggp+ geom_point(position=position_dodge(), aes(y=mean, size=log10pv),alpha = alpha, stat="identity")
   }else{
-    ggp<-ggp+ geom_point(position=position_dodge(), aes(y=mean),stat="identity")
+    ggp<-ggp+ geom_point(position=position_dodge(), aes(y=mean),alpha = alpha,stat="identity")
     
   }
   if(ci>0.01){
