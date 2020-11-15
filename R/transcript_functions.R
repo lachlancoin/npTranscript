@@ -536,6 +536,18 @@ if(is.null(levels)){
  # print(dim(depth))
   .plotError(depth,  thresh = 1000, alpha = alpha, ci = ci, max_num =max_num,t=t, xlim =xlim, pvAsSize=T, logy=T, fisher=fisher, motifpos=motifpos)
 }
+.restrict<-function(x,thresh){
+  print("h")
+  print(x)
+  if(x[1]>thresh){
+    ratio=thresh/x[1]
+    x = x*ratio
+  }
+  print("h1")
+  print(x)
+  x
+  
+}
 .plotError<-function(depth,range = 1:dim(depth)[[2]],alpha = 1.0, t1=NULL, method="logit",    max_num = 20, pval_thresh = 1e-3,
                      ci=0.95, thresh = 1000, extend=T, log=F, adj=T, xlim = NULL,pvAsSize=T, logy=T, fisher=F, motifpos = list()){
   inds1 = apply(depth[1,range,],1,min)>thresh
@@ -546,11 +558,18 @@ if(is.null(levels)){
   range = range[inds1]
   dfs = list()
   pos = as.numeric(dimnames(depth)[[2]][range])
+  
+  ##x dimension is 1  total vs error
   .testStatistic<-function(x) chisq.test(x)$p.value
   if(fisher){
   .testStatistic<-function(x) fisher.test(x)$p.value
   }
-  pval = apply(depth[,range,],2, .testStatistic)
+  d1 = depth[,range,]
+  #print(d1[,1:5,])
+  d1 =   apply(d1,c(2,3),.restrict,thresh)
+  #print(d1[,1:5,])
+  
+  pval = apply(d1,2, .testStatistic)
   if(adj) pval = p.adjust(pval, method="BH")
   if(max_num<length(pval)){
     ord  = order(pval)
