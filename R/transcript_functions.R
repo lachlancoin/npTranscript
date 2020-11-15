@@ -616,7 +616,7 @@ if(is.null(levels)){
     }
   }
   
-  ggp
+  ggp+theme_bw()
 }
 
 
