@@ -517,7 +517,7 @@ if(is.null(levels)){
 .overl<-function(x,y){
   min(x[2]-y[1], y[2] - x[1])
 }
-.makeCombinedArray<-function(clusters_, errors_, xlim, thresh = 1000, alpha = 1.0, ci = 0.995, max_num= 10, t=NULL,motifpos=list(), fisher=F){
+.makeCombinedArray<-function(clusters_, errors_, xlim, downsample=F, thresh = 1000, alpha = 1.0, ci = 0.995, max_num= 10, t=NULL,motifpos=list(), fisher=F){
   
   dm = dim(clusters_)
   ij =2
@@ -534,22 +534,22 @@ if(is.null(levels)){
   depth[1,,] = as.matrix(clusters_[range,-(1:ij)])
   depth[2,,] = as.matrix(errors_[range,-(1:ij)])
  # print(dim(depth))
-  .plotError(depth,  thresh = 1000, alpha = alpha, ci = ci, max_num =max_num,t=t, xlim =xlim, pvAsSize=T, logy=T, fisher=fisher, motifpos=motifpos)
+  .plotError(depth,  thresh = 1000, downsample = downsample, alpha = alpha, ci = ci, max_num =max_num,t=t, xlim =xlim, pvAsSize=T, logy=T, fisher=fisher, motifpos=motifpos)
 }
 .restrict<-function(x,thresh){
  # print("h")
 #  print(x)
   if(x[1]>thresh){
     ratio=thresh/x[1]
-    x = x*ratio
+    x = floor(x*ratio)
   }
  # print("h1")
 #  print(x)
   x
   
 }
-.plotError<-function(depth,range = 1:dim(depth)[[2]],alpha = 1.0, t1=NULL, method="logit",    max_num = 20, pval_thresh = 1e-3,
-                     ci=0.95, thresh = 1000, extend=T, log=F, adj=T, xlim = NULL,pvAsSize=T, logy=T, fisher=F, motifpos = list()){
+.plotError<-function(depth,range = 1:dim(depth)[[2]],alpha = 1.0, downsample = F, t1=NULL, method="logit",    max_num = 20, pval_thresh = 1e-3,
+                     ci=0.95, thresh = 1000, extend=T, log=F, adj=F, xlim = NULL,pvAsSize=T, logy=T, fisher=F, motifpos = list()){
   inds1 = apply(depth[1,range,],1,min)>thresh
   range = range[inds1]
   if(length(range)==0) return(ggplot())
@@ -566,9 +566,10 @@ if(is.null(levels)){
   }
   d1 = depth[,range,]
   #print(d1[,1:5,])
+  if(downsample){
   d1 =   apply(d1,c(2,3),.restrict,thresh)
   #print(d1[,1:5,])
-  
+  }
   pval = apply(d1,2, .testStatistic)
   if(adj) pval = p.adjust(pval, method="BH")
   if(max_num<length(pval)){

@@ -123,7 +123,7 @@ shinyServer(function(input, output,session) {
 	source("shiny-DE.R")
 	
   run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", 
-                      gapthresh=100, mergeGroups=NULL,molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
+                      gapthresh=100, mergeGroups=NULL,downsample = F, molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
                       span = 0.01, sumAll=F, xlim=NULL, motifpos=list(),peptides=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,
                       showORFs = F,showWaterfall=FALSE,waterfallKmer=3,waterfallOffset=0,top10=10,textsize=20,
                       ci = 0.995, depth_thresh = 1000,
@@ -169,7 +169,7 @@ shinyServer(function(input, output,session) {
                        sumID=sumID, path=path,toplot,id_cols=id_cols, gapthresh=gapthresh, 
                        dinds = dinds[inds1]+1, pos =NULL, span = span, cumul=F, sumAll=sumAll)
       
-      ggp<- .makeCombinedArray(clusters_, errors_, xlim, thresh = depth_thresh,alpha = alpha,  ci = ci, max_num = 10,t=t, fisher = fisher,motifpos=motifpos)
+      ggp<- .makeCombinedArray(clusters_, errors_, xlim, downsample = downsample, thresh = depth_thresh,alpha = alpha,  ci = ci, max_num = 10,t=t, fisher = fisher,motifpos=motifpos)
       return(ggp)
      }else  if(plotCorr){
     indsp = clusters_$pos <=xlim[2] & clusters_$pos >= xlim[1]
@@ -528,7 +528,7 @@ shinyServer(function(input, output,session) {
     }
     mergeCounts='mergeCounts' %in% input$options3
     showPeptides="showPeptides" %in% input$options3
-    
+    downsample="downsample" %in% input$options3
     tpm = "TPM_amongst_viral" %in% input$options3
     h5file=session$userData$h5file
     total_reads = NULL
@@ -609,7 +609,7 @@ shinyServer(function(input, output,session) {
           seq_df = data.frame(pos,sequence, seqy) %>%
             transform(pos=as.numeric(pos), sequence=factor(sequence, levels=c("a","c","t","g")))
         }
-          ggp=run_depth(h5file,total_reads,toplot, seq_df=seq_df, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
+          ggp=run_depth(h5file,total_reads,toplot, seq_df=seq_df, downsample = downsample, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
                     showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type,
                     showMotifs =showMotifs, alpha=alpha,plotCorr=plotCorr,linesize=linesize, reverseOrder=reverseOrder,
                     textsize=textsize, calcErrors=showErrors,fisher=fisher,
