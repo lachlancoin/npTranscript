@@ -55,6 +55,9 @@ if [ $species == "human" ]; then
 elif [ $species == "monkey" ]; then
 	reference="${db_path}/merged/sequin_genome/VIC_virus_monkey_sequin_genome_merged.fasta"
 	coord_file="${db_path}/merged/monkey_sequin_merged.gtf"
+elif [ $species == "human_only" ]; then
+	reference="./GRCh38_full_analysis_set_plus_decoy_hla.fa.gz"
+	coord_file="./Homo_sapiens.GRCh38.100.gtf.gz"
 else 
 	echo "first option needs to be 'monkey'  or ' human' "
 	exit
@@ -76,15 +79,15 @@ fi
 ##SPECIFY LOCATION OF COMBINED AND VIRUS ONLY DB
 cov_chr=$(zcat ${reference_virus} | head -n 1 | cut -f 1 -d ' ' | sed 's/>//g')
 echo "coronavirus chr id ${cov_chr}" 
-chroms_to_include="chrIS:${cov_chr}" 
-#chroms_to_include="all" ## this includes all chromosomes 
+#chroms_to_include="chrIS:${cov_chr}" 
+chroms_to_include="all" ## this includes all chromosomes 
 chroms_to_ignore="none"   ##
 resdir="results_${dat}"
-opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=13 --extra_threshold=2000 --writePolyA=false --msaDepthThresh=1000 --doMSA=false --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh 50 --chroms_to_ignore=${chroms_to_ignore} --chroms_to_include=${chroms_to_include}"
+opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=13 --extra_threshold=2000 --writePolyA=false --msaDepthThresh=1000 --doMSA=false --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh=50 --chroms_to_ignore=${chroms_to_ignore} --chroms_to_include=${chroms_to_include}"
 
 #for dRNA datasets
 #opts="${opts} --RNA=true"
-opts2="--chromsToRemap=${cov_chr}  --mm2_memory=10g --recordDepthByPosition=false"
+opts2="--chromsToRemap=${cov_chr}  --mm2_memory=10g --writeIsoforms=true --writeGFF=true --recordDepthByPosition=true --coverageDepthThresh=100 --qualThresh=0"
 echo $opts
 if [ -f $todo ]; then
 	bamfiles=$(cat $todo | sed "s/[[:space:]]\+/\n/g" | grep ".bam$")

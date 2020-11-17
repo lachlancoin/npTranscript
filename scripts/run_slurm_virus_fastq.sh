@@ -42,7 +42,7 @@ mm2_path="/sw/minimap2/current/minimap2"
 mm2_path="minimap2"
 
 ##VIRAL ANALYSIS ON VIRAL READS
-opts="--bin=100 --breakThresh=1000 --gffThresh=100:100  --isoformDepthThresh=10000 --coverageDepthThresh=0 --extra_threshold=200 --msaDepthThresh=20 --doMSA=all:sep --reAlignExtra=true"
+opts="--bin=100 --breakThresh=1000 --gffThresh=100:100  --isoformDepthThresh=10000 --coverageDepthThresh=0 --extra_threshold=200 --msaDepthThresh=20 --doMSA=false --reAlignExtra=true"
 opts2="--recordDepthByPosition=false --maxThreads=8"
 opts3="--mm2_path=${mm2_path}"
 

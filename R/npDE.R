@@ -24,9 +24,9 @@ options("np.adjustMethod"="BH");
 
 args = commandArgs(trailingOnly=TRUE)
 
-args = c("np.libdir=/data/gpfs/projects/punim1068/Rlib",  "np.source=/data/gpfs/projects/punim1068/npTranscript/R",
-		"np.datasource=/data/gpfs/projects/punim1068/npTranscript/data/SARS-Cov2/VIC01",
-		"np.control"= "24hpi", "np.case"="48hpi");
+#args = c("np.libdir=/data/gpfs/projects/punim1068/Rlib",  "np.source=/data/gpfs/projects/punim1068/npTranscript/R",
+#		"np.datasource=/data/gpfs/projects/punim1068/npTranscript/data/SARS-Cov2/VIC01",
+#		"np.control"= "24hpi", "np.case"="48hpi");
 
 if(length(args)>0){
   args = gsub("--","",args)
@@ -142,14 +142,17 @@ transcriptsl =.mergeRows(transcriptsl,sum_names = filenames,append_names = "ID",
 transcriptsl = transcriptsl[,-which(names(transcriptsl)=="ORFs")]
 names(transcriptsl) = sub("span","ORFs",names(transcriptsl))
 }
+print(filenames)
+print(control_names)
 control_names = unlist(lapply(control_names, grep, filenames, v=T));#  grep(control_names,filenames,v=T)
 infected_names = unlist(lapply(infected_names, grep, filenames, v=T))
-exclude_nme = getOption("np.exclude",'none')
+exclude_nme = getOption("np.exclude",'nonexxxxxxxxxxxxxx')
 for(i in 1:length(exclude_nme)){
   control_names = grep(exclude_nme[i], control_names, inv=T,v=T)
   infected_names = grep(exclude_nme[i], infected_names, inv=T,v=T)
 }
 
+if(length(control_names)==0) stop("! control_names has 0 length" )
 if(!is.null(getOption("np.casecontrol",NULL))){
   casecontrol = .readCaseControl(getOption("np.casecontrol",NULL))  
   if(!is.null(casecontrol)){
@@ -180,7 +183,7 @@ transcriptsl =  .processTranscripts(transcriptsl)
 }else{
   transcriptsl1 = cbind(transcriptsl,grp)
 }
-
+if(length(control_names)==0) stop(" control_names has 0 length" )
   DE_list =  .processDE(transcriptsl1, attributes, resdir, control_names, infected_names, type_names, type="")
   
 #  DE2 = .transferAttributes(DE2, attributes)
@@ -218,7 +221,7 @@ lapply(comparisonPlots, function(x) print(x[[2]]))
 
 dev.off()
 
-
+if(FALSE){
 print("####DEPTH ANALYSIS #### ")
 ##isoform analysis
 isofile = grep("isoforms.h5" , dir(),v=T)
@@ -248,6 +251,7 @@ if(inherits(isoforms_i,"try-error")) {
   lapply(pvs_all, function(x) h5write(x, h5DE,paste("isoDE",attr(x, "nme"),sep="/")))
   h5ls(h5DE)
   write_xlsx(pvs_all, paste(resdir, "isoDE.xlsx",sep="/"))
+}
 }
 #h5closeAll()
 

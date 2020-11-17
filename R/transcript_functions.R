@@ -1,4 +1,6 @@
 .calcPropCI<-function(x, conf.int=0.95,  method="prop.test"){
+  if(is.na(x[2])) return (c(NA,NA,NA))
+  if(x[1]>x[2]) return (c(NA,NA,NA))
   v = binom.confint(x[1], x[2], method=method, conf.int=conf.int)[4:6] *(1e6)
 unlist(v)
 }
@@ -42,7 +44,7 @@ unlist(v)
      grep("end",grep("start|leader", orf_entries,v=T,inv=T),v=T),
      grep("end",grep("start|leader", orf_entries,v=T,inv=T),v=T,inv=T)
   )
-  names(vals) = c("5_3", "5_no3","no5_3","no5_no3") 
+  names(vals) = c("5_3", "5_non3","non5_3","non5_non3") 
  vals_ind= lapply(vals,function(x) which(orf_entries %in% x))
   type_name=rep("NA", length(num_breaks))
   for(i in 1:length(vals_ind)){
@@ -59,7 +61,7 @@ unlist(v)
   exps = isoInfo$experiments
  # choices = lapply(levels(ORFs$num_breaks), function(x) sort(as.character(ORFs$ORFs[ORFs$num_breaks==x])))
   choices1 = lapply(levels(ORFs$type_name),function(x) as.character(ORFs$ORFs[ORFs$type_name==x]))
-  nmes1 = c("5_3","5_no3","no5_3","no5_no3")
+  nmes1 = c("5_3","5_non3","non5_3","non5_non3")
 #  choices1= vector("list", length(nmes1))
   cmax = max(as.numeric(levels(ORFs$num_breaks)))
 #  c1 = vector("list",cmax+1)
@@ -133,33 +135,159 @@ unlist(v)
   cnts = h5read(isofile, paste(group, x,sep="/"))
   c(cnts, rep(0,len -length(cnts)))
 }
-.findEntries<-function(x,isofile, group ,tojoin="OR"){
+
+.mergeGroups<-function(matname,merge_by_all, ord = NULL, max_trans=10){
+  x=matname
+  merge_all =strsplit(merge_by_all,"\\|")[[1]]
+  tomerge = lapply(merge_all,.findEntries1, matname)
+  names(tomerge) = merge_all
+ 
+    indsx = !(x %in% unlist(tomerge))
+    if(!is.null(ord))  ord = ord[indsx]
+    others = x[indsx]
+  if(!is.null(ord)){
+    if(length(others)>max_trans){
+      others = others[ord[1:max_trans]]
+    }
+  }
+  
+  names(others) = others
+  l = c(tomerge,as.list(others))
+  l
+}
+
+.getGroups<-function(x1, group_bys){
+  group_l = unlist(strsplit(group_bys,":")[[1]])
+  l1 = list(x1)
+  for(i in 1:length(group_l)){
+    l1 = unlist(lapply(l1,.getGroupsInner,group_l[i]),recursive=F)
+  }
+  l1
+}
+
+.getGroupsInner<-function(x1,group_by){
+  l = list()
+  if(group_by=="all"){
+    l = list("all"=x1)    
+  }else if(group_by=="type"){
+    l = list(
+      grep("end",grep("start|leader",x1,v=T),v=T),
+      grep("end",grep("start|leader",x1,v=T),v=T,inv=T),
+      grep("end",grep("start|leader", x1,v=T,inv=T),v=T),
+      grep("end",grep("start|leader", x1,v=T,inv=T),v=T,inv=T)
+    )
+    #l = vals #lapply(vals,function(x) which(x1 %in% x))
+    names(l) = c("5_3", "5_non3","non5_3","non5_non3") 
+  }else if(group_by=="juncts"){
+    juncts = factor( unlist(lapply(x1,function(x)-1+length(strsplit(x,",")[[1]]))))
+    junctlev = levels(juncts)
+    #  print(juncts)
+    #  print(junctlev)
+    l = list()
+    for(k in 1:length(junctlev)){
+      l[[k]] = x1[which(juncts==junctlev[k])]
+    }
+    names(l) = junctlev
+  }else{
+    l[[1]] = grep(group_by,x1,v=T)
+    l[[2]] = grep(group_by, x1,inv=T,v=T )
+    names(l) = c(group_by,paste("!",group_by))
+  }
+  l[ unlist(lapply(l, length))>0]
+}
+
+
+
+
+
+  
+.subsetFCFile<-function(mat, plot_params){
+  print("getting subset")
+  print(plot_params)
+  toplot=plot_params$toplot5
+  toplot = toplot[toplot!="-"]
+  matname = dimnames(mat)[[1]]
+  toplot2 = plot_params$toplot2
+  toplot2 = toplot2[unlist(lapply(toplot2,nchar))>2]
+  group_by = plot_params$group_by
+  merge_by = plot_params$merge_by
+  if(length(toplot)==0 ){
+    if(length(toplot2)==0) toplot2 = "all"
+    toplot = toplot2
+    if(toplot!="all"){
+      mat= mat[matname %in% .findEntries1(toincl,matname,tojoin=plot_params$tojoin),,drop=F]
+    }
+    if(merge_by!=""){
+      ncol = dim(mat)[[2]]
+      print("MERGING!!!")
+      print(merge_by)
+      
+      grps=.mergeGroups(matname,merge_by)
+    #  print(grps[[1]])
+    #  print(names(grps))
+      mat1 = matrix(nrow = length(grps), ncol = ncol)
+      for(i in 1:length(grps)){
+        mat1[i,] = apply(mat[grps[[i]],,drop=F],2,sum)
+      }
+      dimnames(mat1) = list(names(grps), dimnames(mat)[[2]])
+      mat = mat1
+    }else if(group_by != "No grouping"){
+      ncol = dim(mat)[[2]]
+      grps = .getGroups(matname,group_by)
+      mat1 = matrix(nrow = length(grps), ncol = ncol)
+      for(i in 1:length(grps)){
+        mat1[i,] = apply(mat[grps[[i]],,drop=F],2,sum)
+      }
+      dimnames(mat1) = list(names(grps), dimnames(mat)[[2]])
+      mat = mat1
+    }
+  }else if(length(toplot>0)){
+    mat = mat[matname %in% toplot,,drop=F]
+  }
+ # print(dimnames(mat))
+  mat
+}
+
+.findEntries<-function(x,isofile, group ,tojoin="OR", merge=F){
   mat = h5ls(isofile)
   mat = mat[mat$group==group,,drop=F]
+  .findEntries1(x,mat$name, tojoin) 
+}
+
+.findEntries1<-function(x,matname ,tojoin="OR"){
+  print(paste("tojoin",tojoin))
   join_and = tojoin=="AND"
-  join_not = tojoin=="NOT"
-if(join_and || join_not)  x2 =  mat$name else   x2 =  c()
+  join_not = tojoin=="AND NOT"
+if(join_and || join_not)  x2 =  matname else   x2 =  c()
   for(j in 1:length(x)){
+    
     if(x[j]=="all"){
-      x1 = mat$name
-    }else if(x[j]=="no3"){
-      x1=mat[grep("end",mat$name,inv=T),,drop=F]$name
-    }else if(x[j]=="no5"){
-      x1=mat[grep("leader",mat$name,inv=T),,drop=F]$name
-    }else if(x[j]=="no5_no3"){
-      ##need to fix this
-      x1 = grep("end",grep("leader",mat$name,inv=T,v=T),inv=T,v=T)
-    }else if(x[j]=="no5_3"){
-      x1 = grep("end",grep("leader",mat$name,inv=T,v=T),inv=F,v=T)
-    }else if(x[j]=="5_no3"){
-      x1 = grep("end",grep("leader",mat$name,inv=F,v=T),inv=T,v=T)
+      x1 = matname
+    }else if(x[j]=="non3"){
+      x1=grep("end",matname,inv=T,v=T)
+    }else if(x[j]=="non5"){
+      x1=grep("leader",matname,inv=T,v=T)
+    }else if(x[j]=="non5_non3"){
+      x1 = grep("end",grep("leader",matname,inv=T,v=T),inv=T,v=T)
+    }else if(x[j]=="non5_3"){
+      x1 = grep("end",grep("leader",matname,inv=T,v=T),inv=F,v=T)
+    }else if(x[j]=="5_non3"){
+      x1 = grep("end",grep("leader",matname,inv=F,v=T),inv=T,v=T)
     }else if(x[j]=="5_3"){
-      x1 = grep("end",grep("leader",mat$name,inv=F,v=T),inv=F,v=T)
+      x1 = grep("end",grep("leader",matname,inv=F,v=T),inv=F,v=T)
     }else if(length(grep("juncts",x[j]))>0){
-      num = as.numeric(strsplit(x[j],":")[[1]][2])
-      x1=mat$name[unlist(lapply(strsplit(mat$name,","),length))==(num+1)]
+      if(length(grep("=",x[j]))>0){
+         num = as.numeric(strsplit(x[j],"=")[[1]][2])
+        x1=matname[unlist(lapply(strsplit(matname,","),length))==(num+1)]
+      }else if(length(grep("<",x[j]))>0){
+        num = as.numeric(strsplit(x[j],"<")[[1]][2])
+        x1=matname[unlist(lapply(strsplit(matname,","),length))<(num+1)]
+      }else if(length(grep(">",x[j]))>0){
+        num = as.numeric(strsplit(x[j],">")[[1]][2])
+        x1=matname[unlist(lapply(strsplit(matname,","),length))>(num+1)]
+      }
     }else{
-     x1=mat[grep(x[j],mat$name),,drop=F]$name
+     x1=grep(x[j],matname,v=T)
     }
     if(join_and) x2 = x2[x2 %in% x1] else if (join_not) x2 = x2[!(x2 %in% x1)] else x2 = c(x2, x1[!(x1 %in% x2)])
 }
@@ -243,19 +371,20 @@ getKmer<-function(base, pos,v = c(-1,0,1)){
 if(is.null(levels)){
   levels=type_nme
 }
-  if(!norm){
-    total_reads = rep(1,length(total_reads))
-    names(total_reads) = type_name
-  }else{
-    total_reads = total_reads/1e6
-  }
+  #if(!norm){
+  #  total_reads = rep(1,length(total_reads))
+  #  names(total_reads) = type_name
+  #}else{
+  #  total_reads = total_reads/1e6
+  #}
   toinclude=which(type_nme %in% levels)
   spi  = grep("Spliced", names(annot))
   uspi = grep("Unspliced", names(annot))
   ratio = data.frame(matrix(nrow = dim(annot)[1], ncol = length(spi)*3))
   mixt = data.frame(matrix(nrow = dim(annot)[1], ncol = length(spi)*3))
   
- nme_r = c("ORF", "Start", "Ratio","lower","upper", "type","spliced","unspliced","logdiff","logtotal")
+ nme_r = c("ORF", "Start", "Ratio","lower","upper", "type","spliced","unspliced","logdiff",
+           "logtotal")
   
   offset = 0
   if(is.null(type_nme)) type_nme = 1:length(spi)
@@ -265,20 +394,26 @@ if(is.null(levels)){
   
   names(ratio1) = nme_r
   for(i in toinclude){
-    confints =   binom.confint(annot[,spi[i]],(annot[,spi[i]]+ annot[,uspi[i]]) ,method="logit",conf.level=conf.level)
+    sumr = annot[,spi[i]] + annot[,uspi[i]]
+    confints =   binom.confint(annot[,spi[i]],sumr ,method="logit",conf.level=conf.level)
+  
+    confints1 = confints#  binom.confint(sumr ,rep(total_reads[i], length(sumr)), method="logit",conf.level=conf.level)
+    
+    #confints[,4:6]*sumr
     nme = c(nme,paste(c("mean","lower","upper"), type_nme[i],sep="_"))
    # print(nme)
     indsi = ((i-1)*3+1):((i)*3)
-    ratio[,indsi ]= confints[,4:6]
+  #  ratio[,indsi ]= confints[,4:6]
     ranges = offset + 1:length(annot$Gene)
     ratio1[ranges,1] = as.character(annot$Gene)
     ratio1[ranges,2] = as.numeric(as.character(annot$Start))
     ratio1[ranges,3:5] = confints[,4:6]
     ratio1[ranges,6] = rep(type_nme[i], length(ranges))
-    ratio1[ranges,7] = annot[,spi[i]]/total_reads[i]
-    ratio1[ranges,8] =  annot[,uspi[i]]/total_reads[i]
-    ratio1[ranges,9] = -log2(ratio1[ranges,7]/(ratio1[ranges,7]+ratio1[ranges,8]))
-    ratio1[ranges,10] = log2((ratio1[ranges,7]+ratio1[ranges,8])/total_reads[i])
+    ratio1[ranges,7] = annot[,spi[i]]; #/total_reads[i]
+    ratio1[ranges,8] =  annot[,uspi[i]];#/total_reads[i]
+  
+    ratio1[ranges,9] = apply(-log2(confints[,4:6]),1,paste,collapse=":")
+    ratio1[ranges,10] = apply(log2(confints[,4:6]*1e6),1,paste,collapse=":")
     #ratio1[ranges,7:9] = mixt[,indsi]
     offset = offset + length(ranges)
   }
@@ -289,36 +424,66 @@ if(is.null(levels)){
  ratio1
 }
 #  ggp= NULL
-.plotAnnotFile<-function(ratio1, levels=NULL,barchart=F,showEB = F,showSecondAxis=F,coeff=2,diff=0, y_text="Ratio"){
-  if(!barchart){
+.plotAnnotFile<-function(ratio1, levels=NULL,barchart=F,showEB = F,showSecondAxis=F,coeff=1,diff=0, y_text="Ratio", size=20,textsize=20, linesize=1.5){
+   if(!barchart){
     timevec=c("0hpi","2hpi","24hpi","48hpi")
     ratio3= separate(ratio1,6, c('molecule_type', 'cell', 'time'), sep='_', remove = T) %>%
       transform(  molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time,levels=timevec))
-    # if(is.null(orfs_include)) orfs_include = levels(factor(ratio3$ORF))
- 
-    if(!showSecondAxis){
-      ggp1<-ggplot(ratio3, aes(x=time))
-      data=ratio3
-    ggp1<-ggp1+geom_line(aes(y=logdiff ,group=interaction(molecule_type, cell, ORF), color = cell))
-    ggp1<-ggp1+geom_point(aes(y=logdiff ,group=interaction(molecule_type, cell, ORF), color = cell, shape=ORF,size=10))
-    ggp1<-ggp1+ scale_y_continuous( name = "Log2 (total - sub-genomics)")
     
+    ratio5=
+      separate(ratio3,logdiff, c('value', 'lower', 'upper'), sep=':', remove = T) %>%
+      transform( lower=as.numeric(lower),upper=as.numeric(upper),value=as.numeric(value)  ) 
+    ratio5 = ratio5[!( is.infinite((ratio5$value)) | is.na(ratio5$value)),]
+    
+    # if(is.null(orfs_include)) orfs_include = levels(factor(ratio3$ORF))
+    lims = c(0,max(ratio5$value[is.finite(ratio5$value)],na.rm=T))
+    
+    if(!showSecondAxis){
+      ggp1<-ggplot(ratio5, aes(x=time))
+      ggp1<-ggp1+geom_line(position=position_dodge(width=0.1),aes(y=value ,group=interaction(molecule_type, cell, ORF), color = cell), size=linesize)
+      
+    if(showEB) {
+      ggp1<-ggp1+ geom_errorbar(aes(ymin=lower, ymax=upper, group=interaction(molecule_type, cell, ORF), color = cell),
+                                position=position_dodge(width=0.1)) #,colour="black")
+      ggp1<-ggp1+geom_point(position=position_dodge(width=0.1),aes(y=value ,group=interaction(molecule_type, cell, ORF), color = cell, shape=ORF,size=10))
+      
+     # ggp1<-ggp1+geom_ribbon(aes(ymin=lower, ymax=upper, group=interaction(molecule_type, cell, ORF), color = cell), linetype=1, alpha=0.1)
     }else{
-      ratio3$logtotal = (ratio3$logtotal-diff)/coeff
-      ratio4 = melt(ratio3,id.vars=c("ORF","molecule_type","cell","time"), measure.vars=c("logdiff","logtotal"))
+      ggp1<-ggp1+geom_point(aes(y=value ,group=interaction(molecule_type, cell, ORF), color = cell, shape=ORF,size=10))
+      
+    }
+      ggp1<-ggp1+ scale_y_continuous( name = "Log2 (total - sub-genomics)", limits=lims)
+      
+        }else{
+  #    ratio3$logtotal = (ratio3$logtotal-diff)/coeff
+      ratio4 = melt(ratio3,id.vars=c("ORF","molecule_type","cell","time"), measure.vars=c("logdiff","logtotal")) %>%
+        separate(value, c('value', 'lower', 'upper'), sep=':', remove = T) %>%
+        transform( lower=as.numeric(lower),upper=as.numeric(upper),value=as.numeric(value)  ) 
+     ratio4 = ratio4[!( is.infinite((ratio4$value)) | is.na(ratio4$value)),]
+      indst = ratio4$variable=="logtotal"
+      ratio4$value[indst] = (ratio4$value[indst]-diff)/coeff
+      ratio4$lower[indst] = (ratio4$lower[indst]-diff)/coeff
+      ratio4$upper[indst] = (ratio4$upper[indst]-diff)/coeff
+      
       data=ratio4
+      #print(head(data))
       ggp1<-ggplot(ratio4, aes(x=time))
       ggp1<-ggp1+geom_line(aes(y=value ,group=interaction(molecule_type, cell, ORF,variable), color = cell, linetype=variable))
       ggp1<-ggp1+geom_point(aes(y=value ,group=interaction(molecule_type, cell, ORF,variable), color = cell, shape=ORF,size=10))
+      if(showEB) ggp1<-ggp1+geom_ribbon(aes(ymin=lower, ymax=upper, group=interaction(molecule_type, cell, ORF,variable), color = cell, linetype=variable),  alpha=0.1)
+
        #ggp1<-ggp1+geom_line(aes(y=(logtotal-diff)/coeff ,group=interaction(molecule_type, cell, ORF), color = cell, linetype="dashed"))
        #ggp1<-ggp1+geom_point(aes(y=(logtotal-diff)/coeff ,group=interaction(molecule_type, cell, ORF), color = cell, shape=ORF,size=10))
        
        ggp1<-ggp1+ scale_y_continuous(
       name = "Log2 (total - sub-genomics)",
-      sec.axis = sec_axis(~.*coeff+diff, name="Log2 Total")
+      sec.axis = sec_axis(~.*coeff+diff, name="Log2 TPM")
+    
     )
-     }
-     
+        }
+    
+    ggp1<-ggp1+theme_bw()+theme(text = element_text(size=textsize), axis.text.x = element_text(size = rel(1.0),angle = 25, hjust=1.0))
+    
     return(list(ggp=ggp1, data=data))
   }else{
    
@@ -336,6 +501,7 @@ if(is.null(levels)){
     
      ggp<-ggp+ggtitle("Percentage of ORF covering reads which include leader")
      ggp<-ggp+xlab("ORF")
+     ggp<-ggp+theme_bw()+theme(text = element_text(size=textsize), axis.text.x = element_text(size = rel(1.0),angle = 25, hjust=0.75))
     return(list(ggp=ggp, data =ratio1) )
   }
 }
@@ -343,6 +509,7 @@ if(is.null(levels)){
 
 .calcConf<-function(v, conf.level=0.95, method="bayes"){
   #print(conf.level)
+  if(conf.level<0.0001) return (c(NA, v[2]/v[1],NA))
   res = binom.confint(x=v[2],n=v[1],conf.level=conf.level, method=method)
   as.numeric( c(res$lower,res$mean,res$upper))
   
@@ -350,26 +517,65 @@ if(is.null(levels)){
 .overl<-function(x,y){
   min(x[2]-y[1], y[2] - x[1])
 }
-.plotError<-function(depth,t1, range = 1:dim(depth)[2], method="bayes",
-                     pval_thresh = 1e-5, ci=0.95, thresh = 1000, extend=T, log=F, adj=T, lower_thresh = 0.25, diff_thresh = 0.5){
+.makeCombinedArray<-function(clusters_, errors_, xlim, downsample=F, thresh = 1000, alpha = 1.0, ci = 0.995, max_num= 10, t=NULL,motifpos=list(), fisher=F){
+  
+  dm = dim(clusters_)
+  ij =2
+  if(dm[2]<=3){
+    clusters_ = pivot_wider(clusters_, id_cols=pos, names_from="clusterID", values_from=names(clusters_)[3], values_fill=0)
+    errors_= pivot_wider(errors_, id_cols=pos, names_from="clusterID", values_from=names(errors_)[3], values_fill=0)
+    ij=1
+  }
+  range = which(clusters_[,ij] <= xlim[2] & clusters_[,ij]>=xlim[1])
+  if(length(range)==0) return(ggplot())
+  dn1 = list(c("depth","error"),unlist(clusters_[range,ij]),names(clusters_)[-(1:ij)])
+  depth = array(dim = unlist(lapply(dn1,length)),  dimnames = dn1)
+               
+  depth[1,,] = as.matrix(clusters_[range,-(1:ij)])
+  depth[2,,] = as.matrix(errors_[range,-(1:ij)])
+ # print(dim(depth))
+  .plotError(depth,  thresh = 1000, downsample = downsample, alpha = alpha, ci = ci, max_num =max_num,t=t, xlim =xlim, pvAsSize=T, logy=T, fisher=fisher, motifpos=motifpos)
+}
+.restrict<-function(x,thresh){
+ # print("h")
+#  print(x)
+  if(x[1]>thresh){
+    ratio=thresh/x[1]
+    x = floor(x*ratio)
+  }
+ # print("h1")
+#  print(x)
+  x
+  
+}
+.plotError<-function(depth,range = 1:dim(depth)[[2]],alpha = 1.0, downsample = F, t1=NULL, method="logit",    max_num = 20, pval_thresh = 1e-3,
+                     ci=0.95, thresh = 1000, extend=T, log=F, adj=F, xlim = NULL,pvAsSize=T, logy=T, fisher=F, motifpos = list()){
   inds1 = apply(depth[1,range,],1,min)>thresh
   range = range[inds1]
-  if(!is.null(t1)){
-    kinds = which(names(t1)%in% c("Minimum","Maximum"))
-    midp = (t1$Maximum+t1$Minimum)/2
-    rp = c(min(range),max(range))
-    inds2 = which(apply(t1[,kinds],1,.overl,rp)>=0)
-    t = t1[inds2,,drop=F]
-    if(dim(t)[1]>0 && extend){
-     range = min(range,min(t[,kinds])):max(range,max(t[,kinds]))
-    }
-  }
+  if(length(range)==0) return(ggplot())
+ 
   inds1 = apply(depth[1,range,],1,min)>thresh
   range = range[inds1]
   dfs = list()
   pos = as.numeric(dimnames(depth)[[2]][range])
-  pval = apply(depth[,range,],2, function(x) chisq.test(x)$p.value)
-  if(adj)pval = p.adjust(pval, method="BH")
+  
+  ##x dimension is 1  total vs error
+  .testStatistic<-function(x) chisq.test(x)$p.value
+  if(fisher){
+  .testStatistic<-function(x) fisher.test(x)$p.value
+  }
+  d1 = depth[,range,]
+  #print(d1[,1:5,])
+  if(downsample){
+  d1 =   apply(d1,c(2,3),.restrict,thresh)
+  #print(d1[,1:5,])
+  }
+  pval = apply(d1,2, .testStatistic)
+  if(adj) pval = p.adjust(pval, method="BH")
+  if(max_num<length(pval)){
+    ord  = order(pval)
+    pval_thresh =  min(pval_thresh,pval[ord[max_num]])
+  }
   for(i in 1:dim(depth)[[3]]){
     print(i)
     dfc = t(apply(depth[,range,i,drop=F],2,.calcConf, method=method,conf.level=ci))
@@ -383,12 +589,13 @@ if(is.null(levels)){
       diffc = apply(dj,1,function(x) x[1]-x[2]) 
       
     }
-    
-    dfs[[i]] = data.frame(dfc,type,pos,pval, diff=diffc)
+    log10pv = -log10(pval)
+    dfs[[i]] = data.frame(dfc,type,pos,pval,log10pv, diff=diffc)
     if(i==2){
       dfs[[1]]$diff = -1*dfs[[2]]$diff
     }
   }
+  
   df = NULL
   
   for(i in 1:length(dfs)){
@@ -398,20 +605,38 @@ if(is.null(levels)){
   posy = max(df$upper)
  df$type=as.factor(df$type)
   ty = levels(df$type)
-  ggp<-ggplot(df, aes(x=pos,y=mean,fill=type, colour=type,ymin=lower ,ymax=upper))
-  ggp<-ggp+ geom_point(position=position_dodge(), aes(y=mean),stat="identity")
+  ggp<-ggplot(df, aes(x=pos,y=mean, colour=type,ymin=lower ,ymax=upper))
+  if(pvAsSize){
+  ggp<-ggp+ geom_point(position=position_dodge(), aes(y=mean, size=log10pv),alpha = alpha, stat="identity")
+  }else{
+    ggp<-ggp+ geom_point(position=position_dodge(), aes(y=mean),alpha = alpha,stat="identity")
+    
+  }
+  if(ci>0.01){
  ggp<-ggp+geom_errorbar(position=position_dodge(width=0.0),colour="black")
+  }
   ggp<-ggp+ggtitle(paste("Error rate by position (",ci*100,"% binomial CI) ",sep=""))
   ggp<-ggp+ylab("error rate")
   if(log) ggp<-ggp+scale_y_continuous(trans='log10')
-  ggp<-ggp+geom_text_repel(data=subset(df,pval < pval_thresh & diff>0),
-                  aes(pos,upper , label = sprintf("%5.3g" ,pval)),size = 3, color=if(type==ty[1]) "red" else "steelblue")
+  ggp<-ggp+geom_text_repel(data=subset(df,pval <= pval_thresh & diff>0),
+                  aes(pos,upper , label = sprintf("%3.2g" ,log10pv)),size = 3, color=if(type==ty[1]) "red" else "steelblue")
   ##can use pos instead of pval
   if(!extend) ggp<-ggp+xlim(min(range), max(range))
-  if(!is.null(t) && !is.null(t$sideCols)){
-    ggp<-ggp+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols)
-    ggp<-ggp+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols)
+  if(!is.null(t1) ){
+    if( !is.null(t1$sideCols)){
+    ggp<-ggp+geom_vline(xintercept = t1$Minimum, linetype="solid", color=t1$sideCols)
+    ggp<-ggp+geom_vline(xintercept = t1$Maximum, linetype="dashed", color=t1$sideCols)
+    }
   }
+  if(!is.null(xlim)) ggp<-ggp+xlim(xlim)
+  if(logy) ggp<-ggp+scale_y_continuous(trans='log10')
+  if(length(motifpos)>0){
+    for(jk in 1:length(motifpos)){
+      ggp<-ggp+geom_vline(xintercept = motifpos[[jk]], linetype=jk+1, color="black", alpha=0.5)
+    }
+  }
+  
+  ggp+theme_bw()
 }
 
 
@@ -770,7 +995,10 @@ split1<-function(fi) strsplit(fi,"_")[[1]][1]
 
 
 
-plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = T, linetype="sampID", colour="clusterID", title = "", ylab=if(rawdepth)  "depth" else "TPM", logy=F, leg_size = 6, xlim  = NULL, show=F, updatenmes = F, fill = F, alpha=0.5){
+plotClusters<-function(df,seq_df, k1, totalReadCount, t, motifpos, peptides,rawdepth = T, 
+                       linetype="sampID", colour="clusterID", title = "", ylab=if(rawdepth)  "depth" else "TPM", logy=F, 
+                       leg_size = 6, xlim  = NULL, show=F, updatenmes = F, fill = F, alpha=0.5,
+                       showSeqThresh=500, size=20, linesize=0.1, textsize=20){
   if(!is.factor(df$clusterID)) df$clusterID = as.factor(df$clusterID)  #types[df$type]
  # names(df)[3] = "depth"
   #ids =  as.character(rel_count$ID)
@@ -789,23 +1017,34 @@ plotClusters<-function(df, k1, totalReadCount, t, fimo, rawdepth = T, linetype="
   if(is.null(xlim)){
     xlim = c(min(df$pos), max(df$pos))
 
-    ylim = c(min(df[,k1], na.rm=T),max(df[,k1], na.rm=T))
+    ylim = c(max(0,min(df[,k1], na.rm=T)),max(1,max(df[,k1], na.rm=T)))
   }else{
     xincl = df$pos <= xlim[2] & df$pos >=xlim[1]
-    ylim = c(min(df[xincl,k1], na.rm=T),max(df[xincl,k1], na.rm=T))
+    ylim = c(max(0,min(df[xincl,k1], na.rm=T)),max(1,max(df[xincl,k1], na.rm=T)))
   }
-  ggp<-ggplot(df, aes_string(x="pos", fill="clusterID", colour = colour, linetype=linetype, y = names(df)[k1])) +theme_bw()
-  ggp<-ggp+geom_line(inherit.aes=T, aes(alpha=alpha)) 
+  ggp<-ggplot()
+ # print(paste("linesize",linesize))
+  ggp<-ggp+geom_line(data=df, aes_string(x="pos", fill="clusterID", colour = colour, linetype=linetype, y = names(df)[k1], alpha=alpha)) +theme_bw()
+  if(!is.null(seq_df) && dim(seq_df)[1]<showSeqThresh){
+   seqy = seq_df$seqy
+    seq_df$seqy = rep(ylim[2],length(seqy))
+  #  seq_df$seqy = seqy 
+    print(seq_df)
+    ggp<-ggp+geom_text(data=seq_df,aes(x=pos, y=seqy, color=sequence, label=sequence))
+  }
+   # ggp<-ggp+geom_line(inherit.aes=T, aes(alpha=alpha)) 
 if(fill) ggp<-ggp+geom_area()
   ggp<-ggp+ggtitle(title)
   if(logy) ggp<-ggp+scale_y_continuous(name=ylab,trans='log10') #, limits=ylim)
   else ggp<-ggp+labs(y= ylab)+ylim(ylim)
   if(leg_size==0  || length(levels(as.factor(as.character(df$type))))>20){
-    ggp<-ggp+theme(legend.position="none")
+    ggp<-ggp+theme(legend.position="none",text = element_text(size=textsize))
   }else{
-    ggp<-ggp+theme(plot.title = element_text(size = 12, face = "bold"),legend.position="right",
+    ggp<-ggp+theme(text = element_text(size=textsize),plot.title = element_text(size = rel(1.0), face = "bold"),legend.position="right",
 legend.title=element_text(size=leg_size), legend.text=element_text(size=leg_size))
-  }
+  }  
+  #ggp<-ggp+theme(, axis.text.x = element_text(size = rel(1.0)))
+  
   #
   if(updatenmes){
     
@@ -818,15 +1057,21 @@ legend.title=element_text(size=leg_size), legend.text=element_text(size=leg_size
   }
   
   if(!is.null(t$sideCols)){
-    ggp<-ggp+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols)
-    ggp<-ggp+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols)
+    ggp<-ggp+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols, alpha=0.5)
+    ggp<-ggp+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols, alpha=0.5)
   
   }
-  if(!is.null(fimo)){
-    ggp<-ggp+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id=='TRS_short')], linetype="dotted", color="black")
-    ggp<-ggp+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id=='TRS_long')], linetype="dotdash", color="black")
-    #ggp<-ggp+geom_vline(xintercept = fimo$start[fimo$strand=="-"], linetype="dotted", color="grey")
+  if(length(motifpos)>0){
+    for(jk in 1:length(motifpos)){
+    ggp<-ggp+geom_vline(xintercept = motifpos[[jk]], linetype=jk+1, color="black", alpha=0.5)
+    }
   }
+
+if(!is.null(peptides)){
+  ggp<-ggp+geom_vline(xintercept = peptides[,1], linetype="dotted", color="blue", alpha=0.5)
+  ggp<-ggp+geom_vline(xintercept = peptides[,2], linetype="dashed", color="blue", alpha=0.5)
+  #ggp<-ggp+geom_vline(xintercept = fimo$start[fimo$strand=="-"], linetype="dotted", color="grey")
+}
   #abline(v = t$Maximum, col=3)
   if(!is.null(xlim)) ggp<-ggp+xlim(xlim)
  # ggp<-ggp
@@ -908,6 +1153,24 @@ getGeneBP<-function(t, genes, left, right, left_buffer = 10){
     
   }
   endcs
+}
+# brP1 = readBreakPointsH5(h5file,"chrMT007544", "", 0)
+readBreakPointsH5<-function(h5file, chrom, type,j, prefix=""){
+  id = paste(prefix,chrom,type,j, sep="/")
+  mat=h5read(h5file,id)
+  heatm = mat[-(1:2),-(1:2)]
+  rowlen = nrow(heatm)
+  collen= ncol(heatm)
+ rows =cbind( data.frame(mat[-(1:2),1:2]), rep("start", rowlen), rep(type,rowlen ))
+  cols = cbind(data.frame(t(mat[1:2,-(1:2)])), rep("end", collen), rep(type,collen ))
+ 
+  
+  names(rows) = c("pos", "depth", "s_e", "type")
+  names(cols) = c("pos", "depth", "s_e", "type")
+  dimnames(heatm) = list(rows[,1], cols[,1])
+  res =list(heatm = t(as.matrix(heatm)), rows = cols, cols = rows)
+  #checkHeatm(res)
+  res
 }
 
 
@@ -1359,6 +1622,7 @@ expandBr<-function(breakP_, region){
   endc = region[4:6]
   rows = breakP_$rows
   cols = breakP_$cols
+  
   rowl = floor(seq(startc[1], startc[2], by = startc[3]))
   coll = floor(seq(endc[1], endc[2], by = endc[3]))
   if(rowl[length(rowl)]<region[2]) rowl = c(rowl, rowl[length(rowl)] +startc[3])
@@ -1377,8 +1641,10 @@ expandBr<-function(breakP_, region){
       heatm1[i1,j1]  = heatm1[i1,j1] + heatm[i,j]
     }
   }
+  
 }
- 
+  vol = startc[3] *endc[3]
+  heatm1=apply(heatm1,c(1,2),function(x) x/vol) 
   dimh = dim(heatm1)
   rows1 = data.frame(pos = as.numeric(dimnames(heatm1)[[1]]), depth = apply(heatm1, 1, sum) , s_e = as.factor(rep(as.character(rows$s_e[1]), dimh[1])))
   cols1 = data.frame(pos = as.numeric(dimnames(heatm1)[[2]]), depth = apply(heatm1, 2, sum) , s_e = as.factor(rep(as.character(cols$s_e[1]), dimh[2])))
@@ -1413,14 +1679,78 @@ blankGraph<-function(xlim, xax, yax, title = "" ) {
   ggplot(data.frame()) + geom_point()  + ylim(0, 100) + theme_bw()+xlab(xax)+ylab(yax)+ggtitle(title) +scale_x_continuous(limits = xlim[1:2])
  
 }
-plotBreakPIntrons<-function(breakP1, t, fimo, region =  c(1,5000,100,25000,30000,100), mult = 1, plotHM=T, logT = F, title = "", subtitle = ""){
+
+
+plotBreakPByGenes<-function(breakP1, t, genesLeft="leader", genesRight="N",
+                            left_range=NULL, right_range=NULL, step_left = 10, step_right=100, plotHM=T,
+                            logT=T, title="", subtitle="", mult=1, fimo=NULL){
+  region =  c(1,100,step_left,28000,30000,step_right)
+  if(!is.null(genesLeft)){
+    i1 = which(t$gene==genesLeft)
+    region[1] = t$Minimum[i1]
+    region[2] = t$Maximum[i1]
+  }
+  if(!is.null(genesRight)){
+    i2 = which(t$gene==genesRight)
+    region[4] = t$Minimum[i2-1]
+    region[5] = t$Minimum[i2]
+  }
+  if(!is.null(left_range)){
+    region[1] = left_range[1]
+    region[2] = left_range[2]
+  }
+  if(!is.null(right_range)){
+    region[4] = right_range[1]
+    region[5] = right_range[2]
+  }
+  plotBreakPIntrons(breakP1,t,fimo=fimo,region=region, mult=mult, plotHM=plotHM, logT=logT, title=title, subtitle=subtitle)
+                    
+}
+
+#plotBreakPIntrons<-function(breakP1, t=NULL, fimo=NULL,
+ #                           region =  c(1,100,10,28000,30000,100), mult = 1, plotHM=T, logT = T, title = "", subtitle = ""){
+
+
+findMaxSeqs<-function(breakP1,region=c(60,80,1,28240,28260,1), fasta, nme=""){
+	left=c(-5,5); right = c(-5,5)
+	if(nme=="scores33") {
+		left =c(0,10); right = c(0,10)
+	}
+	if(nme=="scores55") {
+		left =c(-10,0); right = c(-10,0)
+	}
+if(nme=="scores53") {
+		left =c(-10,0); right = c(0,10)
+	}
+if(nme=="scores35") {
+		left =c(0,10); right = c(-10,0)
+	}
+	breakP_ = subsetBr(breakP1, region)
+ 	breakP = expandBr(breakP_, region)  
+	mm = breakP$heatm
+maxv = max(mm)
+	rowcol = which(mm == maxv, arr.ind = TRUE)
+	res = list()
+	nmes = rep("a", dim(rowcol)[1])
+	for(k in 1:dim(rowcol)[1]){
+		colind = rowcol[k,2]
+		rowind = rowcol[k,1]
+		row = breakP$rows[rowind,1]
+		col = breakP$cols[colind,1]
+		seq1 = fasta[[1]][(col+right[1]):(col+right[2])]
+		seq2 = fasta[[1]][(row+left[1]):(row+left[2])]
+		nmes[k] = paste(breakP$rows[rowind,1], breakP$cols[colind,1],maxv, sep="_")
+		res[[k]] = list(seq1= seq1, seq2 = seq2, rowcol, row=breakP$rows[rowind,], col=breakP$cols[colind,], left=left, right = right, nme=nme)
+        }
+	names(res) =nmes
+	res
+}
+
+plotBreakPIntrons<-function(breakP1, t=NULL, fimo=NULL, region =  c(1,5000,100,25000,30000,100), mult = 1, plotHM=T, logT = F, title = "", subtitle = ""){
   breakP_ = subsetBr(breakP1, region)
   col = getHMCol()
- 
- 
   breakP = expandBr(breakP_, region)  #bin = c(startc[3], endc[3]))
   maxv = max(breakP$heatm)
- 
   if(maxv>0){
     heat_breaks = seq(0,maxv, length.out = length(col ))
     if(logT)   heat_breaks = seq(0,log10(maxv), length.out = length(col ))
@@ -1485,14 +1815,14 @@ plotBreakPIntrons<-function(breakP1, t, fimo, region =  c(1,5000,100,25000,30000
     ggp1<-blankGraph(startc[1:2],"pos", depth_str, title = title2);
   }else{
     ggp1<-ggplot(df,aes_string(x="pos",y=depth_str,fill =  "s_e" , colour = "s_e" ))+geom_point() + theme_bw()+ggtitle(title2)
-    ggp1<-ggp1+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols)
-    ggp1<-ggp1+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols)
+    ggp1<-ggp1+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols, alpha =0.5)
+    ggp1<-ggp1+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols, alpha =0.5)
     if(!is.null(fimo)){
-    	ggp1<-ggp1+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id == 'TRS_short')], linetype="dotted", color="black")
-    	ggp1<-ggp1+geom_vline(xintercept = fimo$stop[(fimo$strand=="+") & (fimo$motif_id == 'TRS_short')], linetype="dotted", color="grey")
+    	ggp1<-ggp1+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id == 'TRS_short')], linetype="dotted", color="black", alpha = 0.5)
+    	ggp1<-ggp1+geom_vline(xintercept = fimo$stop[(fimo$strand=="+") & (fimo$motif_id == 'TRS_short')], linetype="dotted", color="grey" , alpha=0.5)
 		
-		ggp1<-ggp1+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id == 'TRS_long')], linetype="dotdash", color="black")
-    	ggp1<-ggp1+geom_vline(xintercept = fimo$stop[(fimo$strand=="+") & (fimo$motif_id == 'TRS_long')], linetype="dotdash", color="grey")
+		ggp1<-ggp1+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id == 'TRS_long')], linetype="dotdash", color="black", alpha=0.5)
+    	ggp1<-ggp1+geom_vline(xintercept = fimo$stop[(fimo$strand=="+") & (fimo$motif_id == 'TRS_long')], linetype="dotdash", color="grey", alpha=0.5)
 		
 		
     }
@@ -1507,11 +1837,11 @@ plotBreakPIntrons<-function(breakP1, t, fimo, region =  c(1,5000,100,25000,30000
     ggp2<-ggp2+geom_vline(xintercept = t$Minimum, linetype="solid", color=t$sideCols)
     ggp2<-ggp2+geom_vline(xintercept = t$Maximum, linetype="dashed", color=t$sideCols)
  if(!is.null(fimo)){
-    ggp2<-ggp2+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id == 'TRS_short')], linetype="dotted", color="black")
-    ggp2<-ggp2+geom_vline(xintercept = fimo$stop[(fimo$strand=="+") & (fimo$motif_id == 'TRS_short')], linetype="dotted", color="grey")
+    ggp2<-ggp2+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id == 'TRS_short')], linetype="dotted", color="black", alpha=0.5)
+    ggp2<-ggp2+geom_vline(xintercept = fimo$stop[(fimo$strand=="+") & (fimo$motif_id == 'TRS_short')], linetype="dotted", color="grey", alpha=0.5)
 	
-    ggp2<-ggp2+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id == 'TRS_long')], linetype="dotdash", color="black")
-    ggp2<-ggp2+geom_vline(xintercept = fimo$stop[(fimo$strand=="+") & (fimo$motif_id == 'TRS_long')], linetype="dotdash", color="grey")
+    ggp2<-ggp2+geom_vline(xintercept = fimo$start[(fimo$strand=="+") & (fimo$motif_id == 'TRS_long')], linetype="dotdash", color="black", alpha=0.5)
+    ggp2<-ggp2+geom_vline(xintercept = fimo$stop[(fimo$strand=="+") & (fimo$motif_id == 'TRS_long')], linetype="dotdash", color="grey", alpha=0.5)
 
 }
     if(logT) ggp2<-ggp2+scale_y_continuous(trans='log10') 
@@ -1614,7 +1944,8 @@ plotAllHM<-function(special, resname, resdir, breakPs,t,fimo, total_reads, todo 
 #  print(head(mat1))
   cbind(clusterID,mat1)
 }
-readH5<-function(h5file, total_reads, header, toplot, path="depth",gapthresh=100,mergeGroups = NULL,sumID="all", pos = NULL,id_cols = c("molecule","cell","time"), toAdd=0,dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
+readH5<-function(h5file, total_reads, header, toplot, path="depth",gapthresh=100,mergeGroups = NULL,
+                 sumID="all", pos = NULL,id_cols = c("molecule","cell","time"), toAdd=0,dinds  = 2*(2:length(header)-2)+2,  span =0.0, cumul= if(!is.null(pos)) F else T, sumAll=F){
  pos_ind = 1
  merge=!is.null(mergeGroups)
  ncols = length(id_cols)
@@ -1634,6 +1965,7 @@ readH5<-function(h5file, total_reads, header, toplot, path="depth",gapthresh=100
 	ID = IDS[i]
 	
 	mat = t(h5read(h5file,paste(path,as.character(ID),sep="/")))
+	#print(head(mat))
 	if(dim(mat)[1]>0){
 	mat=mat[,c(1,dinds),drop=F]
 	if(merge){
@@ -2193,3 +2525,4 @@ plotErrorViolin<-function(reads,reads_no_leader ,  inds1 = NULL,  inds2 = NULL, 
 	ggp<-ggp+theme(text = element_text(size=18), axis.text.x = element_text(size = rel(0.5), angle = 90))
 	invisible(ggp)
 }
+    								      			        		          		        																														                  					                    	          	  															   	  									 		               				      																																      			        												        														 						        						 															    		        																																      			        												        											 						        															 											    							      											     	      			 		    	 											    				      		         				 	 										    	      	        													      			      				    	      											      																				        			      							    				    	                          	                    			 		          		            																									                                                                                                                                                                                                                                                                		                          	    	      		             	    	 						    	    	    	                                                                                                                                                                                                                                 	          				            		  						                                                                                                                                                                                                    	      			 	           	                      	      	                                                                                         	                                                                  				    					    	    	                                                               		                                             		                                                                                                                                                                   		              																					 		      			      			      				      					                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     	                 										 				    	       	   	             	              						                                                                                                                                                                                                                                                                                                                                                                                         	                                                                                                                                                                        	                                                                        	       	 	        			                  									                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    	      									    				                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       

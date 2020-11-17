@@ -6,11 +6,17 @@ library(rhdf5)
 library(RColorBrewer)
 library(binom)
 library(writexl)
-
+library(shinyjs)
+library(seqinr)
+library(abind)
+library(ggrepel)
+#library(GGally)
 
 source( "transcript_functions.R")
+#source("shiny-DE.R")
 
 basedir="../data"
+
 #toreplace=list(virion="RNA_virion_0hpi", whole_genome_mapped="RNA_vero_24hpi")
 decodeFile = paste(basedir,"decode.txt",sep='/')
 replace=read.table(decodeFile,sep="\t",head=F)
@@ -21,45 +27,6 @@ names(toreplace) = replace[,1]
 
 reorder=T
 
-.getGroups<-function(x1, group_bys){
-  group_l = unlist(strsplit(group_bys,":")[[1]])
-  l1 = list(x1)
-  for(i in 1:length(group_l)){
-    l1 = unlist(lapply(l1,.getGroupsInner,group_l[i]),recursive=F)
-  }
-  l1
-}
-
-.getGroupsInner<-function(x1,group_by){
-  l = list()
-  if(group_by=="all"){
-  l = list("all"=x1)    
-  }else if(group_by=="type"){
-    l = list(
-      grep("end",grep("start|leader",x1,v=T),v=T),
-      grep("end",grep("start|leader",x1,v=T),v=T,inv=T),
-      grep("end",grep("start|leader", x1,v=T,inv=T),v=T),
-      grep("end",grep("start|leader", x1,v=T,inv=T),v=T,inv=T)
-    )
-    #l = vals #lapply(vals,function(x) which(x1 %in% x))
-    names(l) = c("5_3", "5_no3","no5_3","no5_no3") 
-  }else if(group_by=="juncts"){
-    juncts = factor( unlist(lapply(x1,function(x)-1+length(strsplit(x,",")[[1]]))))
-    junctlev = levels(juncts)
-  #  print(juncts)
-  #  print(junctlev)
-   l = list()
-    for(k in 1:length(junctlev)){
-      l[[k]] = x1[which(juncts==junctlev[k])]
-    }
-    names(l) = junctlev
-  }else{
-  l[[1]] = grep(group_by,x1,v=T)
-  l[[2]] = grep(group_by, x1,inv=T,v=t )
-  names(l) = c(group_by,paste("!",group_by))
-  }
-  l[ unlist(lapply(l, length))>0]
-}
 #dirs = list.dirs(basedir,full.names=F, rec=T)
 #dirs=dirs[which(unlist(lapply(dirs,function(x) file.exists(paste(basedir,x,"0.isoforms.h5",sep="/")))))]
 #seldir=1
@@ -83,91 +50,22 @@ t=NULL
 fimo=NULL
 datafile=NULL
 h5file = NULL
-.getlevels<-function(type_nme, molecules, cells, times){
+
+
+.getlevels<-function(type_nme, molecules, cells, times, reverseOrder=T){
   types_=data.frame(t(data.frame(strsplit(type_nme,"_"))))
   names(types_) = c("molecules","cell","time")
   inds1 =  which(types_$molecules %in% molecules & types_$cell %in% cells & types_$time %in% times)
   types1_ = types_[inds1,,drop=F]
   ord = order(as.numeric(factor(types1_$time, levels=c("0hpi", "2hpi","24hpi","48hpi"))),types1_$cell,types1_$molecules)
+ if(reverseOrder) ord = order(types1_$molecules,types1_$cell,as.numeric(factor(types1_$time, levels=c("0hpi", "2hpi","24hpi","48hpi"))))
+  
   levels1=type_nme[inds1][ord]
   attr(levels1,"inds1") = inds1
   levels1
 }
 #run_depth(h5file, total_reads=total_reads)
-run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", gapthresh=100, mergeGroups=NULL,molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
-                    span = 0.01, sumAll=F, xlim=null, fimo=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,showORFs = F, path="depth"){
 
-  	header =.getHeaderH5(h5file,toreplace)
-  	if(path=="depth"){
-	dinds  = 2*(2:(length(header))-2)+2
-  	}else{
-  	  dinds = 2:(length(header))
-  	}
-	type_nme = header[-1]
-  types_=data.frame(t(data.frame(strsplit(type_nme,"_"))))
-  names(types_) = c("molecules","cell","time")
- inds1 =  which(types_$molecules %in% molecules & types_$cell %in% cells & types_$time %in% times)
- types1_ = types_[inds1,,drop=F]
- ord = order(as.numeric(factor(types1_$time, levels=c("0hpi", "2hpi","24hpi","48hpi"))),types1_$cell,types1_$molecules)
- levs=type_nme[inds1][ord]
- toAdd=0
- if(logy)toAdd=0.001
- 
- facts =  apply(types1_,2,function(v) levels(factor(v)))
-  same_inds = which(unlist(lapply(facts,length))==1)
-  sumID='all'
-  if(length(same_inds)>0){
-   sumID = paste(unlist(facts[same_inds]),collapse="_")
-  }
- #print(inds1)
- id_cols = c("molecule","cell","time")
- tot_reads=NULL
- if(!is.null(total_reads)){
-   
-   tot_reads =  total_reads[inds1]/rep(1e6,length(inds1))
- }
- #print(tot_reads)
-   	clusters_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]),toAdd = toAdd, mergeGroups=mergeGroups,sumID=sumID, path=path,toplot,id_cols=id_cols, gapthresh=gapthresh, dinds = dinds[inds1], pos =NULL, span = span, cumul=F, sumAll=sumAll)
-#print(clusters_)
-
-  # if(!is.null(xlim)){
-  #   minx = min(clusters_$pos)
-  #   maxx = max(clusters_$pos)
-  #   xlim[1] = max(minx,xlim[1])
-  #   xlim[2] = min(maxx, xlim[2])
-  # }
-   	if(is.null(clusters_)){
-  print(paste("could not read ",toplot))
- return (ggplot())
-   	}
-   	
-   	if(sumAll) levs=names(clusters_)[3]
-   	
-   	tpm_df = melt(clusters_,id.vars=c("clusterID","pos"), measure.vars=names(clusters_)[-(1:2)], variable.name="sampleID",value.name='count') %>%
-   	transform(sampleID=factor(sampleID,levels=levs))
-   	  #  separate(variable, c('molecule_type', 'cell', 'time'), sep='_', remove = T)  %>%
-   	 # transform( count=as.numeric(count), molecule_type = factor(molecule_type), cell = factor(cell), time = factor(time, levels = time_vec)) 
-   	
-   		if(sumAll) type_nme = "combined"
-	#mat=t(h5read(h5file,paste("depth", toplot[1],sep="/")))
-rawdepth = T
-leg_size1=10
-show=T
-fill=F
-k = 1
-linetype="clusterID"
-colour="sampleID"
-if(sumAll){
-colour="clusterID"
-linetype="sampleID"
-}
-ylab="depth"
-if(!is.null(total_reads)) ylab="depth per million mapped reads"
- plotClusters(tpm_df, 4,  1, 
-              t,
-             fimo,
-               rawdepth = rawdepth, linetype=linetype, colour=colour, alpha=alpha, xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =leg_size1, show=show, fill =fill)
-}
 
 .getCIs<-function(subs,sample, total_reads1,method, showTPM=F,prefix="",suffix="", after=TRUE){
   if(nchar(prefix)>0){
@@ -182,7 +80,7 @@ if(!is.null(total_reads)) ylab="depth per million mapped reads"
   subs1 = cbind(subs[,count_ind],total_reads1[inds1])
 #  print(subs1)
   nrows = dim(subs)[1]
-  cis = matrix(0,ncol=3,nrow =nrows )
+  cis = matrix(NA,ncol=3,nrow =nrows )
   dimnames(cis)[[2]] = paste(c("TPM","lower","upper"),suffix,sep="")
   for(i in 1:nrows){
    # print(i)
@@ -218,9 +116,199 @@ shinyServer(function(input, output,session) {
 	#output$instructions <- renderPrint({
 	#	print("Upload 0.transcripts.txt.gz file produced by npTranscript");
 	#})
+	
+	#source("shiny-DE.R")
+	
+	source( "transcript_functions.R")
+	source("shiny-DE.R")
+	
+  run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", 
+                      gapthresh=100, mergeGroups=NULL,downsample = F, molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
+                      span = 0.01, sumAll=F, xlim=NULL, motifpos=list(),peptides=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,
+                      showORFs = F,showWaterfall=FALSE,waterfallKmer=3,waterfallOffset=0,top10=10,textsize=20,
+                      ci = 0.995, depth_thresh = 1000,
+                      path="depth",seq_df = NULL, plotCorr=F, linesize=0.1, reverseOrder=F, calcErrors=F, fisher =F){
+    if(path!="depth") calcErrors = FALSE
+    header =.getHeaderH5(h5file,toreplace)
+    if(path=="depth"){
+      dinds  = 2*(2:(length(header))-2)+2
+    }else{
+      dinds = 2:(length(header))
+    }
+    type_nme = header[-1]
+    types_=data.frame(t(data.frame(strsplit(type_nme,"_"))))
+    names(types_) = c("molecules","cell","time")
+    inds1 =  which(types_$molecules %in% molecules & types_$cell %in% cells & types_$time %in% times)
+    types1_ = types_[inds1,,drop=F]
+    ord = order(as.numeric(factor(types1_$time, levels=c("0hpi", "2hpi","24hpi","48hpi"))),types1_$cell,types1_$molecules)
+    levs=type_nme[inds1][ord]
+    toAdd=0
+    if(logy)toAdd=0.001
+    facts =  apply(types1_,2,function(v) levels(factor(v)))
+    same_inds = which(unlist(lapply(facts,length))==1)
+    sumID='all'
+    if(length(same_inds)>0){
+      sumID = paste(unlist(facts[same_inds]),collapse="_")
+    }
+    id_cols = c("molecule","cell","time")
+    tot_reads=NULL
+    if(!is.null(total_reads)){
+      
+      tot_reads =  total_reads[inds1]/rep(1e6,length(inds1))
+    }
+    if(calcErrors){
+      tot_reads = rep(1,length(tot_reads))  ## we dont want to correct for read depth for errors 
+    }
+    clusters_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]),toAdd = toAdd, 
+                       mergeGroups=mergeGroups,sumID=sumID, path=path,toplot,id_cols=id_cols, 
+                       gapthresh=gapthresh, dinds = dinds[inds1], pos =NULL, span = span, cumul=F, sumAll=sumAll)
+    errors_ = NULL
+    if(calcErrors){
+      offset_ = length(header)-1
+      errors_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]),toAdd = toAdd, mergeGroups=mergeGroups,
+                       sumID=sumID, path=path,toplot,id_cols=id_cols, gapthresh=gapthresh, 
+                       dinds = dinds[inds1]+1, pos =NULL, span = span, cumul=F, sumAll=sumAll)
+      
+      ggp<- .makeCombinedArray(clusters_, errors_, xlim, downsample = downsample, thresh = depth_thresh,alpha = alpha,  ci = ci, max_num = 10,t=t, fisher = fisher,motifpos=motifpos)
+      return(ggp)
+     }else  if(plotCorr){
+    indsp = clusters_$pos <=xlim[2] & clusters_$pos >= xlim[1]
+    df = clusters_[indsp,2:dim(clusters_)[2],drop=F]
+    nrows = length(which(indsp))
+   
+    sums=apply(df[-1],2,sum)
+    df = df[,c(1,1+order(sums, decreasing=T))]
+    len = dim(df)[2]-1
+    if(len>1){
+      print(names(df))
+      #reverseOrder=F
+      levels1 = .getlevels(names(df)[-1],molecules, cells, times,reverseOrder)
+      cor = cor(df[,match( levels1,names(df))])
+      if(TRUE){
+      df2 = melt(cor)
+      ggp<-ggplot(data =df2, aes(x=Var1, y=Var2, fill=value)) +  geom_tile()+ggtitle(path)
+      ggp<-ggp+scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                                    midpoint = 0, limit = c(-1,1), space = "Lab", 
+                                    name="Pearson\nCorrelation") +
+        theme_minimal()+ 
+        theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                         size = textsize, hjust = 1),
+              axis.text.y = element_text( 
+                                         size = textsize))+
+        coord_fixed()+xlab("")+ylab("")
+      
+      return(ggp)
+      }else{       
+      
+      if(!is.matrix(cor)) cor = as.matrix(cor)
+      df1 = data.frame(matrix(nrow=0,ncol = 3))
+     
+      types = c()
+      for(k in 1:(length(sums)-1)){
+        for(i in (k+1):length(sums)){
+          types =c(types,  rep(paste(names(df)[k+1], names(df)[i+1],"corr=",floor(100*cor[k,i])/100,sep=" "), nrows))
+          df_i = df[,c(1,k+1, i+1),drop=F]
+          names(df_i) = c("pos","x","y")
+          df1 = rbind(df1,df_i)
+        }
+      }
+      names(df1) = c("pos","x","y")
+      types = factor(types)
+      
+      df1 = cbind(df1,types)
+     # print(head(df1))
+      ggp<-ggplot(df1)
+      trans="identity"
+      if(logy) trans="log10"
+      ggp<-ggp+scale_y_continuous(trans=trans)+scale_x_continuous(trans=trans)+ggtitle(path)
+      print(names(df1))
+      if(length(sums)==2){
+        ggp<-ggp+geom_point(aes(x = x, y = y, color=pos, shape=types))
+      }
+      else{
+        ggp<-ggp+geom_point(aes(x = x, y = y, color=types))
+      }
+      ggp<-ggp+theme(text = element_text(size=textsize))
+      
+      return(ggp)
+      }
+    }
+  }
+    if(is.null(clusters_)){
+      print(paste("could not read ",toplot))
+      return (ggplot())
+    }
+    
+    if(sumAll) levs=names(clusters_)[3]
+    
+    tpm_df = melt(clusters_,id.vars=c("clusterID","pos"), measure.vars=names(clusters_)[-(1:2)], variable.name="sampleID",value.name='count') %>%
+      transform(sampleID=factor(sampleID,levels=levs))
+    
+   
+    
+    if(sumAll) type_nme = "combined"
+    rawdepth = T
+    leg_size1=textsize
+    show=T
+    fill=F
+    k = 1
+    linetype="clusterID"
+    colour="sampleID"
+    if(sumAll){
+      colour="clusterID"
+      linetype="sampleID"
+    }
+    ylab="depth"
+    if(!is.null(total_reads)) ylab="depth per million mapped reads"
+    #invisible(tpm_df)
+   if(showWaterfall && !is.null(seq_df)){
+    allpos =  seq_df$pos
+  #  print(seq_df$sequence[xlim[1]:xlim[2]])
+    kstart = (waterfallKmer-1)/2
+    kmers = getKmer(as.character(seq_df$sequence),1:length(seq_df$sequence),v=-kstart:kstart + waterfallOffset)
+  #  print(head(kmers))
+    levsk = levels(factor(kmers))
+   # print(levsk)
+    cnts = unlist(lapply(levsk, function(x)sum(tpm_df$count[tpm_df$pos %in% allpos[which(kmers==x)]])  ))
+  #  cnts = cnts/sum(cnts)
+    print(cnts)
+   cnt_df =  data.frame(cnts=cnts, kmers=levsk)
+   top10 = min(top10,length(cnts))
+  # print(top10)
+    cnt_df = cnt_df[order(cnt_df$cnts,decreasing = T)[1:top10],,drop=F]
+    #print(cnt_df)
+    id = 1:dim(cnt_df)[1]
+    end = cumsum(cnt_df$cnts)
+    start = c(0,end[1:(length(end)-1)])
+    cnt_df = cbind(id,start,end,cnt_df)
+    #print(cnt_df)
+    cnt_df$kmers = factor(as.character(cnt_df$kmers),levels = as.character(cnt_df$kmers))
+    session$userData$dataDepth[[which(names(session$userData$dataDepth)==path)]] = cnt_df
+    ggp<-ggplot(cnt_df, aes(kmers, fill = kmers))
+    ggp<-ggp+ geom_rect(aes(x = kmers,xmin = id - 0.45, xmax = id + 0.45, ymin = end,ymax = start))+ggtitle(path)
+    ggp<-ggp+scale_colour_manual(values = rainbow(dim(cnt_df)[1]))
+    ggp<-ggp+theme(text = element_text(size=textsize))
+    
+  #  ggp<-ggp+theme(text = element_text(size=10), axis.text.x = element_text(size = rel(0.7), angle = 25, hjust=0.75))
+    
+   }else{
+    session$userData$dataDepth[[which(names(session$userData$dataDepth)==path)]] = tpm_df
+    ggp<-plotClusters(tpm_df,seq_df, 4,  1, 
+                 t,
+                 motifpos,peptides,size=20,linesize=linesize,textsize=textsize,
+                 rawdepth = rawdepth, linetype=linetype, colour=colour,
+                 alpha=alpha, xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =leg_size1, show=show, fill =fill)
+    
+   }
+    ggp
+    }
+  
 	readDir <- function() {
     print(input$dir)
+	  h5closeAll()
     print(" updating input dir")
+    session$userData$dataDepth = list("depth"=data.frame(), "depthStart"=data.frame(), "depthEnd"=data.frame())
+    
     currdir = paste(basedir,input$dir,sep="/")
     datafile = paste(currdir,"0.isoforms.h5",sep="/")
     h5file=paste(currdir,"0.clusters.h5",sep="/")   
@@ -250,7 +338,45 @@ shinyServer(function(input, output,session) {
       names(annots) = c("chr","ens","name","ens1","type")
       session$userData$annots=annots
     }
+   counts_file = paste(currdir, "Counts_genome1.csv",sep="/")
+   options2 = c("showTranscriptPlot","logy","showCI", "TPM_amongst_viral","barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder")
+   totick2 = c("showTranscriptPlot","ribbonCI","barchart","TPM_amongst_viral")
+   
+   if(file.exists(counts_file)){
+     countsHostVirus= read.csv(counts_file)
+     options2 = c("showTranscriptPlot","logy","showCI", "TPM_amongst_all" ,"TPM_amongst_viral","barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder")
+     
+     names(countsHostVirus) =  gsub("X.","",names(countsHostVirus))
+    
+     sample= apply(countsHostVirus[,1:3],1,paste,collapse="_")
+     countsHostVirus=cbind(sample,countsHostVirus)
+     inds_a = grep("Map.to", names(countsHostVirus))
+     sum_inds = names(countsHostVirus) %in% c("Host","Virus","Sequin","Total")
+     torem = c()
+     v1 = sample
+     dupl = lapply(unique(v1[duplicated(v1)]), function(x)which(v1 ==x))
+     for(j in dupl){
+      # print(countsHostVirus[j,sum_inds,drop=F])
+       summed = apply(countsHostVirus[j,sum_inds,drop=F],2,sum)
+      # print(j)
+      # print(summed)
+      # print(countsHostVirus[j[1],sum_inds])
+         countsHostVirus[j[1], sum_inds] = summed
+       torem = c(torem, j[-1])
+     }   
+     countsHostVirus = countsHostVirus[-torem,]
+     vars = c(names(countsHostVirus[inds_a]), "Total")
+     countsHostVirus=
+      melt(countsHostVirus,id.vars=c("sample"),
+                   measure.vars=which(names(countsHostVirus) %in% vars), variable.name="ID", value.name="count") %>%
+       transform(sample=factor(sample), ID=factor(ID))
+     session$userData$countsHostVirus = countsHostVirus[countsHostVirus$ID!="Total",]
+     session$userData$countsTotal = countsHostVirus[countsHostVirus$ID=="Total",]
+     
+   }
+     
     coords_file = paste(currdir, "Coordinates.csv",sep="/")
+    motifText = ""
     if(file.exists(coords_file)){
       t = readCoords(coords_file)
       session$userData$t=t
@@ -258,16 +384,68 @@ shinyServer(function(input, output,session) {
    
       fimo_file = paste(currdir,"fimo.tsv",sep="/")
       fimo=read.table(fimo_file, sep="\t", head=T)
+      print(names(fimo))
+      motifText = paste(levels(factor(fimo$matched_sequence)),collapse="|")
       session$userData$fimo = fimo
     }else{
       orfs = c()
+     
+    }
+    fastafile = grep("extra",grep("fasta.gz",dir(currdir),v=T),v=T,inv=T)
+    if(length(fastafile)>=1){
+      fastaseq = read.fasta(paste(currdir,fastafile[1],sep="/"))
+      session$userData$fasta =fastaseq[[1]]
+      
+      session$userData$fastaseq = paste(fastaseq[[1]],collapse="")
+    }else{
+      session$userData$fastaseq=NULL
+      session$userData$fasta=NULL
+    }
+    peptide_file =paste(currdir,"peptides.csv",sep="/")
+    if(file.exists(peptide_file)){
+      
+      peptide=read.csv(peptide_file,  head=F, comment.char="#")
+      trans_vals= as.numeric(sub("#","",read.csv(peptide_file, head=F,nrow=1)))
+      peptide = peptide[!duplicated(peptide[,2]),-1,drop=F]
+      
+      peptide= apply(peptide,c(1,2),function(x) (x-1)*trans_vals[2]+trans_vals[1])
+      
+      
+     # peptide=read.csv(peptide_file,  head=F)
+    #  peptide = peptide[!duplicated(peptide[,2]),-1,drop=F]
+      names(peptide)=c("start","end")
+      session$userData$peptide = peptide
+      
     }
     session$userData$dirname = gsub("/","_",input$dirname)
     session$userData$currdir=currdir
     session$userData$datafile=datafile
     session$userData$h5file=h5file
     session$userData$results = list()
-
+    session$userData$results = list()
+	
+	
+	print(dir.exists(file.path(currdir,'DE')))
+	
+	updateCheckboxInput(session, "LoadDE", value = FALSE)
+	hide("plotDE")
+	hide("DE_cell1")
+	hide("DE_cell2")
+	hide("DE_time1")
+	hide("DE_time2")	
+	
+	
+	print('setting DE_countdata to NULL')
+	DE$counts = NULL
+	
+	if (!dir.exists(file.path(currdir,'DE'))) {
+		shinyjs::disable('LoadDE') 
+		} else {
+		session$userData$DE = file.path(currdir, 'DE')
+		shinyjs::enable('LoadDE')
+	}
+	
+	#toggleState('ActivateDE', condition = dir.exists(file.path(currdir,'DE')))
     updateSelectInput(session,"plottype", label = "Category 1", choices=ch, selected=input$plottype)
    # updateSelectInput(session,"plottype1", label = "Category 2", choices=ch, selected=input$plottype1)
     updateSelectInput(session, "toplot5",label = paste("Transcript",names(info$choices1)[1]),choices=c("-",info$choices1[[1]]),selected='-')
@@ -277,8 +455,42 @@ shinyServer(function(input, output,session) {
     updateCheckboxGroupInput(session,"times", label = "Time points",  choices = info$times, selected = info$times)
     updateTextInput(session,"orfs", label="ORFs to include", value = orfs)
    # updateSelectInput(session, "depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="depth")
+    updateTextInput(session,"motif", label="Show motif", value = motifText)
     
+    updateCheckboxGroupInput(session,"options2", label = "Middle panel", choices = options2, selected=totick2) 
+    
+    #CTAAAC|TTAAAC
+    #ACGAAC|ACGATC|ATGAAC
+	
+	
   }
+  
+  loadDE <- function(thresh) {
+  
+  # Import data 
+  message(paste('importing DE Data'))
+    currdir = session$userData$currdir
+  count_files <- list.files(path = file.path(currdir, 'DE'), recursive = T, full.names = T)
+  cell_types <- lapply(strsplit(x = count_files, split = '/'), rev) %>% sapply('[', 2) 
+  print(cell_types)
+  
+  print(count_files)
+  
+  countdata <- lapply(count_files, FUN = 
+                        function(x) {read.table((gzfile(x)), header = T, row.names = 1) %>%
+                              subset(select = -c(1:5)) %>% 
+                                as.matrix() } )
+  names(countdata) <- cell_types
+  
+ #countdata=lapply(countdata,
+  #                function(x) .subsetFCFile(x,toplot5,toplot7,toplot8,tojoin,group_by)) 
+ 
+ #print(head(countdata[[1]]))
+  return(countdata)
+}
+  
+  
+  
 	
 	
   depthPlot= function(plot_type) {
@@ -286,25 +498,53 @@ shinyServer(function(input, output,session) {
     if(!file.exists(session$userData$h5file)) return(ggplot())
     showDepth  = "show_depth" %in% input$options3
     logy = "logy" %in% input$options3
+    textsize=input$textsize
+    ci=0
+    if(  "showCI" %in% input$options3){
+      ci=input$conf.int
+    }
+    
+    depth_thresh = input$depth_thresh
     group_by=input$group_by
+    reverseOrder=F
+    merge_by="" #input$merge_by
   #  plot_type=input$depth_plot_type
-    
+    motif = isolate(input$motif)
+    fastaseq =session$userData$fastaseq
+    fasta=session$userData$fasta
+    maxKmers=isolate(input$maxKmers)
     showORFs="showORFs" %in% input$options3
-    showMotifs="showMotifs" %in% input$options3
-    mergeCounts='mergeCounts' %in% input$options3
+    fisher = input$test =="fisher"
+    showErrors = "showErrors" %in% input$options3
+    plotCorr = "plotCorr" %in% input$options3
+    showSequence="showSequence" %in% input$options3
+    if(plot_type=="depth") showWaterfall=F else showWaterfall="showWaterfall" %in% input$options3
+    waterfallKmer=isolate(input$waterfallKmer)
+   waterfallOffset=isolate(input$waterfallOffset)
     
-    tpm = "TPM" %in% input$options3
+    motifpos=list()
+    if(nchar(motif>0) && !is.null(fastaseq)){
+      motifpos= lapply(strsplit(motif,"\\|")[[1]], function(x) gregexpr(x,fastaseq, ignore.case=T)[[1]])
+    }
+    mergeCounts='mergeCounts' %in% input$options3
+    showPeptides="showPeptides" %in% input$options3
+    downsample="downsample" %in% input$options3
+    tpm = "TPM_amongst_viral" %in% input$options3
     h5file=session$userData$h5file
     total_reads = NULL
-    fimo = NULL
+   # fimo = NULL
     t = NULL
+    peptides=NULL
    # print(showMotifs)
-    if(showMotifs){
-    fimo = session$userData$fimo
-    }
+    #if(showMotifs){
+    #fimo = session$userData$fimo
+    #}
     #print(fimo)
     if(showORFs){
     t = session$userData$t
+    }
+    if(showPeptides){
+      peptides=session$userData$peptide
     }
     if(tpm){
       total_reads = session$userData$total_reads
@@ -313,8 +553,8 @@ shinyServer(function(input, output,session) {
     # print(h5file)
     ggp=ggplot()
     if(length(grep(plot_type,h5ls(h5file)$group))<=0) return (ggp)
-    span = 0
-    if(plot_type=="depth") span=input$loess
+  #  span = 0
+    span=input$loess
     if(showDepth  && !is.null(h5file)){
       if(file.exists(h5file)){
         toplot = c(isolate(input$toplot5))#,isolate(input$toplot6))#,isolate(input$toplot7),isolate(input$toplot8))
@@ -339,7 +579,10 @@ shinyServer(function(input, output,session) {
           if("sumDepth" %in% input$options3) sumAll=TRUE
           mergeGroups=NULL
           if(mergeCounts) group_by="all"
-          if(group_by != 'No grouping'){
+          if(nchar(merge_by)>0){
+            mergeGroups=.mergeGroups(toplot,merge_by)
+          
+          }else if(group_by != 'No grouping'){
             mergeGroups = .getGroups(toplot,group_by)
           }else if(length(toplot)>input$maxtrans){
             ##only show top number if not merging
@@ -354,12 +597,26 @@ shinyServer(function(input, output,session) {
           times = input$times
         xlim =   c(isolate(input$min_x), isolate(input$max_x))
         alpha = isolate(input$alpha)
-        #print("xlim")
-        #print(xlim)
-        #xlim= NULL
+        linesize=0.001  #isolate(input$linesize)
         if(xlim[2]<=xlim[1]) xlim = NULL
-          ggplot=run_depth(h5file,total_reads,toplot, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
-                    showORFs = showORFs, fimo=fimo,xlim =xlim, t=t,path=plot_type, showMotifs =showMotifs, alpha=alpha) 
+       seq_df= NULL
+        if( showSequence || showWaterfall){
+          if(xlim[1]<1) xlim[1] = 1
+          if(xlim[2]>length(fasta)) xlim[2] = length(fasta)
+          pos = xlim[1]:xlim[2]
+          sequence =  fasta[pos]
+          seqy = rep(1,length(pos))
+          seq_df = data.frame(pos,sequence, seqy) %>%
+            transform(pos=as.numeric(pos), sequence=factor(sequence, levels=c("a","c","t","g")))
+        }
+          ggp=run_depth(h5file,total_reads,toplot, seq_df=seq_df, downsample = downsample, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
+                    showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type,
+                    showMotifs =showMotifs, alpha=alpha,plotCorr=plotCorr,linesize=linesize, reverseOrder=reverseOrder,
+                    textsize=textsize, calcErrors=showErrors,fisher=fisher,
+                    ci = ci, depth_thresh = depth_thresh,
+                    showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers
+                    )
+          return(ggp)
         }
         #run_depth(h5file,toplot=c("leader_leader,N_end")) 
       }
@@ -370,7 +627,10 @@ shinyServer(function(input, output,session) {
   
   transcriptPlot=function(){
     if(!file.exists(session$userData$datafile)) return(ggplot())
+    if(!"showTranscriptPlot" %in% input$options2) return(ggplot())
+    
 	print(paste('testinput', input$molecules))
+	textsize=input$textsize
     molecules <-  input$molecules 
     cells <- input$cells 
     times<-input$times
@@ -392,12 +652,15 @@ shinyServer(function(input, output,session) {
     logy = "logy" %in% input$options2
     showCI = "showCI" %in% input$options2
     ribbon="ribbonCI" %in% input$options2
-    showTPM="TPM" %in% input$options2
+    showTPM="TPM_amongst_viral" %in% input$options2 || "TPM_amongst_all" %in% input$options2
     showCI = "showCI" %in% input$options2
     merge='mergeCounts' %in% input$options2
     barchart="barchart" %in% input$options2
+    reverseOrder="reverseOrder" %in% input$options2
     stack = "stacked" %in% input$options2
+    calcTPMFromAll = "TPM_amongst_all"  %in% input$options2
     group_by=input$group_by
+    merge_by=""  #input$merge_by
     max_trans = input$maxtrans
     conf.int=input$conf.int
     method="logit";
@@ -407,28 +670,41 @@ shinyServer(function(input, output,session) {
     if(length(toplot)==0){
       toplot=c(isolate(input$toplot7),isolate(input$toplot8))
       toplot = toplot[unlist(lapply(toplot,nchar))>2]
-      
       usegrep=T
     }
     datafile=session$userData$datafile
    
     #  header = session$userData$header
     total_reads = session$userData$total_reads
+    tr = NULL    
+    if(calcTPMFromAll && !is.null(session$userData$countsTotal)){
+       countsHostVirus1 =   session$userData$countsTotal
+       inds1 = match(names(total_reads) ,countsHostVirus1$sample)
+      # print(inds1)
+       tr = countsHostVirus1$count[inds1]
+       tr = as.numeric(as.character(tr))
+       names(tr) = names(total_reads)
+       print(total_reads)
+       print("new total reads")
+       print(tr)
+       total_reads = tr
+    }
     tojoin=isolate(input$tojoin)
     header = names(total_reads)
     if(length(toplot)>0 && !is.null(datafile) ){
       if(usegrep){
         x1 = .findEntries(toplot,datafile,"/trans",tojoin);
-        #  merge=TRUE
-        #    mat = .readIsoGrep(toplot,datafile,header, "/trans") 
       }else{
         x1 =toplot
-        
       }
       mat = t(data.frame( lapply(x1, .readIso, datafile, header, "/trans")))
       if(is.null(dim(mat))) mat = matrix(mat,nrow=1,ncol=length(header))
       if(merge){
         mat = matrix(apply(mat,2,sum),nrow=1,ncol=dim(mat)[2])
+      }else if(nchar(merge_by)>0){ 
+          ord=order(apply(mat,1,sum),decreasing=T)
+          groups=.mergeGroups(x1,merge_by, ord=ord, max_trans = max_trans)
+          
       }else if(group_by != 'No grouping'){
         groups = .getGroups(x1,group_by)
         toplot=names(groups)
@@ -454,11 +730,11 @@ shinyServer(function(input, output,session) {
         subs = list()
         for(i in 1:length(splitby_vec)){
           if(splitby=="molecules"){
-            levs1=.getlevels(header,molecules[i], cells, times)
+            levs1=.getlevels(header,molecules[i], cells, times, reverseOrder)
           } else if(splitby=="cells"){
-            levs1=.getlevels(header,molecules, cells[i], times)
+            levs1=.getlevels(header,molecules, cells[i], times, reverseOrder)
           }else{
-            levs1=.getlevels(header,molecules, cells, times[i])
+            levs1=.getlevels(header,molecules, cells, times[i], reverseOrder)
             
           }
           subs[[i]] =.processTPM(mat, header, toplot, levels=levs1,split=T)
@@ -474,7 +750,7 @@ shinyServer(function(input, output,session) {
         subs = merge(subs[[1]],subs[[2]],by=by)
         sample=apply(subs[,2:3,drop=F],1,paste,collapse="_")
       } else if(barchart){
-        levs1=.getlevels(header,molecules, cells, times)
+        levs1=.getlevels(header,molecules, cells, times, reverseOrder)
         subs =.processTPM(mat, header, toplot, levels=levs1,split=F)
         sample = subs$sample
       }else{
@@ -493,8 +769,9 @@ shinyServer(function(input, output,session) {
         cis = cbind(cis.x,cis.y)
         
       }else{
+#        print(subs)
+#        print(total_reads)
         cis = .getCIs(subs,sample,total_reads,method, showTPM)
-        
       }
       subs = cbind(subs,cis)
      
@@ -527,17 +804,45 @@ shinyServer(function(input, output,session) {
           trans="log10"
         }
         ggp<-ggp+ scale_y_continuous(trans=trans,name=splitby_vec[2], limits=ylim)+ scale_x_continuous(limits = ylim,trans=trans,name=splitby_vec[1])
-        
+        ggp<-ggp+theme_bw()+theme(text = element_text(size=textsize))
       }else if(barchart){
         ORF="ID"
         y_text="TPM"
-        if(!showTPM) y_text = "Counts";
+      #  if(!showTPM) y_text = "Counts";
         #  ord="Start"
         # x1 =  paste("reorder(", ORF, ",", ord,")", sep="") 
         if(stack){
-          ggp<-ggplot(subs, aes_string(x="sample",y=y_text,fill=ORF, colour=ORF,ymin="lower" ,ymax="upper"))
-          ggp<-ggp+ geom_bar(position="stack", aes_string(y="TPM"),stat="identity")
+          sublevs = levels(subs$ID)
+          if(length(sublevs)==4 && sublevs[[1]]=="5_3"){
+            subs$ID = factor(as.character(subs$ID), levels=rev(c("5_3","non5_3", "5_non3","non5_non3")))
+          }
+          ggp<-ggplot()
+          ggp<-ggp+geom_bar(data=subs,aes(x=sample,y=TPM,fill=ID,color=ID),position="stack",stat='identity')
           
+          if(!is.null(session$userData$countsHostVirus) && showTPM){
+            scaling_factor = 100/max(subs$TPM, na.rm=T)
+            print(paste("scaling ",scaling_factor))
+            print(head(subs))
+            
+              countsHostVirus= session$userData$countsHostVirus
+              countsHostVirus = countsHostVirus[which(countsHostVirus$sample %in% subs$sample),,drop=F]
+              names(countsHostVirus)[2]="Type"
+              names(countsHostVirus)[3]="Reads"
+              print("hh")
+             # print(countsHostVirus)
+              countsHostVirus[3] = countsHostVirus[3] /scaling_factor
+              types=c("Host","Virus","Sequin")
+              cols=c("Black","Red","Blue")
+              for(kk in 1:length(cols)){
+              ggp<-ggp+geom_point(data=countsHostVirus[grep(types[kk],countsHostVirus$Type),], aes(x=sample,y=Reads),color=cols[kk],stat="identity")
+              ggp<-ggp+geom_line(data=countsHostVirus[grep(types[kk],countsHostVirus$Type),], aes(x=sample,y=Reads, group=Type),color=cols[kk],stat="identity")
+              }
+          #   ggp<-ggp+geom_line(data=countsHostVirus, aes(x=sample,color=Type,y=Reads, group=Type),stat="identity")
+            ggp<-ggp+ scale_y_continuous(
+              name = "TPM",
+              sec.axis = sec_axis(~.*scaling_factor, name="Proportion (%)"))
+            #ggp<-ggp+ scale_colour_manual(values = c("black","red",  "green","orange","pink"))
+          }
         }else{
           ggp<-ggplot(subs, aes_string(x=ORF,y=y_text,fill="sample", colour='sample',ymin="lower" ,ymax="upper"))
           ggp<-ggp+ geom_bar(position=position_dodge(), aes_string(y="TPM"),stat="identity")
@@ -545,7 +850,7 @@ shinyServer(function(input, output,session) {
             ggp<-ggp+geom_errorbar(position=position_dodge(width=0.9),colour="black")
           } #ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="lower", ymax="upper"), width=.2)#, position="dodge")
         }
-        ggp<-ggp+theme(text = element_text(size=18), axis.text.x = element_text(size = rel(0.7), angle = 25, hjust=0.75))
+        ggp<-ggp+theme_bw()+theme(text = element_text(size=textsize), axis.text.x = element_text(size = rel(1.0), angle = 25, hjust=1.0))
         
         #geom_bar(aes_string(x=x1, y="Ratio", fill = "type", colour = "type"),stat="identity", position = "dodge")
        
@@ -571,7 +876,9 @@ shinyServer(function(input, output,session) {
           ggp<-ggplot(subs, aes(x=time, y=TPM ,group=interaction(molecule_type, cell, ID), color = cell, linetype=ID))
           ggp<-ggp+ geom_line()  + geom_point(inherit.aes=T,aes(shape = molecule_type,size=10))
         }
-        ggp<-ggp+theme_bw();#+ylim(c(min(subs$TPM, na.rm=T), max(subs$TPM, na.rm=T)))
+      
+        ggp<-ggp+theme_bw()+theme(text = element_text(size=textsize))
+       # ggp<-ggp+theme_bw();#+ylim(c(min(subs$TPM, na.rm=T), max(subs$TPM, na.rm=T)))
         if(!showTPM)ggp<-ggp+ylab("Counts")
         # ggp<-ggp+ geom_errorbar(aes(linetype=molecule_type))
         if(logy){
@@ -581,29 +888,40 @@ shinyServer(function(input, output,session) {
     }else{
       ggp = ggplot()
     }
+    
     ggp
   }
+  
   infectivityPlot=function(){
+    if(!"showInfectivity" %in% input$options1) return(ggplot())
     currdir = session$userData$currdir
     barchart="barchart" %in% input$options1
+    reverseOrder="reverseOrder" %in% input$options1
     showSecondAxis="showSecondAxis" %in% input$options1
+    textsize=input$textsize
     conf.int=input$conf.int
-    
+    countsTotal=session$userData$countsTotal
     infilesAnnot = paste(currdir,"0.annot.txt.gz", sep="/")
     total_reads = session$userData$total_reads
+    type_nme= names(total_reads)
+    total_reads1 = total_reads
+    if(!is.null(countsTotal)){
+      total_reads1=countsTotal$count[match(type_nme,countsTotal$sample)]
+      names(total_reads1) = type_nme
+    }
     if(file.exists(infilesAnnot)){
       molecules=input$molecules; cells=input$cells; times = input$times;
-      type_nme= names(total_reads)
       
       
-      levels1 = .getlevels(type_nme,molecules, cells, times)
+      levels1 = .getlevels(type_nme,molecules, cells, times,reverseOrder)
       orfs=input$orfs
       norm=F
-      ratio1 = .readAnnotFile(infilesAnnot,total_reads,norm=norm,levels= levels1, conf.level=conf.int, orfs=orfs)
+      ratio1 = .readAnnotFile(infilesAnnot,total_reads1,norm=norm,levels= levels1, conf.level=conf.int, orfs=orfs)
       #.plotAnnotFile<-function(ratio1,molecule_type, cell, time, levels=NULL,barchart=F,showEB = F,showSecondAxis=F){
       y_text="Ratio"
       #   y_text="spliced"
-      annots1=.plotAnnotFile(ratio1,barchart=barchart,showSecondAxis=showSecondAxis,showEB=T, levels=levels1, y_text=y_text)
+      annots1=.plotAnnotFile(ratio1,barchart=barchart,showSecondAxis=showSecondAxis,showEB=T, levels=levels1, y_text=y_text,
+                             diff=0, coeff=5, textsize=textsize)
      
 #      resall = 
      # names(resall) =   session$userData$dirname
@@ -614,6 +932,22 @@ shinyServer(function(input, output,session) {
     }
   }
   
+
+	
+# DE_countdata <- reactive( {
+	
+	# DE_countdata = loadDE()
+	# print(names(DE_countdata))
+	# updateSelectInput(session, "DE_cell",  choices = names(DE_countdata))
+	# updateSelectInput(session, "DE_time1",  choices = info$times)
+	# updateSelectInput(session, "DE_time2",  choices = info$times)
+	# return(DE_coundata)
+		
+	# })
+	
+		
+
+  
   observeEvent(input$plottype,{
     dd= .process1(input$plottype,  session$userData$info)
     updateSelectInput(session,"toplot5", label = dd$label, choices=dd$ch, selected="-")
@@ -621,6 +955,8 @@ shinyServer(function(input, output,session) {
   observeEvent(input$dir, readDir() )		  
 	#THIS JUST EXAMPLE FOR RENDERING A PLOT
 	#REACTIVE ON PLOT BUTTON
+
+
 
 	output$infPlot<-renderPlot({
 	  input$plotButton
@@ -648,7 +984,69 @@ shinyServer(function(input, output,session) {
 	output$depthEndPlot <- renderPlot({
 	  input$plotButton
 	  depthPlot("depthEnd")
+		
 	})
+
+
+DE <- reactiveValues(counts = NULL, main_out = NULL)
+
+
+observeEvent( input$LoadDE,	
+{
+  if(input$LoadDE){
+	DE$counts = loadDE()
+  }else{
+    print("disactivating DE")
+    DE$counts = list()
+  }
+	print(paste('loadDE output'))
+	updateSelectInput(session, "DE_cell1",  choices = names(DE$counts))
+	updateSelectInput(session, "DE_cell2", choices = names(DE$counts))
+	updateSelectInput(session, "DE_time1",  choices = session$userData$info$times)
+	updateSelectInput(session, "DE_time2",  choices = session$userData$info$times)
+
+
+
+toggle("plotDE")
+toggle("DE_cell1")
+toggle("DE_cell2")
+toggle("DE_time1")
+toggle("DE_time2")
+
+} )
+
+
+#DE Plots
+ observeEvent(input$plotDE, {
+ head(DE$counts)
+ if (is.null(DE$counts)) {print('DE_countdata is null') } else {
+	#head(DE$counts)
+   plot_params = list(toplot5=input$toplot5, toplot2=c(input$toplot7, input$toplot8), 
+                      tojoin=input$tojoin, group_by=input$group_by, merge_by=input$merge_by)
+	DE$main_out <- try(runDE(count_list = DE$counts, cell1 = input$DE_cell1 ,
+	                     cell2 = input$DE_cell2, time1 = input$DE_time1, 
+	                     time2 = input$DE_time2,  thresh=input$mean_count_thresh,
+	                     plot_params=plot_params))
+	if(!inherits(DE$main_out,"try-error")) {
+	print(paste('DEout done', names(DE$main_out)))
+	
+	
+	output$DEPlot_volcano <- renderPlot( {
+	DE$main_out[['volcano_params']][['remove_spurious']] <- input$remove_spurious 
+	do.call(volcanoplot, 
+	DE$main_out[['volcano_params']] )
+	})
+	
+	output$DEPlot_PCA <- renderPlot( {
+	do.call(rld_pca, 
+	DE$main_out[['rld_pca_params']]
+	)
+	})
+	}
+	
+		}
+	 } )
+	 
 #Downloads
 output$downloadInf <- downloadHandler(filename = function() {'plotInfectivity.pdf'}, content = function(file) ggsave(file, infectivityPlot(), device='pdf', height = 20, width = 40, units='cm' ) )
 output$downloadDepth <- downloadHandler(filename = function() {'plotDepth.pdf'}, content = function(file) ggsave(file, depthPlot("depth"), device = 'pdf', height = 20, width = 40, units='cm') )
@@ -657,6 +1055,17 @@ output$downloadDepthEnd <- downloadHandler(filename = function() {'plotDepthEnd.
 output$downloadDist <- downloadHandler(filename = function() {'plotDist.pdf'}, content = function(file) ggsave(file, transcriptPlot(), device = 'pdf' , height = 20, width = 40, units='cm') )
 output$downloadResults<-downloadHandler(filename = function() {'results.xlsx'}, content = function(file) write_xlsx( session$userData$results,file ) )
 output$downloadResultsInf<-downloadHandler(filename = function() {'resultsInf.xlsx'}, content = function(file) write_xlsx( session$userData$resultsInf,file ) )
-
-	 })
-
+output$downloadPCA <- downloadHandler(filename = function() {'plotPCA.pdf'}, content = function(file) {
+	pdf(file, 18, 18, pointsize=50)
+	do.call(rld_pca, DE$main_out[['rld_pca_params']])
+	dev.off()
+		})
+output$downloadVOLCANO <- downloadHandler(filename = function() {'plotVOLCANO.pdf'}, content = function(file) {
+	pdf(file, 18, 18, pointsize=20)
+	do.call(volcanoplot, DE$main_out[['volcano_params']] )
+	dev.off()
+		})
+output$downloadDEdata <- downloadHandler(filename = function() {'DE_data.xlsx'}, content = function(file) {
+	write_xlsx(DE$main_out[['data']], file)
+	})
+})
