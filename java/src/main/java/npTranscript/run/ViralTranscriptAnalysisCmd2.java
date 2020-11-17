@@ -201,7 +201,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		
 	}
  public static String pool_sep="";
- public static boolean limit_to_read_list = false;
+ public static boolean limit_to_read_list = true;
 	public static int mm2_threads;
 	public static String mm2_path, mm2_mem, mm2_index, mm2Preset, mm2_splicing;
  public static void run(CommandLine cmdLine, String[] bamFiles, String resDir,File anno, String chrs, String chrsToIgnore,  boolean fastq, String reference) throws IOException{
@@ -315,7 +315,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			IdentityProfile1.extra_threshold1 =50;
 			annotByBreakPosition = true;
 			TranscriptUtils.writeAnnotP = true;
-			
+			sorted = false;
 		//	CigarHash2.subclusterBasedOnStEnd = false;
 			mm2_splicing = "-un";
 		
@@ -324,6 +324,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		//	TranscriptUtils.findPolyA = false;
 		//Outputs.writeGFF = false;
 			Outputs.calcBreaks=true;
+			sorted = true;
 			TranscriptUtils.coronavirus = false;
 			IdentityProfile1.extra_threshold1 = 1000000;
 			//Outputs.writeUnSplicedFastq = false;
@@ -452,9 +453,9 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		if(readList.length>0 && readList[0].length()>0){
 			 Map<String, Collection<String>> map = new HashMap<String, Collection<String>>();
 			 int readind =0;
-			 int orfind = 1;
-			 int chromind = 2;
-			 int posind = 3;
+			 int orfind = -1;
+			 int chromind = -1;
+			 int posind = -1;
 			
 			 for(int i=0; i<readList.length; i++){
 				 InputStream is = new FileInputStream(new File(readList[i]));
@@ -831,7 +832,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					try{
 						
 						String pool = readList==null || readList.length==0 ||  poolID<0 ? null : (readList[poolID]+pool_sep);
-						
+						if(ViralTranscriptAnalysisCmd2.limit_to_read_list) pool = null;
 						profile.identity1(readSeq, sam, source_index, cluster_reads,  pool, q1);
 					}catch(NumberFormatException exc){
 						System.err.println(readSeq.getName());
