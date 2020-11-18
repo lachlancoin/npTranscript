@@ -158,6 +158,7 @@ shinyUI(fluidPage(
 	h2("Depth Plots"),
     plotOutput("depthPlot", height=400),
         downloadButton("downloadDepth", 'Download plot'),
+	downloadButton("downloadResultsDepth", 'Download data'),
     plotOutput("depthStartPlot", height=400),
         downloadButton("downloadDepthStart", 'Download plot'),
     plotOutput("depthEndPlot", height=400),

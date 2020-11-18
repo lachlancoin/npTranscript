@@ -1055,6 +1055,8 @@ output$downloadDepthEnd <- downloadHandler(filename = function() {'plotDepthEnd.
 output$downloadDist <- downloadHandler(filename = function() {'plotDist.pdf'}, content = function(file) ggsave(file, transcriptPlot(), device = 'pdf' , height = 20, width = 40, units='cm') )
 output$downloadResults<-downloadHandler(filename = function() {'results.xlsx'}, content = function(file) write_xlsx( session$userData$results,file ) )
 output$downloadResultsInf<-downloadHandler(filename = function() {'resultsInf.xlsx'}, content = function(file) write_xlsx( session$userData$resultsInf,file ) )
+output$downloadResultsDepth<-downloadHandler(filename = function() {'resultsDepth.xlsx'}, content = function(file) write_xlsx( session$userData$dataDepth,file ) )
+
 output$downloadPCA <- downloadHandler(filename = function() {'plotPCA.pdf'}, content = function(file) {
 	pdf(file, 18, 18, pointsize=50)
 	do.call(rld_pca, DE$main_out[['rld_pca_params']])
