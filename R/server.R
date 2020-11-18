@@ -394,9 +394,8 @@ shinyServer(function(input, output,session) {
     fastafile = grep("extra",grep("fasta.gz",dir(currdir),v=T),v=T,inv=T)
     if(length(fastafile)>=1){
       fastaseq = read.fasta(paste(currdir,fastafile[1],sep="/"))
-      session$userData$fasta =fastaseq[[1]]
-      
-      session$userData$fastaseq = paste(fastaseq[[1]],collapse="")
+      session$userData$fasta =fastaseq
+      session$userData$fastaseq = lapply(fastaseq,paste,collapse="")
     }else{
       session$userData$fastaseq=NULL
       session$userData$fasta=NULL
@@ -491,7 +490,16 @@ shinyServer(function(input, output,session) {
   
   
   
-	
+	extract_sequence=function(){
+	  fasta=session$userData$fasta[[1]]
+	  xlim =   c(isolate(input$min_x), isolate(input$max_x))
+	  fasta[xlim[1]:xlim[2]]
+	}
+	extract_sequence_name=function(){
+	  fasta=names(session$userData$fasta)[[1]]
+	  xlim =   c(isolate(input$min_x), isolate(input$max_x))
+	  paste(fasta,xlim[1],xlim[2],sep=" ")
+	}
 	
   depthPlot= function(plot_type) {
     #result = loadData();
@@ -510,8 +518,8 @@ shinyServer(function(input, output,session) {
     merge_by="" #input$merge_by
   #  plot_type=input$depth_plot_type
     motif = isolate(input$motif)
-    fastaseq =session$userData$fastaseq
-    fasta=session$userData$fasta
+    fastaseq =session$userData$fastaseq[[1]]
+    fasta=session$userData$fasta[[1]]
     maxKmers=isolate(input$maxKmers)
     showORFs="showORFs" %in% input$options3
     fisher = input$test =="fisher"
@@ -1056,6 +1064,9 @@ output$downloadDist <- downloadHandler(filename = function() {'plotDist.pdf'}, c
 output$downloadResults<-downloadHandler(filename = function() {'results.xlsx'}, content = function(file) write_xlsx( session$userData$results,file ) )
 output$downloadResultsInf<-downloadHandler(filename = function() {'resultsInf.xlsx'}, content = function(file) write_xlsx( session$userData$resultsInf,file ) )
 output$downloadResultsDepth<-downloadHandler(filename = function() {'resultsDepth.xlsx'}, content = function(file) write_xlsx( session$userData$dataDepth,file ) )
+output$downloadSequence<-downloadHandler(filename = function() {'sequence.fa'}, content = function(file) write.fasta(extract_sequence(),extract_sequence_name(), file ) )
+
+
 
 output$downloadPCA <- downloadHandler(filename = function() {'plotPCA.pdf'}, content = function(file) {
 	pdf(file, 18, 18, pointsize=50)
