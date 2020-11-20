@@ -103,7 +103,10 @@ unlist(v)
   
   .processTPM(tpm, experiments, transcripts$ORFs)
 }
- .processTPM<-function(mat, experiments, ID,levels =NULL,split=T){ 
+ .processTPM<-function(mat, experiments, ID,levels =NULL,split=T,
+                       toreplace1 = c("leader_ORF1ab,S_ORF1ab,ORF10_end","leader_leader,S_ORF1ab,ORF10_end"),
+                       toreplace2= c("leader_ORF1ab,ORF1ab,ORF10_end","leader_leader,ORF1ab,ORF10_end")
+                       ){ 
    toplot=ID
    inds = if(is.null(levels)) 1:dim(mat)[2] else which(experiments %in% levels)
    tpm = mat[,inds,drop=F]
@@ -128,8 +131,19 @@ unlist(v)
       transform(count=as.numeric(count),ID=factor(ID, levels=toplot),sample = factor(sample, levels =levels)) -> tpm_df
     
   } #attr(tpm_df,"total_reads") = total_reads
-   tpm_df
-}
+  if(length(toreplace1)>0){
+ tpm_df$ID= factor(.fix(as.character(tpm_df$ID),toreplace1,toreplace2), levels = .fix(toplot,toreplace1,toreplace2))
+  }
+  tpm_df
+ }
+
+  .fix<-function(v ,nme,toreplace){
+   for(i in 1:length(toreplace)){
+    v[v== nme[i]] = toreplace[[i]]
+   }
+   v
+ }
+ 
 .readIso<-function(x, isofile,header, group="/trans"){
   len  = length(header)
   cnts = h5read(isofile, paste(group, x,sep="/"))
