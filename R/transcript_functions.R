@@ -138,7 +138,7 @@ unlist(v)
  }
 
   .fix<-function(v ,nme,toreplace){
-   for(i in 1:len){
+   for(i in 1:length(toreplace)){
     v[v== nme[i]] = toreplace[[i]]
    }
    v
