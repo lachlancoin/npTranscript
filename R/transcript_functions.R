@@ -105,7 +105,7 @@ unlist(v)
 }
  .processTPM<-function(mat, experiments, ID,levels =NULL,split=T,
                        toreplace1 = c("leader_ORF1ab,S_ORF1ab,ORF10_end","leader_leader,S_ORF1ab,ORF10_end"),
-                       toreplace2= c("leader_ORF1ab,ORF1ab,ORF10_end","leader_leader,ORF1ab,ORF10_end")
+                       toreplace2= c("leader_ORF1ab,ORF1ab_ORF1ab,ORF10_end","leader_leader,ORF1ab_ORF1ab,ORF10_end")
                        ){ 
    toplot=ID
    inds = if(is.null(levels)) 1:dim(mat)[2] else which(experiments %in% levels)
@@ -141,7 +141,13 @@ unlist(v)
    for(i in 1:length(toreplace)){
     v[v== nme[i]] = toreplace[[i]]
    }
-   v
+    .inner<-function(x){
+      paste(unique(strsplit(x,"_")[[1]]),collapse="_")
+      
+    }
+   v2 =  lapply(v,function(x) strsplit(x,",")[[1]])
+   for(i in 1:length(v2))v2[[i]] =paste( unlist(lapply(v2[[i]], .inner)),collapse=",")
+   unlist(v2)
  }
  
 .readIso<-function(x, isofile,header, group="/trans"){
