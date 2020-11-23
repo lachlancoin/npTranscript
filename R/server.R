@@ -17,6 +17,9 @@ source( "transcript_functions.R")
 
 basedir="../data"
 
+toreplace1 = c("leader_ORF1ab,S_ORF1ab,ORF10_end","leader_leader,S_ORF1ab,ORF10_end")
+toreplace2= c("leader_ORF1ab,ORF1ab_ORF1ab,ORF10_end","leader_leader,ORF1ab_ORF1ab,ORF10_end")
+
 #toreplace=list(virion="RNA_virion_0hpi", whole_genome_mapped="RNA_vero_24hpi")
 decodeFile = paste(basedir,"decode.txt",sep='/')
 replace=read.table(decodeFile,sep="\t",head=F)
@@ -243,8 +246,9 @@ shinyServer(function(input, output,session) {
     
     tpm_df = melt(clusters_,id.vars=c("clusterID","pos"), measure.vars=names(clusters_)[-(1:2)], variable.name="sampleID",value.name='count') %>%
       transform(sampleID=factor(sampleID,levels=levs))
+ 
+    tpm_df$clusterID= factor(.fix(as.character(tpm_df$clusterID),toreplace1,toreplace2))
     
-   
     
     if(sumAll) type_nme = "combined"
     rawdepth = T
