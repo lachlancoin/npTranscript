@@ -102,6 +102,7 @@ shinyUI(fluidPage(
    checkboxGroupInput("cells", label = "Cell type",  choices = info$cells, selected = info$cells),
    checkboxGroupInput("times", label = "Time points",  choices = info$times, selected = info$times),
   numericInput("textsize", label = "Text size", value = 20.0, min=3.0, max=100),
+  numericInput("angle", label = "Text angle", value = 25.0, min=0.0, max=90),
    checkboxGroupInput("options1", label = h3("Top panel"), choices = options1, selected=totick1) ,
    textInput("orfs", label="ORFs to include", value = orfs),
    checkboxGroupInput("options2", label = h3("Middle panel"), choices = options2, selected=totick2) ,

@@ -668,6 +668,7 @@ shinyServer(function(input, output,session) {
     stack = "stacked" %in% input$options2
     calcTPMFromAll = "TPM_amongst_all"  %in% input$options2
     group_by=input$group_by
+    angle = input$angle
     merge_by=""  #input$merge_by
     max_trans = input$maxtrans
     conf.int=input$conf.int
@@ -858,7 +859,7 @@ shinyServer(function(input, output,session) {
             ggp<-ggp+geom_errorbar(position=position_dodge(width=0.9),colour="black")
           } #ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="lower", ymax="upper"), width=.2)#, position="dodge")
         }
-        ggp<-ggp+theme_bw()+theme(text = element_text(size=textsize), axis.text.x = element_text(size = rel(1.0), angle = 25, hjust=1.0))
+        ggp<-ggp+theme_bw()+theme(text = element_text(size=textsize), axis.text.x = element_text(size = rel(1.0), angle = angle, hjust=1.0))
         
         #geom_bar(aes_string(x=x1, y="Ratio", fill = "type", colour = "type"),stat="identity", position = "dodge")
        
@@ -981,7 +982,6 @@ shinyServer(function(input, output,session) {
   	  })
 
 	output$depthPlot <- renderPlot({
-
 	    input$plotButton
 	  depthPlot("depth")
 	})
