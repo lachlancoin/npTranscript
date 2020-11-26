@@ -161,8 +161,20 @@ shinyServer(function(input, output,session) {
      ggp<-ggp+scale_colour_manual(values = rainbow(dim(cnt_df)[1]))
      ggp<-ggp+theme(text = element_text(size=textsize))
    }else{
+     if(sumAll) type_nme = "combined"
+     rawdepth = T
+     leg_size1=textsize
      show=T
      fill=F
+     k = 1
+     linetype="clusterID"
+     colour="sampleID"
+     if(sumAll){
+       colour="clusterID"
+       linetype="sampleID"
+     }
+     ylab="depth"
+     if(!is.null(total_reads)) ylab="depth per million mapped reads"
      ggp<-plotClusters(tpm_df,seq_df, 4,  1, 
                        t,
                        motifpos,peptides,size=20,linesize=linesize,textsize=textsize,
