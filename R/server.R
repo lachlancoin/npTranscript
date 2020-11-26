@@ -247,7 +247,7 @@ shinyServer(function(input, output,session) {
     tpm_df = melt(clusters_,id.vars=c("clusterID","pos"), measure.vars=names(clusters_)[-(1:2)], variable.name="sampleID",value.name='count') %>%
       transform(sampleID=factor(sampleID,levels=levs))
  
-    tpm_df$clusterID= factor(.fix(as.character(tpm_df$clusterID),toreplace1,toreplace2))
+   # tpm_df$clusterID= factor(.fix(as.character(tpm_df$clusterID),toreplace1,toreplace2))
     
     
     if(sumAll) type_nme = "combined"
@@ -973,14 +973,14 @@ shinyServer(function(input, output,session) {
 
 	output$infPlot<-renderPlot({
 	  input$plotButton
-	   validate(need(input$dir, 'Please select a directory to begin'))
+	   try(validate(need(input$dir, 'Please select a directory to begin')))
 	  infectivityPlot()
 	})
 
 	output$distPlot <- renderPlot({
-		validate(need(input$dir, ''))
+		try(validate(need(input$dir, '')))
 		#validate(need(input$toplot5 != "-", 'Select a transcript to plot'))
-		validate(need(length(input$molecules) > 0 & length(input$cells) > 0 & length(input$times) > 0, 'At least one molecule, cell and time point must be supplied') )
+		try(validate(need(length(input$molecules) > 0 & length(input$cells) > 0 & length(input$times) > 0, 'At least one molecule, cell and time point must be supplied') ))
 	    input$plotButton
   	    transcriptPlot()
   	  })

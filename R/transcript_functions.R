@@ -131,9 +131,9 @@ unlist(v)
       transform(count=as.numeric(count),ID=factor(ID, levels=toplot),sample = factor(sample, levels =levels)) -> tpm_df
     
   } #attr(tpm_df,"total_reads") = total_reads
-  if(length(toreplace1)>0){
- tpm_df$ID= factor(.fix(as.character(tpm_df$ID),toreplace1,toreplace2), levels = .fix(toplot,toreplace1,toreplace2))
-  }
+ # if(length(toreplace1)>0){
+#        tpm_df$ID= factor(.fix(as.character(tpm_df$ID),toreplace1,toreplace2), levels = .fix(toplot,toreplace1,toreplace2))
+ # }
   tpm_df
  }
 
