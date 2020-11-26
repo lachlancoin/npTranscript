@@ -161,11 +161,13 @@ shinyServer(function(input, output,session) {
      ggp<-ggp+scale_colour_manual(values = rainbow(dim(cnt_df)[1]))
      ggp<-ggp+theme(text = element_text(size=textsize))
    }else{
+     show=T
+     fill=F
      ggp<-plotClusters(tpm_df,seq_df, 4,  1, 
                        t,
                        motifpos,peptides,size=20,linesize=linesize,textsize=textsize,
-                       rawdepth = rawdepth, linetype=linetype, colour=colour,
-                       alpha=alpha, xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =leg_size1, show=show, fill =fill)
+                       rawdepth = T, linetype=linetype, colour=colour,
+                       alpha=alpha, xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =textsize, show=show, fill =fill)
   
    }
    return(ggp)
