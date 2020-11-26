@@ -554,7 +554,8 @@ if(is.null(levels)){
   depth[1,,] = as.matrix(clusters_[range,-(1:ij)])
   depth[2,,] = as.matrix(errors_[range,-(1:ij)])
  # print(dim(depth))
-  .plotError(depth,  thresh = 1000, downsample = downsample, alpha = alpha, ci = ci, max_num =max_num,t=t, xlim =xlim, pvAsSize=T, logy=T, fisher=fisher, motifpos=motifpos)
+  .plotError(depth,  thresh = 1000, downsample = downsample, alpha = alpha, 
+             ci = ci, max_num =max_num,t=t, xlim =xlim, pvAsSize=T, logy=T, fisher=fisher, motifpos=motifpos)
 }
 .restrict<-function(x,thresh){
  # print("h")
@@ -568,8 +569,10 @@ if(is.null(levels)){
   x
   
 }
-.plotError<-function(depth,range = 1:dim(depth)[[2]],alpha = 1.0, downsample = F, t1=NULL, method="logit",    max_num = 20, pval_thresh = 1e-3,
-                     ci=0.95, thresh = 1000, extend=T, log=F, adj=F, xlim = NULL,pvAsSize=T, logy=T, fisher=F, motifpos = list()){
+.plotError<-function(depth,range = 1:dim(depth)[[2]],alpha = 1.0, downsample = F, t1=NULL, method="logit",  
+                     max_num = 20, pval_thresh = 1e-3,
+                     ci=0.95, thresh = 1000, extend=T, log=F, adj=F, 
+                     xlim = NULL,pvAsSize=T, logy=T, fisher=F, motifpos = list()){
   inds1 = apply(depth[1,range,],1,min)>thresh
   range = range[inds1]
   if(length(range)==0) return(ggplot())
@@ -622,8 +625,12 @@ if(is.null(levels)){
     df = if(is.null(df)) dfs[[i]] else rbind(df, dfs[[i]])
     
   }
+  return(df)
+}
+.plotError1<-function(df,  t1, xlim, motifpos,pval_thresh=1e-3, logy=T, pvAsSize=T,ci=0.95, alpha=1.0){
   posy = max(df$upper)
  df$type=as.factor(df$type)
+ #print(head(subset(df,pval <= pval_thresh & diff>0)))
   ty = levels(df$type)
   ggp<-ggplot(df, aes(x=pos,y=mean, colour=type,ymin=lower ,ymax=upper))
   if(pvAsSize){
@@ -637,11 +644,12 @@ if(is.null(levels)){
   }
   ggp<-ggp+ggtitle(paste("Error rate by position (",ci*100,"% binomial CI) ",sep=""))
   ggp<-ggp+ylab("error rate")
-  if(log) ggp<-ggp+scale_y_continuous(trans='log10')
+  #if(log) ggp<-ggp+scale_y_continuous(trans='log10')
   ggp<-ggp+geom_text_repel(data=subset(df,pval <= pval_thresh & diff>0),
-                  aes(pos,upper , label = sprintf("%3.2g" ,log10pv)),size = 3, color=if(type==ty[1]) "red" else "steelblue")
+                  aes(pos,upper , label = sprintf("%3.2g" ,log10pv)),size = 3)
+                    #if(type==ty[1]) "red" else "steelblue")
   ##can use pos instead of pval
-  if(!extend) ggp<-ggp+xlim(min(range), max(range))
+  #if(!extend) ggp<-ggp+xlim(min(range), max(range))
   if(!is.null(t1) ){
     if( !is.null(t1$sideCols)){
     ggp<-ggp+geom_vline(xintercept = t1$Minimum, linetype="solid", color=t1$sideCols)

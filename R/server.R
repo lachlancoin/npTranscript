@@ -125,6 +125,52 @@ shinyServer(function(input, output,session) {
 	source( "transcript_functions.R")
 	source("shiny-DE.R")
 	
+ plot_depth<-function(tpm_df, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", 
+                      gapthresh=100, mergeGroups=NULL,downsample = F, molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
+                      span = 0.01, sumAll=F, xlim=NULL, motifpos=list(),peptides=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,
+                      showORFs = F,showWaterfall=FALSE,waterfallKmer=3,waterfallOffset=0,top10=10,textsize=20,
+                      ci = 0.995, depth_thresh = 1000,
+                      path="depth",seq_df = NULL, plotCorr=F, linesize=0.1, reverseOrder=F, calcErrors=F, fisher =F){
+   if(path!="depth") calcErrors = FALSE
+   if(is.null(tpm_df)){
+     print(paste("could not read ",toplot))
+     return (ggplot())
+   }
+   if(calcErrors){
+     ggp<-.plotError1(tpm_df, pval_thresh = 1e-3, t1=t, xlim=xlim, motifpos=motifpos, logy=logy, ci=ci, alpha=alpha)
+     #  ggp<- .makeCombinedArray(clusters_, errors_, xlim, downsample = downsample, thresh = depth_thresh,alpha = alpha,  ci = ci, max_num = 10,t=t, fisher = fisher,motifpos=motifpos)
+     return(ggp)
+   }else  if(plotCorr){
+     ggp<-ggplot(data =tpm_df, aes(x=Var1, y=Var2, fill=value)) +  geom_tile()+ggtitle(path)
+     ggp<-ggp+scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                                   midpoint = 0, limit = c(-1,1), space = "Lab", 
+                                   name="Pearson\nCorrelation") +
+       theme_minimal()+ 
+       theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                        size = textsize, hjust = 1),
+             axis.text.y = element_text( 
+               size = textsize))+
+       coord_fixed()+xlab("")+ylab("")
+     
+     return(ggp)
+   }
+   if(showWaterfall && !is.null(seq_df)){
+     cnt_df = tpm_df
+     ggp<-ggplot(cnt_df, aes(kmers, fill = kmers))
+     ggp<-ggp+ geom_rect(aes(x = kmers,xmin = id - 0.45, xmax = id + 0.45, ymin = end,ymax = start))+ggtitle(path)
+     ggp<-ggp+scale_colour_manual(values = rainbow(dim(cnt_df)[1]))
+     ggp<-ggp+theme(text = element_text(size=textsize))
+   }else{
+     ggp<-plotClusters(tpm_df,seq_df, 4,  1, 
+                       t,
+                       motifpos,peptides,size=20,linesize=linesize,textsize=textsize,
+                       rawdepth = rawdepth, linetype=linetype, colour=colour,
+                       alpha=alpha, xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =leg_size1, show=show, fill =fill)
+  
+   }
+   return(ggp)
+ }
+  
   run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", 
                       gapthresh=100, mergeGroups=NULL,downsample = F, molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
                       span = 0.01, sumAll=F, xlim=NULL, motifpos=list(),peptides=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,
@@ -171,9 +217,9 @@ shinyServer(function(input, output,session) {
       errors_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]),toAdd = toAdd, mergeGroups=mergeGroups,
                        sumID=sumID, path=path,toplot,id_cols=id_cols, gapthresh=gapthresh, 
                        dinds = dinds[inds1]+1, pos =NULL, span = span, cumul=F, sumAll=sumAll)
-      
-      ggp<- .makeCombinedArray(clusters_, errors_, xlim, downsample = downsample, thresh = depth_thresh,alpha = alpha,  ci = ci, max_num = 10,t=t, fisher = fisher,motifpos=motifpos)
-      return(ggp)
+      tpm_df<- .makeCombinedArray(clusters_, errors_, xlim, downsample = downsample, thresh = depth_thresh,alpha = alpha,  ci = ci, max_num = 10,t=t, fisher = fisher,motifpos=motifpos)
+      return(tpm_df)
+ 
      }else  if(plotCorr){
     indsp = clusters_$pos <=xlim[2] & clusters_$pos >= xlim[1]
     df = clusters_[indsp,2:dim(clusters_)[2],drop=F]
@@ -187,59 +233,14 @@ shinyServer(function(input, output,session) {
       #reverseOrder=F
       levels1 = .getlevels(names(df)[-1],molecules, cells, times,reverseOrder)
       cor = cor(df[,match( levels1,names(df))])
-      if(TRUE){
-      df2 = melt(cor)
-      ggp<-ggplot(data =df2, aes(x=Var1, y=Var2, fill=value)) +  geom_tile()+ggtitle(path)
-      ggp<-ggp+scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
-                                    midpoint = 0, limit = c(-1,1), space = "Lab", 
-                                    name="Pearson\nCorrelation") +
-        theme_minimal()+ 
-        theme(axis.text.x = element_text(angle = 45, vjust = 1, 
-                                         size = textsize, hjust = 1),
-              axis.text.y = element_text( 
-                                         size = textsize))+
-        coord_fixed()+xlab("")+ylab("")
-      
-      return(ggp)
-      }else{       
-      
-      if(!is.matrix(cor)) cor = as.matrix(cor)
-      df1 = data.frame(matrix(nrow=0,ncol = 3))
      
-      types = c()
-      for(k in 1:(length(sums)-1)){
-        for(i in (k+1):length(sums)){
-          types =c(types,  rep(paste(names(df)[k+1], names(df)[i+1],"corr=",floor(100*cor[k,i])/100,sep=" "), nrows))
-          df_i = df[,c(1,k+1, i+1),drop=F]
-          names(df_i) = c("pos","x","y")
-          df1 = rbind(df1,df_i)
-        }
-      }
-      names(df1) = c("pos","x","y")
-      types = factor(types)
-      
-      df1 = cbind(df1,types)
-     # print(head(df1))
-      ggp<-ggplot(df1)
-      trans="identity"
-      if(logy) trans="log10"
-      ggp<-ggp+scale_y_continuous(trans=trans)+scale_x_continuous(trans=trans)+ggtitle(path)
-      print(names(df1))
-      if(length(sums)==2){
-        ggp<-ggp+geom_point(aes(x = x, y = y, color=pos, shape=types))
-      }
-      else{
-        ggp<-ggp+geom_point(aes(x = x, y = y, color=types))
-      }
-      ggp<-ggp+theme(text = element_text(size=textsize))
-      
-      return(ggp)
-      }
+      df2 = melt(cor)
+      return(df2)
     }
   }
     if(is.null(clusters_)){
       print(paste("could not read ",toplot))
-      return (ggplot())
+      return (NULL)
     }
     
     if(sumAll) levs=names(clusters_)[3]
@@ -287,24 +288,15 @@ shinyServer(function(input, output,session) {
     cnt_df = cbind(id,start,end,cnt_df)
     #print(cnt_df)
     cnt_df$kmers = factor(as.character(cnt_df$kmers),levels = as.character(cnt_df$kmers))
-    session$userData$dataDepth[[which(names(session$userData$dataDepth)==path)]] = cnt_df
-    ggp<-ggplot(cnt_df, aes(kmers, fill = kmers))
-    ggp<-ggp+ geom_rect(aes(x = kmers,xmin = id - 0.45, xmax = id + 0.45, ymin = end,ymax = start))+ggtitle(path)
-    ggp<-ggp+scale_colour_manual(values = rainbow(dim(cnt_df)[1]))
-    ggp<-ggp+theme(text = element_text(size=textsize))
+   return(cnt_df)
     
   #  ggp<-ggp+theme(text = element_text(size=10), axis.text.x = element_text(size = rel(0.7), angle = 25, hjust=0.75))
     
    }else{
-    session$userData$dataDepth[[which(names(session$userData$dataDepth)==path)]] = tpm_df
-    ggp<-plotClusters(tpm_df,seq_df, 4,  1, 
-                 t,
-                 motifpos,peptides,size=20,linesize=linesize,textsize=textsize,
-                 rawdepth = rawdepth, linetype=linetype, colour=colour,
-                 alpha=alpha, xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =leg_size1, show=show, fill =fill)
+   return(tpm_df)
     
    }
-    ggp
+    return(NULL)
     }
   
 	readDir <- function() {
@@ -505,7 +497,7 @@ shinyServer(function(input, output,session) {
 	  paste(fasta,xlim[1],xlim[2],sep=" ")
 	}
 	
-  depthPlot= function(plot_type) {
+  depthPlot= function(plot_type, reuse=F) {
     #result = loadData();
     if(!file.exists(session$userData$h5file)) return(ggplot())
     showDepth  = "show_depth" %in% input$options3
@@ -621,13 +613,26 @@ shinyServer(function(input, output,session) {
           seq_df = data.frame(pos,sequence, seqy) %>%
             transform(pos=as.numeric(pos), sequence=factor(sequence, levels=c("a","c","t","g")))
         }
-          ggp=run_depth(h5file,total_reads,toplot, seq_df=seq_df, downsample = downsample, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
+       if(reuse ){
+         tpm_df = session$userData$dataDepth[[which(names(session$userData$dataDepth)==path)]]
+       }else{
+          tpm_df=run_depth(h5file,total_reads,toplot, seq_df=seq_df, downsample = downsample, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
                     showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type,
                     showMotifs =showMotifs, alpha=alpha,plotCorr=plotCorr,linesize=linesize, reverseOrder=reverseOrder,
                     textsize=textsize, calcErrors=showErrors,fisher=fisher,
                     ci = ci, depth_thresh = depth_thresh,
                     showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers
                     )
+          session$userData$dataDepth[[which(names(session$userData$dataDepth)==plot_type)]] = tpm_df
+       }
+          
+         ggp =plot_depth(tpm_df,total_reads,toplot, seq_df=seq_df, downsample = downsample, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
+                     showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type,
+                     showMotifs =showMotifs, alpha=alpha,plotCorr=plotCorr,linesize=linesize, reverseOrder=reverseOrder,
+                     textsize=textsize, calcErrors=showErrors,fisher=fisher,
+                     ci = ci, depth_thresh = depth_thresh,
+                     showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers
+          )
           return(ggp)
         }
         #run_depth(h5file,toplot=c("leader_leader,N_end")) 
@@ -1061,9 +1066,9 @@ toggle("DE_time2")
 	 
 #Downloads
 output$downloadInf <- downloadHandler(filename = function() {'plotInfectivity.pdf'}, content = function(file) ggsave(file, infectivityPlot(), device='pdf', height = 20, width = 40, units='cm' ) )
-output$downloadDepth <- downloadHandler(filename = function() {'plotDepth.pdf'}, content = function(file) ggsave(file, depthPlot("depth"), device = 'pdf', height = 20, width = 40, units='cm') )
-output$downloadDepthStart <- downloadHandler(filename = function() {'plotDepthStart.pdf'}, content = function(file) ggsave(file, depthPlot("depthStart"), device = 'pdf', height = 20, width = 40, units='cm') )
-output$downloadDepthEnd <- downloadHandler(filename = function() {'plotDepthEnd.pdf'}, content = function(file) ggsave(file, depthPlot("depthEnd"), device = 'pdf', height = 20, width = 40, units='cm') )
+output$downloadDepth <- downloadHandler(filename = function() {'plotDepth.pdf'}, content = function(file) ggsave(file, depthPlot("depth", T), device = 'pdf', height = 20, width = 40, units='cm') )
+output$downloadDepthStart <- downloadHandler(filename = function() {'plotDepthStart.pdf'}, content = function(file) ggsave(file, depthPlot("depthStart", T), device = 'pdf', height = 20, width = 40, units='cm') )
+output$downloadDepthEnd <- downloadHandler(filename = function() {'plotDepthEnd.pdf'}, content = function(file) ggsave(file, depthPlot("depthEnd",T), device = 'pdf', height = 20, width = 40, units='cm') )
 output$downloadDist <- downloadHandler(filename = function() {'plotDist.pdf'}, content = function(file) ggsave(file, transcriptPlot(), device = 'pdf' , height = 20, width = 40, units='cm') )
 output$downloadResults<-downloadHandler(filename = function() {'results.xlsx'}, content = function(file) write_xlsx( session$userData$results,file ) )
 output$downloadResultsInf<-downloadHandler(filename = function() {'resultsInf.xlsx'}, content = function(file) write_xlsx( session$userData$resultsInf,file ) )
