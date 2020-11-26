@@ -318,6 +318,7 @@ shinyServer(function(input, output,session) {
 	  h5closeAll()
     print(" updating input dir")
     session$userData$dataDepth = list("depth"=data.frame(), "depthStart"=data.frame(), "depthEnd"=data.frame())
+    session$userData$dataPlot = list("depth"=NULL, "depthStart"=NULL, "depthEnd"=NULL)
     
     currdir = paste(basedir,input$dir,sep="/")
     datafile = paste(currdir,"0.isoforms.h5",sep="/")
@@ -629,6 +630,7 @@ shinyServer(function(input, output,session) {
         }
        if(reuse ){
          tpm_df = session$userData$dataDepth[[which(names(session$userData$dataDepth)==plot_type)]]
+         ggp = session$userData$dataPlot[[which(names(session$userData$dataDepth)==plot_type)]]
        }else{
           tpm_df=run_depth(h5file,total_reads,toplot, seq_df=seq_df, downsample = downsample, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
                     showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type,
@@ -638,8 +640,6 @@ shinyServer(function(input, output,session) {
                     showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers
                     )
           session$userData$dataDepth[[which(names(session$userData$dataDepth)==plot_type)]] = tpm_df
-       }
-          
          ggp =plot_depth(tpm_df,total_reads,toplot, seq_df=seq_df, downsample = downsample, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
                      showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type,
                      showMotifs =showMotifs, alpha=alpha,plotCorr=plotCorr,linesize=linesize, reverseOrder=reverseOrder,
@@ -647,6 +647,8 @@ shinyServer(function(input, output,session) {
                      ci = ci, depth_thresh = depth_thresh,
                      showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers
           )
+          session$userData$dataPlot[[which(names(session$userData$dataDepth)==plot_type)]] =ggp
+       }
           return(ggp)
         }
         #run_depth(h5file,toplot=c("leader_leader,N_end")) 
