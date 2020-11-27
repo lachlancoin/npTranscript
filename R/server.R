@@ -894,13 +894,18 @@ shinyServer(function(input, output,session) {
           if(length(sublevs)==4 && sublevs[[1]]=="5_3"){
             subs$ID = factor(as.character(subs$ID), levels=rev(c("5_3","non5_3", "5_non3","non5_non3")))
           }
-          ggp<-ggplot()
-           ggp<-ggp+geom_bar(data=subs,aes(x=sample,y=TPM,fill=ID,color=ID),position="stack",stat='identity')
           
+          ggp<-ggplot()
+          levs_subs = levels(subs$ID)
+         cols_subs =  brewer.pal(n = length(levs_subs), name = "Set2")
+          names(cols_subs) = levs_subs
+           ggp<-ggp+geom_bar(data=subs,aes(x=sample,y=TPM,fill=ID,color=ID),position="stack",stat='identity')
+           ylim = layer_scales(ggp)$y$range$range
+          # print(ylim)
           if(!is.null(session$userData$countsHostVirus) ){
             print(" plotting line" )
-            print(session$userData$countsHostVirus)
-            ylim = c(0,max(subs$TPM,na.rm=T)*1.1)
+            #print(session$userData$countsHostVirus)
+          #  ylim = c(0,max(subs$TPM,na.rm=T)*1.2)
             scaling_factor = 100/ylim[2]
             
             print(paste("scaling ",scaling_factor))
@@ -910,17 +915,28 @@ shinyServer(function(input, output,session) {
               countsHostVirus = countsHostVirus[which(countsHostVirus$sample %in% subs$sample),,drop=F]
               names(countsHostVirus)[2]="Type"
               names(countsHostVirus)[3]="Reads"
-              print("hh")
+              session$userData$results = list(data=subs, totals=countsHostVirus);
+              
              # print(countsHostVirus)
               countsHostVirus[3] = countsHostVirus[3] /scaling_factor
               types=c("Host","Virus","Sequin")
-              cols=c("Black","Red","Blue")
-              for(kk in 1:length(cols)){
-              ggp<-ggp+geom_point(data=countsHostVirus[grep(types[kk],countsHostVirus$Type),], aes(x=sample,y=Reads),color=cols[kk],stat="identity")
-              ggp<-ggp+geom_line(data=countsHostVirus[grep(types[kk],countsHostVirus$Type),], aes(x=sample,y=Reads, group=Type),color=cols[kk],stat="identity")
-              }
+              linetype=c("dashed","twodash","solid")
+              shape = c(1,2,3)
+              ggp<-ggp+geom_point(data=countsHostVirus, aes(x=sample, y=Reads, shape=Type))
+              ggp<-ggp+geom_line(data=countsHostVirus, aes(x=sample, y=Reads, linetype=Type, group=Type))
+       #       for(kk in 1:length(cols)){
+      #        ggp<-ggp+geom_point(data=countsHostVirus[grep(types[kk],countsHostVirus$Type),], aes(x=sample,y=Reads),
+     #                             shape = shape[kk], stat="identity")
+    #          ggp<-ggp+geom_line(data=countsHostVirus[grep(types[kk],countsHostVirus$Type),], aes(x=sample,y=Reads, group=Type),
+   #                              linetype=linetype[kk], stat="identity")
+  #            }
+ #             names(linetype)=types
+#              names(shape ) = types
+              ggp<-ggp+  scale_color_manual(values = cols_subs)
+              ggp<-ggp+ scale_linetype_manual(values = linetype)+scale_shape_manual(values=shape)
+              
           #   ggp<-ggp+geom_line(data=countsHostVirus, aes(x=sample,color=Type,y=Reads, group=Type),stat="identity")
-            ggp<-ggp+ scale_y_continuous(limits = ylim,
+            ggp<-ggp+ scale_y_continuous(
               name = yname,
               sec.axis = sec_axis(~.*scaling_factor, name="Proportion (%)"))
             #ggp<-ggp+ scale_colour_manual(values = c("black","red",  "green","orange","pink"))
