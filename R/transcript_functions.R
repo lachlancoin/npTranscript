@@ -680,7 +680,7 @@ if(is.null(levels)){
      if(is.null(in1[[i1]]) && is.null(in2[[i2]])) return(TRUE)
      if(is.null(in1[[i1]]) || is.null(in2[[i2]])) return(FALSE)
      
-      if(in1[[i1]] != in2[[i2]]) return (FALSE)
+      if(!identical(in1[[i1]],in2[[i2]])) return (FALSE)
     }
     return(TRUE)
   

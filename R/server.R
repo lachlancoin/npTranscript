@@ -638,33 +638,38 @@ shinyServer(function(input, output,session) {
           seq_df = data.frame(pos,sequence, seqy) %>%
             transform(pos=as.numeric(pos), sequence=factor(sequence, levels=c("a","c","t","g")))
         }
+       plotOpts = list(showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,
+                       alpha=alpha,linesize=linesize, textsize=textsize,calcErrors=showErrors,logy=logy )
+       depthOpts = 
+         list(total_reads=total_reads,toplot=toplot, downsample = downsample, span = span, 
+              mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, 
+              times = times, sumAll = sumAll,
+              plotCorr=plotCorr,reverseOrder=reverseOrder,
+              fisher=fisher,
+              ci = ci, depth_thresh = depth_thresh,
+              showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers)
+       depthOpts_o = session$userData$depthOpts[[which(names(session$userData$depthOpts)==plot_type)]]
+     #  plotOpts_o = session$userData$plotOpts[[which(names(session$userData$plotOpts)==plot_type)]]
+       
        if(reuse ){
          ggp = session$userData$dataPlot[[which(names(session$userData$dataDepth)==plot_type)]]
        }else{
           
             # path=plot_type,seq_df = seq_df
-            plotOpts = list(showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,
-                            alpha=alpha,linesize=linesize, textsize=textsize,calcErrors=showErrors )
-            depthOpts = 
-              list(total_reads=total_reads,toplot=toplot, downsample = downsample, span = span, 
-                   mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, 
-                   times = times,logy=logy, sumAll = sumAll,
-                 plotCorr=plotCorr,reverseOrder=reverseOrder,
-                   fisher=fisher,
-                   ci = ci, depth_thresh = depth_thresh,
-                   showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers)
-            depthOpts_o = session$userData$depthOpts[[which(names(session$userData$depthOpts)==plot_type)]]
-           # if(length(depthOpts_o)>0){
-          #   reuseData = .is_equal(depthOpts, depthOpts_o )
-          #  }else{
-          #    reuseData = F 
-          #  }
+            
+           
+            if(length(depthOpts_o)>0){
+            reuseData = identical(depthOpts, depthOpts_o )
+            }else{
+              reuseData = F 
+            }
             session$userData$depthOpts[[which(names(session$userData$depthOpts)==plot_type)]] = depthOpts
            
             if(reuseData){
               print("reusing data")
               tpm_df = session$userData$dataDepth[[which(names(session$userData$dataDepth)==plot_type)]]
             }else{
+              print("not reusing data")
              # print("mergeGroups")
             #  print(mergeGroups)
           tpm_df=run_depth(h5file,total_reads,toplot, seq_df=seq_df, downsample = downsample, span = span, 
@@ -676,7 +681,7 @@ shinyServer(function(input, output,session) {
                     ci = ci, depth_thresh = depth_thresh,
                     showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers
                     )
-             print(head(tpm_df))
+            # print(head(tpm_df))
           session$userData$dataDepth[[which(names(session$userData$dataDepth)==plot_type)]] = tpm_df
           }
          ggp =plot_depth(tpm_df,total_reads,toplot, seq_df=seq_df, downsample = downsample, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
