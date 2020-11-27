@@ -898,8 +898,10 @@ shinyServer(function(input, output,session) {
           ggp<-ggp+geom_bar(data=subs,aes(x=sample,y=TPM,fill=ID,color=ID),position="stack",stat='identity')
           
           if(!is.null(session$userData$countsHostVirus) ){
+            print(" plotting line" )
+            print(session$userData$countsHostVirus)
             ylim = c(0,max(subs$TPM,na.rm=T)*1.1)
-            scaling_factor = 100/ylim[1]
+            scaling_factor = 100/ylim[2]
             
             print(paste("scaling ",scaling_factor))
             print(head(subs))
@@ -919,7 +921,7 @@ shinyServer(function(input, output,session) {
               }
           #   ggp<-ggp+geom_line(data=countsHostVirus, aes(x=sample,color=Type,y=Reads, group=Type),stat="identity")
             ggp<-ggp+ scale_y_continuous(limits = ylim,
-              name = "TPM",
+              name = yname,
               sec.axis = sec_axis(~.*scaling_factor, name="Proportion (%)"))
             #ggp<-ggp+ scale_colour_manual(values = c("black","red",  "green","orange","pink"))
           }
