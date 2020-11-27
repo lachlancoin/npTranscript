@@ -131,9 +131,9 @@ unlist(v)
       transform(count=as.numeric(count),ID=factor(ID, levels=toplot),sample = factor(sample, levels =levels)) -> tpm_df
     
   } #attr(tpm_df,"total_reads") = total_reads
- # if(length(toreplace1)>0){
-#        tpm_df$ID= factor(.fix(as.character(tpm_df$ID),toreplace1,toreplace2), levels = .fix(toplot,toreplace1,toreplace2))
- # }
+  if(length(toreplace1)>0){
+        tpm_df$ID= factor(.fix(as.character(tpm_df$ID),toreplace1,toreplace2), levels = .fix(toplot,toreplace1,toreplace2))
+  }
   tpm_df
  }
 
@@ -667,7 +667,24 @@ if(is.null(levels)){
   ggp+theme_bw()
 }
 
-
+.is_equal<-function(in1, in2){
+    nmes = unique(c(names(in1),names(in2)))
+   # print(in1)
+  #  print(in2)
+    for(nme_i in nmes){
+     i1 = which(names(in1)==nme_i)
+     i2 = which(names(in2)==nme_i)
+   
+     if(length(i1)==0 && length(i2)==0) return(TRUE)
+     if(length(i1)!=1 || length(i2)!=1) return(FALSE)
+     if(is.null(in1[[i1]]) && is.null(in2[[i2]])) return(TRUE)
+     if(is.null(in1[[i1]]) || is.null(in2[[i2]])) return(FALSE)
+     
+      if(in1[[i1]] != in2[[i2]]) return (FALSE)
+    }
+    return(TRUE)
+  
+}
 writeFasta<-function(kmer10, file){
   write(">seq1", file)
   write(kmer10[1], file, append=T)

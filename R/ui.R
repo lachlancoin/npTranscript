@@ -61,6 +61,9 @@ totick2 = c("showTranscriptPlot","ribbonCI","barchart","TPM_amongst_viral")
 options3 = c("show_depth","logy", "TPM_amongst_viral", "showORFs", "sumDepth","mergeCounts", "showPeptides", "showSequence","showWaterfall", "plotCorr", "showErrors","downsample", "showCI")
 totick3 = c("show_depth", "mergeCounts", "sumDepth")
 
+
+
+
 coordsFile = paste(currdir, "Coordinates.csv",sep="/")
 if(file.exists(coordsFile)){
   t=readCoords(coordsFile)
@@ -81,7 +84,6 @@ shinyUI(fluidPage(
 
   # Application title
   #headerPanel("SARS-COV2 transcriptome"),
-  
   # Sidebar with a slider input for number of observations
   sidebarPanel(
     #fileInput("datafile", "Transcripts file", multiple = FALSE, accept = NULL),\    
@@ -94,7 +96,7 @@ shinyUI(fluidPage(
     
     textInput("toplot7", label="All transcripts matching", value = ""),
     selectInput("tojoin", label ="Join", choices=c("AND","OR","AND NOT"), selected="OR"),
-    
+  
     textInput("toplot8", label="All transcripts matching", value = ""),
   selectInput("group_by", label="Group transcripts by", choices = c('No grouping' ,'all', 'type', 'juncts','leader,',',ORF10','ORF1ab,','type:juncts'), selected = 'No grouping'),
        actionButton("plotButton", "Generate plots"),

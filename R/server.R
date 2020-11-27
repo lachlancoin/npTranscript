@@ -20,6 +20,10 @@ basedir="../data"
 toreplace1 = c("leader_ORF1ab,S_ORF1ab,ORF10_end","leader_leader,S_ORF1ab,ORF10_end")
 toreplace2= c("leader_ORF1ab,ORF1ab_ORF1ab,ORF10_end","leader_leader,ORF1ab_ORF1ab,ORF10_end")
 
+
+
+
+
 #toreplace=list(virion="RNA_virion_0hpi", whole_genome_mapped="RNA_vero_24hpi")
 decodeFile = paste(basedir,"decode.txt",sep='/')
 replace=read.table(decodeFile,sep="\t",head=F)
@@ -127,7 +131,7 @@ shinyServer(function(input, output,session) {
 	
  plot_depth<-function(tpm_df, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", 
                       gapthresh=100, mergeGroups=NULL,downsample = F, molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
-                      span = 0.01, sumAll=F, xlim=NULL, motifpos=list(),peptides=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,
+                      span = 0.01, sumAll=F, xlim=NULL, motifpos=list(),peptides=NULL, alpha=1.0,t= NULL,logy=T, 
                       showORFs = F,showWaterfall=FALSE,waterfallKmer=3,waterfallOffset=0,top10=10,textsize=20,
                       ci = 0.995, depth_thresh = 1000,
                       path="depth",seq_df = NULL, plotCorr=F, linesize=0.1, reverseOrder=F, calcErrors=F, fisher =F){
@@ -187,7 +191,7 @@ shinyServer(function(input, output,session) {
   
   run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", 
                       gapthresh=100, mergeGroups=NULL,downsample = F, molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
-                      span = 0.01, sumAll=F, xlim=NULL, motifpos=list(),peptides=NULL, alpha=1.0,t= NULL,logy=T, showMotifs=F,
+                      span = 0.01, sumAll=F, xlim=NULL, motifpos=list(),peptides=NULL, alpha=1.0,t= NULL,logy=T,
                       showORFs = F,showWaterfall=FALSE,waterfallKmer=3,waterfallOffset=0,top10=10,textsize=20,
                       ci = 0.995, depth_thresh = 1000,
                       path="depth",seq_df = NULL, plotCorr=F, linesize=0.1, reverseOrder=F, calcErrors=F, fisher =F){
@@ -262,7 +266,7 @@ shinyServer(function(input, output,session) {
     tpm_df = melt(clusters_,id.vars=c("clusterID","pos"), measure.vars=names(clusters_)[-(1:2)], variable.name="sampleID",value.name='count') %>%
       transform(sampleID=factor(sampleID,levels=levs))
  
-   # tpm_df$clusterID= factor(.fix(as.character(tpm_df$clusterID),toreplace1,toreplace2))
+    tpm_df$clusterID= factor(.fix(as.character(tpm_df$clusterID),toreplace1,toreplace2))
     
     
     if(sumAll) type_nme = "combined"
@@ -319,6 +323,7 @@ shinyServer(function(input, output,session) {
     print(" updating input dir")
     session$userData$dataDepth = list("depth"=data.frame(), "depthStart"=data.frame(), "depthEnd"=data.frame())
     session$userData$dataPlot = list("depth"=NULL, "depthStart"=NULL, "depthEnd"=NULL)
+    session$userData$depthOpts = list("depth"=list(), "depthStart"=list(), "depthEnd"=list())
     
     currdir = paste(basedir,input$dir,sep="/")
     datafile = paste(currdir,"0.isoforms.h5",sep="/")
@@ -512,9 +517,14 @@ shinyServer(function(input, output,session) {
 	  paste(fasta,xlim[1],xlim[2],sep=" ")
 	}
 	
+
+	
   depthPlot= function(plot_type, reuse=F) {
     #result = loadData();
-    if(!file.exists(session$userData$h5file)) return(ggplot())
+ reuseData=F
+   if(!file.exists(session$userData$h5file)) return(ggplot())
+ 
+   
     showDepth  = "show_depth" %in% input$options3
     logy = "logy" %in% input$options3
     textsize=input$textsize
@@ -629,20 +639,49 @@ shinyServer(function(input, output,session) {
             transform(pos=as.numeric(pos), sequence=factor(sequence, levels=c("a","c","t","g")))
         }
        if(reuse ){
-         tpm_df = session$userData$dataDepth[[which(names(session$userData$dataDepth)==plot_type)]]
          ggp = session$userData$dataPlot[[which(names(session$userData$dataDepth)==plot_type)]]
        }else{
-          tpm_df=run_depth(h5file,total_reads,toplot, seq_df=seq_df, downsample = downsample, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
+          
+            # path=plot_type,seq_df = seq_df
+            plotOpts = list(showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,
+                            alpha=alpha,linesize=linesize, textsize=textsize,calcErrors=showErrors )
+            depthOpts = 
+              list(total_reads=total_reads,toplot=toplot, downsample = downsample, span = span, 
+                   mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, 
+                   times = times,logy=logy, sumAll = sumAll,
+                 plotCorr=plotCorr,reverseOrder=reverseOrder,
+                   fisher=fisher,
+                   ci = ci, depth_thresh = depth_thresh,
+                   showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers)
+            depthOpts_o = session$userData$depthOpts[[which(names(session$userData$depthOpts)==plot_type)]]
+           # if(length(depthOpts_o)>0){
+          #   reuseData = .is_equal(depthOpts, depthOpts_o )
+          #  }else{
+          #    reuseData = F 
+          #  }
+            session$userData$depthOpts[[which(names(session$userData$depthOpts)==plot_type)]] = depthOpts
+           
+            if(reuseData){
+              print("reusing data")
+              tpm_df = session$userData$dataDepth[[which(names(session$userData$dataDepth)==plot_type)]]
+            }else{
+             # print("mergeGroups")
+            #  print(mergeGroups)
+          tpm_df=run_depth(h5file,total_reads,toplot, seq_df=seq_df, downsample = downsample, span = span, 
+                           mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, 
+                           times = times,logy=logy, sumAll = sumAll,
                     showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type,
-                    showMotifs =showMotifs, alpha=alpha,plotCorr=plotCorr,linesize=linesize, reverseOrder=reverseOrder,
+                     alpha=alpha,plotCorr=plotCorr,linesize=linesize, reverseOrder=reverseOrder,
                     textsize=textsize, calcErrors=showErrors,fisher=fisher,
                     ci = ci, depth_thresh = depth_thresh,
                     showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers
                     )
+             print(head(tpm_df))
           session$userData$dataDepth[[which(names(session$userData$dataDepth)==plot_type)]] = tpm_df
+          }
          ggp =plot_depth(tpm_df,total_reads,toplot, seq_df=seq_df, downsample = downsample, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
                      showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type,
-                     showMotifs =showMotifs, alpha=alpha,plotCorr=plotCorr,linesize=linesize, reverseOrder=reverseOrder,
+                      alpha=alpha,plotCorr=plotCorr,linesize=linesize, reverseOrder=reverseOrder,
                      textsize=textsize, calcErrors=showErrors,fisher=fisher,
                      ci = ci, depth_thresh = depth_thresh,
                      showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers
