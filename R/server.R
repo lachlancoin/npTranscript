@@ -895,7 +895,7 @@ shinyServer(function(input, output,session) {
             subs$ID = factor(as.character(subs$ID), levels=rev(c("5_3","non5_3", "5_non3","non5_non3")))
           }
           ggp<-ggplot()
-          ggp<-ggp+geom_bar(data=subs,aes(x=sample,y=TPM,fill=ID,color=ID),position="stack",stat='identity')
+           ggp<-ggp+geom_bar(data=subs,aes(x=sample,y=TPM,fill=ID,color=ID),position="stack",stat='identity')
           
           if(!is.null(session$userData$countsHostVirus) ){
             print(" plotting line" )
