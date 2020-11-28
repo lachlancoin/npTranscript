@@ -899,7 +899,12 @@ shinyServer(function(input, output,session) {
           levs_subs = levels(subs$ID)
          cols_subs =  brewer.pal(n = length(levs_subs), name = "Set2")
           names(cols_subs) = levs_subs
+          cells = unlist(lapply(as.character(subs$sample), function(x) strsplit(x,"_")[[1]][1]))
+          subs = cbind(subs,cells)
+          print(head(subs))
+          
            ggp<-ggp+geom_bar(data=subs,aes(x=sample,y=TPM,fill=ID,color=ID),position="stack",stat='identity')
+           ggp<-ggp+facet_grid("cells")
            ylim = layer_scales(ggp)$y$range$range
           # print(ylim)
           if(!is.null(session$userData$countsHostVirus) ){
@@ -922,6 +927,8 @@ shinyServer(function(input, output,session) {
               types=c("Host","Virus","Sequin")
               linetype=c("dashed","twodash","solid")
               shape = c(1,2,3)
+              cells = unlist(lapply(as.character(countsHostVirus$sample), function(x) strsplit(x,"_")[[1]][1]))
+              countsHostVirus = cbind(countsHostVirus,cells)
               ggp<-ggp+geom_point(data=countsHostVirus, aes(x=sample, y=Reads, shape=Type))
               ggp<-ggp+geom_line(data=countsHostVirus, aes(x=sample, y=Reads, linetype=Type, group=Type))
        #       for(kk in 1:length(cols)){
