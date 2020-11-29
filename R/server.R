@@ -104,7 +104,8 @@ h5file = NULL
 }
 
 .extractTPM<-function(datafile ,  total_reads,countsTotal, p_data){
-  tr = NULL    
+  tr = NULL  
+  xy = p_data$xy
   if(p_data$calcTPMFromAll && !is.null(countsTotal)){
     countsHostVirus1 =   countsTotal
     inds1 = match(names(total_reads) ,countsHostVirus1$sample)
@@ -119,7 +120,7 @@ h5file = NULL
   }
   header = names(total_reads)
   toplot = p_data$toplot
-  if(usegrep){
+  if(p_data$usegrep){
     x1 = .findEntries(toplot,datafile,"/trans",p_data$tojoin);
   }else{
     x1= toplot
@@ -198,10 +199,13 @@ h5file = NULL
     #        print(total_reads)
     cis = .getCIs(subs,sample,total_reads,p_data$method, p_data$showTPM)
   }
-  cells = unlist(lapply(as.character(subs$sample), function(x) strsplit(x,"_")[[1]][1]))
-  lines = unlist(lapply(as.character(subs$sample), function(x) strsplit(x,"_")[[1]][2]))
-  times = unlist(lapply(as.character(subs$sample), function(x) strsplit(x,"_")[[1]][3]))
-  subs = cbind(subs,cells, lines, times)
+  if(!is.null(subs$sample)){
+    cell = factor(unlist(lapply(as.character(subs$sample), function(x) strsplit(x,"_")[[1]][1])))
+    molecule_type = factor(unlist(lapply(as.character(subs$sample), function(x) strsplit(x,"_")[[1]][2])))
+    time = unlist(lapply(as.character(subs$sample), function(x) strsplit(x,"_")[[1]][3]))
+    time =  factor(time,level= paste(sort(as.numeric(unique(sub("hpi","",time)))),"hpi",sep=""))
+    subs = cbind(subs,cell, molecule_type, time)
+  }
   subs = cbind(subs,cis)
   subs
 }
@@ -246,11 +250,11 @@ h5file = NULL
       levs_subs = levels(subs$ID)
       cols_subs =  brewer.pal(n = length(levs_subs), name = "Set2")
       names(cols_subs) = levs_subs
-      
-      times_order=c("2hpi","24hpi","48hpi")
-      ggp<-ggp+geom_bar(data=subs,aes(x=factor(times,level=times_order),y=TPM,fill=ID,color=ID),position="stack",stat='identity')
-      ggp<-ggp+facet_grid(lines~cells)
-      ggp<-ggp+facet_grid(cells~lines)
+      print(head(subs))
+     
+      ggp<-ggp+geom_bar(data=subs,aes(x=time,y=TPM,fill=ID,color=ID),position="stack",stat='identity')
+      ggp<-ggp+facet_grid(molecule_type~cell)
+      ggp<-ggp+facet_grid(cell~molecule_type)
       ylim = layer_scales(ggp)$y$range$range
       # print(ylim)
       if(!is.null(countsHostVirus) ){
@@ -260,8 +264,8 @@ h5file = NULL
         linetype=c("dashed","twodash","solid")
         shape = c(1,2,3)
         
-        ggp<-ggp+geom_point(data=countsHostVirus, aes(x=factor(times,level=times_order), y=Reads, shape=Type))
-        ggp<-ggp+geom_line(data=countsHostVirus, aes(x=factor(times,level=times_order), y=Reads, linetype=Type, group=Type))
+        ggp<-ggp+geom_point(data=countsHostVirus, aes(x=time, y=Reads, shape=Type))
+        ggp<-ggp+geom_line(data=countsHostVirus, aes(x=time, y=Reads, linetype=Type, group=Type))
         ggp<-ggp+  scale_color_manual(values = cols_subs)
         ggp<-ggp+ scale_linetype_manual(values = linetype)+scale_shape_manual(values=shape)
         ggp<-ggp+xlab("Conditions")
@@ -937,13 +941,13 @@ shinyServer(function(input, output,session) {
   p_data$splitby=input$splitby
   splitby_vec=NULL
   p_data$xy=FALSE
-    if(splitby=="molecules"){
+    if( p_data$splitby=="molecules"){
       p_data$xy=T
       p_data$splitby_vec=molecules
-    }else if(splitby=="cells"){
+    }else if( p_data$splitby=="cells"){
       p_data$xy=T
       p_data$splitby_vec=cells
-    }else if(splitby=="times"){
+    }else if( p_data$splitby=="times"){
       p_data$xy=T
       p_data$splitby_vec=times
     }
@@ -990,12 +994,14 @@ shinyServer(function(input, output,session) {
       reuseData = identical(p_data, prev_params$p_data )
       reusePlot = reuseData && identical(p_plot, prev_params$p_data )
       if(reusePlot){
+        print("reusing tpm plot")
         ggp=session$userData$tpm_plot
         if(!is.null(ggp)) return(ggp)
       }
     }
     session$userData$prev_params = list(p_plot=p_plot, p_data =p_data)
     if(reuseData && !is.null(session$userData$results)){
+      print("reusing tpm data")
       results_ = session$userData$results
       subs = results_$data
       countsHostVirus1 = results_$totals
@@ -1007,10 +1013,11 @@ shinyServer(function(input, output,session) {
         countsHostVirus1 = countsHostVirus[which(countsHostVirus$sample %in% subs$sample),,drop=F]
         names(countsHostVirus1)[2]="Type"
         names(countsHostVirus1)[3]="Reads"
-        cells = unlist(lapply(as.character(countsHostVirus1$sample), function(x) strsplit(x,"_")[[1]][1]))
-        lines = unlist(lapply(as.character(countsHostVirus1$sample), function(x) strsplit(x,"_")[[1]][2]))
-        times = unlist(lapply(as.character(countsHostVirus1$sample), function(x) strsplit(x,"_")[[1]][3]))
-        countsHostVirus1 = cbind(countsHostVirus1, cells, lines, times)
+        cell = unlist(lapply(as.character(countsHostVirus1$sample), function(x) strsplit(x,"_")[[1]][1]))
+        molecule_type = unlist(lapply(as.character(countsHostVirus1$sample), function(x) strsplit(x,"_")[[1]][2]))
+        time = unlist(lapply(as.character(countsHostVirus1$sample), function(x) strsplit(x,"_")[[1]][3]))
+        time =  factor(time,level= paste(sort(as.numeric(unique(sub("hpi","",time)))),"hpi",sep=""))
+        countsHostVirus1 = cbind(countsHostVirus1, cell, molecule_type, time)
       }
     }
     session$userData$results = list(data=subs, totals=countsHostVirus1);
