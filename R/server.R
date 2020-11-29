@@ -206,6 +206,8 @@ h5file = NULL
   subs
 }
 .plotTPMData<-function(subs,countsHostVirus,p_data, p_plot,yname){
+  xy = p_data$xy
+  logy=p_plot$logy
   if(p_data$xy){
     colorby=names(subs)[1]
     shapeby=names(subs)[2] 
