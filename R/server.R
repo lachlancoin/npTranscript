@@ -59,6 +59,9 @@ datafile=NULL
 h5file = NULL
 
 
+
+
+
 .getlevels<-function(type_nme, molecules, cells, times, reverseOrder=T){
   types_=data.frame(t(data.frame(strsplit(type_nme,"_"))))
   names(types_) = c("molecules","cell","time")
@@ -98,6 +101,219 @@ h5file = NULL
   #  yname="counts"
   }
   cis
+}
+
+.extractTPM<-function(datafile ,  total_reads,countsTotal, p_data){
+  tr = NULL    
+  if(p_data$calcTPMFromAll && !is.null(countsTotal)){
+    countsHostVirus1 =   countsTotal
+    inds1 = match(names(total_reads) ,countsHostVirus1$sample)
+    # print(inds1)
+    tr = countsHostVirus1$count[inds1]
+    tr = as.numeric(as.character(tr))
+    names(tr) = names(total_reads)
+    print(total_reads)
+    print("new total reads")
+    print(tr)
+    total_reads = tr
+  }
+  header = names(total_reads)
+  toplot = p_data$toplot
+  if(usegrep){
+    x1 = .findEntries(toplot,datafile,"/trans",p_data$tojoin);
+  }else{
+    x1= toplot
+  }
+  mat = t(data.frame( lapply(x1, .readIso, datafile, header, "/trans")))
+  if(is.null(dim(mat))) mat = matrix(mat,nrow=1,ncol=length(header))
+  if(p_data$merge){
+    mat = matrix(apply(mat,2,sum),nrow=1,ncol=dim(mat)[2])
+  }else if(nchar(p_data$merge_by)>0){ 
+    ord=order(apply(mat,1,sum),decreasing=T)
+    groups=.mergeGroups(x1,p_data$merge_by, ord=ord, max_trans = p_data$max_trans)
+    
+  }else if(p_data$group_by != 'No grouping'){
+    groups = .getGroups(x1,p_data$group_by)
+    toplot=names(groups)
+    mat1 = matrix(NA, nrow = length(toplot), ncol  =dim(mat)[2])
+    for(j in 1:length(groups)){
+      indsj = which(x1 %in% groups[[j]])
+      mat1[j,]=apply(mat[indsj,,drop=F],2,sum)
+    }
+    mat = mat1
+  } else{
+    
+    if(length(x1)>p_data$max_trans){
+      ord=order(apply(mat,1,sum),decreasing=T)
+      mat = mat[ord[1:p_data$max_trans],,drop=F]
+      toplot = x1[ord[1:p_data$max_trans]]
+    }else{
+      toplot=x1
+    }
+  }
+  #print(toplot)
+  cells = p_data$cells; times=p_data$times; molecules = p_data$molecules; reverseOrder = p_data$reverseOrder
+  splitby_vec= p_data$splitby_vec
+  
+  if(p_data$xy){
+    subs = list()
+    for(i in 1:length(splitby_vec)){
+      if(splitby=="molecules"){
+        levs1=.getlevels(header,molecules[i], cells, times, reverseOrder)
+      } else if(splitby=="cells"){
+        levs1=.getlevels(header,molecules, cells[i], times, reverseOrder)
+      }else{
+        levs1=.getlevels(header,molecules, cells, times[i], reverseOrder)
+        
+      }
+      subs[[i]] =.processTPM(mat, header, toplot, levels=levs1,split=T)
+      print(head(subs[[i]]))
+      # subs[[i]]$sample=sub(molecules[i],"",subs[[i]]$sample)
+    }
+    by=c("ID","cell","time")
+    if(p_data$splitby=="cells"){
+      by=c("ID","molecule_type","time") 
+    }else if(p_data$splitby=="times"){
+      by=c("ID","molecule_type","cell")
+    }
+    subs = merge(subs[[1]],subs[[2]],by=by)
+    sample=apply(subs[,2:3,drop=F],1,paste,collapse="_")
+  } else if(p_data$barchart){
+    levs1=.getlevels(header,molecules, cells, times, reverseOrder)
+    subs =.processTPM(mat, header, toplot, levels=levs1,split=F)
+    sample = subs$sample
+  }else{
+    tpm_df= .processTPM(mat, header, toplot,split=T)
+    subs=subset(tpm_df, molecule_type %in% molecules & cell %in% cells & time %in% times)
+    sample=apply(subs[,2:4,drop=F],1,paste,collapse="_")
+  }
+  
+  if(xy){
+    if(p_data$splitby=="times") after =FALSE else after=TRUE
+    cis.x = .getCIs(subs,sample,total_reads[ grep(splitby_vec[1],names(total_reads))],method, showTPM, prefix=splitby_vec[1],suffix=".x", after=after)
+    cis.y = .getCIs(subs,sample,total_reads[ grep(splitby_vec[2],names(total_reads))],method, showTPM, prefix=splitby_vec[2],suffix=".y", after=after)
+    cis = cbind(cis.x,cis.y)
+  }else{
+    #        print(subs)
+    #        print(total_reads)
+    cis = .getCIs(subs,sample,total_reads,p_data$method, p_data$showTPM)
+  }
+  cells = unlist(lapply(as.character(subs$sample), function(x) strsplit(x,"_")[[1]][1]))
+  lines = unlist(lapply(as.character(subs$sample), function(x) strsplit(x,"_")[[1]][2]))
+  times = unlist(lapply(as.character(subs$sample), function(x) strsplit(x,"_")[[1]][3]))
+  subs = cbind(subs,cells, lines, times)
+  subs = cbind(subs,cis)
+  subs
+}
+.plotTPMData<-function(subs,countsHostVirus,p_data, p_plot,yname){
+  if(p_data$xy){
+    colorby=names(subs)[1]
+    shapeby=names(subs)[2] 
+    fillby = names(subs)[3]
+    if(length(levels(subs[[2]]))<length(levels(subs[[3]]))){
+      shapeby=names(subs)[3] 
+      fillby=names(subs)[2]
+      
+    }
+    ylim = c(min(subs$TPM.x, subs$TPM.y),c(max(subs$TPM.y, subs$TPM.y)))
+    ggp<-ggplot(subs, aes_string(x="TPM.x", y="TPM.y",ymin="lower.y", ymax="upper.y", 
+                                 xmin="lower.x", xmax="upper.x"))
+    ggp<-ggp+ggtitle(yname)+theme_bw()
+    ggp<-ggp +geom_point(inherit.aes=T,aes_string(shape = shapeby,fill=fillby,color=colorby,size=10))
+    #   ggp<-ggp +geom_point(inherit.aes=T,aes_string(shape = shapeby,color=fillby,size=2))
+    
+    if(p_plot$showCI){
+      ggp<-ggp+geom_errorbar(colour="black")
+    } #
+    trans="identity"
+    if(p_plot$logy){
+      trans="log10"
+    }
+    ggp<-ggp+ scale_y_continuous(trans=trans,name=splitby_vec[2], limits=ylim)+ scale_x_continuous(limits = ylim,trans=trans,name=splitby_vec[1])
+    ggp<-ggp+theme_bw()+theme(text = element_text(size=textsize))
+  }else if(p_data$barchart){
+    ORF="ID"
+    y_text="TPM"
+    if(p_data$stack){
+      sublevs = levels(subs$ID)
+      if(length(sublevs)==4 && sublevs[[1]]=="5_3"){
+        subs$ID = factor(as.character(subs$ID), levels=rev(c("5_3","non5_3", "5_non3","non5_non3")))
+      }
+      
+      ggp<-ggplot()
+      levs_subs = levels(subs$ID)
+      cols_subs =  brewer.pal(n = length(levs_subs), name = "Set2")
+      names(cols_subs) = levs_subs
+      
+      times_order=c("2hpi","24hpi","48hpi")
+      ggp<-ggp+geom_bar(data=subs,aes(x=factor(times,level=times_order),y=TPM,fill=ID,color=ID),position="stack",stat='identity')
+      ggp<-ggp+facet_grid(lines~cells)
+      ggp<-ggp+facet_grid(cells~lines)
+      ylim = layer_scales(ggp)$y$range$range
+      # print(ylim)
+      if(!is.null(countsHostVirus) ){
+        scaling_factor = 100/ylim[2]
+        countsHostVirus[3] = countsHostVirus[3] /scaling_factor
+        types=c("Host","Virus","Sequin")
+        linetype=c("dashed","twodash","solid")
+        shape = c(1,2,3)
+        
+        ggp<-ggp+geom_point(data=countsHostVirus, aes(x=factor(times,level=times_order), y=Reads, shape=Type))
+        ggp<-ggp+geom_line(data=countsHostVirus, aes(x=factor(times,level=times_order), y=Reads, linetype=Type, group=Type))
+        ggp<-ggp+  scale_color_manual(values = cols_subs)
+        ggp<-ggp+ scale_linetype_manual(values = linetype)+scale_shape_manual(values=shape)
+        ggp<-ggp+xlab("Conditions")
+        ggp<-ggp+ scale_y_continuous(
+          name = yname,
+          sec.axis = sec_axis(~.*scaling_factor, name="Proportion (%)"))
+      }
+    }else{
+      ggp<-ggplot(subs, aes_string(x=ORF,y=y_text,fill="sample", colour='sample',ymin="lower" ,ymax="upper"))
+      ggp<-ggp+ geom_bar(position=position_dodge(), aes_string(y="TPM"),stat="identity")
+      if(p_plot$showCI){
+        ggp<-ggp+geom_errorbar(position=position_dodge(width=0.9),colour="black")
+      } #ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="lower", ymax="upper"), width=.2)#, position="dodge")
+    }
+    ggp<-ggp+theme_bw()+theme(text = element_text(size=p_plot$textsize), axis.text.x = element_text(size = rel(1.0), angle = p_plot$angle, hjust=1.0))
+    
+    #geom_bar(aes_string(x=x1, y="Ratio", fill = "type", colour = "type"),stat="identity", position = "dodge")
+    
+    
+    if(p_plot$logy){
+      ggp<-ggp+ scale_y_continuous(trans="log10",name=yname)
+    }
+    
+    
+    ggp<-ggp+ggtitle(yname)
+    #ggp<-ggp+xlab("ORF")
+  }else if(!xy){
+    if(p_plot$showCI){
+      ggp<-ggplot(subs, aes(x=time, y=TPM ,ymin=lower ,ymax=upper,group=interaction(molecule_type, cell, ID), color = cell, linetype=ID))
+      if(p_plot$ribbon){
+        ggp<-ggp+ geom_line()  + geom_point(inherit.aes=T,aes(shape = molecule_type,size=10))
+        ggp<-ggp+geom_ribbon( linetype=2, alpha=0.1)
+      }else{
+        ggp<-ggp+ geom_line(position=position_dodge(width=0.1))  + geom_point(position=position_dodge(width=0.1),inherit.aes=T,aes(shape = molecule_type,size=10))
+        ggp<-ggp+geom_errorbar(position=position_dodge(width=0.1)) #,colour="black")
+      }
+    }else{
+      ggp<-ggplot(subs, aes(x=time, y=TPM ,group=interaction(molecule_type, cell, ID), color = cell, linetype=ID))
+      ggp<-ggp+ geom_line()  + geom_point(inherit.aes=T,aes(shape = molecule_type,size=10))
+    }
+    
+    ggp<-ggp+theme_bw()+theme(text = element_text(size=p_plot$textsize))
+    # ggp<-ggp+theme_bw();#+ylim(c(min(subs$TPM, na.rm=T), max(subs$TPM, na.rm=T)))
+    if(!showTPM)ggp<-ggp+ylab("Counts")
+    # ggp<-ggp+ geom_errorbar(aes(linetype=molecule_type))
+    if(logy){
+      ggp<-ggp+ scale_y_log10()
+    }
+  }
+  
+  
+  ggp
+  
+  
 }
 
 .process1<-function(plottype1,info){
@@ -386,8 +602,9 @@ shinyServer(function(input, output,session) {
       melt(countsHostVirus,id.vars=c("sample"),
                    measure.vars=which(names(countsHostVirus) %in% vars), variable.name="ID", value.name="count") %>%
        transform(sample=factor(sample), ID=factor(ID))
-     session$userData$countsHostVirus = countsHostVirus[countsHostVirus$ID!="Total",]
      session$userData$countsTotal = countsHostVirus[countsHostVirus$ID=="Total",]
+     
+     session$userData$countsHostVirus = countsHostVirus[countsHostVirus$ID!="Total",]
      
    }
      
@@ -705,296 +922,105 @@ shinyServer(function(input, output,session) {
   transcriptPlot=function(){
     if(!file.exists(session$userData$datafile)) return(ggplot())
     if(!"showTranscriptPlot" %in% input$options2) return(ggplot())
-    
-	print(paste('testinput', input$molecules))
-	textsize=input$textsize
-    molecules <-  input$molecules 
-    cells <- input$cells 
-    times<-input$times
-    splitby=input$splitby
-    splitby_vec=NULL
-    xy=FALSE
+
+	p_data= list(molecules=c("RNA","cDNA"),cells=c("calu","vero"),times=c("24hpi","48hpi"),toplot="all",splitby="NA",xy=FALSE,
+	             showTPM=T,merge=F,barchart=T,reverseOrder=T,stack=T,calcTPMFromAll=T,group_by="type",
+	             tojoin="OR",usergrep=T,merge_by="",method="logit",conf.int=0.95)
+	p_plot = list(textsize=20, logy=T, showCI=F,riboon=F,angle=25)
+	
+	p_plot$textsize=input$textsize
+  p_data$molecules <-  input$molecules 
+  p_data$cells <- input$cells 
+  p_data$times<-input$times
+  p_data$splitby=input$splitby
+  splitby_vec=NULL
+  p_data$xy=FALSE
     if(splitby=="molecules"){
-      xy=T
-      splitby_vec=molecules
+      p_data$xy=T
+      p_data$splitby_vec=molecules
     }else if(splitby=="cells"){
-      xy=T
-      splitby_vec=cells
+      p_data$xy=T
+      p_data$splitby_vec=cells
     }else if(splitby=="times"){
-      xy=T
-      splitby_vec=times
+      p_data$xy=T
+      p_data$splitby_vec=times
     }
     
-    
-    logy = "logy" %in% input$options2
-    showCI = "showCI" %in% input$options2
-    ribbon="ribbonCI" %in% input$options2
-    showTPM="TPM_amongst_viral" %in% input$options2 || "TPM_amongst_all" %in% input$options2
-    showCI = "showCI" %in% input$options2
-    merge='mergeCounts' %in% input$options2
-    barchart="barchart" %in% input$options2
-    reverseOrder="reverseOrder" %in% input$options2
-    stack = "stacked" %in% input$options2
-    calcTPMFromAll = "TPM_amongst_all"  %in% input$options2
-    group_by=input$group_by
-    angle = input$angle
-    merge_by=""  #input$merge_by
-    max_trans = input$maxtrans
-    conf.int=input$conf.int
-    method="logit";
-    toplot = c(isolate(input$toplot5))#,isolate(input$toplot6))#,isolate(input$toplot7),isolate(input$toplot8))
-    toplot = toplot[toplot!="-"]
-    usegrep=F
-    if(length(toplot)==0){
-      toplot=c(isolate(input$toplot7),isolate(input$toplot8))
-      toplot = toplot[unlist(lapply(toplot,nchar))>2]
-      usegrep=T
+ 
+  
+    p_plot$logy = "logy" %in% input$options2
+    p_plot$showCI = "showCI" %in% input$options2
+    p_plot$ribbon="ribbonCI" %in% input$options2
+    p_data$showTPM="TPM_amongst_viral" %in% input$options2 || "TPM_amongst_all" %in% input$options2
+    p_plot$showCI = "showCI" %in% input$options2
+    p_data$merge='mergeCounts' %in% input$options2
+    p_data$barchart="barchart" %in% input$options2
+    p_data$reverseOrder="reverseOrder" %in% input$options2
+    p_data$stack = "stacked" %in% input$options2
+    p_data$calcTPMFromAll = "TPM_amongst_all"  %in% input$options2
+    p_data$group_by=input$group_by
+    p_plot$angle = input$angle
+    p_data$merge_by=""  #input$merge_by
+    p_data$max_trans = input$maxtrans
+    p_data$conf.int=input$conf.int
+    p_data$method="logit";
+    p_data$toplot = c(isolate(input$toplot5))#,isolate(input$toplot6))#,isolate(input$toplot7),isolate(input$toplot8))
+    p_data$toplot = p_data$toplot[p_data$toplot!="-"]
+    p_data$usegrep=F
+    if(length(p_data$toplot)==0){
+      p_data$toplot=c(isolate(input$toplot7),isolate(input$toplot8))
+      p_data$toplot = p_data$toplot[unlist(lapply(p_data$toplot,nchar))>2]
+      p_data$usegrep=T
     }
-    datafile=session$userData$datafile
-   
-    #  header = session$userData$header
+    p_data$tojoin=isolate(input$tojoin)
+
+    if(length(p_data$toplot)==0 || is.null(session$userData$datafile ) ){
+      return(ggplot())
+    }
+    datafile = session$userData$datafile ;
     total_reads = session$userData$total_reads
-    tr = NULL    
-    if(calcTPMFromAll && !is.null(session$userData$countsTotal)){
-       countsHostVirus1 =   session$userData$countsTotal
-       inds1 = match(names(total_reads) ,countsHostVirus1$sample)
-      # print(inds1)
-       tr = countsHostVirus1$count[inds1]
-       tr = as.numeric(as.character(tr))
-       names(tr) = names(total_reads)
-       print(total_reads)
-       print("new total reads")
-       print(tr)
-       total_reads = tr
+    countsTotal = session$userData$countsTotal
+    countsHostVirus= session$userData$countsHostVirus
+    prev_params = session$userData$prev_params
+    reuseData=F
+    if(!is.null(prev_params)){
+      
+      reuseData = identical(p_data, prev_params$p_data )
+      reusePlot = reuseData && identical(p_plot, prev_params$p_data )
+      if(reusePlot){
+        ggp=session$userData$tpm_plot
+        if(!is.null(ggp)) return(ggp)
+      }
     }
-    tojoin=isolate(input$tojoin)
-    header = names(total_reads)
-    if(length(toplot)>0 && !is.null(datafile) ){
-      if(usegrep){
-        x1 = .findEntries(toplot,datafile,"/trans",tojoin);
-      }else{
-        x1 =toplot
-      }
-      mat = t(data.frame( lapply(x1, .readIso, datafile, header, "/trans")))
-      if(is.null(dim(mat))) mat = matrix(mat,nrow=1,ncol=length(header))
-      if(merge){
-        mat = matrix(apply(mat,2,sum),nrow=1,ncol=dim(mat)[2])
-      }else if(nchar(merge_by)>0){ 
-          ord=order(apply(mat,1,sum),decreasing=T)
-          groups=.mergeGroups(x1,merge_by, ord=ord, max_trans = max_trans)
-          
-      }else if(group_by != 'No grouping'){
-        groups = .getGroups(x1,group_by)
-        toplot=names(groups)
-        mat1 = matrix(NA, nrow = length(toplot), ncol  =dim(mat)[2])
-        for(j in 1:length(groups)){
-          indsj = which(x1 %in% groups[[j]])
-          mat1[j,]=apply(mat[indsj,,drop=F],2,sum)
-        }
-        mat = mat1
-      } else{
-        
-        if(length(x1)>max_trans){
-          ord=order(apply(mat,1,sum),decreasing=T)
-          mat = mat[ord[1:max_trans],,drop=F]
-          toplot = x1[ord[1:max_trans]]
-        }else{
-          toplot=x1
-        }
-      }
-      #print(toplot)
-      
-      if(xy){
-        subs = list()
-        for(i in 1:length(splitby_vec)){
-          if(splitby=="molecules"){
-            levs1=.getlevels(header,molecules[i], cells, times, reverseOrder)
-          } else if(splitby=="cells"){
-            levs1=.getlevels(header,molecules, cells[i], times, reverseOrder)
-          }else{
-            levs1=.getlevels(header,molecules, cells, times[i], reverseOrder)
-            
-          }
-          subs[[i]] =.processTPM(mat, header, toplot, levels=levs1,split=T)
-          print(head(subs[[i]]))
-          # subs[[i]]$sample=sub(molecules[i],"",subs[[i]]$sample)
-        }
-        by=c("ID","cell","time")
-        if(splitby=="cells"){
-          by=c("ID","molecule_type","time") 
-        }else if(splitby=="times"){
-          by=c("ID","molecule_type","cell")
-        }
-        subs = merge(subs[[1]],subs[[2]],by=by)
-        sample=apply(subs[,2:3,drop=F],1,paste,collapse="_")
-      } else if(barchart){
-        levs1=.getlevels(header,molecules, cells, times, reverseOrder)
-        subs =.processTPM(mat, header, toplot, levels=levs1,split=F)
-        sample = subs$sample
-      }else{
-        tpm_df= .processTPM(mat, header, toplot,split=T)
-        subs=subset(tpm_df, molecule_type %in% molecules & cell %in% cells & time %in% times)
-        sample=apply(subs[,2:4,drop=F],1,paste,collapse="_")
-      }
-      yname='TPM'
-      if(!showTPM){
-        yname="Counts"
-      }
-      if(xy){
-        if(splitby=="times") after =FALSE else after=TRUE
-        cis.x = .getCIs(subs,sample,total_reads[ grep(splitby_vec[1],names(total_reads))],method, showTPM, prefix=splitby_vec[1],suffix=".x", after=after)
-        cis.y = .getCIs(subs,sample,total_reads[ grep(splitby_vec[2],names(total_reads))],method, showTPM, prefix=splitby_vec[2],suffix=".y", after=after)
-        cis = cbind(cis.x,cis.y)
-        
-      }else{
-#        print(subs)
-#        print(total_reads)
-        cis = .getCIs(subs,sample,total_reads,method, showTPM)
-      }
-      subs = cbind(subs,cis)
-     
-       # resall = 
-      #names(resall) =   session$userData$dirname
-        session$userData$results = list(data=subs);
-      if(xy){
-        colorby=names(subs)[1]
-        
-        shapeby=names(subs)[2] 
-        fillby = names(subs)[3]
-        #   shapeby=names(subs)[2]
-        if(length(levels(subs[[2]]))<length(levels(subs[[3]]))){
-          shapeby=names(subs)[3] 
-          fillby=names(subs)[2]
-          
-        }
-        ylim = c(min(subs$TPM.x, subs$TPM.y),c(max(subs$TPM.y, subs$TPM.y)))
-        ggp<-ggplot(subs, aes_string(x="TPM.x", y="TPM.y",ymin="lower.y", ymax="upper.y", 
-                                     xmin="lower.x", xmax="upper.x"))
-        ggp<-ggp+ggtitle(yname)+theme_bw()
-        ggp<-ggp +geom_point(inherit.aes=T,aes_string(shape = shapeby,fill=fillby,color=colorby,size=10))
-        #   ggp<-ggp +geom_point(inherit.aes=T,aes_string(shape = shapeby,color=fillby,size=2))
-        
-        if(showCI){
-          ggp<-ggp+geom_errorbar(colour="black")
-        } #
-        trans="identity"
-        if(logy){
-          trans="log10"
-        }
-        ggp<-ggp+ scale_y_continuous(trans=trans,name=splitby_vec[2], limits=ylim)+ scale_x_continuous(limits = ylim,trans=trans,name=splitby_vec[1])
-        ggp<-ggp+theme_bw()+theme(text = element_text(size=textsize))
-      }else if(barchart){
-        ORF="ID"
-        y_text="TPM"
-      #  if(!showTPM) y_text = "Counts";
-        #  ord="Start"
-        # x1 =  paste("reorder(", ORF, ",", ord,")", sep="") 
-        if(stack){
-          sublevs = levels(subs$ID)
-          if(length(sublevs)==4 && sublevs[[1]]=="5_3"){
-            subs$ID = factor(as.character(subs$ID), levels=rev(c("5_3","non5_3", "5_non3","non5_non3")))
-          }
-          
-          ggp<-ggplot()
-          levs_subs = levels(subs$ID)
-         cols_subs =  brewer.pal(n = length(levs_subs), name = "Set2")
-          names(cols_subs) = levs_subs
-          cells = unlist(lapply(as.character(subs$sample), function(x) strsplit(x,"_")[[1]][1]))
-          subs = cbind(subs,cells)
-          print(head(subs))
-          
-           ggp<-ggp+geom_bar(data=subs,aes(x=sample,y=TPM,fill=ID,color=ID),position="stack",stat='identity')
-           ggp<-ggp+facet_grid("cells")
-           ylim = layer_scales(ggp)$y$range$range
-          # print(ylim)
-          if(!is.null(session$userData$countsHostVirus) ){
-            print(" plotting line" )
-            #print(session$userData$countsHostVirus)
-          #  ylim = c(0,max(subs$TPM,na.rm=T)*1.2)
-            scaling_factor = 100/ylim[2]
-            
-            print(paste("scaling ",scaling_factor))
-            print(head(subs))
-            
-              countsHostVirus= session$userData$countsHostVirus
-              countsHostVirus = countsHostVirus[which(countsHostVirus$sample %in% subs$sample),,drop=F]
-              names(countsHostVirus)[2]="Type"
-              names(countsHostVirus)[3]="Reads"
-              session$userData$results = list(data=subs, totals=countsHostVirus);
-              
-             # print(countsHostVirus)
-              countsHostVirus[3] = countsHostVirus[3] /scaling_factor
-              types=c("Host","Virus","Sequin")
-              linetype=c("dashed","twodash","solid")
-              shape = c(1,2,3)
-              cells = unlist(lapply(as.character(countsHostVirus$sample), function(x) strsplit(x,"_")[[1]][1]))
-              countsHostVirus = cbind(countsHostVirus,cells)
-              ggp<-ggp+geom_point(data=countsHostVirus, aes(x=sample, y=Reads, shape=Type))
-              ggp<-ggp+geom_line(data=countsHostVirus, aes(x=sample, y=Reads, linetype=Type, group=Type))
-       #       for(kk in 1:length(cols)){
-      #        ggp<-ggp+geom_point(data=countsHostVirus[grep(types[kk],countsHostVirus$Type),], aes(x=sample,y=Reads),
-     #                             shape = shape[kk], stat="identity")
-    #          ggp<-ggp+geom_line(data=countsHostVirus[grep(types[kk],countsHostVirus$Type),], aes(x=sample,y=Reads, group=Type),
-   #                              linetype=linetype[kk], stat="identity")
-  #            }
- #             names(linetype)=types
-#              names(shape ) = types
-              ggp<-ggp+  scale_color_manual(values = cols_subs)
-              ggp<-ggp+ scale_linetype_manual(values = linetype)+scale_shape_manual(values=shape)
-              
-          #   ggp<-ggp+geom_line(data=countsHostVirus, aes(x=sample,color=Type,y=Reads, group=Type),stat="identity")
-            ggp<-ggp+ scale_y_continuous(
-              name = yname,
-              sec.axis = sec_axis(~.*scaling_factor, name="Proportion (%)"))
-            #ggp<-ggp+ scale_colour_manual(values = c("black","red",  "green","orange","pink"))
-          }
-        }else{
-          ggp<-ggplot(subs, aes_string(x=ORF,y=y_text,fill="sample", colour='sample',ymin="lower" ,ymax="upper"))
-          ggp<-ggp+ geom_bar(position=position_dodge(), aes_string(y="TPM"),stat="identity")
-          if(showCI){
-            ggp<-ggp+geom_errorbar(position=position_dodge(width=0.9),colour="black")
-          } #ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="lower", ymax="upper"), width=.2)#, position="dodge")
-        }
-        ggp<-ggp+theme_bw()+theme(text = element_text(size=textsize), axis.text.x = element_text(size = rel(1.0), angle = angle, hjust=1.0))
-        
-        #geom_bar(aes_string(x=x1, y="Ratio", fill = "type", colour = "type"),stat="identity", position = "dodge")
-       
-        
-        if(logy){
-          ggp<-ggp+ scale_y_continuous(trans="log10",name=yname)
-        }
-        
-        
-        ggp<-ggp+ggtitle(yname)
-        ggp<-ggp+xlab("ORF")
-      }else if(!xy){
-        if(showCI){
-          ggp<-ggplot(subs, aes(x=time, y=TPM ,ymin=lower ,ymax=upper,group=interaction(molecule_type, cell, ID), color = cell, linetype=ID))
-          if(ribbon){
-            ggp<-ggp+ geom_line()  + geom_point(inherit.aes=T,aes(shape = molecule_type,size=10))
-            ggp<-ggp+geom_ribbon( linetype=2, alpha=0.1)
-          }else{
-            ggp<-ggp+ geom_line(position=position_dodge(width=0.1))  + geom_point(position=position_dodge(width=0.1),inherit.aes=T,aes(shape = molecule_type,size=10))
-            ggp<-ggp+geom_errorbar(position=position_dodge(width=0.1)) #,colour="black")
-          }
-        }else{
-          ggp<-ggplot(subs, aes(x=time, y=TPM ,group=interaction(molecule_type, cell, ID), color = cell, linetype=ID))
-          ggp<-ggp+ geom_line()  + geom_point(inherit.aes=T,aes(shape = molecule_type,size=10))
-        }
-      
-        ggp<-ggp+theme_bw()+theme(text = element_text(size=textsize))
-       # ggp<-ggp+theme_bw();#+ylim(c(min(subs$TPM, na.rm=T), max(subs$TPM, na.rm=T)))
-        if(!showTPM)ggp<-ggp+ylab("Counts")
-        # ggp<-ggp+ geom_errorbar(aes(linetype=molecule_type))
-        if(logy){
-          ggp<-ggp+ scale_y_log10()
-        }
-      }
+    session$userData$prev_params = list(p_plot=p_plot, p_data =p_data)
+    if(reuseData && !is.null(session$userData$results)){
+      results_ = session$userData$results
+      subs = results_$data
+      countsHostVirus1 = results_$totals
     }else{
-      ggp = ggplot()
+      subs = .extractTPM(datafile ,  total_reads,countsTotal, p_data)
+      countsHostVirus1 = NULL
+      if(!is.null(countsHostVirus)){
+       # countsHostVirus = countsHostVirus[countsHostVirus$ID!="Total",]
+        countsHostVirus1 = countsHostVirus[which(countsHostVirus$sample %in% subs$sample),,drop=F]
+        names(countsHostVirus1)[2]="Type"
+        names(countsHostVirus1)[3]="Reads"
+        cells = unlist(lapply(as.character(countsHostVirus1$sample), function(x) strsplit(x,"_")[[1]][1]))
+        lines = unlist(lapply(as.character(countsHostVirus1$sample), function(x) strsplit(x,"_")[[1]][2]))
+        times = unlist(lapply(as.character(countsHostVirus1$sample), function(x) strsplit(x,"_")[[1]][3]))
+        countsHostVirus1 = cbind(countsHostVirus1, cells, lines, times)
+      }
     }
-    
+    session$userData$results = list(data=subs, totals=countsHostVirus1);
+    yname='TPM'
+    if(!p_data$showTPM){
+          yname="Counts"
+    }
+      
+    ggp=.plotTPMData(subs,countsHostVirus1, p_data,p_plot,yname)
+    session$userData$tpm_plot = ggp
     ggp
+    
   }
   
   infectivityPlot=function(){
