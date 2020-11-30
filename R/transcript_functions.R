@@ -309,7 +309,7 @@ if(join_and || join_not)  x2 =  matname else   x2 =  c()
     }else{
      x1=grep(x[j],matname,v=T)
     }
-    if(join_and) x2 = x2[x2 %in% x1] else if (join_not) x2 = x2[!(x2 %in% x1)] else x2 = c(x2, x1[!(x1 %in% x2)])
+    if(join_and || (join_not && j=1)) x2 = x2[x2 %in% x1] else if (join_not) x2 = x2[!(x2 %in% x1)] else x2 = c(x2, x1[!(x1 %in% x2)])
 }
   x2
 }
@@ -489,7 +489,6 @@ if(is.null(levels)){
       #print(head(data))
       ggp1<-ggplot(ratio4, aes(x=time))
       ggp1<-ggp1+geom_line(aes(y=value ,group=interaction(molecule_type, cell, ORF,variable), color = cell, linetype=variable))
-      ggp1<-ggp1+geom_point(aes(y=value ,group=interaction(molecule_type, cell, ORF,variable), color = cell, shape=ORF,size=10))
       if(showEB) ggp1<-ggp1+geom_ribbon(aes(ymin=lower, ymax=upper, group=interaction(molecule_type, cell, ORF,variable), color = cell, linetype=variable),  alpha=0.1)
 
        #ggp1<-ggp1+geom_line(aes(y=(logtotal-diff)/coeff ,group=interaction(molecule_type, cell, ORF), color = cell, linetype="dashed"))
