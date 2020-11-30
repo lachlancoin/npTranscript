@@ -18,8 +18,8 @@ source( "transcript_functions.R")
 
 basedir="../data"
 
-toreplace1 = c("leader_ORF1ab,S_ORF1ab,ORF10_end","leader_leader,S_ORF1ab,ORF10_end")
-toreplace2= c("leader_ORF1ab,ORF1ab_ORF1ab,ORF10_end","leader_leader,ORF1ab_ORF1ab,ORF10_end")
+toreplace1 = c("leader_ORF1ab,S_ORF1ab,ORF10_end","leader_leader,S_ORF1ab,ORF10_end","leader,S_ORF1ab,3UTR_end")
+toreplace2= c("leader_ORF1ab,ORF1ab_ORF1ab,ORF10_end","leader_leader,ORF1ab_ORF1ab,ORF10_end","leader,ORF1ab,3UTR_end")
 
 
 
