@@ -2259,6 +2259,26 @@ transcripts[,err_ratio_inds] =apply(transcripts[,err_ratio_inds,drop=F], c(1,2),
 if(length(grep("#", inf))>0) attr(transcripts,"info") = sub("#", "",inf)
 transcripts
 }
+.expand<-function(subs,nme="sample"){
+  i = which(names(subs)==nme)
+  molecule_type = factor(unlist(lapply(as.character(subs[,i]), function(x) strsplit(x,"_")[[1]][1])))
+  cell = factor(unlist(lapply(as.character(subs[,i]), function(x) strsplit(x,"_")[[1]][2])))
+  time = unlist(lapply(as.character(subs[,i]), function(x) strsplit(x,"_")[[1]][3]))
+  time =  factor(time,level= paste(sort(as.numeric(unique(sub("hpi","",time)))),"hpi",sep=""))
+  mat1 = cbind(as.character(molecule_type),as.character(cell),as.character(time))
+  cell_time =.combine(cell,time)
+  mol_time = .combine(molecule_type,time)
+  cell_mol = .combine(molecule_type,cell)
+  #ord = order(as.numeric(factor(types1_$time, levels=c("0hpi", "2hpi","24hpi","48hpi"))),types1_$cell,types1_$molecules)
+  print("h")
+  print(cell_time)
+  cbind(subs,cell, molecule_type, time,cell_time,mol_time,cell_mol)
+}
+.combine<-function(f1,f2, rev=T){
+  vs = apply(cbind(as.character(f1), as.character(f2)),1,paste,collapse="_")
+  levs = if(rev)  unique(vs[order(f2,f1)]) else unique(vs[order(f1,f2)])
+  factor(vs, levels=levs)
+}
 
 .splitTranscripts<-function(transcripts, seqlen, nmes,splice = F){
 	transcripts_all = list()

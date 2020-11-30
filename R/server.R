@@ -201,11 +201,7 @@ h5file = NULL
     cis = .getCIs(subs,sample,total_reads,p_data$method, p_data$showTPM)
   }
   if(!is.null(subs$sample)){
-    molecule_type = factor(unlist(lapply(as.character(subs$sample), function(x) strsplit(x,"_")[[1]][1])))
-    cell = factor(unlist(lapply(as.character(subs$sample), function(x) strsplit(x,"_")[[1]][2])))
-    time = unlist(lapply(as.character(subs$sample), function(x) strsplit(x,"_")[[1]][3]))
-    time =  factor(time,level= paste(sort(as.numeric(unique(sub("hpi","",time)))),"hpi",sep=""))
-    subs = cbind(subs,cell, molecule_type, time)
+    subs = .expand(subs,"sample")
   }
   subs = cbind(subs,cis)
   subs
@@ -250,12 +246,14 @@ h5file = NULL
       }
       
       ggp<-ggplot()
-      levs_subs = levels(subs$ID)
+      fill="ID"
+      
+      levs_subs = levels(subs[,names(subs)==fill])
       cols_subs =  brewer.pal(n = length(levs_subs), name = "Set2")
       names(cols_subs) = levs_subs
     #  print(head(subs))
      
-      ggp<-ggp+geom_bar(data=subs,aes(x=time,y=TPM,fill=ID,color=ID),position="stack",stat='identity')
+      ggp<-ggp+geom_bar(data=subs,aes_string(x="time",y="TPM",fill=fill,color=fill),position="stack",stat='identity')
     
       ylim = layer_scales(ggp)$y$range$range
       # print(ylim)
@@ -276,7 +274,16 @@ h5file = NULL
           sec.axis = sec_axis(~.*scaling_factor, name="Proportion (%)"))
       }
     }else{
-      ggp<-ggplot(subs, aes_string(x=ORF,y=y_text,fill="sample", colour='sample',ymin="lower" ,ymax="upper"))
+      fill="sample"  
+      if(facet=="molecules"){
+        fill="cell_time"
+      }else if(facet=="cells"){
+       fill="mol_time"
+        
+      }else if(facet=="times"){
+        fill="samp_cell"
+      }
+      ggp<-ggplot(subs, aes_string(x=ORF,y=y_text,fill=fill, colour=fill,ymin="lower" ,ymax="upper"))
       ggp<-ggp+ geom_bar(position=position_dodge(), aes_string(y="TPM"),stat="identity")
       if(p_plot$showCI){
         ggp<-ggp+geom_errorbar(position=position_dodge(width=0.9),colour="black")
@@ -317,17 +324,17 @@ h5file = NULL
       ggp<-ggp+ scale_y_log10()
     }
   }
+  
   if(facet=="molecules_and_cells"){
-    ggp<-ggp+facet_grid(cell~molecule_type)
     ggp<-ggp+facet_grid(molecule_type~cell)
+    ggp<-ggp+facet_grid(cell~molecule_type)
   }else if(facet=="molecules"){
     ggp<-ggp+facet_grid(rows=vars(molecule_type))
-    
   }else if(facet=="cells"){
-    ggp<-ggp+facet_grid(~cell)
+    ggp<-ggp+facet_grid(rows=vars(cell))
     
   }else if(facet=="times"){
-    ggp<-ggp+facet_grid(~time)
+    ggp<-ggp+facet_grid(rows=vars(time))
   }else if(facet=="molecules_and_times"){
     ggp<-ggp+facet_grid(molecule_type~time)
     ggp<-ggp+facet_grid(time~molecule_type)
@@ -1036,11 +1043,8 @@ shinyServer(function(input, output,session) {
         countsHostVirus1 = countsHostVirus[which(countsHostVirus$sample %in% subs$sample),,drop=F]
         names(countsHostVirus1)[2]="Type"
         names(countsHostVirus1)[3]="Reads"
-        molecule_type = unlist(lapply(as.character(countsHostVirus1$sample), function(x) strsplit(x,"_")[[1]][1]))
-        cell = unlist(lapply(as.character(countsHostVirus1$sample), function(x) strsplit(x,"_")[[1]][2]))
-        time = unlist(lapply(as.character(countsHostVirus1$sample), function(x) strsplit(x,"_")[[1]][3]))
-        time =  factor(time,level= paste(sort(as.numeric(unique(sub("hpi","",time)))),"hpi",sep=""))
-        countsHostVirus1 = cbind(countsHostVirus1, cell, molecule_type, time)
+        molecule_type = factor(unlist(lapply(as.character(countsHostVirus1$sample), function(x) strsplit(x,"_")[[1]][1])))
+        countsHostVirus1 = .expand(countsHostVirus1,"sample")
       }
     }
     session$userData$results = list(data=subs, totals=countsHostVirus1);

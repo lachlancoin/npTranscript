@@ -60,7 +60,7 @@ totick1 = c("showCI" ,"barchart","showInfectivity")
  options2 = c("showTranscriptPlot","logy","showCI", "TPM_amongst_all" ,"TPM_amongst_viral","barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder")
 totick2 = c("showTranscriptPlot","ribbonCI","barchart","TPM_amongst_viral")
 options3 = c("show_depth","logy", "TPM_amongst_viral", "showORFs", "sumDepth","mergeCounts", "showPeptides", "showSequence","showWaterfall", "plotCorr", "showErrors","downsample", "showCI","zoom")
-totick3 = c("show_depth", "mergeCounts", "sumDepth")
+totick3 = c("show_depth", "mergeCounts", "sumDepth","zoom")
 
 
 
@@ -112,12 +112,12 @@ shinyUI(fluidPage(
    numericInput("conf.int", label = "Confidence intervals", value = 0.95),
    numericInput("maxtrans", label = "Maximum number of transcripts", value = 10),
   selectInput("splitby", label ="Plot x vs y", choices=c("off","molecules","cells","times"), selected="off"),
-  selectInput("facet", label ="Grouping of lots", choices=c("off","molecules","cells","times","molecules_and_cells","molecules_and_times","times_and_cells"), selected="off"),
+  selectInput("facet", label ="Grouping", choices=c("off","molecules","cells","times","molecules_and_cells","molecules_and_times","times_and_cells"), selected="off"),
   
    checkboxGroupInput("options3", label = h3("Bottom panel"), choices = options3, selected=totick3) ,
  # selectInput("depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="OR"),
-  numericInput("min_x", label = "Min position", value = 0),
-  numericInput("max_x", label = "Max position", value = 30000),
+  numericInput("min_x", label = "Min position", value = 25000),
+  numericInput("max_x", label = "Max position", value = 29865),
   numericInput("loess", label = "Loess span", value = 0.0,max=1,min=0),
  numericInput("waterfallKmer", label = "Kmer for waterfall plot", value = 3,max=11,min=1,step=2),
  numericInput("waterfallOffset", label = "Offset for waterfall plot", value = 0,min=-50,max=50),
