@@ -511,7 +511,10 @@ if(is.null(levels)){
     ORF="ORF"
     ord="Start"
     x1 =  paste("reorder(", ORF, ",", ord,")", sep="") 
-    ggp<-ggplot(ratio1, aes_string(x=x1,y=y_text,fill="type", colour='type',ymin="lower" ,ymax="upper"))
+    ratio1 = .expand(ratio1,nme="type")
+      fill="cell_time"; #type
+    ggp<-ggplot(ratio1, aes_string(x=x1,y=y_text,fill=fill, colour=fill,ymin="lower" ,ymax="upper"))
+    ggp<-ggp+facet_grid(rows=vars(molecule_type))
     ggp<-ggp+ geom_bar(position=position_dodge(), aes_string(y="Ratio"),stat="identity")
       #geom_bar(aes_string(x=x1, y="Ratio", fill = "type", colour = "type"),stat="identity", position = "dodge")
     if(showEB){
@@ -2270,8 +2273,8 @@ transcripts
   mol_time = .combine(molecule_type,time)
   cell_mol = .combine(molecule_type,cell)
   #ord = order(as.numeric(factor(types1_$time, levels=c("0hpi", "2hpi","24hpi","48hpi"))),types1_$cell,types1_$molecules)
-  print("h")
-  print(cell_time)
+ # print("h")
+#  print(cell_time)
   cbind(subs,cell, molecule_type, time,cell_time,mol_time,cell_mol)
 }
 .combine<-function(f1,f2, rev=T){
