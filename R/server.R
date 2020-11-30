@@ -168,7 +168,7 @@ h5file = NULL
         
       }
       subs[[i]] =.processTPM(mat, header, toplot, levels=levs1,split=T)
-      print(head(subs[[i]]))
+     # print(head(subs[[i]]))
       # subs[[i]]$sample=sub(molecules[i],"",subs[[i]]$sample)
     }
     by=c("ID","cell","time")
@@ -212,6 +212,7 @@ h5file = NULL
 .plotTPMData<-function(subs,countsHostVirus,p_data, p_plot,yname){
   xy = p_data$xy
   logy=p_plot$logy
+  showTPM=p_data$showTPM
   if(p_data$xy){
     colorby=names(subs)[1]
     shapeby=names(subs)[2] 
@@ -250,7 +251,7 @@ h5file = NULL
       levs_subs = levels(subs$ID)
       cols_subs =  brewer.pal(n = length(levs_subs), name = "Set2")
       names(cols_subs) = levs_subs
-      print(head(subs))
+    #  print(head(subs))
      
       ggp<-ggp+geom_bar(data=subs,aes(x=time,y=TPM,fill=ID,color=ID),position="stack",stat='identity')
       ggp<-ggp+facet_grid(molecule_type~cell)
