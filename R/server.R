@@ -1067,6 +1067,7 @@ shinyServer(function(input, output,session) {
     showSecondAxis="showSecondAxis" %in% input$options1
     textsize=input$textsize
     conf.int=input$conf.int
+    facet = input$facet1
     countsTotal=session$userData$countsTotal
     infilesAnnot = paste(currdir,"0.annot.txt.gz", sep="/")
     total_reads = session$userData$total_reads
@@ -1087,7 +1088,7 @@ shinyServer(function(input, output,session) {
       #.plotAnnotFile<-function(ratio1,molecule_type, cell, time, levels=NULL,barchart=F,showEB = F,showSecondAxis=F){
       y_text="Ratio"
       #   y_text="spliced"
-      annots1=.plotAnnotFile(ratio1,barchart=barchart,showSecondAxis=showSecondAxis,showEB=T, levels=levels1, y_text=y_text,
+      annots1=.plotAnnotFile(ratio1,barchart=barchart,facet=facet,showSecondAxis=showSecondAxis,showEB=T, levels=levels1, y_text=y_text,
                              diff=0, coeff=5, textsize=textsize)
      
 #      resall = 
