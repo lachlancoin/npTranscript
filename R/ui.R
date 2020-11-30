@@ -8,6 +8,7 @@ library(shinycssloaders)
 library(shinyjs)
 library(abind)
 library(ggrepel)
+library(ggforce)
 #library(GGally)
 
 source( "transcript_functions.R")
@@ -58,7 +59,7 @@ totick1 = c("showCI" ,"barchart","showInfectivity")
 #options2 = c("logy","showCI", "TPM" ,"barchart","ribbonCI","mergeCounts")
  options2 = c("showTranscriptPlot","logy","showCI", "TPM_amongst_all" ,"TPM_amongst_viral","barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder")
 totick2 = c("showTranscriptPlot","ribbonCI","barchart","TPM_amongst_viral")
-options3 = c("show_depth","logy", "TPM_amongst_viral", "showORFs", "sumDepth","mergeCounts", "showPeptides", "showSequence","showWaterfall", "plotCorr", "showErrors","downsample", "showCI")
+options3 = c("show_depth","logy", "TPM_amongst_viral", "showORFs", "sumDepth","mergeCounts", "showPeptides", "showSequence","showWaterfall", "plotCorr", "showErrors","downsample", "showCI","zoom")
 totick3 = c("show_depth", "mergeCounts", "sumDepth")
 
 

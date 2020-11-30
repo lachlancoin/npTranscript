@@ -1043,7 +1043,7 @@ split1<-function(fi) strsplit(fi,"_")[[1]][1]
 plotClusters<-function(df,seq_df, k1, totalReadCount, t, motifpos, peptides,rawdepth = T, 
                        linetype="sampID", colour="clusterID", title = "", ylab=if(rawdepth)  "depth" else "TPM", logy=F, 
                        leg_size = 6, xlim  = NULL, show=F, updatenmes = F, fill = F, alpha=0.5,
-                       showSeqThresh=500, size=20, linesize=0.1, textsize=20){
+                       showSeqThresh=500, size=20, linesize=0.1, textsize=20,zoom=T){
   if(!is.factor(df$clusterID)) df$clusterID = as.factor(df$clusterID)  #types[df$type]
  # names(df)[3] = "depth"
   #ids =  as.character(rel_count$ID)
@@ -1118,7 +1118,9 @@ if(!is.null(peptides)){
   #ggp<-ggp+geom_vline(xintercept = fimo$start[fimo$strand=="-"], linetype="dotted", color="grey")
 }
   #abline(v = t$Maximum, col=3)
-  if(!is.null(xlim)) ggp<-ggp+xlim(xlim)
+  if(!is.null(xlim)) {
+    if(zoom) ggp<-ggp+facet_zoom(xlim=xlim) else ggp<-ggp+xlim(xlim)
+  }
  # ggp<-ggp
   if(show) print(ggp)
   invisible(ggp)

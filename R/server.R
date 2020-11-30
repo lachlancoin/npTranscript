@@ -10,6 +10,7 @@ library(shinyjs)
 library(seqinr)
 library(abind)
 library(ggrepel)
+library(ggforce)
 #library(GGally)
 
 source( "transcript_functions.R")
@@ -371,7 +372,7 @@ shinyServer(function(input, output,session) {
 	source( "transcript_functions.R")
 	source("shiny-DE.R")
 	
- plot_depth<-function(tpm_df, total_reads=NULL,  toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", 
+ plot_depth<-function(tpm_df, total_reads=NULL, zoom=T, toplot=c("leader_leader,N_end", "N_end"),combinedID="combined", 
                       gapthresh=100, mergeGroups=NULL,downsample = F, molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
                       span = 0.01, sumAll=F, xlim=NULL, motifpos=list(),peptides=NULL, alpha=1.0,t= NULL,logy=T, 
                       showORFs = F,showWaterfall=FALSE,waterfallKmer=3,waterfallOffset=0,top10=10,textsize=20,
@@ -425,9 +426,10 @@ shinyServer(function(input, output,session) {
                        t,
                        motifpos,peptides,size=20,linesize=linesize,textsize=textsize,
                        rawdepth = T, linetype=linetype, colour=colour,
-                       alpha=alpha, xlim = xlim,ylab=ylab , title =path, logy=logy, leg_size =textsize, show=show, fill =fill)
+                       alpha=alpha, xlim = xlim,ylab=ylab , zoom = zoom, title =path, logy=logy, leg_size =textsize, show=show, fill =fill)
   
-   }
+     
+     }
    return(ggp)
  }
   
@@ -775,6 +777,7 @@ shinyServer(function(input, output,session) {
     if(  "showCI" %in% input$options3){
       ci=input$conf.int
     }
+      zoom = "zoom" %in% input$options3
     
     depth_thresh = input$depth_thresh
     group_by=input$group_by
@@ -882,9 +885,9 @@ shinyServer(function(input, output,session) {
             transform(pos=as.numeric(pos), sequence=factor(sequence, levels=c("a","c","t","g")))
         }
        plotOpts = list(showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,
-                       alpha=alpha,linesize=linesize, textsize=textsize,calcErrors=showErrors,logy=logy )
+                       alpha=alpha,linesize=linesize, zoom = zoom,textsize=textsize,calcErrors=showErrors,logy=logy )
        depthOpts = 
-         list(total_reads=total_reads,toplot=toplot, downsample = downsample, span = span, 
+         list(total_reads=total_reads, toplot=toplot, downsample = downsample, span = span, 
               mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, 
               times = times, sumAll = sumAll,
               plotCorr=plotCorr,reverseOrder=reverseOrder,
@@ -927,7 +930,7 @@ shinyServer(function(input, output,session) {
             # print(head(tpm_df))
           session$userData$dataDepth[[which(names(session$userData$dataDepth)==plot_type)]] = tpm_df
           }
-         ggp =plot_depth(tpm_df,total_reads,toplot, seq_df=seq_df, downsample = downsample, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
+         ggp =plot_depth(tpm_df,total_reads,toplot,zoom=zoom, seq_df=seq_df, downsample = downsample, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
                      showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type,
                       alpha=alpha,plotCorr=plotCorr,linesize=linesize, reverseOrder=reverseOrder,
                      textsize=textsize, calcErrors=showErrors,fisher=fisher,
