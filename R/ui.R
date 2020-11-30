@@ -111,6 +111,7 @@ shinyUI(fluidPage(
    numericInput("conf.int", label = "Confidence intervals", value = 0.95),
    numericInput("maxtrans", label = "Maximum number of transcripts", value = 10),
   selectInput("splitby", label ="Plot x vs y", choices=c("off","molecules","cells","times"), selected="off"),
+  selectInput("facet", label ="Grouping of lots", choices=c("off","molecules","cells","times","molecules_and_cells","molecules_and_times","times_and_cells"), selected="off"),
   
    checkboxGroupInput("options3", label = h3("Bottom panel"), choices = options3, selected=totick3) ,
  # selectInput("depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="OR"),

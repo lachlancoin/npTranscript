@@ -212,6 +212,7 @@ h5file = NULL
 .plotTPMData<-function(subs,countsHostVirus,p_data, p_plot,yname){
   xy = p_data$xy
   logy=p_plot$logy
+  facet = p_plot$facet
   showTPM=p_data$showTPM
   if(p_data$xy){
     colorby=names(subs)[1]
@@ -254,8 +255,7 @@ h5file = NULL
     #  print(head(subs))
      
       ggp<-ggp+geom_bar(data=subs,aes(x=time,y=TPM,fill=ID,color=ID),position="stack",stat='identity')
-      ggp<-ggp+facet_grid(molecule_type~cell)
-      ggp<-ggp+facet_grid(cell~molecule_type)
+    
       ylim = layer_scales(ggp)$y$range$range
       # print(ylim)
       if(!is.null(countsHostVirus) ){
@@ -316,7 +316,26 @@ h5file = NULL
       ggp<-ggp+ scale_y_log10()
     }
   }
+  if(facet=="molecules_and_cells"){
+    ggp<-ggp+facet_grid(molecule_type~cell)
+    ggp<-ggp+facet_grid(cell~molecule_type)
+  }else if(facet=="molecules"){
+    ggp<-ggp+facet_grid(~molecule_type)
+    
+  }else if(facet=="cells"){
+    ggp<-ggp+facet_grid(~cell)
+    
+  }else if(facet=="times"){
+    ggp<-ggp+facet_grid(~time)
+  }else if(facet=="molecules_and_times"){
+    ggp<-ggp+facet_grid(molecule_type~time)
+    ggp<-ggp+facet_grid(time~molecule_type)
+  }else if(facet=="times_and_cells"){
+    ggp<-ggp+facet_grid(cell~time)
+    ggp<-ggp+facet_grid(time~cell)
+  }
   
+ # "molecules_and_times","times_and_cells"
   
   ggp
   
@@ -953,7 +972,7 @@ shinyServer(function(input, output,session) {
       p_data$splitby_vec=times
     }
     
- 
+    p_plot$facet=input$facet
   
     p_plot$logy = "logy" %in% input$options2
     p_plot$showCI = "showCI" %in% input$options2
