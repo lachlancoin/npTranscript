@@ -309,7 +309,7 @@ if(join_and || join_not)  x2 =  matname else   x2 =  c()
     }else{
      x1=grep(x[j],matname,v=T)
     }
-    if(join_and || (join_not && j=1)) x2 = x2[x2 %in% x1] else if (join_not) x2 = x2[!(x2 %in% x1)] else x2 = c(x2, x1[!(x1 %in% x2)])
+    if(join_and || (join_not && j==1)) x2 = x2[x2 %in% x1] else if (join_not) x2 = x2[!(x2 %in% x1)] else x2 = c(x2, x1[!(x1 %in% x2)])
 }
   x2
 }
