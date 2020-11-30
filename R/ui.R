@@ -107,6 +107,8 @@ shinyUI(fluidPage(
   numericInput("textsize", label = "Text size", value = 20.0, min=3.0, max=100),
   numericInput("angle", label = "Text angle", value = 25.0, min=0.0, max=90),
    checkboxGroupInput("options1", label = h3("Top panel"), choices = options1, selected=totick1) ,
+  selectInput("facet1", label ="Grouping", choices=c("off","molecules","cells","times","ORF"), selected="off"),
+  
    textInput("orfs", label="ORFs to include", value = orfs),
    checkboxGroupInput("options2", label = h3("Middle panel"), choices = options2, selected=totick2) ,
    numericInput("conf.int", label = "Confidence intervals", value = 0.95),

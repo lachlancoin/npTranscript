@@ -444,7 +444,7 @@ if(is.null(levels)){
  ratio1
 }
 #  ggp= NULL
-.plotAnnotFile<-function(ratio1, levels=NULL,barchart=F,showEB = F,showSecondAxis=F,coeff=1,diff=0, y_text="Ratio", size=20,textsize=20, linesize=1.5){
+.plotAnnotFile<-function(ratio1, levels=NULL,barchart=F,showEB = F,facet = NULL, showSecondAxis=F,coeff=1,diff=0, y_text="Ratio", size=20,textsize=20, linesize=1.5){
    if(!barchart){
     timevec=c("0hpi","2hpi","24hpi","48hpi")
     ratio3= separate(ratio1,6, c('molecule_type', 'cell', 'time'), sep='_', remove = T) %>%
@@ -473,7 +473,7 @@ if(is.null(levels)){
       
     }
       ggp1<-ggp1+ scale_y_continuous( name = "Log2 (total - sub-genomics)", limits=lims)
-      
+      data  = ratio5
         }else{
   #    ratio3$logtotal = (ratio3$logtotal-diff)/coeff
       ratio4 = melt(ratio3,id.vars=c("ORF","molecule_type","cell","time"), measure.vars=c("logdiff","logtotal")) %>%
@@ -503,7 +503,16 @@ if(is.null(levels)){
         }
     
     ggp1<-ggp1+theme_bw()+theme(text = element_text(size=textsize), axis.text.x = element_text(size = rel(1.0),angle = 25, hjust=1.0))
-    
+    if(facet=="molecules"){
+      ggp1<-ggp1+facet_grid(rows=vars(molecule_type))
+    }else if(facet=="cells"){
+      ggp1<-ggp1+facet_grid(rows=vars(cell))
+    }else if(facet=="times"){
+      ggp1<-ggp1+facet_grid(rows=vars(time))
+    }
+    else if(facet=="ORF"){
+      ggp1<-ggp1+facet_grid(rows=vars(ORF))
+    }
     return(list(ggp=ggp1, data=data))
   }else{
    
@@ -512,13 +521,28 @@ if(is.null(levels)){
     ord="Start"
     x1 =  paste("reorder(", ORF, ",", ord,")", sep="") 
     ratio1 = .expand(ratio1,nme="type")
+    
+    ggp<-ggplot()
+    fill="type"
+    if(facet=="molecules"){
       fill="cell_time"; #type
-    ggp<-ggplot(ratio1, aes_string(x=x1,y=y_text,fill=fill, colour=fill,ymin="lower" ,ymax="upper"))
-    ggp<-ggp+facet_grid(rows=vars(molecule_type))
-    ggp<-ggp+ geom_bar(position=position_dodge(), aes_string(y="Ratio"),stat="identity")
+      ggp<-ggp+facet_grid(rows=vars(molecule_type))
+    }else if(facet=="cells"){
+      fill="mol_time"
+      ggp<-ggp+facet_grid(rows=vars(cell))
+    }else if(facet=="times"){
+      fill="samp_cell"
+      ggp<-ggp+facet_grid(rows=vars(time))
+    }
+    y_text = "Ratio"
+    ggp<-ggp+geom_bar(data=ratio1, 
+                      position=position_dodge(),aes_string(x=x1,y=y_text,fill=fill, colour=fill,ymin="lower" ,ymax="upper"),stat="identity")
+  
+   # ggp<-ggp+ geom_bar(position=position_dodge(), aes_string(y="Ratio"),stat="identity")
       #geom_bar(aes_string(x=x1, y="Ratio", fill = "type", colour = "type"),stat="identity", position = "dodge")
     if(showEB){
-      ggp<-ggp+geom_errorbar(position=position_dodge(width=0.9),colour="black")
+      ggp<-ggp+geom_errorbar(data=ratio1,position=position_dodge(width=0.9),
+                             aes_string(x=x1,y=y_text,fill=fill, colour=fill,ymin="lower" ,ymax="upper"),colour="black")
     } #ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="lower", ymax="upper"), width=.2)#, position="dodge")
    ggp<-ggp+scale_y_continuous(limits = c(0,1))
     
