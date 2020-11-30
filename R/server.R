@@ -201,8 +201,8 @@ h5file = NULL
     cis = .getCIs(subs,sample,total_reads,p_data$method, p_data$showTPM)
   }
   if(!is.null(subs$sample)){
-    cell = factor(unlist(lapply(as.character(subs$sample), function(x) strsplit(x,"_")[[1]][1])))
-    molecule_type = factor(unlist(lapply(as.character(subs$sample), function(x) strsplit(x,"_")[[1]][2])))
+    molecule_type = factor(unlist(lapply(as.character(subs$sample), function(x) strsplit(x,"_")[[1]][1])))
+    cell = factor(unlist(lapply(as.character(subs$sample), function(x) strsplit(x,"_")[[1]][2])))
     time = unlist(lapply(as.character(subs$sample), function(x) strsplit(x,"_")[[1]][3]))
     time =  factor(time,level= paste(sort(as.numeric(unique(sub("hpi","",time)))),"hpi",sep=""))
     subs = cbind(subs,cell, molecule_type, time)
@@ -318,10 +318,10 @@ h5file = NULL
     }
   }
   if(facet=="molecules_and_cells"){
-    ggp<-ggp+facet_grid(molecule_type~cell)
     ggp<-ggp+facet_grid(cell~molecule_type)
+    ggp<-ggp+facet_grid(molecule_type~cell)
   }else if(facet=="molecules"){
-    ggp<-ggp+facet_grid(~molecule_type)
+    ggp<-ggp+facet_grid(rows=vars(molecule_type))
     
   }else if(facet=="cells"){
     ggp<-ggp+facet_grid(~cell)
@@ -1036,8 +1036,8 @@ shinyServer(function(input, output,session) {
         countsHostVirus1 = countsHostVirus[which(countsHostVirus$sample %in% subs$sample),,drop=F]
         names(countsHostVirus1)[2]="Type"
         names(countsHostVirus1)[3]="Reads"
-        cell = unlist(lapply(as.character(countsHostVirus1$sample), function(x) strsplit(x,"_")[[1]][1]))
-        molecule_type = unlist(lapply(as.character(countsHostVirus1$sample), function(x) strsplit(x,"_")[[1]][2]))
+        molecule_type = unlist(lapply(as.character(countsHostVirus1$sample), function(x) strsplit(x,"_")[[1]][1]))
+        cell = unlist(lapply(as.character(countsHostVirus1$sample), function(x) strsplit(x,"_")[[1]][2]))
         time = unlist(lapply(as.character(countsHostVirus1$sample), function(x) strsplit(x,"_")[[1]][3]))
         time =  factor(time,level= paste(sort(as.numeric(unique(sub("hpi","",time)))),"hpi",sep=""))
         countsHostVirus1 = cbind(countsHostVirus1, cell, molecule_type, time)
