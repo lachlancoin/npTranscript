@@ -213,9 +213,9 @@ static char delim1 = ',';
 			boolean firstBreak=true;
 			for(int i=1; i<breaks.size()-1; i+=2){
 				int gap = breaks.get(i+1)-breaks.get(i);
-				String upst = annot.nextUpstream(breaks.get(i), chrom_index,forward);
+				String upst = annot.nextUpstream(breaks.get(i), chrom_index,forward); //5prime break
 				secondKey.append(upst+delim1);
-				secondKey.append(annot.nextDownstream(breaks.get(i+1), chrom_index,forward)+delim);
+				secondKey.append(annot.nextDownstream(breaks.get(i+1), chrom_index,forward)+delim);  //3prime break
 				if(gap > break_thresh){
 					if(firstBreak){
 						firstBreak=false;
@@ -239,7 +239,7 @@ static char delim1 = ',';
 				}
 			}
 		}
-		secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), chrom_index, forward));
+		secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), chrom_index, forward)); //last break is upstream start pos
 		
 		if(Annotation.enforceStrand){
 			secondKey.append(forward ? '+' : '-');
