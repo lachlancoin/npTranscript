@@ -107,6 +107,7 @@ h5file = NULL
 .extractTPM<-function(datafile ,  total_reads,countsTotal, p_data){
   tr = NULL  
   xy = p_data$xy
+  usegrep=p_data$usegrep
   if(p_data$calcTPMFromAll && !is.null(countsTotal)){
     countsHostVirus1 =   countsTotal
     inds1 = match(names(total_reads) ,countsHostVirus1$sample)
@@ -206,66 +207,75 @@ h5file = NULL
   subs = cbind(subs,cis)
   subs
 }
-.plotTPMData<-function(subs,countsHostVirus,p_data, p_plot,yname){
+.getFacet<-function(facet){
+  ggp<-ggplot()
+  x_lab="sample"
+  if(facet=="molecules_and_cells"){
+    ggp<-ggp+facet_grid(molecule_type~cell)
+    ggp<-ggp+facet_grid(cell~molecule_type)
+    x_lab="time"
+  }else if(facet=="molecules"){
+    ggp<-ggp+facet_grid(rows=vars(molecule_type))
+    x_lab="cell_time"
+  }else if(facet=="cells"){
+    ggp<-ggp+facet_grid(rows=vars(cell))
+    x_lab="mol_time"
+  }else if(facet=="times"){
+    ggp<-ggp+facet_grid(rows=vars(time))
+    x_lab="cell_mol"
+  }else if(facet=="molecules_and_times"){
+    ggp<-ggp+facet_grid(molecule_type~time)
+    ggp<-ggp+facet_grid(time~molecule_type)
+    x_lab="cell"
+  }else if(facet=="times_and_cells"){
+    ggp<-ggp+facet_grid(cell~time)
+    ggp<-ggp+facet_grid(time~cell)
+    x_lab="molecule_type"
+  }
+  attr(ggp,"x_lab")=x_lab
+  ggp
+}
+.plotTPMData<-function(subs,countsHostVirus1,p_data, p_plot,yname){
   xy = p_data$xy
   logy=p_plot$logy
   facet = p_plot$facet
   showTPM=p_data$showTPM
-  if(p_data$xy){
-    colorby=names(subs)[1]
-    shapeby=names(subs)[2] 
-    fillby = names(subs)[3]
-    if(length(levels(subs[[2]]))<length(levels(subs[[3]]))){
-      shapeby=names(subs)[3] 
-      fillby=names(subs)[2]
-      
-    }
-    ylim = c(min(subs$TPM.x, subs$TPM.y),c(max(subs$TPM.y, subs$TPM.y)))
-    ggp<-ggplot(subs, aes_string(x="TPM.x", y="TPM.y",ymin="lower.y", ymax="upper.y", 
-                                 xmin="lower.x", xmax="upper.x"))
-    ggp<-ggp+ggtitle(yname)+theme_bw()
-    ggp<-ggp +geom_point(inherit.aes=T,aes_string(shape = shapeby,fill=fillby,color=colorby,size=10))
-    #   ggp<-ggp +geom_point(inherit.aes=T,aes_string(shape = shapeby,color=fillby,size=2))
-    
-    if(p_plot$showCI){
-      ggp<-ggp+geom_errorbar(colour="black")
-    } #
-    trans="identity"
-    if(p_plot$logy){
-      trans="log10"
-    }
-    ggp<-ggp+ scale_y_continuous(trans=trans,name=splitby_vec[2], limits=ylim)+ scale_x_continuous(limits = ylim,trans=trans,name=splitby_vec[1])
-    ggp<-ggp+theme_bw()+theme(text = element_text(size=textsize))
-  }else if(p_data$barchart){
-    ORF="ID"
-    y_text="TPM"
-    if(p_data$stack){
+  ORF="ID"
+  y_text="TPM"
+  fill="ID"  
+  x_lab ="sample"
+ position=position_dodge()
+ if(p_data$stack) position="stack"
+ 
+   if(p_data$barchart){
+     ggp=.getFacet(facet)
+     x_lab =attr(ggp,"x_lab")
       sublevs = levels(subs$ID)
       if(length(sublevs)==4 && sublevs[[1]]=="5_3"){
         subs$ID = factor(as.character(subs$ID), levels=rev(c("5_3","non5_3", "5_non3","non5_non3")))
       }
-      
-      ggp<-ggplot()
-      fill="ID"
-      
       levs_subs = levels(subs[,names(subs)==fill])
+      print(head(subs))
+      print(levs_subs)
+      print(fill)
       cols_subs =  brewer.pal(n = length(levs_subs), name = "Set2")
       names(cols_subs) = levs_subs
     #  print(head(subs))
      
-      ggp<-ggp+geom_bar(data=subs,aes_string(x="time",y="TPM",fill=fill,color=fill),position="stack",stat='identity')
+      ggp<-ggp+geom_bar(data=subs,aes_string(x=x_lab,y="TPM",fill=fill,color=fill),position=position,stat='identity')
     
       ylim = layer_scales(ggp)$y$range$range
       # print(ylim)
-      if(!is.null(countsHostVirus) ){
+      if(!is.null(countsHostVirus1) && p_data$stack ){
+        countsHostVirus = countsHostVirus1
         scaling_factor = 100/ylim[2]
         countsHostVirus[3] = countsHostVirus[3] /scaling_factor
         types=c("Host","Virus","Sequin")
         linetype=c("dashed","twodash","solid")
         shape = c(1,2,3)
         
-        ggp<-ggp+geom_point(data=countsHostVirus, aes(x=time, y=Reads, shape=Type))
-        ggp<-ggp+geom_line(data=countsHostVirus, aes(x=time, y=Reads, linetype=Type, group=Type))
+        ggp<-ggp+geom_point(data=countsHostVirus, aes_string(x=x_lab, y="Reads" , shape="Type"))
+        ggp<-ggp+geom_line(data=countsHostVirus, aes_string(x=x_lab, y="Reads" , linetype="Type", group="Type"))
         ggp<-ggp+  scale_color_manual(values = cols_subs)
         ggp<-ggp+ scale_linetype_manual(values = linetype)+scale_shape_manual(values=shape)
         ggp<-ggp+xlab("Conditions")
@@ -273,22 +283,15 @@ h5file = NULL
           name = yname,
           sec.axis = sec_axis(~.*scaling_factor, name="Proportion (%)"))
       }
-    }else{
-      fill="sample"  
-      if(facet=="molecules"){
-        fill="cell_time"
-      }else if(facet=="cells"){
-       fill="mol_time"
-        
-      }else if(facet=="times"){
-        fill="samp_cell"
-      }
-      ggp<-ggplot(subs, aes_string(x=ORF,y=y_text,fill=fill, colour=fill,ymin="lower" ,ymax="upper"))
-      ggp<-ggp+ geom_bar(position=position_dodge(), aes_string(y="TPM"),stat="identity")
+   
+      
+    #  ggp<-ggplot(subs, )
+    #  ggp<-ggp+ geom_bar(data=subs, position=position_dodge(),
+     #                    aes_string(x=x_lab,y=y_text,fill=fill, colour=fill),stat="identity")
       if(p_plot$showCI){
-        ggp<-ggp+geom_errorbar(position=position_dodge(width=0.9),colour="black")
+        ggp<-ggp+geom_errorbar(data=subs, position=position_dodge(width=0.9), 
+                               aes_string(x=x_lab,y=y_text,fill=fill,ymin="lower" ,ymax="upper"),colour="black")
       } #ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="lower", ymax="upper"), width=.2)#, position="dodge")
-    }
     ggp<-ggp+theme_bw()+theme(text = element_text(size=p_plot$textsize), axis.text.x = element_text(size = rel(1.0), angle = p_plot$angle, hjust=1.0))
     
     #geom_bar(aes_string(x=x1, y="Ratio", fill = "type", colour = "type"),stat="identity", position = "dodge")
@@ -301,7 +304,7 @@ h5file = NULL
     
     ggp<-ggp+ggtitle(yname)
     #ggp<-ggp+xlab("ORF")
-  }else if(!xy){
+  }else{
     if(p_plot$showCI){
       ggp<-ggplot(subs, aes(x=time, y=TPM ,ymin=lower ,ymax=upper,group=interaction(molecule_type, cell, ID), color = cell, linetype=ID))
       if(p_plot$ribbon){
@@ -324,24 +327,7 @@ h5file = NULL
       ggp<-ggp+ scale_y_log10()
     }
   }
-  
-  if(facet=="molecules_and_cells"){
-    ggp<-ggp+facet_grid(molecule_type~cell)
-    ggp<-ggp+facet_grid(cell~molecule_type)
-  }else if(facet=="molecules"){
-    ggp<-ggp+facet_grid(rows=vars(molecule_type))
-  }else if(facet=="cells"){
-    ggp<-ggp+facet_grid(rows=vars(cell))
-    
-  }else if(facet=="times"){
-    ggp<-ggp+facet_grid(rows=vars(time))
-  }else if(facet=="molecules_and_times"){
-    ggp<-ggp+facet_grid(molecule_type~time)
-    ggp<-ggp+facet_grid(time~molecule_type)
-  }else if(facet=="times_and_cells"){
-    ggp<-ggp+facet_grid(cell~time)
-    ggp<-ggp+facet_grid(time~cell)
-  }
+ 
   
  # "molecules_and_times","times_and_cells"
   
@@ -612,7 +598,6 @@ shinyServer(function(input, output,session) {
    if(file.exists(counts_file)){
      countsHostVirus= read.csv(counts_file)
      options2 = c("showTranscriptPlot","logy","showCI", "TPM_amongst_all" ,"TPM_amongst_viral","barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder")
-     
      names(countsHostVirus) =  gsub("X.","",names(countsHostVirus))
     
      sample= apply(countsHostVirus[,1:3],1,paste,collapse="_")
@@ -961,14 +946,14 @@ shinyServer(function(input, output,session) {
 
 	p_data= list(molecules=c("RNA","cDNA"),cells=c("calu","vero"),times=c("24hpi","48hpi"),toplot="all",splitby="NA",xy=FALSE,
 	             showTPM=T,merge=F,barchart=T,reverseOrder=T,stack=T,calcTPMFromAll=T,group_by="type",
-	             tojoin="OR",usergrep=T,merge_by="",method="logit",conf.int=0.95)
-	p_plot = list(textsize=20, logy=T, showCI=F,riboon=F,angle=25)
+	             tojoin="OR",usegrep=T,merge_by="",method="logit",conf.int=0.95)
+	p_plot = list(textsize=20, logy=T, showCI=F,riboon=F,angle=25,facet="none")
 	
 	p_plot$textsize=input$textsize
   p_data$molecules <-  input$molecules 
   p_data$cells <- input$cells 
   p_data$times<-input$times
-  p_data$splitby=input$splitby
+  p_data$splitby="off" #input$splitby
   splitby_vec=NULL
   p_data$xy=FALSE
     if( p_data$splitby=="molecules"){
@@ -1052,11 +1037,11 @@ shinyServer(function(input, output,session) {
     if(!p_data$showTPM){
           yname="Counts"
     }
-      
+      print("plot tpm")
+      print(head(subs))
     ggp=.plotTPMData(subs,countsHostVirus1, p_data,p_plot,yname)
     session$userData$tpm_plot = ggp
     ggp
-    
   }
   
   infectivityPlot=function(){
