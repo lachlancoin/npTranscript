@@ -496,7 +496,9 @@ shinyServer(function(input, output,session) {
                        sumID=sumID, path=path,toplot,id_cols=id_cols, gapthresh=gapthresh, 
                        dinds = dinds[inds1]+1, pos =NULL, span = span, cumul=F, sumAll=sumAll)
       tpm_df<- .makeCombinedArray(clusters_, errors_, xlim, downsample = downsample, thresh = depth_thresh,alpha = alpha,  ci = ci, max_num = 10,t=t, fisher = fisher,motifpos=motifpos)
-      return(tpm_df)
+     print("hh1")
+     print(head(tpm_df))
+       return(tpm_df)
  
      }else  if(plotCorr){
     indsp = clusters_$pos <=xlim[2] & clusters_$pos >= xlim[1]
