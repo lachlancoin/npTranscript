@@ -11,6 +11,7 @@ library(seqinr)
 library(abind)
 library(ggrepel)
 library(ggforce)
+#library(jsonlite);
 #library(GGally)
 
 source( "transcript_functions.R")
@@ -207,32 +208,31 @@ h5file = NULL
   subs = cbind(subs,cis)
   subs
 }
-.getFacet<-function(facet){
+.getFacet<-function(facet, var="sample"){
   ggp<-ggplot()
-  x_lab="sample"
   if(facet=="molecules_and_cells"){
     ggp<-ggp+facet_grid(molecule_type~cell)
     ggp<-ggp+facet_grid(cell~molecule_type)
-    x_lab="time"
+    var="time"
   }else if(facet=="molecules"){
     ggp<-ggp+facet_grid(rows=vars(molecule_type))
-    x_lab="cell_time"
+    var="cell_time"
   }else if(facet=="cells"){
     ggp<-ggp+facet_grid(rows=vars(cell))
-    x_lab="mol_time"
+    var="mol_time"
   }else if(facet=="times"){
     ggp<-ggp+facet_grid(rows=vars(time))
-    x_lab="cell_mol"
+    var="cell_mol"
   }else if(facet=="molecules_and_times"){
     ggp<-ggp+facet_grid(molecule_type~time)
     ggp<-ggp+facet_grid(time~molecule_type)
-    x_lab="cell"
+    var="cell"
   }else if(facet=="times_and_cells"){
     ggp<-ggp+facet_grid(cell~time)
     ggp<-ggp+facet_grid(time~cell)
-    x_lab="molecule_type"
+    var="molecule_type"
   }
-  attr(ggp,"x_lab")=x_lab
+  attr(ggp,"var")=var
   ggp
 }
 .plotTPMData<-function(subs,countsHostVirus1,p_data, p_plot,yname){
@@ -242,14 +242,27 @@ h5file = NULL
   showTPM=p_data$showTPM
   ORF="ID"
   y_text="TPM"
-  fill="ID"  
-  x_lab ="sample"
+ 
  position=position_dodge()
- if(p_data$stack) position="stack"
+ if(p_data$stack){
+   position="stack"
+   fill="ID"  
+   x_lab ="sample"
+ }else{
+   x_lab="ID"
+   fill="sample"
+ }
  
    if(p_data$barchart){
-     ggp=.getFacet(facet)
-     x_lab =attr(ggp,"x_lab")
+    
+     if(p_data$stack) {
+       ggp=.getFacet(facet,x_lab)
+       x_lab =attr(ggp,"var") 
+       }else {
+         ggp=.getFacet(facet,fill)
+         fill = attr(ggp,"var")
+       }
+     
       sublevs = levels(subs$ID)
       if(length(sublevs)==4 && sublevs[[1]]=="5_3"){
         subs$ID = factor(as.character(subs$ID), levels=rev(c("5_3","non5_3", "5_non3","non5_non3")))
@@ -257,11 +270,21 @@ h5file = NULL
       levs_subs = levels(subs[,names(subs)==fill])
       print(head(subs))
       print(levs_subs)
-      print(fill)
+     # print(fill)
+      if(length(levs_subs)<=8){
       cols_subs =  brewer.pal(n = length(levs_subs), name = "Set2")
-      names(cols_subs) = levs_subs
+      }else{
+        cols_subs =  getHMCol(length(levs_subs))
+      }
+      cols_subs = cols_subs[1:length(levs_subs)]
+      names(cols_subs) = 1:length(cols_subs)
+      if(length(cols_subs)==length(levs_subs)){
+        names(cols_subs) = levs_subs
+      }
     #  print(head(subs))
-     
+      print('hh')
+     print(x_lab)
+     print(fill)
       ggp<-ggp+geom_bar(data=subs,aes_string(x=x_lab,y="TPM",fill=fill,color=fill),position=position,stat='identity')
     
       ylim = layer_scales(ggp)$y$range$range
@@ -1038,7 +1061,7 @@ shinyServer(function(input, output,session) {
           yname="Counts"
     }
       print("plot tpm")
-      print(head(subs))
+    #  print(head(subs))
     ggp=.plotTPMData(subs,countsHostVirus1, p_data,p_plot,yname)
     session$userData$tpm_plot = ggp
     ggp
@@ -1113,14 +1136,14 @@ shinyServer(function(input, output,session) {
 
 	output$infPlot<-renderPlot({
 	  input$plotButton
-	   try(validate(need(input$dir, 'Please select a directory to begin')))
+	   try(shiny::validate(need(input$dir, 'Please select a directory to begin')))
 	  infectivityPlot()
 	})
 
 	output$distPlot <- renderPlot({
-		try(validate(need(input$dir, '')))
-		#validate(need(input$toplot5 != "-", 'Select a transcript to plot'))
-		try(validate(need(length(input$molecules) > 0 & length(input$cells) > 0 & length(input$times) > 0, 'At least one molecule, cell and time point must be supplied') ))
+		try(shiny::validate(need(input$dir, '')))
+		#shiny::validate(need(input$toplot5 != "-", 'Select a transcript to plot'))
+		try(shiny::validate(need(length(input$molecules) > 0 & length(input$cells) > 0 & length(input$times) > 0, 'At least one molecule, cell and time point must be supplied') ))
 	    input$plotButton
   	    transcriptPlot()
   	  })
