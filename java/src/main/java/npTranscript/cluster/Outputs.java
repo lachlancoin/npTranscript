@@ -3,6 +3,7 @@ package npTranscript.cluster;
 import java.awt.Color;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -128,7 +129,7 @@ public class Outputs{
 		private final FOutp[] leftover_l, polyA;//, leftover_r, fusion_l, fusion_r;
 	
 	//	final int seqlen;
-		 PrintWriter transcriptsP,readClusters, annotP,  gffW, featureCP;
+		 PrintWriter transcriptsP,readClusters, annotP,  gffW, featureCP;//, plusMinus;
 		 PrintWriter[] bedW;
 		 SequenceOutputStream[] refOut;
 		 IHDF5SimpleWriter clusterW = null;
@@ -141,6 +142,7 @@ public class Outputs{
 		
 		String[] type_nmes;
 		public void close() throws IOException{
+		//	if(plusMinus!=null) plusMinus.close();
 			//IdentityProfileHolder.waitOnThreads(100);
 			if(writeCompressDirsExecutor!=null){
 				Outputs.waitOnThreads(writeCompressDirsExecutor,100);
@@ -474,10 +476,10 @@ public class Outputs{
 		
 		public synchronized void writeToCluster(String ID, String subID,  int i, Sequence seq, String baseQ,  String str, String name, char strand) throws IOException{
 			CompressDir cluster = this.getCluster(i);
-			if(strand=='-'){
-				seq = TranscriptUtils.revCompl(seq);
-				baseQ = new StringBuilder(baseQ).reverse().toString();
-			}
+			//if(strand=='-'){
+				//seq = TranscriptUtils.revCompl(seq);
+				//baseQ = new StringBuilder(baseQ).reverse().toString();
+			//}
 		 	seq.setName(name);
 			String entryname =  ID;
 			if(subID!=null) entryname = entryname+"."+subID;
@@ -504,7 +506,8 @@ public class Outputs{
 					@Override
 					public void run() {
 						 writer.write(new FastqRecord(subseq.getName()+ " "+subseq.getDesc(), 
-								 new String(negStrand ? TranscriptUtils.revCompl(subseq).charSequence(): subseq.charSequence()), "", 
+								 
+								 new String( subseq.charSequence()), "", 
 								 negStrand ? new StringBuilder(baseQ).reverse().toString() : baseQ));
 						
 					}

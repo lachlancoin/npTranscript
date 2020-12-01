@@ -97,6 +97,17 @@ public class TranscriptUtils {
 	   return res;
 	}
 	
+	public static void reverseArray(byte[] intArray) {
+		 int size = intArray.length;
+	        int i, k;
+	        byte temp; 
+	        for (i = 0; i < size / 2; i++) { 
+	            temp = intArray[i]; 
+	            intArray[i] = intArray[size - i - 1]; 
+	            intArray[size - i - 1] = temp; 
+	        } 
+	 } 
+	
 	public static int polyAlen(Sequence refSeq){
 		int seqlen = refSeq.length();
 		char[] last10bp = refSeq.subSequence(seqlen-10, seqlen).charSequence();
@@ -113,6 +124,23 @@ public class TranscriptUtils {
 			return i-1;
 		}
 		return 0;
+	}
+	
+			;
+	public static void count(String read, boolean start, Integer[] bases, int len, String chars){
+		
+		//String read = revCompl ? TranscriptUtils.
+		int seqlen = read.length();
+		//String chars_ = revCompl? chars_revC : chars;
+//		boolean start = revCompl ? !start_ : start_;
+		
+		for(int i=0; i<len; i++){ // should it start at 0
+			int i1  = start ? i : seqlen-i-1;
+			char c = read.charAt(i1);
+			
+			bases[chars.indexOf(c) ]++;
+		}
+		
 	}
 
 	private static String getString(SWGAlignment align_5prime, boolean neg) {
@@ -154,6 +182,22 @@ public class TranscriptUtils {
 		seq1[1] = seq1[1]+offset1;
 		seq1[2]= seq1[2]+offset2;
 		seq1[3] = seq1[3]+offset2;
+	}
+
+	 /* flips read and quality without chaning the flag */
+	public static void flip(SAMRecord sam, boolean switchFlag) {
+		String sa = sam.getReadString();
+		byte[]phredQs = sam.getBaseQualities();
+		byte[] bases = sam.getReadBases();
+		TranscriptUtils.reverseArray(phredQs);
+		TranscriptUtils.reverseArray(bases);
+		sam.setReadBases(bases);
+		sam.setBaseQualities(phredQs);
+		sa = SequenceUtil.reverseComplement(sa);
+		sam.setReadString(sa);
+		if(switchFlag){
+			sam.setReadNegativeStrandFlag(!sam.getReadNegativeStrandFlag());
+		}
 	}
 	
 	

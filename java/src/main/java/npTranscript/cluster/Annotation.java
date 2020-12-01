@@ -71,12 +71,25 @@ public class Annotation{
 			}
 			return "end"+(chrom_index>0 ? "."+chrom_index : "");//+ (enforceStrand ? (forward ? "+" : "-") : "");
 		}
+		/*public String convert(List<Integer> l, int chrom_index){
+			StringBuffer sb = new StringBuffer();
+			for(int i=0; i<l.size(); i++){
+				if(l.get(i)==null) sb.append("null");
+				else if(l.get(i)<0) sb.append("end"+(chrom_index>0 ? "."+chrom_index : ""));//+ (enforceStrand ? (forward ? "+" : "-") : "");)
+				else if(l.get(i)>=start.size()) sb.append("start"+(chrom_index>0 ? "."+chrom_index : ""));//+ (enforceStrand ? (forward ? "+" : "-") : "");)
+				else sb.append(genes.get(i));
+				if(i%2 ==0){
+					sb.append("_") ;
+				}else sb.append(","); 
+			}
+			return sb.toString();
+		}*/
 		
 		public String nextUpstream(int leftBreak, int chrom_index, boolean forward){
 			if(leftBreak<0) return  "null";
 			for(int i=start.size()-1; i>=0 ;i--){
 				if(!enforceStrand || forward==this.strand.get(i)){
-				if(leftBreak >= start.get(i)){// && leftBreak-tolerance<end.get(i)){
+				if(leftBreak+tolerance >= start.get(i)){// && leftBreak-tolerance<end.get(i)){
 					return genes.get(i);
 				}
 				}
@@ -134,15 +147,26 @@ public class Annotation{
 			String str = "";
 			for(int i=0; (str=br.readLine())!=null; i++){
 				String[] line = str.split(",");
+				boolean both = line[direction_ind].equals("both");
+				boolean forward = line[direction_ind].equals("forward");
 				String gene = line[gene_ind];	
+				
+				int st = Integer.parseInt(line[start_ind]);
+				int en = Integer.parseInt(line[end_ind]);
+				String str1 = "0\t"+gene+"\t"+gene+"\t"+gene+"\t"+gene+"\t"+gene;
+				pw.println(str1);
+				genes.add(gene);
+				start.add(st);
+				end.add(en);
+				if(both && enforceStrand){
+					strand.add(true); strand.add(false);
 					genes.add(gene);
-					int st = Integer.parseInt(line[start_ind]);
-					int en = Integer.parseInt(line[end_ind]);
 					start.add(st);
 					end.add(en);
-					strand.add(line[direction_ind].equals("forward"));
-					String str1 = "0\t"+gene+"\t"+gene+"\t"+gene+"\t"+gene+"\t"+gene;
-					pw.println(str1);
+				}else{
+					strand.add(forward);
+				}
+			
 				//	if(i>0){
 				//		this.breakSt.add(break_start);
 				//		this.breakEnd.add(st);
@@ -182,6 +206,7 @@ public class Annotation{
 		public synchronized void adjust3UTR(int seqlen2) {
 			if(end.size()==0) return ;
 			if(this.end.get(end.size()-1)>seqlen2 && this.start.get(end.size()-1) < seqlen2){
+				System.err.println("adjusting 3UTR end "+seqlen2);
 				end.set(end.size()-1, seqlen2);
 			}
 			
@@ -193,7 +218,12 @@ public class Annotation{
 
 	
 		public void addCount(int i, int source_index, boolean spliced) {
-			if(spliced) spliced_count[source_index][i]+=1;
+			if(spliced) {
+				spliced_count[source_index][i]+=1;
+				//if(i==2){
+				//	System.err.println("hh");
+			//	}
+			}
 			else unspliced_count[source_index][i]+=1;
 			
 		}

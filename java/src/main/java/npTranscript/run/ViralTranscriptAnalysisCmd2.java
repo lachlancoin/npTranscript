@@ -120,6 +120,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addString("reference", null, "Name of reference genome", true);
 		addString("annotation", null, "ORF annotation file or GFF file", false);
 		addBoolean("useExons", true, "wehether to use exons");
+		addBoolean("enforceStrand", false, "wehether to enforce strandedness");
 		addString("readList", "", "List of reads", false);
 		addString("gffThresh","10:10", "gene and transcript threshold for including in annotation.");
 		addInt("maxTranscriptsPerGeneInGFF",1,"Maximum number of transcripts per gene (highest abundance first");
@@ -130,7 +131,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 
 		addString("resdir", "results"+System.currentTimeMillis(), "results directory");
 		addString("GFF_features", "gene_name:description:gene_id:gene_biotype:gene_id", "GFF feature names");
-		addBoolean("RNA", false, "If is direct RNA");
+		addString("RNA", "name", "If is direct RNA.  Can be tab delimmited boolean, e.g. true:true  or if set to name it will look for RNA string in name");
 		addBoolean("recordDepthByPosition", false, "whether to store position specific depth (high memory");
 		addString("annotToRemoveFromGFF",null, "annotation to remove from GFF , BED and ref files");
 		addInt("maxReads", Integer.MAX_VALUE, "ORF annotation file");
@@ -223,7 +224,23 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		Outputs.library = new File(cmdLine.getStringVal("library"));
 		Outputs.gffThreshTranscript = Integer.parseInt(gffThresh_[1]);
 		Outputs.maxTranscriptsPerGeneInGFF = cmdLine.getIntVal("maxTranscriptsPerGeneInGFF");
-		Annotation.enforceStrand = cmdLine.getBooleanVal("RNA");
+		Annotation.enforceStrand = cmdLine.getBooleanVal("enforceStrand");
+		
+		String[] RNAstr = 		cmdLine.getStringVal("RNA").split(":");
+		boolean[] RNA = new boolean[bamFiles.length];
+		if(RNAstr!=null){
+			if(RNAstr.length==1){
+				if(RNAstr[0].equals("name")) {
+					for(int i=0; i<bamFiles.length; i++){
+						RNA[i] = bamFiles[i].indexOf("RNA")>0;
+					}
+				}
+				else Arrays.fill(RNA, Boolean.parseBoolean(RNAstr[0]) );
+			}
+			else for(int i=0; i<RNAstr.length; i++) RNA[i] = Boolean.parseBoolean(RNAstr[i]);
+		}else{
+			Arrays.fill(RNA, false);
+		}
 	//	Outputs.executor=  
 	//			cmdLine.getIntVal("max_threadsIO")==1 ? 
 	//			Executors.newSingleThreadExecutor():  Executors.newFixedThreadPool(cmdLine.getIntVal("maxThreads"));
@@ -335,11 +352,11 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			calcBreaks = false;
 			mm2_splicing = "-uf";
 		}
-			errorAnalysis(bamFiles, reference, annotFile,readList,annotationType, 
+			errorAnalysis(bamFiles, RNA,reference, annotFile,readList,annotationType, 
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  
 				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, chrsToIgnore,  isoformDepthThresh, coverageDepthThresh, probInclude, fastq, chromsToRemap==null ? null: chromsToRemap.split(":"));
 	}
- static boolean sorted = true;
+ public static boolean sorted = true;
  static double tme0;
 	public static void main(String[] args1) throws IOException, InterruptedException {
 		tme0 = System.currentTimeMillis();
@@ -425,10 +442,12 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 //public static boolean combineOutput = false;
 	public static double fail_thresh = 7.0;
 	public static double fail_thresh1 = 14.0;
+	
+	
 	/**
 	 * Error analysis of a bam file. Assume it has been sorted
 	 */
-	static void errorAnalysis(String[] bamFiles_, String refFile, String annot_file, String[] readList,    String annotationType, String resdir, String pattern, int qual, int round, 
+	static void errorAnalysis(String[] bamFiles_,boolean[] RNA, String refFile, String annot_file, String[] readList,    String annotationType, String resdir, String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads, 
 			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,File gffFile, String chrToInclude, String chrToIgnore, 
 			int[] writeIsoformDepthThresh, int writeCoverageDepthThresh, double probInclude, boolean fastq, String[] chromsToRemap) throws IOException {
@@ -436,6 +455,13 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		CigarHash2.round = round;
 		Annotation.tolerance = round;
 		
+		 Integer[] basesStart = new Integer[] {0,0,0,0};
+		 Integer[] basesEnd  = new Integer[] {0,0,0,0};
+		 int leng = 10; int thresh_A = 4;int thresh_T = 5; // how many As or Ts required for determination of strand
+		 String chars_forward = "ACGT";
+		 String chars_reverse = "TGCA";
+		 
+		 Integer[] counts = new Integer[] {0,0,0};
 		IdentityProfile1.annotByBreakPosition = annotByBreakPosition;
 		CigarHash.cluster_by_annotation =true;// cluster_by_annotation;
 		TranscriptUtils.startThresh = startThresh;
@@ -445,10 +471,6 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		File annotSummary = new File(resdir, "annotation.csv.gz");
 		if(annotSummary.exists()) annotSummary.delete();
 		PrintWriter annotation_pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(annotSummary, false))));
-	
-		
-		
-		
 		Map<String, Integer> reads= new HashMap<String, Integer>();
 		if(readList.length>0 && readList[0].length()>0){
 			 Map<String, Collection<String>> map = new HashMap<String, Collection<String>>();
@@ -656,6 +678,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				if(chromsToInclude!=null && !chromsToInclude.containsKey(sam.getReferenceName())
 						&& (chromToRemap !=null && !chromToRemap.contains(sam.getReferenceName())
 						)){
+					System.err.println("do not have appropriate reference"+sam.getReferenceName());
 					continue;
 				}
 				int poolID = -1;
@@ -685,7 +708,91 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			//	System.err.println(source_index);
 				if (pattern != null && (!sam.getReadName().contains(pattern)))
 					continue;
-				Sequence readSeq = new Sequence(Alphabet.DNA(), sam.getReadString(), sam.getReadName());
+				
+				
+				String sa  = sam.getReadString();
+				boolean negFlag = sam.getReadNegativeStrandFlag();
+				Arrays.fill(basesStart,0);
+				Arrays.fill(basesEnd,0);
+				
+				if(sam.getReadNegativeStrandFlag()){
+					TranscriptUtils.flip(sam, false); // switch read but keep flag. This corrects minimaps correction when it maps
+				}
+				//now the read has been corrected back to what is in the fastq but flag remains same
+				boolean flip = false;
+				if(RNA[source_index]  ){
+					flip=false;
+			//		flip = sam.getReadNegativeStrandFlag(); // if its direct RNA, only flip if its been flipped by minimap
+				}
+				else if(Annotation.enforceStrand){
+					// so assume its cDNA
+					//{A,C,G,T}
+				//	int t_base =  3;
+				//	int a_base =  0;
+					
+					//counts bases accounting for negFlag
+					
+					TranscriptUtils.count(sa, true, basesStart, leng,chars_forward);
+					TranscriptUtils.count(sa, false, basesEnd, 	leng, chars_forward);
+						
+					char  lastchar = //negFlag ?  SequenceUtil.reverseComplement(sa.substring(0,1)).charAt(0) : 
+							sa.charAt(sa.length()-1);
+					char firstchar =//ViralTranscriptAnalysisCmd2. negFlag ?  SequenceUtil.reverseComplement(sa.substring(sa.length()-1)).charAt(0) : 
+						sa.charAt(0);
+						//CTTTTTCTGT	TAGTAAAGAG  - positive example
+						//GATGAACGGG	TTGTCTTTTC - negative example
+						if(basesStart[3] > basesEnd[3] && basesStart[0] < basesEnd[0]   && (basesEnd[0]>=thresh_A 
+								|| (basesEnd[0]>=(thresh_A-1) && lastchar=='G'))){
+							// read is from positive, so only flip back if minimap has flipped
+							// more T in start than end  and less A in start vs end and at least thresh_A A at end
+							// genuine  + strand so dont flip
+							//readPositive = true;
+							flip = false;// negFlag;
+						}else if(basesStart[3] < basesEnd[3] && basesStart[0] > basesEnd[0] &&
+								(basesEnd[3] >=thresh_T || (basesEnd[3]>=(thresh_T-1) && firstchar=='C' )) ){
+							// less T in start than end  and more A in start vs end and at least thresh T at end
+							//readPositive = false;
+							
+							// read is from negative, so flip (unless minimap already flipped)
+							flip = true;//!negFlag;
+						}else{
+							counts[2]=counts[2]+1;
+							    System.err.println("excluding read : cannot detect strand "+Arrays.asList(counts));
+							    System.err.println(Arrays.asList(basesStart));
+							    System.err.println(Arrays.asList(basesEnd));
+							//	String sequence = negFlag ? SequenceUtil.reverseComplement(sa) : sa;
+								System.err.println(sa.substring(0,10));
+								System.err.println(sa.substring(sa.length()-10));
+							
+							continue;
+						}
+					
+					//}
+				}
+				
+				if(flip){
+					// this time we adjust flag too
+					//negFlag = !negFlag;
+					
+				//	System.err.println("flipping "+negFlag);
+					TranscriptUtils.flip(sam, true);
+					negFlag = sam.getReadNegativeStrandFlag();
+					//sam.setReadNegativeStrandFlag(negFlag);
+				}
+				if(negFlag){
+					
+					counts[1] = counts[1] +1;
+					// System.err.println(Arrays.asList(basesStart));
+					 //   System.err.println(Arrays.asList(basesEnd));
+					//	String sequence =  sa;
+					//	System.err.println(sequence.substring(0,10));
+					//	System.err.println(sequence.substring(sequence.length()-10));
+					//	System.err.println(" neg strand read "+Arrays.asList(counts)+" "+flip);
+				}else{
+					counts[0] = counts[0]+1;
+							
+				}
+				Sequence readSeq = new Sequence(Alphabet.DNA(), sa, sam.getReadName());
 				//String poolID = readSeq.get
 				if (readSeq.length() <= 1) {
 					//LOG.warn(sam.getReadName() +" ignored");
@@ -701,7 +808,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				}
 				
 
-				int flag = sam.getFlags();
+				//int flag = sam.getFlags();
 
 				if (sam.getMappingQuality() < qual) {
 					numNotAligned++;
@@ -711,6 +818,9 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					//randomly exclude
 					continue;
 				}
+				
+				
+				
 				
 				// int refPos = sam.getAlignmentStart() - 1;//convert to 0-based index
 				String refname = sam.getReferenceName();
@@ -833,6 +943,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 						
 						String pool = readList==null || readList.length==0 ||  poolID<0 ? null : (readList[poolID]+pool_sep);
 						if(ViralTranscriptAnalysisCmd2.limit_to_read_list) pool = null;
+						
 						profile.identity1(readSeq, sam, source_index, cluster_reads,  pool, q1);
 					}catch(NumberFormatException exc){
 						System.err.println(readSeq.getName());

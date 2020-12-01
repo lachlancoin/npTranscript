@@ -142,7 +142,7 @@ public SparseRealMatrix calculateScores(int k, int[] left, int[] right, Sequence
 							o.printMatrix(scores33,breakSt[i][j], breakEnd[i][j],  chrom_index, i, j, "scores33/");
 							o.printMatrix(scores53,breakSt[i][j], breakEnd[i][j],  chrom_index, i, j, "scores53/");
 							o.printMatrix(scores35,breakSt[i][j], breakEnd[i][j],  chrom_index, i, j, "scores35/");
-							o.printMatrix(scores35,breakSt[i][j], breakEnd[i][j],  chrom_index, i, j, "scoresMid/");
+							o.printMatrix(scoresMid,breakSt[i][j], breakEnd[i][j],  chrom_index, i, j, "scoresMid/");
 
 
 						}catch(IOException exc){

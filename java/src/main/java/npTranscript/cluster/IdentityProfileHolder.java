@@ -2,6 +2,7 @@ package npTranscript.cluster;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.Stack;
@@ -12,6 +13,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 
 import htsjdk.samtools.SAMRecord;
 import japsa.seq.Sequence;
+import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 public class IdentityProfileHolder {
 	
@@ -73,6 +75,8 @@ public class IdentityProfileHolder {
  public IdentityProfileHolder(ArrayList<Sequence> genomes, Sequence refSeq,Outputs o, String[] in_nmes,  boolean calcBreakpoints, int chrom_index, Annotation annot)
 		 throws IOException {
 	 this.genome=refSeq;
+	 Arrays.fill(basesStart,0);
+	 Arrays.fill(basesEnd,0);
 	this.chrom_ =genome.getName();
 	this.chrom_index = chrom_index;
 	this.type_nmes = in_nmes;
@@ -130,18 +134,25 @@ public class IdentityProfileHolder {
 		Integer v = currentStart.get(startPos);
 		currentStart.put(startPos, v==null ? 1 : v+1);
 	}
+	final Integer[] basesStart = new Integer[4];final Integer[] basesEnd = new Integer[4];
+	final Integer[] readCounts = new Integer[] {0,0,0};
 	public void identity1(Sequence readSeq, SAMRecord sam,
 			int source_index, boolean cluster_reads,  String pool, double qval) {
 		// TODO Auto-generated method stub
 		final int start = sam.getStart();
 		addStart(start);
-		if(this.all_clusters.l.size()> clearUpThreshold){
+		if(ViralTranscriptAnalysisCmd2.sorted && this.all_clusters.l.size()> clearUpThreshold){ 
 		 this.all_clusters.clearUpTo(currentStart.firstKey() -cleanUpMoreThan , o, genome, chrom_index);
 		}
+		//Boolean backwardStrand =null;
+		
 		Runnable run = new Runnable(){
 			public void run(){
 				final IdentityProfile1 profile = get();
 				if(profile.coRefPositions.breaks.size()>0) throw new RuntimeException("this is not clear");
+				
+				
+				
 				profile.identity1(genome, chr5prime,chr3prime, readSeq, sam, source_index, cluster_reads,  pool, qval);
 				replace(profile);
 				removeStart(start);

@@ -7,13 +7,13 @@ import java.util.List;
 import java.util.SortedSet;
 import java.util.Stack;
 import java.util.TreeSet;
-import java.util.concurrent.ExecutorService;
 
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMRecord;
 import japsa.bio.np.barcode.SWGAlignment;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
+import npTranscript.run.ViralChimericReadsAnalysisCmd;
 import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 /**
@@ -23,7 +23,7 @@ import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 
 public class IdentityProfile1 {
-	
+	static boolean appendSeqStartEnd = false;
 //	public static  ExecutorService executor ;
 	/*final String[] type_nmes; 
 	public  Sequence ref;
@@ -118,6 +118,7 @@ static char delim1 = ',';
 	
 	public String[] clusterID = new String[2];
 	public String processRefPositions(SAMRecord sam, String id, boolean cluster_reads, Sequence refSeq, int src_index , Sequence readSeq, String baseQ, 
+			byte[] phredQ,
 			int start_read, int end_read, char strand, SWGAlignment align5prime, SWGAlignment align3prime,
 			SWGAlignment align3primeRev,
 			int offset_3prime, int polyAlen, String pool, double q_value
@@ -238,7 +239,7 @@ static char delim1 = ',';
 				}
 			}
 		}
-		secondKey.append(annot.nextDownstream(breaks.get(breaks.size()-1), chrom_index, forward));
+		secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), chrom_index, forward));
 		
 		if(Annotation.enforceStrand){
 			secondKey.append(forward ? '+' : '-');
@@ -269,19 +270,23 @@ static char delim1 = ',';
 		clusterID[0] = chrom_+".NA";
 		clusterID[1] = "NA";
 		}
-	
+		int len1 = readSeq.length();
 		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"+start_read+"\t"+end_read+"\t"
 		+type_nme+"\t"+chrom_+"\t"
 		+startPos+"\t"+endPos+"\t"+(forward? "+":"-")+"\t"+coRefPositions.numIsoforms()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
 		+coRefPositions.getError(src_index)+"\t"+secondKeySt+"\t"+strand+"\t"+breakSt+"\t"+span_str+"\t"+geneNames.size()+"\t"+String.format("%5.3g", q_value).trim();
+		if(appendSeqStartEnd) str = str+"\t"+readSeq.subSequence(0, 10)+"\t"+readSeq.subSequence(len1-10, len1)
+				+"\t"+toString(phredQ,0,10)+"\t"+toString(phredQ,len1-10,len1)
+				+"\t"+ViralChimericReadsAnalysisCmd.median(phredQ,0,10)+"\t"+ViralChimericReadsAnalysisCmd.median(phredQ,len1-10,10);
 		parent.o.printRead(str);
 		int num_exons =(int) Math.floor( (double)  coRefPositions.breaks.size()/2.0);
 
 		boolean writeMSA = Outputs.doMSA!=null && Outputs.msa_sources !=null && includeInConsensus  && Outputs.msa_sources.containsKey(source_index);
 		if(includeInConsensus && TranscriptUtils.coronavirus){
-			int st1 = startPos; //position>0 ? position : startPos; // start after break
+			//int st1 = startPos; //position>0 ? position : startPos; // start after break
+			int st1 = breaks.get(breaks.size()-2); // start of last segment
 			inner: for(int i=annot.start.size()-1; i>=0; i--){
-				if(st1 -10> annot.start.get(i)) break inner;
+				if( annot.start.get(i)<st1-10) break inner;
 				if(endPos > annot.start.get(i)+100){
 					annot.addCount(i,src_index, startPos<=TranscriptUtils.startThresh);
 				}else{
@@ -334,6 +339,17 @@ static char delim1 = ',';
 	}
 	
 	
+
+	private String toString(byte[] phredQ, int i, int len1) {
+		StringBuffer sb = new StringBuffer();
+		for(int j=i; j<len1; j++){
+			if(j>i)sb.append(",");
+			sb.append((int) phredQ[j]);;
+		}
+		return sb.toString();
+	}
+
+
 
 	private static String getString(Integer[] seq12) {
 		return CigarHash2.getString(Arrays.asList(seq12));
@@ -546,7 +562,7 @@ static char delim1 = ',';
 				leftseq = readSeq.subSequence(0,st_r);
 				try{
 				SWGAlignment polyAlign =  SWGAlignment.align(leftseq, polyA);
-				if(polyAlign.getIdentity() > 0.9 * polyAlign.getLength()  && polyAlign.getLength()>15){
+				if(polyAlign.getIdentity() > 0.9 * polyAlign.getLength()  && polyAlign.getLength()>15){ // at least 15 A wih
 					int st = polyAlign.getStart1();
 					int end = st + polyAlign.getLength() - polyAlign.getGaps1();
 					if(st> 10){
@@ -588,7 +604,7 @@ static char delim1 = ',';
 			}
 			 
 			String secondKey= profile.processRefPositions(sam, id, cluster_reads, 
-					refSeq, source_index, readSeq,baseQ, st_r, end_r, strand, align_5prime, align_3prime,align_3primeRev, offset_3prime, polyAlen, poolID, qval);
+					refSeq, source_index, readSeq,baseQ, phredQs, st_r, end_r, strand, align_5prime, align_3prime,align_3primeRev, offset_3prime, polyAlen, poolID, qval);
 			//String ID = profile.clusterID
 			diff_r = readSeq.length() - profile.readEn;
 			seq11[0]=  profile.readSt; seq11[1] = profile.readEn; 
@@ -604,14 +620,14 @@ static char delim1 = ',';
 				//if(leftseq==null) leftseq = readSeq.subSequence(0, st_r);
 				String baseQL = baseQ.equals("*") ?  baseQ : baseQ.substring(0, st_r);
 
-				if(sam.getReadNegativeStrandFlag()) {
+				/*if(sam.getReadNegativeStrandFlag()) {
 					leftseq =TranscriptUtils.revCompl(leftseq); 
 					leftseq.setDesc(leftseq.getDesc()+" rev "+chrom);		
 					baseQL = (new StringBuilder(baseQ)).reverse().toString();
 				}
 				else{
 					leftseq.setDesc(leftseq.getDesc()+" fwd "+chrom);		
-				}
+				}*/
 			
 				leftseq.setName(readSeq.getName());
 				StringBuffer desc = new StringBuffer();
