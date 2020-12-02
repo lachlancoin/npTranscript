@@ -22,8 +22,8 @@ shinyServer(function(input, output,session) {
 	source( "transcript_functions.R")
 	source("shiny-DE.R")
   basedir="../data"
-  toreplace1 = c("leader_ORF1ab,S_ORF1ab,ORF10_end","leader_leader,S_ORF1ab,ORF10_end","leader,S_ORF1ab,3UTR_end")
-  toreplace2= c("leader_ORF1ab,ORF1ab_ORF1ab,ORF10_end","leader_leader,ORF1ab_ORF1ab,ORF10_end","leader,ORF1ab,3UTR_end")
+  toreplace1 = c("leader_ORF1ab,S_ORF1ab,ORF10_3UTR","leader_leader,S_ORF1ab,ORF10_3UTR","leader,S_ORF1ab,3UTR")
+  toreplace2= c("leader_ORF1ab,ORF1ab_ORF1ab,ORF10_3UTR","leader_leader,ORF1ab_ORF1ab,ORF10_3UTR","leader,ORF1ab,3UTR")
   decodeFile = paste(basedir,"decode.txt",sep='/')
   replace=read.table(decodeFile,sep="\t",head=F)
   toreplace = replace[,2]
