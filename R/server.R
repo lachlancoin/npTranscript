@@ -23,7 +23,7 @@ shinyServer(function(input, output,session) {
 	source("shiny-DE.R")
   basedir="../data"
   toreplace1 = c("leader_ORF1ab,S_ORF1ab,ORF10_3UTR","leader_leader,S_ORF1ab,ORF10_3UTR","leader,S_ORF1ab,3UTR")
-  toreplace2= c("leader_ORF1ab,ORF1ab_ORF1ab,ORF10_3UTR","leader_leader,ORF1ab_ORF1ab,ORF10_3UTR","leader,ORF1ab,3UTR")
+  toreplace2= c("leader_ORF1ab,ORF1ab_ORF1ab,ORF10_3UTR","leader_leader,ORF1ab_ORF1ab,ORF10_3UTR","leader,ORF1ab_ORF1ab,3UTR")
   decodeFile = paste(basedir,"decode.txt",sep='/')
   replace=read.table(decodeFile,sep="\t",head=F)
   toreplace = replace[,2]
@@ -32,7 +32,7 @@ shinyServer(function(input, output,session) {
   
 	readDir <- function(inputdir, update=T, debug=F) {
 	  if(debug ) {
-	    if(is.null(session)) session = list()
+	    session = list()
 	    if(is.null(session$userData)) session$userData = list()
 	  }
 	  h5closeAll()
@@ -189,7 +189,7 @@ shinyServer(function(input, output,session) {
       updateCheckboxGroupInput(session,"options3", label = "Bottom panel", choices = defs$options3, selected=defs$totick3) 
     }else{
       session$input = list(facet="off",facet1="off",textsize=20,angle=20, min_x = 0, max_x = 29865,
-                           group_by = "No grouping",maxtrans=10,
+                           group_by = "No grouping",maxtrans=10,tojoin="OR",
                            loess=0, waterfallKmer=3, waterfallOffset=0,maxKmers=20, alpha=0.5, depth_thresh =1000)
       session$input$options2 = defs$totick2
       session$input$options3 = defs$totick3
@@ -199,7 +199,9 @@ shinyServer(function(input, output,session) {
       session$input$cells = info$cells
       session$input$times = info$times
       session$input$orfs = orfs
-      session$input$toplot5 = info$choices1[[1]]
+      session$input$toplot5 = "-" 
+      session$input$toplot5="-" 
+      session$input$toplot7="5_3" 
     }
     if(debug){
       invisible(session)

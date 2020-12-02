@@ -131,7 +131,10 @@ unlist(v)
       transform(count=as.numeric(count),ID=factor(ID, levels=toplot),sample = factor(sample, levels =levels)) -> tpm_df
     
   } #attr(tpm_df,"total_reads") = total_reads
+  print("toreplace1")
+  print(toreplace1)
   if(length(toreplace1)>0){
+    
         tpm_df$ID= factor(.fix(as.character(tpm_df$ID),toreplace1,toreplace2), levels = .fix(toplot,toreplace1,toreplace2))
   }
   tpm_df
@@ -139,7 +142,7 @@ unlist(v)
 
   .fix<-function(v ,nme,toreplace){
    for(i in 1:length(toreplace)){
-    v[v== nme[i]] = toreplace[[i]]
+     v = gsub(nme[i],toreplace[i],v)
    }
     .inner<-function(x){
       paste(unique(strsplit(x,"_")[[1]]),collapse="_")
@@ -147,6 +150,7 @@ unlist(v)
     }
    v2 =  lapply(v,function(x) strsplit(x,",")[[1]])
    for(i in 1:length(v2))v2[[i]] =paste( unlist(lapply(v2[[i]], .inner)),collapse=",")
+   
    unlist(v2)
  }
  
