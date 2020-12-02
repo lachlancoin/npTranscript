@@ -91,7 +91,7 @@ unlist(v)
 }
 
 
-.readTPM<-function(datafile){
+.readTPM<-function(datafile, toreplace1 = c(), toreplace2 = c()){
   transcripts <- .readTranscripts(datafile)
   experiments <- attr(transcripts, 'info')
   experiments
@@ -101,11 +101,11 @@ unlist(v)
   #if(!is.null(method)){}
    tpm= transcripts[,count_idx]
   
-  .processTPM(tpm, experiments, transcripts$ORFs)
+  .processTPM(tpm, experiments, transcripts$ORFs, toreplace1 = toreplace1, toreplace2 = toreplace2)
 }
  .processTPM<-function(mat, experiments, ID,levels =NULL,split=T,
-                       toreplace1 = c("leader_ORF1ab,S_ORF1ab,ORF10_end","leader_leader,S_ORF1ab,ORF10_end"),
-                       toreplace2= c("leader_ORF1ab,ORF1ab_ORF1ab,ORF10_end","leader_leader,ORF1ab_ORF1ab,ORF10_end")
+                       toreplace1 = c(),
+                       toreplace2= c()
                        ){ 
    toplot=ID
    inds = if(is.null(levels)) 1:dim(mat)[2] else which(experiments %in% levels)
@@ -2765,6 +2765,8 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
   
   tpm_df = melt(clusters_,id.vars=c("clusterID","pos"), measure.vars=names(clusters_)[-(1:2)], variable.name="sampleID",value.name='count') %>%
     transform(sampleID=factor(sampleID,levels=levs))
+ # print("toreplace1")
+#  print(toreplace1)
   
   tpm_df$clusterID= factor(.fix(as.character(tpm_df$clusterID),toreplace1,toreplace2))
   
@@ -2854,7 +2856,7 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
   cis
 }
 
-.extractTPM<-function(datafile ,  total_reads,countsTotal, p_data){
+.extractTPM<-function(datafile ,  total_reads,countsTotal, p_data,toreplace1 = c(), toreplace2 = c()){
   tr = NULL  
   xy = p_data$xy
   usegrep=p_data$usegrep
@@ -2917,7 +2919,7 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
         levs1=.getlevels(header,molecules, cells, times[i], reverseOrder)
         
       }
-      subs[[i]] =.processTPM(mat, header, toplot, levels=levs1,split=T)
+      subs[[i]] =.processTPM(mat, header, toplot, levels=levs1,split=T, toreplace1 = toreplace1, toreplace2 = toreplace2)
       # print(head(subs[[i]]))
       # subs[[i]]$sample=sub(molecules[i],"",subs[[i]]$sample)
     }
@@ -2931,10 +2933,10 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
     sample=apply(subs[,2:3,drop=F],1,paste,collapse="_")
   } else if(p_data$barchart){
     levs1=.getlevels(header,molecules, cells, times, reverseOrder)
-    subs =.processTPM(mat, header, toplot, levels=levs1,split=F)
+    subs =.processTPM(mat, header, toplot, levels=levs1,split=F, toreplace1 = toreplace1, toreplace2 = toreplace2)
     sample = subs$sample
   }else{
-    tpm_df= .processTPM(mat, header, toplot,split=T)
+    tpm_df= .processTPM(mat, header, toplot,split=T, toreplace1 = toreplace1, toreplace2 = toreplace2)
     subs=subset(tpm_df, molecule_type %in% molecules & cell %in% cells & time %in% times)
     sample=apply(subs[,2:4,drop=F],1,paste,collapse="_")
   }

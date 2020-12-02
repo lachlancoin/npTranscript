@@ -514,7 +514,7 @@ p_plot = list()
       subs = results_$data
       countsHostVirus1 = results_$totals
     }else{
-      subs = .extractTPM(datafile ,  total_reads,countsTotal, p_data)
+      subs = .extractTPM(datafile ,  total_reads,countsTotal, p_data, toreplace1 = toreplace1, toreplace2 = toreplace2)
       countsHostVirus1 = NULL
       if(!is.null(countsHostVirus)){
        # countsHostVirus = countsHostVirus[countsHostVirus$ID!="Total",]
