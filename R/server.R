@@ -406,7 +406,7 @@ shinyServer(function(input, output,session) {
                     showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type,
                      alpha=alpha,plotCorr=plotCorr,linesize=linesize, reverseOrder=reverseOrder,
                     textsize=textsize, calcErrors=showErrors,fisher=fisher,
-                    ci = ci, depth_thresh = depth_thresh,
+                    ci = ci, depth_thresh = depth_thresh,toreplace=toreplace,toreplace1 = toreplace1, toreplace2 = toreplace2,
                     showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers
                     )
             # print(head(tpm_df))

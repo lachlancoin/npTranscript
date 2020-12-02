@@ -2691,7 +2691,7 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
                     gapthresh=100, mergeGroups=NULL,downsample = F, molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
                     span = 0.01, sumAll=F, xlim=NULL, motifpos=list(),peptides=NULL, alpha=1.0,t= NULL,logy=T,
                     showORFs = F,showWaterfall=FALSE,waterfallKmer=3,waterfallOffset=0,top10=10,textsize=20,
-                    ci = 0.995, depth_thresh = 1000,
+                    ci = 0.995, depth_thresh = 1000,toreplace=list(),toreplace1= list(), toreplace2 = list(), 
                     path="depth",seq_df = NULL, plotCorr=F, linesize=0.1, reverseOrder=F, calcErrors=F, fisher =F){
   if(path!="depth") calcErrors = FALSE
   header =.getHeaderH5(h5file,toreplace)
