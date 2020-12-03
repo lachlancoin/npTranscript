@@ -460,6 +460,7 @@ shinyServer(function(input, output,session) {
     p_data$max_trans = input$maxtrans
     p_data$conf.int=input$conf.int
     p_data$method="logit";
+    useReadCount  = p_data$useReadCount;
     p_data$toplot = c(isolate(unique(input$toplot5)))#,isolate(input$toplot6))#,isolate(input$toplot7),isolate(input$toplot8))
     p_data$toplot = p_data$toplot[p_data$toplot!="-"]
     p_data$usegrep=F
@@ -504,7 +505,7 @@ shinyServer(function(input, output,session) {
       subs = .extractTPM(datafile ,  total_reads,countsTotal, p_data, toreplace1 = toreplace1, toreplace2 = toreplace2)
       
       if(!is.null(counts_file)){
-        useReadCount  = p_data$useReadCount;
+       
         countsHostVirus = .readCountsHostVirus(counts_file,useReadCount)
         
         countsHostVirus = countsHostVirus[countsHostVirus$ID!="Total",]
@@ -527,6 +528,7 @@ shinyServer(function(input, output,session) {
     }
       print("plot tpm")
     #  print(head(subs))
+      print(paste("sec_axis",sec_axis_name))
     ggp=.plotTPMData(subs,countsHostVirus1, p_data,p_plot,yname, sec_axis_name=sec_axis_name)
     session$userData$tpm_plot = ggp
     ggp
