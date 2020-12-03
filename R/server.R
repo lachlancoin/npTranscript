@@ -78,6 +78,7 @@ shinyServer(function(input, output,session) {
     }
    counts_file = paste(currdir, "Counts_genome1.csv",sep="/")
    
+  
    defs = list(
      options1=c("showInfectivity" , "showCI" ,"barchart", "reverseOrder"),
      totick1 = c("showCI" ,"barchart","showInfectivity"),
@@ -90,10 +91,10 @@ shinyServer(function(input, output,session) {
    
    
    if(file.exists(counts_file)){
-     defs$options2 = c("showTranscriptPlot","logy","showCI", "TPM_amongst_all" ,"TPM_amongst_viral","barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder","useReadCount")
+      defs$options2 = c("showTranscriptPlot","logy","showCI", "TPM_amongst_all" ,"TPM_amongst_viral","barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder","useReadCount")
       session$userData$counts_file=counts_file
-     
-     
+      countsHostVirus = .readCountsHostVirus(counts_file,F)
+      session$userData$countsTotal = countsHostVirus[countsHostVirus$ID=="Total",]
    }
      
     coords_file = paste(currdir, "Coordinates.csv",sep="/")
@@ -497,12 +498,15 @@ shinyServer(function(input, output,session) {
       subs = results_$data
       countsHostVirus1 = results_$totals
     }else{
-      countsTotal = NULL
+      
+      countsTotal = session$userData$countsTotal
       countsHostVirus1 = NULL
+      subs = .extractTPM(datafile ,  total_reads,countsTotal, p_data, toreplace1 = toreplace1, toreplace2 = toreplace2)
+      
       if(!is.null(counts_file)){
         useReadCount  = p_data$useReadCount;
         countsHostVirus = .readCountsHostVirus(counts_file,useReadCount)
-        countsTotal = countsHostVirus[countsHostVirus$ID=="Total",]
+        
         countsHostVirus = countsHostVirus[countsHostVirus$ID!="Total",]
         countsHostVirus1 = countsHostVirus[which(countsHostVirus$sample %in% subs$sample),,drop=F]
         names(countsHostVirus1)[2]="Type"
@@ -514,7 +518,6 @@ shinyServer(function(input, output,session) {
           sec_axis_name="Read count"
         }
       }
-      subs = .extractTPM(datafile ,  total_reads,countsTotal, p_data, toreplace1 = toreplace1, toreplace2 = toreplace2)
       
     }
     session$userData$results = list(data=subs, totals=countsHostVirus1);
