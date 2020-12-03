@@ -514,10 +514,7 @@ shinyServer(function(input, output,session) {
         names(countsHostVirus1)[3]="Reads"
         molecule_type = factor(unlist(lapply(as.character(countsHostVirus1$sample), function(x) strsplit(x,"_")[[1]][1])))
         countsHostVirus1 = .expand(countsHostVirus1,"sample")
-        if(useReadCount){
-          countsHostVirus1 = countsHostVirus1[countsHostVirus1$Type=="Virus",]
-         
-        }
+        
       }
       
     }
@@ -534,7 +531,7 @@ shinyServer(function(input, output,session) {
       }else{
         sec_axis_name = "Proportion (%) "
       }
-    ggp=.plotTPMData(subs,countsHostVirus1, p_data,p_plot,yname, sec_axis_name=sec_axis_name)
+    ggp=.plotTPMData(subs,countsHostVirus1, p_data,p_plot,yname, sec_axis_name=sec_axis_name, normaliseToVirus=useReadCount)
     session$userData$tpm_plot = ggp
     ggp
   }

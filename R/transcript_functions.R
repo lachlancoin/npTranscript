@@ -2990,7 +2990,7 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
   ggp
 }
 
-.plotTPMData<-function(subs,countsHostVirus1,p_data, p_plot,yname,sec_axis_name="Proportion (%)"){
+.plotTPMData<-function(subs,countsHostVirus1,p_data, p_plot,yname,sec_axis_name="Proportion (%)",normaliseToVirus=F){
   xy = p_data$xy
   logy=p_plot$logy
   facet = p_plot$facet
@@ -3046,7 +3046,12 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
     # print(ylim)
     if(!is.null(countsHostVirus1) && p_data$stack ){
       countsHostVirus = countsHostVirus1
-      scaling_factor = max(countsHostVirus1$Reads,na.rm=T)/ylim[2]
+      if(normaliseToVirus){
+         indsk = countsHostVirus1$Type=="Virus"
+      }else{
+        indsk = 1:length(countsHostVirus1$Type)
+      }
+      scaling_factor = max(countsHostVirus1$Reads[indsk],na.rm=T)/ylim[2]
       countsHostVirus[3] = countsHostVirus[3] /scaling_factor
       types=c("Host","Virus","Sequin")
       linetype=c("dashed","twodash","solid")
