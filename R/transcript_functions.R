@@ -3102,6 +3102,31 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
   
   
 }
+.readCountsHostVirus<-function(counts_file,useReadCount){
+  countsHostVirus= read.csv(counts_file)
+  names(countsHostVirus) =  gsub("X.","",names(countsHostVirus))
+  
+  sample= apply(countsHostVirus[,1:3],1,paste,collapse="_")
+  countsHostVirus=cbind(sample,countsHostVirus)
+  inds_a = grep("Map.to", names(countsHostVirus))
+  if(useReadCount)  inds_a =  which(names(countsHostVirus) %in% c('Host',"Virus","Sequin"))
+  sum_inds = names(countsHostVirus) %in% c("Host","Virus","Sequin","Total")
+  torem = c()
+  v1 = sample
+  dupl = lapply(unique(v1[duplicated(v1)]), function(x)which(v1 ==x))
+  for(j in dupl){
+    summed = apply(countsHostVirus[j,sum_inds,drop=F],2,sum)
+    countsHostVirus[j[1], sum_inds] = summed
+    torem = c(torem, j[-1])
+  }   
+  countsHostVirus = countsHostVirus[-torem,]
+  vars = c(names(countsHostVirus[inds_a]), "Total")
+  countsHostVirus=
+    melt(countsHostVirus,id.vars=c("sample"),
+         measure.vars=which(names(countsHostVirus) %in% vars), variable.name="ID", value.name="count") %>%
+    transform(sample=factor(sample), ID=factor(ID))
+  countsHostVirus
+}
 
 .process1<-function(plottype1,info){
   choices1 = info$choices1

@@ -29,7 +29,6 @@ shinyServer(function(input, output,session) {
   toreplace = replace[,2]
   names(toreplace) = replace[,1]
   reorder=T
-  useReadCount=T
   
 	readDir <- function(inputdir, update=T, debug=F) {
 	  if(debug ) {
@@ -91,32 +90,9 @@ shinyServer(function(input, output,session) {
    
    
    if(file.exists(counts_file)){
-     countsHostVirus= read.csv(counts_file)
-     defs$options2 = c("showTranscriptPlot","logy","showCI", "TPM_amongst_all" ,"TPM_amongst_viral","barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder")
-     names(countsHostVirus) =  gsub("X.","",names(countsHostVirus))
-    
-     sample= apply(countsHostVirus[,1:3],1,paste,collapse="_")
-     countsHostVirus=cbind(sample,countsHostVirus)
-     inds_a = grep("Map.to", names(countsHostVirus))
-     if(useReadCount)  inds_a =  which(names(countsHostVirus) %in% c('Host',"Virus","Sequin"))
-     sum_inds = names(countsHostVirus) %in% c("Host","Virus","Sequin","Total")
-     torem = c()
-     v1 = sample
-     dupl = lapply(unique(v1[duplicated(v1)]), function(x)which(v1 ==x))
-     for(j in dupl){
-       summed = apply(countsHostVirus[j,sum_inds,drop=F],2,sum)
-         countsHostVirus[j[1], sum_inds] = summed
-       torem = c(torem, j[-1])
-     }   
-     countsHostVirus = countsHostVirus[-torem,]
-     vars = c(names(countsHostVirus[inds_a]), "Total")
-     countsHostVirus=
-      melt(countsHostVirus,id.vars=c("sample"),
-                   measure.vars=which(names(countsHostVirus) %in% vars), variable.name="ID", value.name="count") %>%
-       transform(sample=factor(sample), ID=factor(ID))
-     session$userData$countsTotal = countsHostVirus[countsHostVirus$ID=="Total",]
+     defs$options2 = c("showTranscriptPlot","logy","showCI", "TPM_amongst_all" ,"TPM_amongst_viral","barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder","useReadCount")
+      session$userData$counts_file=counts_file
      
-     session$userData$countsHostVirus = countsHostVirus[countsHostVirus$ID!="Total",]
      
    }
      
@@ -448,6 +424,7 @@ shinyServer(function(input, output,session) {
 	
 	p_plot$textsize=input$textsize
   p_data$molecules <-  input$molecules 
+  p_data$useReadCount<- "useReadCount" %in% input$options2
   p_data$cells <- input$cells 
   p_data$times<-input$times
   p_data$splitby="off" #input$splitby
@@ -497,8 +474,9 @@ shinyServer(function(input, output,session) {
     }
     datafile = session$userData$datafile ;
     total_reads = session$userData$total_reads
-    countsTotal = session$userData$countsTotal
-    countsHostVirus= session$userData$countsHostVirus
+    counts_file=session$userData$counts_file
+ 
+   
     prev_params = session$userData$prev_params
     reuseData=F
     if(!is.null(prev_params)){
@@ -519,10 +497,13 @@ shinyServer(function(input, output,session) {
       subs = results_$data
       countsHostVirus1 = results_$totals
     }else{
-      subs = .extractTPM(datafile ,  total_reads,countsTotal, p_data, toreplace1 = toreplace1, toreplace2 = toreplace2)
+      countsTotal = NULL
       countsHostVirus1 = NULL
-      if(!is.null(countsHostVirus)){
-       # countsHostVirus = countsHostVirus[countsHostVirus$ID!="Total",]
+      if(!is.null(counts_file)){
+        useReadCount  = p_data$useReadCount;
+        countsHostVirus = .readCountsHostVirus(counts_file,useReadCount)
+        countsTotal = countsHostVirus[countsHostVirus$ID=="Total",]
+        countsHostVirus = countsHostVirus[countsHostVirus$ID!="Total",]
         countsHostVirus1 = countsHostVirus[which(countsHostVirus$sample %in% subs$sample),,drop=F]
         names(countsHostVirus1)[2]="Type"
         names(countsHostVirus1)[3]="Reads"
@@ -533,6 +514,8 @@ shinyServer(function(input, output,session) {
           sec_axis_name="Read count"
         }
       }
+      subs = .extractTPM(datafile ,  total_reads,countsTotal, p_data, toreplace1 = toreplace1, toreplace2 = toreplace2)
+      
     }
     session$userData$results = list(data=subs, totals=countsHostVirus1);
     yname='TPM'
