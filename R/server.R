@@ -29,6 +29,7 @@ shinyServer(function(input, output,session) {
   toreplace = replace[,2]
   names(toreplace) = replace[,1]
   reorder=T
+  useReadCount=T
   
 	readDir <- function(inputdir, update=T, debug=F) {
 	  if(debug ) {
@@ -97,6 +98,7 @@ shinyServer(function(input, output,session) {
      sample= apply(countsHostVirus[,1:3],1,paste,collapse="_")
      countsHostVirus=cbind(sample,countsHostVirus)
      inds_a = grep("Map.to", names(countsHostVirus))
+     if(useReadCount)  inds_a =  which(names(countsHostVirus) %in% c('Host',"Virus","Sequin"))
      sum_inds = names(countsHostVirus) %in% c("Host","Virus","Sequin","Total")
      torem = c()
      v1 = sample
@@ -191,7 +193,7 @@ shinyServer(function(input, output,session) {
       session$input = list(facet="off",facet1="off",textsize=20,angle=20, min_x = 0, max_x = 29865,
                            group_by = "No grouping",maxtrans=10,tojoin="OR",
                            loess=0, waterfallKmer=3, waterfallOffset=0,maxKmers=20, alpha=0.5, depth_thresh =1000)
-      session$input$options2 = defs$totick2
+      session$input$options2 = c(defs$totick2,"stacked")
       session$input$options3 = defs$totick3
       session$input$options1 = defs$totick1
       session$input$motif=motifText
@@ -441,8 +443,8 @@ shinyServer(function(input, output,session) {
 	            # showTPM=T,merge=F,barchart=T,reverseOrder=T,stack=T,calcTPMFromAll=T,group_by="type",
 	           #  tojoin="OR",usegrep=T,merge_by="",method="logit",conf.int=0.95)
 #	p_plot = list(textsize=20, logy=T, showCI=F,riboon=F,angle=25,facet="none")
-p_data = list()
-p_plot = list()
+  p_data = list()
+  p_plot = list()
 	
 	p_plot$textsize=input$textsize
   p_data$molecules <-  input$molecules 
@@ -510,6 +512,7 @@ p_plot = list()
       }
     }
     session$userData$prev_params = list(p_plot=p_plot, p_data =p_data)
+    sec_axis_name = "Proportion (%)"
     if(reuseData && !is.null(session$userData$results)){
       print("reusing tpm data")
       results_ = session$userData$results
@@ -525,6 +528,10 @@ p_plot = list()
         names(countsHostVirus1)[3]="Reads"
         molecule_type = factor(unlist(lapply(as.character(countsHostVirus1$sample), function(x) strsplit(x,"_")[[1]][1])))
         countsHostVirus1 = .expand(countsHostVirus1,"sample")
+        if(useReadCount){
+          countsHostVirus1 = countsHostVirus1[countsHostVirus1$Type=="Virus",]
+          sec_axis_name="Read count"
+        }
       }
     }
     session$userData$results = list(data=subs, totals=countsHostVirus1);
@@ -534,7 +541,7 @@ p_plot = list()
     }
       print("plot tpm")
     #  print(head(subs))
-    ggp=.plotTPMData(subs,countsHostVirus1, p_data,p_plot,yname)
+    ggp=.plotTPMData(subs,countsHostVirus1, p_data,p_plot,yname, sec_axis_name=sec_axis_name)
     session$userData$tpm_plot = ggp
     ggp
   }
@@ -596,7 +603,11 @@ p_plot = list()
 		
   ##THIS IS FOR DEBUGGING
   if(FALSE){
-    session=readDir("229E_new",update=F,debug=T)
+    inputdir = "SARS-Cov2/VIC01" #"229E_new"
+    session=readDir(inputdir,update=F,debug=T)
+   # session$input$options2
+    session$input$group_by="type"
+    session$input$toplot7="all"
     infectivityPlot(session$input)
     transcriptPlot(session$input)
     depthPlot(session$input, "depth")
