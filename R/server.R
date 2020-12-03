@@ -516,7 +516,7 @@ shinyServer(function(input, output,session) {
         countsHostVirus1 = .expand(countsHostVirus1,"sample")
         if(useReadCount){
           countsHostVirus1 = countsHostVirus1[countsHostVirus1$Type=="Virus",]
-          sec_axis_name="Read count"
+         
         }
       }
       
@@ -529,6 +529,11 @@ shinyServer(function(input, output,session) {
       print("plot tpm")
     #  print(head(subs))
       print(paste("sec_axis",sec_axis_name))
+      if(useReadCount){
+        sec_axis_name="Read count"
+      }else{
+        sec_axis_name = "Proportion (%) "
+      }
     ggp=.plotTPMData(subs,countsHostVirus1, p_data,p_plot,yname, sec_axis_name=sec_axis_name)
     session$userData$tpm_plot = ggp
     ggp
