@@ -3062,7 +3062,7 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
       ggp<-ggp+  scale_color_manual(values = cols_subs)
       ggp<-ggp+ scale_linetype_manual(values = linetype)+scale_shape_manual(values=shape)
       ggp<-ggp+xlab("Conditions")
-      ggp<-ggp+ scale_y_continuous(
+      ggp<-ggp+ scale_y_continuous(limits=ylim,
         name = yname,
         sec.axis = sec_axis(~.*scaling_factor, name=sec_axis_name))
     }
