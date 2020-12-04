@@ -661,6 +661,8 @@ if(is.null(levels)){
 }
 .plotError1<-function(df,  t1, xlim, motifpos,pval_thresh=1e-3, logy=T, pvAsSize=T,ci=0.95, alpha=1.0,zoom=F){
   posy = max(df$upper)
+  li = which(names(df)=="clusterID")
+  if(length(li)==1) names(df)[li[1]] = "type"
  df$type=as.factor(df$type)
  #print(head(subset(df,pval <= pval_thresh & diff>0)))
   ty = levels(df$type)
@@ -674,7 +676,9 @@ if(is.null(levels)){
   if(ci>0.01){
  ggp<-ggp+geom_errorbar(position=position_dodge(width=0.0),colour="black")
   }
-  ggp<-ggp+ggtitle(paste("Error rate by position (",ci*100,"% binomial CI) ",sep=""))
+  ci_str = paste("Error rate by position (",ci*100,"% binomial CI) ",sep="")
+  if(ci==0) "Error rate by position"
+  ggp<-ggp+ggtitle(ci_str)
   ggp<-ggp+ylab("error rate")
   #if(log) ggp<-ggp+scale_y_continuous(trans='log10')
   ggp<-ggp+geom_text_repel(data=subset(df,pval <= pval_thresh & diff>0),
@@ -2703,9 +2707,11 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
                     gapthresh=100, mergeGroups=NULL,downsample = F, molecules="RNA",cells="vero",times=c('2hpi','24hpi','48hpi'), 
                     span = 0.01, sumAll=F, xlim=NULL, motifpos=list(),peptides=NULL, alpha=1.0,t= NULL,logy=T,
                     showORFs = F,showWaterfall=FALSE,waterfallKmer=3,waterfallOffset=0,top10=10,textsize=20,
-                    ci = 0.995, depth_thresh = 1000,toreplace=list(),toreplace1= list(), toreplace2 = list(), 
+                    ci = 0.995, depth_thresh = 1000,toreplace=list(),toreplace1= list(), toreplace2 = list(), zoom=F,
                     path="depth",seq_df = NULL, plotCorr=F, linesize=0.1, reverseOrder=F, calcErrors=F, fisher =F){
+  print(paste(path, calcErrors))
   if(path!="depth") calcErrors = FALSE
+  
   header =.getHeaderH5(h5file,toreplace)
   if(path=="depth"){
     dinds  = 2*(2:(length(header))-2)+2
@@ -2745,7 +2751,12 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
     errors_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]),toAdd = toAdd, mergeGroups=mergeGroups,
                      sumID=sumID, path=path,toplot,id_cols=id_cols, gapthresh=gapthresh, 
                      dinds = dinds[inds1]+1, pos =NULL, span = span, cumul=F, sumAll=sumAll)
-    tpm_df<- .makeCombinedArray(clusters_, errors_, xlim, downsample = downsample, thresh = depth_thresh,alpha = alpha,  ci = ci, max_num = 10,t=t, fisher = fisher,motifpos=motifpos)
+    xlim1 = xlim
+    if(zoom){
+      print(head(errors_))
+      xlim1 = c(min(errors_$pos),max(errors_$pos))
+    }
+    tpm_df<- .makeCombinedArray(clusters_, errors_, xlim1, downsample = downsample, thresh = depth_thresh,alpha = alpha,  ci = ci, max_num = 10,t=t, fisher = fisher,motifpos=motifpos)
     print("hh1 errors")
     print(head(tpm_df))
     return(tpm_df)

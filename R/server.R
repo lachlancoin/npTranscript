@@ -349,11 +349,11 @@ shinyServer(function(input, output,session) {
             transform(pos=as.numeric(pos), sequence=factor(sequence, levels=c("a","c","t","g")))
         }
        plotOpts = list(showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,
-                       alpha=alpha,linesize=linesize, zoom = zoom,textsize=textsize,calcErrors=showErrors,logy=logy )
+                       alpha=alpha,linesize=linesize, zoom = zoom,textsize=textsize,logy=logy )
        depthOpts = 
          list(total_reads=total_reads, toplot=toplot, downsample = downsample, span = span, 
               mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, 
-              times = times, sumAll = sumAll,
+              times = times, sumAll = sumAll,showErrors=showErrors,
               plotCorr=plotCorr,reverseOrder=reverseOrder,
               fisher=fisher,
               ci = ci, depth_thresh = depth_thresh,
@@ -384,7 +384,7 @@ shinyServer(function(input, output,session) {
             #  print(mergeGroups)
           tpm_df=run_depth(h5file,total_reads,toplot, seq_df=seq_df, downsample = downsample, span = span, 
                            mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, 
-                           times = times,logy=logy, sumAll = sumAll,
+                           times = times,logy=logy, sumAll = sumAll,zoom=zoom,
                     showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type,
                      alpha=alpha,plotCorr=plotCorr,linesize=linesize, reverseOrder=reverseOrder,
                     textsize=textsize, calcErrors=showErrors,fisher=fisher,
