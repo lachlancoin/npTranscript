@@ -46,6 +46,9 @@ shinyServer(function(input, output,session) {
 	  print(datafile)
 	  if(!file.exists(datafile)) return(NULL);
 	
+	  replace=read.table(decodeFile,sep="\t",head=F)
+	  toreplace = replace[,2]
+	  names(toreplace) = replace[,1]
 	  
     print(" updating input dir")
     session$userData$dataDepth = list("depth"=data.frame(), "depthStart"=data.frame(), "depthEnd"=data.frame())
@@ -64,6 +67,7 @@ shinyServer(function(input, output,session) {
         names(head) = nme
         toreplace = c(toreplace,head)
       }
+      session$userData$toreplace=toreplace
       isoInfo = .getIsoInfo(datafile, h5file,toreplace)
       total_reads = isoInfo$total_reads
       #  #   toreplace1=names(isoInfo$total_reads)
@@ -401,6 +405,7 @@ shinyServer(function(input, output,session) {
               print("not reusing data")
              # print("mergeGroups")
             #  print(mergeGroups)
+              toreplace= session$userData$toreplace
           tpm_df=run_depth(h5file,total_reads,toplot, seq_df=seq_df, downsample = downsample, span = span, 
                            mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, 
                            times = times,logy=logy, sumAll = sumAll,zoom=zoom,
