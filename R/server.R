@@ -70,13 +70,12 @@ shinyServer(function(input, output,session) {
     }else{
       ch = c()
     }
-   annot_file = paste(currdir, "annotation.csv.gz",sep="/")
-    if(file.exists(annot_file)){
+   annot_file = .findFile(currdir,"annotation.csv.gz") # paste(currdir, ,sep="/")
+    if(!is.null(annot_file)){
       annots = read.table(annot_file,sep="\t", head=F)
       names(annots) = c("chr","ens","name","ens1","type")
       session$userData$annots=annots
     }
-   counts_file = paste(currdir, "Counts_genome1.csv",sep="/")
    
   
    defs = list(
@@ -89,6 +88,7 @@ shinyServer(function(input, output,session) {
    )
    
    
+   counts_file = paste(currdir, "Counts_genome1.csv",sep="/")
    
    if(file.exists(counts_file)){
       defs$options2 = c("showTranscriptPlot","logy","showCI", "TPM_amongst_all" ,"TPM_amongst_viral","barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder","useReadCount")
@@ -97,14 +97,15 @@ shinyServer(function(input, output,session) {
       session$userData$countsTotal = countsHostVirus[countsHostVirus$ID=="Total",]
    }
      
-    coords_file = paste(currdir, "Coordinates.csv",sep="/")
+    coords_file = .findFile(currdir, "Coordinates.csv")
+    fimo_file = .findFile(currdir,"fimo.tsv",sep="/")
+    
     motifText = ""
-    if(file.exists(coords_file)){
+    if(!is.null(coords_file)){
       t = readCoords(coords_file)
       session$userData$t=t
       orfs=paste(t$gene,collapse=",")
    
-      fimo_file = paste(currdir,"fimo.tsv",sep="/")
       fimo=read.table(fimo_file, sep="\t", head=T)
       print(names(fimo))
       motifText = paste(levels(factor(fimo$matched_sequence)),collapse="|")
@@ -113,17 +114,19 @@ shinyServer(function(input, output,session) {
       orfs = c()
      
     }
-    fastafile = grep("extra",grep("fasta.gz",dir(currdir),v=T),v=T,inv=T)
-    if(length(fastafile)>=1){
-      fastaseq = read.fasta(paste(currdir,fastafile[1],sep="/"))
+    fastafile = .findFile(currdir,"fasta.gz",grep=T,excl="extra")
+   
+    if(!is.null(fastafile)){
+      
+      fastaseq = read.fasta(fastafile)
       session$userData$fasta =fastaseq
       session$userData$fastaseq = lapply(fastaseq,paste,collapse="")
     }else{
       session$userData$fastaseq=NULL
       session$userData$fasta=NULL
     }
-    peptide_file =paste(currdir,"peptides.csv",sep="/")
-    if(file.exists(peptide_file)){
+    peptide_file =.findFile(currdir,"peptides.csv",sep="/")
+    if(!is.null(peptide_file)){
       
       peptide=read.csv(peptide_file,  head=F, comment.char="#")
       trans_vals= as.numeric(sub("#","",read.csv(peptide_file, head=F,nrow=1)))
@@ -557,7 +560,7 @@ shinyServer(function(input, output,session) {
     }
     if(file.exists(infilesAnnot)){
       molecules=input$molecules; cells=input$cells; times = input$times;
-      
+      print(type_nme)
       
       levels1 = .getlevels(type_nme,molecules, cells, times,reverseOrder)
       orfs=input$orfs

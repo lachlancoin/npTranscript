@@ -14,6 +14,29 @@ unlist(v)
   }
   header
 }
+.findFile<-function(currdir,fn,sep="/",grep=F, excl=NULL){
+ v =  strsplit(currdir,sep)[[1]]
+ for(j in length(v):1){
+   dirv = paste(v[1:j],collapse=sep)
+   if(grep){
+     fn1 = grep(fn,dir(dirv),v=T)
+     if(!is.null(excl)){
+       fn1 = grep(excl, fn1,inv=T,v=T)
+     }
+     if(length(fn1>0)){
+     k =  paste(dirv,fn1[1],sep=sep)
+     }else{
+       k = NULL
+     }
+   }else{
+     k = paste(dirv,fn,sep=sep)
+   }
+   if(!is.null(k)){
+    if(file.exists(k)) return(k)
+   }
+ }
+ return(NULL)
+}
 .getIsoInfo<-function(datafile, h5file,toreplace=list(), end="3UTR"){
  
  header=.getHeaderH5(datafile, toreplace)
@@ -2848,6 +2871,7 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
 
 .getlevels<-function(type_nme, molecules, cells, times, reverseOrder=T){
   types_=data.frame(t(data.frame(strsplit(type_nme,"_"))))
+  #print(types_)
   names(types_) = c("molecules","cell","time")
   inds1 =  which(types_$molecules %in% molecules & types_$cell %in% cells & types_$time %in% times)
   types1_ = types_[inds1,,drop=F]
