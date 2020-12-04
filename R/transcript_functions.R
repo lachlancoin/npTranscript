@@ -570,6 +570,8 @@ if(is.null(levels)){
 .makeCombinedArray<-function(clusters_, errors_, xlim, downsample=F, thresh = 1000, alpha = 1.0, ci = 0.995, max_num= 10, t=NULL,motifpos=list(), fisher=F){
   
   dm = dim(clusters_)
+  print(head(clusters_))
+  print(head(errors_))
   ij =2
   if(dm[2]<=3){
     clusters_ = pivot_wider(clusters_, id_cols=pos, names_from="clusterID", values_from=names(clusters_)[3], values_fill=0)
@@ -657,7 +659,7 @@ if(is.null(levels)){
   }
   return(df)
 }
-.plotError1<-function(df,  t1, xlim, motifpos,pval_thresh=1e-3, logy=T, pvAsSize=T,ci=0.95, alpha=1.0){
+.plotError1<-function(df,  t1, xlim, motifpos,pval_thresh=1e-3, logy=T, pvAsSize=T,ci=0.95, alpha=1.0,zoom=F){
   posy = max(df$upper)
  df$type=as.factor(df$type)
  #print(head(subset(df,pval <= pval_thresh & diff>0)))
@@ -686,7 +688,10 @@ if(is.null(levels)){
     ggp<-ggp+geom_vline(xintercept = t1$Maximum, linetype="dashed", color=t1$sideCols)
     }
   }
-  if(!is.null(xlim)) ggp<-ggp+xlim(xlim)
+  if(!is.null(xlim)) {
+    if(zoom) ggp<-ggp+facet_zoom(xlim=xlim) else ggp<-ggp+xlim(xlim)
+  }
+  #if(!is.null(xlim)) ggp<-ggp+xlim(xlim)
   if(logy) ggp<-ggp+scale_y_continuous(trans='log10')
   if(length(motifpos)>0){
     for(jk in 1:length(motifpos)){
@@ -2642,7 +2647,10 @@ plot_depth<-function(tpm_df, total_reads=NULL, zoom=T, toplot=c("leader_leader,N
     return (ggplot())
   }
   if(calcErrors){
-    ggp<-.plotError1(tpm_df, pval_thresh = 1e-3, t1=t, xlim=xlim, motifpos=motifpos, logy=logy, ci=ci, alpha=alpha)
+    print(head(tpm_df))
+    #names(tpm_df)[3] = "type"
+    ggp<-.plotError1(tpm_df, pval_thresh = 1e-3, t1=t, xlim=xlim, motifpos=motifpos, logy=logy, ci=ci, alpha=alpha,zoom=zoom)
+    
     #  ggp<- .makeCombinedArray(clusters_, errors_, xlim, downsample = downsample, thresh = depth_thresh,alpha = alpha,  ci = ci, max_num = 10,t=t, fisher = fisher,motifpos=motifpos)
     return(ggp)
   }else  if(plotCorr){
@@ -2725,7 +2733,7 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
     
     tot_reads =  total_reads[inds1]/rep(1e6,length(inds1))
   }
-  if(calcErrors){
+  if(calcErrors && !is.null(tot_reads)){
     tot_reads = rep(1,length(tot_reads))  ## we dont want to correct for read depth for errors 
   }
   clusters_ = readH5(h5file,tot_reads, c("pos",header[inds1+1]),toAdd = toAdd, 
@@ -2738,7 +2746,7 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
                      sumID=sumID, path=path,toplot,id_cols=id_cols, gapthresh=gapthresh, 
                      dinds = dinds[inds1]+1, pos =NULL, span = span, cumul=F, sumAll=sumAll)
     tpm_df<- .makeCombinedArray(clusters_, errors_, xlim, downsample = downsample, thresh = depth_thresh,alpha = alpha,  ci = ci, max_num = 10,t=t, fisher = fisher,motifpos=motifpos)
-    print("hh1")
+    print("hh1 errors")
     print(head(tpm_df))
     return(tpm_df)
     
@@ -3052,6 +3060,7 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
         indsk = 1:length(countsHostVirus1$Type)
       }
       scaling_factor = max(countsHostVirus1$Reads[indsk],na.rm=T)/ylim[2]
+      countsHostVirus1 = countsHostVirus1[indsk,]
       countsHostVirus[3] = countsHostVirus[3] /scaling_factor
       types=c("Host","Virus","Sequin")
       linetype=c("dashed","twodash","solid")

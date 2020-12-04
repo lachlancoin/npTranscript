@@ -181,6 +181,7 @@ shinyServer(function(input, output,session) {
       session$input$toplot5 = "-" 
       session$input$toplot5="-" 
       session$input$toplot7="5_3" 
+      session$input$test="fisher"
     }
     if(debug){
       invisible(session)
@@ -593,11 +594,15 @@ shinyServer(function(input, output,session) {
 		
   ##THIS IS FOR DEBUGGING
   if(FALSE){
-    inputdir = "SARS-Cov2/VIC01" #"229E_new"
+    inputdir = "SARS-Cov2/VIC01" #
+    inputdir="229E_new"
     session=readDir(inputdir,update=F,debug=T)
    # session$input$options2
-    session$input$group_by="type"
-    session$input$toplot7="all"
+   # session$input$group_by="type"
+    session$input$toplot7="^leader_leader,M_3UTR$"
+    session$input$toplot8="^leader_leader,N_3UTR$"
+    session$input$options3 = c("showErrors",grep("mergeCounts" ,session$input$options3,v=T,inv=T))
+   # session$input$group_by=
     infectivityPlot(session$input)
     transcriptPlot(session$input)
     depthPlot(session$input, "depth")
