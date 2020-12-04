@@ -121,7 +121,6 @@ shinyServer(function(input, output,session) {
       t = readCoords(coords_file)
       session$userData$t=t
       orfs=paste(t$gene,collapse=",")
-   
       fimo=read.table(fimo_file, sep="\t", head=T)
       print(names(fimo))
       motifText = paste(levels(factor(fimo$matched_sequence)),collapse="|")
