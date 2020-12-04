@@ -25,12 +25,14 @@ shinyServer(function(input, output,session) {
   toreplace1 = c("ORF1ab,S_ORF1ab",    "leader,S_ORF1ab",    "ORF1ab,end_3UTR")
   toreplace2= c("ORF1ab,ORF1ab_ORF1ab","leader,ORF1ab_ORF1ab","ORF1ab,end_end")
   decodeFile = paste(basedir,"decode.txt",sep='/')
-  replace=read.table(decodeFile,sep="\t",head=F)
-  toreplace = replace[,2]
-  names(toreplace) = replace[,1]
+  
+
   reorder=T
   
 	readDir <- function(inputdir, update=T, debug=F) {
+	  replace=read.table(decodeFile,sep="\t",head=F)
+	  toreplace = replace[,2]
+	  names(toreplace) = replace[,1]
 	  if(debug ) {
 	    session = list()
 	    if(is.null(session$userData)) session$userData = list()
@@ -43,6 +45,8 @@ shinyServer(function(input, output,session) {
 	  datafile = paste(currdir,"0.isoforms.h5",sep="/")
 	  print(datafile)
 	  if(!file.exists(datafile)) return(NULL);
+	
+	  
     print(" updating input dir")
     session$userData$dataDepth = list("depth"=data.frame(), "depthStart"=data.frame(), "depthEnd"=data.frame())
     session$userData$dataPlot = list("depth"=NULL, "depthStart"=NULL, "depthEnd"=NULL)
@@ -51,8 +55,20 @@ shinyServer(function(input, output,session) {
     h5file=paste(currdir,"0.clusters.h5",sep="/")
     
     if(file.exists(datafile)){
+      head =   h5read(datafile,"header")
+
+      head = head[which(!head %in% names(toreplace))]
+      if(length(head)>0){
+        nme = head
+        head =  unlist(lapply(head,.fixName))
+        names(head) = nme
+        toreplace = c(toreplace,head)
+      }
       isoInfo = .getIsoInfo(datafile, h5file,toreplace)
       total_reads = isoInfo$total_reads
+      #  #   toreplace1=names(isoInfo$total_reads)
+      #   grep("SRR",toreplace1)
+      #   names(toreplace) = unlist( lapply(toreplace,.fixName))
       ##this gets order by counts
       if(reorder){
         order = .readTotalIso(datafile, group="/trans", trans=as.character(isoInfo$orfs$ORFs))
@@ -79,12 +95,12 @@ shinyServer(function(input, output,session) {
    
   
    defs = list(
-     options1=c("showInfectivity" , "showCI" ,"barchart", "reverseOrder"),
-     totick1 = c("showCI" ,"barchart","showInfectivity"),
-     options2 = c("showTranscriptPlot","logy","showCI", "TPM_amongst_all" ,"TPM_amongst_viral","barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder"),
-     totick2 = c("showTranscriptPlot","ribbonCI","barchart","TPM_amongst_viral"),
-     options3 = c("show_depth","logy", "TPM_amongst_viral", "showORFs", "sumDepth","mergeCounts", "showPeptides", "showSequence","showWaterfall", "plotCorr", "showErrors","downsample", "showCI","zoom"),
-     totick3 = c("show_depth", "mergeCounts", "sumDepth","zoom")
+     options1=c("showInfectivity" , "showCI" ,"barchart", "reverseOrder", "showLegend"),
+     totick1 = c("showCI" ,"barchart","showInfectivity", "showLegend"),
+     options2 = c("showTranscriptPlot","logy","showCI", "TPM_amongst_all" ,"TPM_amongst_viral","barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder", "showLegend"),
+     totick2 = c("showTranscriptPlot","ribbonCI","barchart","TPM_amongst_viral", "showLegend"),
+     options3 = c("show_depth","logy", "TPM_amongst_viral", "showORFs", "sumDepth","mergeCounts", "showPeptides", "showSequence","showWaterfall", "plotCorr", "showErrors","downsample", "showCI","zoom", "showLegend"),
+     totick3 = c("show_depth", "mergeCounts", "sumDepth","zoom", "showLegend")
    )
    
    
@@ -248,6 +264,7 @@ shinyServer(function(input, output,session) {
     
     depth_thresh = input$depth_thresh
     group_by=input$group_by
+    showLegend = "showLegend" %in% input$options3
     reverseOrder=F
     merge_by="" #input$merge_by
   #  plot_type=input$depth_plot_type
@@ -351,7 +368,7 @@ shinyServer(function(input, output,session) {
           seq_df = data.frame(pos,sequence, seqy) %>%
             transform(pos=as.numeric(pos), sequence=factor(sequence, levels=c("a","c","t","g")))
         }
-       plotOpts = list(showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,
+       plotOpts = list(showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,showLegend = showLegend,
                        alpha=alpha,linesize=linesize, zoom = zoom,textsize=textsize,logy=logy )
        depthOpts = 
          list(total_reads=total_reads, toplot=toplot, downsample = downsample, span = span, 
@@ -404,6 +421,9 @@ shinyServer(function(input, output,session) {
                      ci = ci, depth_thresh = depth_thresh,
                      showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers
           )
+         if(!showLegend){
+         ggp<-ggp+ theme(legend.position = "none")
+         }
           session$userData$dataPlot[[which(names(session$userData$dataDepth)==plot_type)]] =ggp
        }
           return(ggp)
@@ -447,7 +467,7 @@ shinyServer(function(input, output,session) {
     }
     
     p_plot$facet=input$facet
-  
+    p_plot$showLegend = "showLegend" %in% input$options2
     p_plot$logy = "logy" %in% input$options2
     p_plot$showCI = "showCI" %in% input$options2
     p_plot$ribbon="ribbonCI" %in% input$options2
@@ -549,6 +569,7 @@ shinyServer(function(input, output,session) {
     textsize=input$textsize
     conf.int=input$conf.int
     facet = input$facet1
+    showLegend = "showLegend" %in% input$options1
     countsTotal=session$userData$countsTotal
     infilesAnnot = paste(currdir,"0.annot.txt.gz", sep="/")
     total_reads = session$userData$total_reads
@@ -571,7 +592,9 @@ shinyServer(function(input, output,session) {
       #   y_text="spliced"
       annots1=.plotAnnotFile(ratio1,barchart=barchart,facet=facet,showSecondAxis=showSecondAxis,showEB=T, levels=levels1, y_text=y_text,
                              diff=0, coeff=5, textsize=textsize)
-     
+     if(!showLegend){
+       annots1$ggp<-annots1$ggp+ theme(legend.position = "none")
+     }
 #      resall = 
      # names(resall) =   session$userData$dirname
       session$userData$resultsInf = list(data=annots1$data)

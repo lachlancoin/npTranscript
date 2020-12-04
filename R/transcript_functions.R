@@ -37,6 +37,13 @@ unlist(v)
  }
  return(NULL)
 }
+.fixName<-function(str){
+  v = strsplit(str,"_")[[1]]
+  if(length(v)<3){
+    v = c("cDNA",v[1], "24hpi")
+  }
+  paste(v,collapse="_")
+}
 .getIsoInfo<-function(datafile, h5file,toreplace=list(), end="3UTR"){
  
  header=.getHeaderH5(datafile, toreplace)
@@ -3033,7 +3040,8 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
   ggp
 }
 
-.plotTPMData<-function(subs,countsHostVirus1,p_data, p_plot,yname,sec_axis_name="Proportion (%)",normaliseToVirus=F){
+.plotTPMData<-function(subs,countsHostVirus1,p_data, p_plot,yname,sec_axis_name="Proportion (%)",normaliseToVirus=F, 
+                       showLegend=T){
   xy = p_data$xy
   logy=p_plot$logy
   facet = p_plot$facet
@@ -3143,7 +3151,9 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
       ggp<-ggp+ scale_y_log10()
     }
   }
-  
+  if(!p_plot$showLegend){
+    ggp<-ggp+ theme(legend.position = "none")
+  }
   
   # "molecules_and_times","times_and_cells"
   

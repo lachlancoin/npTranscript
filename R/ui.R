@@ -13,7 +13,7 @@ library(ggforce)
 #library(GGally)
 
 source( "transcript_functions.R")
-
+#.libPaths("C:/Users/LCOIN/R-4.0.2/library")
 basedir="../data"
 dirs = list.dirs(basedir,full.names=F, rec=T)
 required=c("0.isoforms.h5") #,"Coordinates.csv")
