@@ -506,7 +506,7 @@ if(is.null(levels)){
       ggp1<-ggp1+geom_point(aes(y=value ,group=interaction(molecule_type, cell, ORF), color = cell, shape=ORF,size=10))
       
     }
-      ggp1<-ggp1+ scale_y_continuous( name = "Log2 (total - sub-genomics)", limits=lims)
+      ggp1<-ggp1+ scale_y_continuous( name = "Log2 (total / sub-genomic)", limits=lims)
       data  = ratio5
         }else{
   #    ratio3$logtotal = (ratio3$logtotal-diff)/coeff
