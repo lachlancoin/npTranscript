@@ -111,7 +111,7 @@ shinyServer(function(input, output,session) {
    counts_file = paste(currdir, "Counts_genome1.csv",sep="/")
    
    if(file.exists(counts_file)){
-      defs$options2 = c("showTranscriptPlot","logy","showCI", "TPM_amongst_all" ,"TPM_amongst_viral","barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder","useReadCount")
+      defs$options2 = c("showTranscriptPlot","logy","showCI", "TPM_amongst_all" ,"TPM_amongst_viral","barchart","ribbonCI","mergeCounts", "stacked", "reverseOrder","useReadCount", "showLegend")
       session$userData$counts_file=counts_file
       countsHostVirus = .readCountsHostVirus(counts_file,F)
       session$userData$countsTotal = countsHostVirus[countsHostVirus$ID=="Total",]
