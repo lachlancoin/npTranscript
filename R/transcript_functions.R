@@ -577,7 +577,7 @@ if(is.null(levels)){
       ggp<-ggp+geom_errorbar(data=ratio1,position=position_dodge(width=0.9),
                              aes_string(x=x1,y=y_text,fill=fill, colour=fill,ymin="lower" ,ymax="upper"),colour="black")
     } #ggp<-ggp+geom_errorbar(aes_string(x=x1,ymin="lower", ymax="upper"), width=.2)#, position="dodge")
-   ggp<-ggp+scale_y_continuous(limits = c(0,1))
+  # ggp<-ggp+scale_y_continuous(limits = c(0,1))
     
      ggp<-ggp+ggtitle("Percentage of ORF covering reads which include leader")
      ggp<-ggp+xlab("ORF")
