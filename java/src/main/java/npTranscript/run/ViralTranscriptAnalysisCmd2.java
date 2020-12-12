@@ -203,8 +203,9 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 	}
  public static String pool_sep="";
  public static boolean limit_to_read_list = true;
-	public static int mm2_threads;
-	public static String mm2_path, mm2_mem, mm2_index, mm2Preset, mm2_splicing;
+	
+	
+	public static String mm2_index;
  public static void run(CommandLine cmdLine, String[] bamFiles, String resDir,File anno, String chrs, String chrsToIgnore,  boolean fastq, String reference) throws IOException{
 		
 		int qual = cmdLine.getIntVal("qual");
@@ -334,7 +335,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			TranscriptUtils.writeAnnotP = true;
 			sorted = false;
 		//	CigarHash2.subclusterBasedOnStEnd = false;
-			mm2_splicing = "-un";
+			SequenceUtils.mm2_splicing = "-un";
 		
 		}else{
 		//	TranscriptUtils.reAlignExtra = false;
@@ -350,7 +351,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			System.err.println("running in host mode");
 			//CigarHash2.subclusterBasedOnStEnd = false;
 			calcBreaks = false;
-			mm2_splicing = "-uf";
+			SequenceUtils.mm2_splicing = "-uf";
 		}
 			errorAnalysis(bamFiles, RNA,reference, annotFile,readList,annotationType, 
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  
@@ -370,17 +371,17 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		Outputs.writeGFF = cmdLine.getBooleanVal("writeGFF");
 		Outputs.writeIsoforms = cmdLine.getBooleanVal("writeIsoforms");
 
-		mm2_threads = cmdLine.getIntVal("mm2_threads");
-		mm2_mem = cmdLine.getStringVal("mm2_mem");
-		mm2_path = cmdLine.getStringVal("mm2_path");
-		mm2Preset = cmdLine.getStringVal("mm2Preset");
+		SequenceUtils.mm2_threads = cmdLine.getIntVal("mm2_threads");
+		SequenceUtils.mm2_mem = cmdLine.getStringVal("mm2_mem");
+		SequenceUtils.mm2_path = cmdLine.getStringVal("mm2_path");
+		SequenceUtils.mm2Preset = cmdLine.getStringVal("mm2Preset");
 		String reference = cmdLine.getStringVal("reference");
 		File refFile = new File(reference);
 		if(!refFile.exists()) throw new RuntimeException("ref file does not exist");
 		if(fastqFile!=null){
 			try{
 				//make a minimap index
-			mm2_index = SequenceUtils.minimapIndex(refFile, mm2_path, mm2_mem, false);
+			mm2_index = SequenceUtils.minimapIndex(refFile,  false);
 			}catch(Exception exc){
 				exc.printStackTrace();
 			}
@@ -587,7 +588,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				//(File inFile, File mm2Index, String mm2_path, 
 			//	int mm2_threads, String mm2Preset, String mm2_mem)
 				try{
-				samIters[ii] = SequenceUtils.getSAMIteratorFromFastq(bam, mm2_index, mm2_path, mm2_threads,  mm2Preset, mm2_mem, mm2_splicing);
+				samIters[ii] = SequenceUtils.getSAMIteratorFromFastq(bam, mm2_index);
 				}catch(Exception exc){
 					System.err.println(exc.getMessage());
 					System.err.println(exc.getStackTrace());
