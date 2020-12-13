@@ -201,9 +201,10 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		pw.close();
 		
 	}
+ public static int maxReads = Integer.MAX_VALUE;
  public static String pool_sep="";
  public static boolean limit_to_read_list = true;
-	
+	public static boolean sequential = true;
 	
 	public static String mm2_index;
  public static void run(CommandLine cmdLine, String[] bamFiles, String resDir,File anno, String chrs, String chrsToIgnore,  boolean fastq, String reference) throws IOException{
@@ -219,7 +220,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		//boolean overwrite  = cmdLine.getBooleanVal("overwrite");
 		int startThresh = cmdLine.getIntVal("startThresh");
 		int endThresh = cmdLine.getIntVal("endThresh");
-		int maxReads = cmdLine.getIntVal("maxReads");
+		 maxReads = cmdLine.getIntVal("maxReads");
+		//SequenceUtils.max_per_file = maxReads*4;
 		String[] gffThresh_ = cmdLine.getStringVal("gffThresh").split(":");
 		Outputs.gffThreshGene = Integer.parseInt(gffThresh_[0]);
 		Outputs.library = new File(cmdLine.getStringVal("library"));
@@ -335,7 +337,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			TranscriptUtils.writeAnnotP = true;
 			sorted = false;
 		//	CigarHash2.subclusterBasedOnStEnd = false;
-			SequenceUtils.mm2_splicing = "-un";
+			SequenceUtils.mm2_splicing= "-un";
 		
 		}else{
 		//	TranscriptUtils.reAlignExtra = false;
@@ -407,7 +409,11 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			inputFile = bamFile;
 			sorted= true;
 		}else{
-			bamFiles_=fastqFile.split(":");
+			
+			bamFiles_=fastqFile.replace(":/", "|/").split(":");
+			for(int k=0; k<bamFiles_.length; k++){
+				bamFiles_[k] = bamFiles_[k].replace("|/",":/");
+			}
 			fastq = true;
 			inputFile = fastqFile;
 			sorted = false;
@@ -577,22 +583,22 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		final Iterator<SAMRecord>[] samIters = new Iterator[len];
 		SamReader[] samReaders = new SamReader[len];
 		boolean allNull = true;
+	
 		inner: for (int ii = 0; ii < len; ii++) {
 			String bamFile = bamFiles_[ii];
-			File bam = new File( bamFile);
 			SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
-			if(bam.getName().endsWith(".bam")){
+			if(bamFile.endsWith(".bam")){
+				File bam = new File( bamFile);
 				samReaders[ii] = SamReaderFactory.makeDefault().open(bam);
 				samIters[ii] = samReaders[ii].iterator();
 			}else{
-				//(File inFile, File mm2Index, String mm2_path, 
-			//	int mm2_threads, String mm2Preset, String mm2_mem)
 				try{
-				samIters[ii] = SequenceUtils.getSAMIteratorFromFastq(bam, mm2_index);
+				
+				samIters[ii] = SequenceUtils.getSAMIteratorFromFastq(bamFile, mm2_index, maxReads);
 				}catch(Exception exc){
 					System.err.println(exc.getMessage());
 					System.err.println(exc.getStackTrace());
-					throw new RuntimeException("could not process "+bam.getAbsolutePath());
+					throw new RuntimeException("could not process "+bamFile);
 					//continue inner;
 				}
 				
@@ -663,13 +669,13 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 
 			int numNotAligned = 0;
 			int numSecondary =0;
-			Iterator<SAMRecord> samIter= SequenceUtils.getCombined(samIters, sorted);
+			Iterator<SAMRecord> samIter= SequenceUtils.getCombined(samIters, sorted, sequential);
 			float time0 = System.currentTimeMillis();//- tme0)/1000.0
 			int cnt0=0;
 			int ij=0;
 			outer: for ( ij=0; samIter.hasNext() ;ij++ ) {
 				final SAMRecord sam=samIter.next();
-			
+			    if(sam==null) break outer;
 				
 				if (sam.getReadUnmappedFlag()) {
 					numNotAligned++;
