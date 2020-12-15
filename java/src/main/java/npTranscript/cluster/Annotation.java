@@ -238,7 +238,17 @@ public class Annotation{
 		}
 
 		public static String[] nmes = new String[] {"5_3", "5_no3", "no5_3", "no5_no3"};
-
+		public  char getStrand(Iterator<Integer> l){
+			if(!l.hasNext()) return 'N';
+			Boolean strandi = this.strand.get(l.next());
+			while(l.hasNext()){
+				if(!strand.get(l.next()).equals(strandi)){
+					return 'N';
+				}
+			}
+			return strandi ? '+' : '-';
+			
+		}
 
 		public String getSpan(List<Integer>breaks, boolean forward, Collection<Integer> span, SortedSet<String> parents) {
 			// TODO Auto-generated method stub

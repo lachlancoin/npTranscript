@@ -132,6 +132,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addString("resdir", "results"+System.currentTimeMillis(), "results directory");
 		addString("GFF_features", "gene_name:description:gene_id:gene_biotype:gene_id", "GFF feature names");
 		addString("RNA", "name", "If is direct RNA.  Can be tab delimmited boolean, e.g. true:true  or if set to name it will look for RNA string in name");
+		addBoolean("trainStrand", false,"whether to produce training data for strand correction");
 		addBoolean("recordDepthByPosition", false, "whether to store position specific depth (high memory");
 		addString("annotToRemoveFromGFF",null, "annotation to remove from GFF , BED and ref files");
 		addInt("maxReads", Integer.MAX_VALUE, "ORF annotation file");
@@ -228,7 +229,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		Outputs.gffThreshTranscript = Integer.parseInt(gffThresh_[1]);
 		Outputs.maxTranscriptsPerGeneInGFF = cmdLine.getIntVal("maxTranscriptsPerGeneInGFF");
 		Annotation.enforceStrand = cmdLine.getBooleanVal("enforceStrand");
-		
+		IdentityProfile1.trainStrand = cmdLine.getBooleanVal("trainStrand");
+		if(IdentityProfile1.trainStrand && Annotation.enforceStrand) throw new RuntimeException("cant enforce and train");
 		String[] RNAstr = 		cmdLine.getStringVal("RNA").split(":");
 		boolean[] RNA = new boolean[bamFiles.length];
 		if(RNAstr!=null){
@@ -244,6 +246,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		}else{
 			Arrays.fill(RNA, false);
 		}
+	//	if(IdentityProfile1.trainStrand &&
 	//	Outputs.executor=  
 	//			cmdLine.getIntVal("max_threadsIO")==1 ? 
 	//			Executors.newSingleThreadExecutor():  Executors.newFixedThreadPool(cmdLine.getIntVal("maxThreads"));
@@ -732,48 +735,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			//		flip = sam.getReadNegativeStrandFlag(); // if its direct RNA, only flip if its been flipped by minimap
 				}
 				else if(Annotation.enforceStrand){
-					// so assume its cDNA
-					//{A,C,G,T}
-				//	int t_base =  3;
-				//	int a_base =  0;
-					
-					//counts bases accounting for negFlag
-					
-					TranscriptUtils.count(sa, true, basesStart, leng,chars_forward);
-					TranscriptUtils.count(sa, false, basesEnd, 	leng, chars_forward);
-						
-					char  lastchar = //negFlag ?  SequenceUtil.reverseComplement(sa.substring(0,1)).charAt(0) : 
-							sa.charAt(sa.length()-1);
-					char firstchar =//ViralTranscriptAnalysisCmd2. negFlag ?  SequenceUtil.reverseComplement(sa.substring(sa.length()-1)).charAt(0) : 
-						sa.charAt(0);
-						//CTTTTTCTGT	TAGTAAAGAG  - positive example
-						//GATGAACGGG	TTGTCTTTTC - negative example
-						if(basesStart[3] > basesEnd[3] && basesStart[0] < basesEnd[0]   && (basesEnd[0]>=thresh_A 
-								|| (basesEnd[0]>=(thresh_A-1) && lastchar=='G'))){
-							// read is from positive, so only flip back if minimap has flipped
-							// more T in start than end  and less A in start vs end and at least thresh_A A at end
-							// genuine  + strand so dont flip
-							//readPositive = true;
-							flip = false;// negFlag;
-						}else if(basesStart[3] < basesEnd[3] && basesStart[0] > basesEnd[0] &&
-								(basesEnd[3] >=thresh_T || (basesEnd[3]>=(thresh_T-1) && firstchar=='C' )) ){
-							// less T in start than end  and more A in start vs end and at least thresh T at end
-							//readPositive = false;
-							
-							// read is from negative, so flip (unless minimap already flipped)
-							flip = true;//!negFlag;
-						}else{
-							counts[2]=counts[2]+1;
-							    System.err.println("excluding read : cannot detect strand "+Arrays.asList(counts));
-							    System.err.println(Arrays.asList(basesStart));
-							    System.err.println(Arrays.asList(basesEnd));
-							//	String sequence = negFlag ? SequenceUtil.reverseComplement(sa) : sa;
-								System.err.println(sa.substring(0,10));
-								System.err.println(sa.substring(sa.length()-10));
-							
-							continue;
-						}
-					
+					throw new RuntimeException("need to implement");
 					//}
 				}
 				

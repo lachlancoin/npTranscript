@@ -23,7 +23,7 @@ import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 
 public class IdentityProfile1 {
-	static boolean appendSeqStartEnd = false;
+	public static boolean trainStrand = true;
 //	public static  ExecutorService executor ;
 	/*final String[] type_nmes; 
 	public  Sequence ref;
@@ -253,6 +253,7 @@ static char delim1 = ',';
 			this.coRefPositions.setStartEnd(startPos,endPos,src_index);
 
 		String span_str = annot.getSpan(coRefPositions.breaks, forward,  coRefPositions.span, geneNames);
+		
 		int  span = geneNames.size();
 		if(!TranscriptUtils.coronavirus && span==0 && q_value < ViralTranscriptAnalysisCmd2.fail_thresh1){
 			return secondKey.toString();
@@ -275,9 +276,12 @@ static char delim1 = ',';
 		+type_nme+"\t"+chrom_+"\t"
 		+startPos+"\t"+endPos+"\t"+(forward? "+":"-")+"\t"+coRefPositions.numIsoforms()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
 		+coRefPositions.getError(src_index)+"\t"+secondKeySt+"\t"+strand+"\t"+breakSt+"\t"+span_str+"\t"+geneNames.size()+"\t"+String.format("%5.3g", q_value).trim();
-		if(appendSeqStartEnd) str = str+"\t"+readSeq.subSequence(0, 10)+"\t"+readSeq.subSequence(len1-10, len1)
+		if(trainStrand){
+			str = str+"\t"+readSeq.subSequence(0, 10)+"\t"+readSeq.subSequence(len1-10, len1)
+		
 				+"\t"+toString(phredQ,0,10)+"\t"+toString(phredQ,len1-10,len1)
-				+"\t"+ViralChimericReadsAnalysisCmd.median(phredQ,0,10)+"\t"+ViralChimericReadsAnalysisCmd.median(phredQ,len1-10,10);
+				+"\t"+ViralChimericReadsAnalysisCmd.median(phredQ,0,10)+"\t"+ViralChimericReadsAnalysisCmd.median(phredQ,len1-10,10)+"\t"+annot.getStrand(coRefPositions.span.iterator());			
+		}
 		parent.o.printRead(str);
 		int num_exons =(int) Math.floor( (double)  coRefPositions.breaks.size()/2.0);
 

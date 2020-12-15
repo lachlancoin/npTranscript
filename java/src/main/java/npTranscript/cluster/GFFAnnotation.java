@@ -132,6 +132,11 @@ public class GFFAnnotation extends Annotation{
 	};
 	Map<String, Set<Integer>> m= new HashMap<String, Set<Integer>>();
 	Set<Integer> breaks_in_exons = new HashSet<Integer>();
+	
+	
+	
+	
+	//following seems clunky
 	@Override
 	public synchronized String  getSpan(List<Integer> breaks,boolean forward,  Collection<Integer> l, SortedSet<String> geneNames){
 		int istart =-1;
