@@ -457,7 +457,7 @@ DEdepth<-function(df1,control_names, infected_names,tojoin=1:3, maxLogFC=10, met
 DEgenes<-function(df,control_names,infected_names,  type="lt", binom=F, log=F
                   ){
   lower.tail = T
-  ORFs = as.character(df$ORFs)
+  ORFs = as.character(df$Geneid)
   if(!is.null(df$Name)){
   dfn_ind = !is.na(df$Name)
   ORFs[dfn_ind]=as.character(df$Name[dfn_ind])
@@ -649,24 +649,13 @@ findGenesByChrom<-function(DE,chrom="MT", thresh = 1e-10,nme2="chrs", nme="FDR1"
   df = data.frame(control = a[,7],infected = b[,7],chrs = chrs, geneID = geneID)
   df
 }
-.processTranscripts<-function(transcript, prefix="ENS"){
-  orfs = gsub("[-+]","",transcript$ORFs)
-  geneID= as.character(unlist(lapply(strsplit(orfs,";"), function(v) v[1])))
- # rightGene = as.character(unlist(lapply(strsplit(orfs,";"), function(v) v[length(v)])))
-  #indsL =  grep(prefix,geneID,inv=T)
-  #indsR =  grep(prefix,rightGene)
-  #comb = which(indsL %in% indsR)
-#if(length(comb)>0) geneID[comb] = rightGene[comb]
-  cbind(transcript, geneID)
-}
-
 .readCaseControl<-function(f){
   if(!file.exists(f)) return(NULL)
   gfft = read.table(f, sep="\t", header=F, fill=T)
   list(control = gfft[,1], case =gfft[,2])
 }
 
-.addAnnotation<-function(annotfile, transcripts,grp, colid="geneID",nmes = c("chr","ID" , "Name" , "Description","biotype")){
+.addAnnotation<-function(annotfile, transcripts,grp, colid="Geneid",nmes = c("chr","ID" , "Name" , "Description","biotype")){
   match_ind = which(names(transcripts)==colid)[1]
   gfft = read.table(annotfile, sep="\t", header=F, fill=T, quote='\"')
   chrind = which(nmes=="chr")
@@ -676,7 +665,7 @@ findGenesByChrom<-function(DE,chrom="MT", thresh = 1e-10,nme2="chrs", nme="FDR1"
   mi = match(as.character(transcripts[,match_ind]), as.character(gfft$ID))
   gfft = gfft[mi,]
   gfft$ID = transcripts$ID
-  transcripts = cbind(transcripts,grp,gfft[,-c(chrind,ID_ind)])
+  transcripts = cbind(transcripts,grp,gfft[,-c(chrind)])
   return(transcripts)
 }
 
@@ -707,72 +696,7 @@ findGenesByChrom<-function(DE,chrom="MT", thresh = 1e-10,nme2="chrs", nme="FDR1"
   resu
 }
 
-###obsolete function
-readTranscriptHostAll<-function(infilesT, 
-                                combined_depth_thresh = 100,
-                                start_text = "start", 
-                                filter  = NULL,
-                                target= list(chrom="character", 
-                                             leftGene="character", rightGene="character", start = "numeric", 
-                                             end="numeric", ID="character", isoforms="numeric" ,error_ratio0 = "numeric",error_ratio1="numeric") ){
-  chroms = unlist(lapply(infilesT, function(x) strsplit(x,"\\.")[[1]][[1]]))
-  chrom_names = rep("", length(chroms))
-  dfs = list()
-  ncol = -1
-  for(i in 1:length(chroms)){
-    infilesT1 = paste(chroms[i],"transcripts.txt.gz", sep=".")
-   # print(infilesT1)
 
-    dfi = try(.readTranscriptsHost(infilesT1,target=target,filter = filter, combined_depth_thresh = combined_depth_thresh, start = start_text))
-if(inherits(dfi,"try-error")) {
-	print(infilesT1)
-	dfs[[i]] = NULL
-}else{
-    dfi = dfi[order(dfi$start),]
-    if(dim(dfi)[1]>0){
-      chrom_names[i] = dfi$chrs[1]
-     # print(chrom_n)
-      dfs[[i]] = dfi
-	#print(dim(dfi))
-      ncol = dim(dfi)[[2]]
-      #print(ncol)
-      #print(' not null')
-    }else{
-      print("is null")
-      dfs[[i]] = NULL
-    }
-  }
-  }
-  lengs = unlist(lapply(dfs,function(x) if(is.null(x)) NA else dim(x)[1]))
-  inds = which(!is.na(lengs))
-  chroms = chroms[inds]
-  chrom_names = chrom_names[inds]
-  dfs = dfs[inds]
-  #print(chrom_names)
-  numeric_names = as.numeric(chrom_names)
- # print(numeric_names)
-  ord = c()
-  i1 = which(!is.na(numeric_names))
-  i2 = which(is.na(numeric_names))
-  if(length(i1)>0){
-    ord1 = order(numeric_names[i1])
-    ord = c(ord,i1[ord1])
-  }
-  if(length(i2)>0){
-    ord2 = order(chrom_names[i2],decreasing=T)
-    ord = c(ord,i2[ord2] )
-  }
-  
-  dfs = dfs[ord]
-  chroms = chroms[ord]
-  chrom_names = chrom_names[ord]
-  
-  attr(dfs,"info")=attr(dfs[[1]],"info")
-  attr(dfs,"chroms")=chroms
-  attr(dfs,"chrom_names")=chrom_names
-  
-  dfs
-}
 .combineTranscripts<-function(dfs, attributes
                               ){
                 chroms=attributes[[which(names(attributes)=="chroms")]]
@@ -1070,34 +994,14 @@ readIsoformH5<-function(transcripts_, h5file,  depth =1000){
   res
 }
 
-.readTranscriptsHost<-function(infilesT1, 
-                               filter = NULL,
+.readTranscriptsHost<-function(infilesT1, filter = NULL,
+                              
                   target= list(chrom="character", leftGene="character", rightGene="character", start = "numeric", end="numeric", ID="character")
               ,combined_depth_thresh =100                                 
   ){
 
-  header = names(read.table( infilesT1,sep="\t", head=T, nrows = 3, comment.char='#', fill=T))
-  ncol = dim(read.table( infilesT1,sep="\t", head=F, nrows = 2,skip = 2, comment.char='#'))[2]
-#print(header)
-#print(ncol)
-   extra = grep("count[0-9]", header,v=T)
-extran = as.list(rep("numeric", length(extra)))
-names(extran) = extra
-target = c(target,extran)
-  #print(header)
-  inf = scan(infilesT1, nlines=1, what=character())
-  #if(length(grep("#", inf))>0) attr(transcripts,"info") = sub("#", "",inf)
-  
-  inf = sub('#','',inf)
-  types = unlist(lapply(inf, function(x) rev(strsplit(x,"_")[[1]])[1]))
-  header_inds = match(names(target),header)
-  #print(target)
-  
-  colClasses = rep(NA, ncol);
-  colClasses[header_inds] = target
-  #colClass = cbind(rep("numeric", length(extra)), colClasses)
-  transcripts = read.table( infilesT1,skip=2,sep="\t", head=F, comment.char='#', colClasses= colClasses)
-names(transcripts) = header[1:(dim(transcripts)[2])]
+  transcripts = read.table( infilesT1,sep="\t", head=T, comment.char='#', fill=T)
+ transcripts = transcripts[,which(names(transcripts)!="X")]
   if(!is.null(filter)){
     for(k in 1:length(filter)){
       nme_ind = grep(names(filter)[k], names(transcripts))
@@ -1106,15 +1010,14 @@ names(transcripts) = header[1:(dim(transcripts)[2])]
       transcripts = transcripts[indsk,,drop=F]
     }
   }
-  header_inds1 = match(names(target),names(transcripts))
-  countT = as.numeric(transcripts$countTotal)
+ ncol = dim(transcripts)[2]
+  length_ind = which(names(transcripts)=="Length")+1
+  counts = transcripts[,length_ind:ncol]
+  countT =apply(counts,1,sum)
   indsk = !is.na(countT) & countT>=combined_depth_thresh
-  transcripts = transcripts [indsk,header_inds1, drop=F] 
-  names(transcripts)  = sub("chrom", "chrs" ,names(transcripts))
-  if(length(grep("#", inf))>0) inf = sub("#", "",inf)
-  attr(transcripts,"types")=types
-  attr(transcripts,"info")=inf
-  names(transcripts)[grep("count[0-9]",names(transcripts))] = inf
+  attr(transcripts,"cnt_inds") = length_ind:ncol
+  attr(transcripts,"info") = names(transcripts)[length_ind:ncol]
+  transcripts = transcripts [indsk,, drop=F] 
   transcripts
 }
 
