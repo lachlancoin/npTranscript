@@ -155,7 +155,7 @@ if(length(control_names)!=length(infected_names)) error(" lengths different")
 transcriptsl$Geneid = gsub("[-+]","",transcriptsl$Geneid)
   remove_inds =  regexpr("^[0-9]{1,}\\.", as.character(transcriptsl$Geneid))>=0
   keep_inds = !remove_inds
-  sequins_inds = regexpr(getOption("np.prefix_sequins"), transcriptsl$ORFs)>=0
+  sequins_inds = regexpr(getOption("np.prefix_sequins"), transcriptsl$Geneid)>=0
   grp = rep(NA, dim(transcriptsl)[[1]])
   grp[!remove_inds]="genes"
   grp[remove_inds] = "unknown"

@@ -802,7 +802,7 @@ ggp
 
 
 
-.comparisonPlot<-function(DE2, transcriptsl1, inds = c(2,3), countThresh = 100, excl=c("sequins")){
+.comparisonPlot<-function(DE2, transcriptsl1, inds = c(2,3), excl=c("sequins")){
   nme_lfc = grep("logFC",names(DE2),v=T)
   nme_p = grep("p.adj",names(DE2),v=T)
   orf_name = grep("ORF", names(DE2), v=T)
@@ -810,14 +810,14 @@ ggp
   nmes_p = nme_p[inds]
   inds1_lfc = which(names(DE2) %in% nmes_lfc)
   inds1_p = which(names(DE2) %in% nmes_p)
-  countTotal = transcriptsl1$countTotal
+ # countTotal = transcriptsl1$countTotal
   grpname = transcriptsl1$grp
-  df = DE2[countTotal>countThresh & !(grpname%in% excl),]
+  df = DE2[!(grpname%in% excl),]
   subset_p =df[head(order(apply(df[,inds1_p[1:2]],1,function(x) max(abs(x))), decreasing=F),10),]
   subset_lfc =df[head(order(apply(df[,inds1_lfc[1:2]],1,function(x) min(abs(x))), decreasing=T),10),]
   df1 = df[apply(df[,grep("p.adj",names(DE2))],1,min) < 1e-2,,drop=F]
   
-  print(subset_p[,c(1,inds1_lfc, inds1_p)])
+ # print(subset_p[,c(1,inds1_lfc, inds1_p)])
   #print(subset_lfc[,c(1,inds1_lfc, inds1_p)])
   ggp<-ggplot(df1, aes_string(x=nmes_lfc[1], y=nmes_lfc[2]))+geom_point()+ggtitle(paste(nmes_lfc))
   ggp<-ggp+geom_text_repel(data=subset_p,
