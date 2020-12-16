@@ -169,7 +169,8 @@ transcriptsl$Geneid = gsub("[-+]","",transcriptsl$Geneid)
 }else{
   transcriptsl1 = cbind(transcriptsl,grp)
 }
-  transcriptsl1$Name[which(unlist(lapply(as.character(transcriptsl1$Name),nchar))==0)]=NA
+  transcriptsl1$Name = as.character(transcriptsl1$Name)
+  transcriptsl1$Name[which(unlist(lapply(transcriptsl1$Name,nchar))==0)]=NA
 if(length(control_names)==0) stop(" control_names has 0 length" )
   
   #transcriptsl1 = transcriptsl1[1:500,]
@@ -199,9 +200,9 @@ towrite = lapply(DE_list,.xlim, pthresh = 1.0, col = "p.adj")
 .write_xlsx1(towrite,paste(resdir, "DE.xlsx",sep="/") )
 DE2 = data.frame(unlist(DE_list,recursive=FALSE))
 #write_xlsx(lapply(list(transcripts=transcriptsl1,DE=DE2),function(x) x[attr(x,"order"),,drop=F]), paste(resdir, "DE.xlsx",sep="/"))
-volcanos = lapply(DE_list, .volcano, logFCthresh = 0.5, prefix=prefix, top=10, exclude=c())
+volcanos = lapply(DE_list, .volcano, logFCthresh = 0.5, prefix=prefix, top=10, exclude=c("sequins"))
 todo=.getAllPairwiseComparisons(names(DE_list), start=2)
-comparisonPlots = lapply(todo, function(x) .comparisonPlot(DE2,transcriptsl1 , inds  = x, excl=c()))
+comparisonPlots = lapply(todo, function(x) .comparisonPlot(DE2,transcriptsl1 , inds  = x, excl=c("sequins")))
 
 pdf(paste(resdir, "/DE.pdf",sep=""))
 if(TRUE){
