@@ -24,6 +24,7 @@ module load java
 ##tip - use symbolic link to put this in the directory with bam files
 #run as sbatch run_slurm_combined.sh todo.txt human combined --RNA=true
 #  sbatch run_slurm_combined.sh human combined --RNA=false
+#NOTE: need to have an opts_host.txt in the run directory
 #to find bams for todo.txt
 #find /data/gpfs/projects/punim1068/host_analysis/direct_RNA_sequin_genome/Vero/ -name *bam > todo.txt
 export JSA_MEM=30000m
@@ -65,7 +66,6 @@ fi
 echo $reference
 
 
-	GFF_features="--GFF_features=gene_name:description:gene_id:gene_biotype:gene_id"
 
 dat=$(date +%Y%m%d%H%M%S)
 mm2_path="/sw/minimap2/current/minimap2"
@@ -83,12 +83,19 @@ echo "coronavirus chr id ${cov_chr}"
 chroms_to_include="all" ## this includes all chromosomes 
 chroms_to_ignore="none"   ##
 resdir="results_${dat}"
-opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=13 --extra_threshold=2000 --writePolyA=false --msaDepthThresh=1000 --doMSA=false --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh=50 --chroms_to_ignore=${chroms_to_ignore} --chroms_to_include=${chroms_to_include}"
+#opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=13 --extra_threshold=2000 --writePolyA=false --msaDepthThresh=1000 --doMSA=false --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh=50 --chroms_to_ignore=${chroms_to_ignore} --chroms_to_include=${chroms_to_include}"
+
+if [ ! -f "opts_host.txt" ]; then
+  echo "need opts_host.txt in run directory"
+  exit;
+fi
+
+opts=$(grep -v '^#' $opts_host.txt)
 
 #for dRNA datasets
 #opts="${opts} --RNA=true"
-opts2="--chromsToRemap=${cov_chr}  --mm2_memory=10g --writeIsoforms=true --writeGFF=true --recordDepthByPosition=true --coverageDepthThresh=100 --qualThresh=0"
-echo $opts
+#opts2="--chromsToRemap=${cov_chr}  --mm2_memory=10g --writeIsoforms=true --writeGFF=true --recordDepthByPosition=false --coverageDepthThresh=100 --qualThresh=7 --trainStrand=true"
+#echo $opts
 if [ -f $todo ]; then
 	bamfiles=$(cat $todo | sed "s/[[:space:]]\+/\n/g" | grep ".bam$")
 else
@@ -98,7 +105,7 @@ fi
 bamfiles1="--bamFile=$(echo $bamfiles | sed 's/^M//g' | sed 's/^ //g' | sed 's/ /:/g')"
 #bamfiles1=$(bash ${npTranscript}/scripts/getInputFiles.sh ${tag})
 
-bash ${npTranscript}/scripts/run.sh ${bamfiles1}   --reference=${reference} --annotation=${coord_file} --resdir=${resdir} ${opts} ${opts1} ${opts2} ${GFF_features} $@
+bash ${npTranscript}/scripts/run.sh ${bamfiles1} --chromsToRemap=${cov_chr}  --reference=${reference} --annotation=${coord_file} --resdir=${resdir} ${opts}
 
 cd ${resdir}
 
