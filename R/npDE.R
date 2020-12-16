@@ -169,7 +169,7 @@ transcriptsl$Geneid = gsub("[-+]","",transcriptsl$Geneid)
 }else{
   transcriptsl1 = cbind(transcriptsl,grp)
 }
-  transcriptsl1$Name[which(unlist(lapply(transcriptsl1$Name,nchar))==0)]=NA
+  transcriptsl1$Name[which(unlist(lapply(as.character(transcriptsl1$Name),nchar))==0)]=NA
 if(length(control_names)==0) stop(" control_names has 0 length" )
   
   #transcriptsl1 = transcriptsl1[1:500,]
