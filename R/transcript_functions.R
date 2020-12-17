@@ -3107,12 +3107,12 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
       countsHostVirus[3] = countsHostVirus[3] /scaling_factor
       types=c("Host","Virus","Sequin")
       linetype=c("dashed","twodash","solid")
-      shape = c(1,2,3)
+      shape = c(0,1,2)
       
-      ggp<-ggp+geom_point(data=countsHostVirus, aes_string(x=x_lab, y="Reads" , shape="Type"))
+      ggp<-ggp+geom_point(data=countsHostVirus, aes_string(x=x_lab, y="Reads" , shape="Type"),size=5)
       ggp<-ggp+geom_line(data=countsHostVirus, aes_string(x=x_lab, y="Reads" , linetype="Type", group="Type"))
       ggp<-ggp+  scale_color_manual(values = cols_subs)
-      ggp<-ggp+ scale_linetype_manual(values = linetype)+scale_shape_manual(values=shape)
+      ggp<-ggp+ scale_linetype_manual(values = linetype)+scale_shape(solid=F)
       ggp<-ggp+xlab("Conditions")
       ggp<-ggp+ scale_y_continuous(limits=ylim,
         name = yname,
@@ -3137,7 +3137,9 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
       }else{
         ggp<-ggp+ geom_line(position=position_dodge(width=0.1))  + geom_point(position=position_dodge(width=0.1),inherit.aes=T,aes(shape = molecule_type,size=10))
         ggp<-ggp+geom_errorbar(position=position_dodge(width=0.1)) #,colour="black")
+        
       }
+      ggp<-ggp+scale_shape(solid=F)
     }else{
       ggp<-ggplot(subs, aes(x=time, y=TPM ,group=interaction(molecule_type, cell, ID), color = cell, linetype=ID))
       ggp<-ggp+ geom_line()  + geom_point(inherit.aes=T,aes(shape = molecule_type,size=10))
