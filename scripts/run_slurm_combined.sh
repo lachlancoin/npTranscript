@@ -85,12 +85,12 @@ chroms_to_ignore="none"   ##
 resdir="results_${dat}"
 #opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=13 --extra_threshold=2000 --writePolyA=false --msaDepthThresh=1000 --doMSA=false --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh=50 --chroms_to_ignore=${chroms_to_ignore} --chroms_to_include=${chroms_to_include}"
 
-if [ ! -f "opts_host.txt" ]; then
-  echo "need opts_host.txt in run directory"
-  exit;
+opts_host="opts_host.txt"
+if [ ! -f $opts_host ]; then
+  opts_host="${npTranscript}/opts_host.txt"
 fi
 
-opts=$(grep -v '^#' $opts_host.txt)
+opts=$(grep -v '^#' ${opts_host})
 
 #for dRNA datasets
 #opts="${opts} --RNA=true"

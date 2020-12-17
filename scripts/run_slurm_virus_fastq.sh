@@ -40,12 +40,12 @@ fi
 dat=$(date +%Y%m%d%H%M%S)
 mm2_path="/sw/minimap2/current/minimap2"
 mm2_path="minimap2"
-
-if [ ! -f "../opts_virus.txt" ]; then
-  echo "need opts_virus.txt in parent directory"
-  exit;
+opts_virus="../opts_virus.txt"
+if [ ! -f $opts_virus ]; then
+  opts_virus="${npTranscript}/opts_virus.txt"
 fi
-opts=$(grep -v '^#' ../opts_virus.txt)
+
+opts=$(grep -v '^#' ${opts_virus})
 
 
 ##VIRAL ANALYSIS ON VIRAL READS
