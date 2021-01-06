@@ -178,7 +178,7 @@ shinyServer(function(input, output,session) {
     	}
     
     	#toggleState('ActivateDE', condition = dir.exists(file.path(currdir,'DE')))
-      updateSelectInput(session,"plottype", label = "Category 1", choices=ch, selected=input$plottype)
+      updateSelectInput(session,"plottype", label = "Transcript category", choices=ch, selected=input$plottype)
       updateSelectInput(session, "toplot5",label = paste("Transcript",names(info$choices1)[1]),choices=c("-",info$choices1[[1]]),selected='-')
       updateCheckboxGroupInput(session,"molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules)
       updateCheckboxGroupInput(session,"cells", label = "Cell type",  choices = info$cells, selected = info$cells)

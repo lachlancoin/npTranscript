@@ -29,6 +29,7 @@ shinyUI(fluidPage(
 	useShinyjs(),
    theme="https://d2h9b02ioca40d.cloudfront.net/v8.0.1/uom.css",
 	tags$head(includeHTML(file.path(basedir, "shiny-common/unset_shiny.html"))),
+	tags$head(includeHTML(file.path(basedir, "shiny-common/google-analytics.html"))),
 	htmlTemplate(file.path(basedir, "shiny-common/uomheader.html"),
             title = "Coin Lab",
 			apptitle = "SARS-COV-2 Transcriptome",
@@ -37,7 +38,7 @@ shinyUI(fluidPage(
 
   sidebarPanel(
     selectInput("dir", label = "Directory", choices=dirs),
-    selectInput("plottype", label = "Category 1", choices=c("-" )),
+    selectInput("plottype", label = "Transcript category", choices=c("-" )),
     selectInput("toplot5", label = "", choices=c("-")),
     textInput("toplot7", label="All transcripts matching", value = ""),
     selectInput("tojoin", label ="Join", choices=c("AND","OR","AND NOT"), selected="OR"),
@@ -49,17 +50,17 @@ shinyUI(fluidPage(
    checkboxGroupInput("times", label = "Time points"),
   numericInput("textsize", label = "Text size", value = 20.0, min=3.0, max=100),
   numericInput("angle", label = "Text angle", value = 25.0, min=0.0, max=90),
-   checkboxGroupInput("options1", label = h3("Top panel")) ,
+   checkboxGroupInput("options1", label = h3("Transcript activity panel")) ,
   selectInput("facet1", label ="Grouping", choices=c("off","molecules","cells","times","ORF"), selected="off"),
  
    textInput("orfs", label="ORFs to include"),
-   checkboxGroupInput("options2", label = h3("Middle panel")) ,
+   checkboxGroupInput("options2", label = h3("Transcript abundance panel")) ,
    numericInput("conf.int", label = "Confidence intervals", value = 0.95),
    numericInput("maxtrans", label = "Maximum number of transcripts", value = 10),
   #selectInput("splitby", label ="Plot x vs y", choices=c("off","molecules","cells","times"), selected="off"),
   selectInput("facet", label ="Grouping", choices=c("off","molecules","cells","times","molecules_and_cells","molecules_and_times","times_and_cells"), selected="off"),
   
-   checkboxGroupInput("options3", label = h3("Bottom panel")) ,
+   checkboxGroupInput("options3", label = h3("Depth panel")) ,
  # selectInput("depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="OR"),
   numericInput("min_x", label = "Min position", value = 25000),
   numericInput("max_x", label = "Max position", value = 29865),
