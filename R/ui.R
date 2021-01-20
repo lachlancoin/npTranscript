@@ -11,6 +11,7 @@ library(ggrepel)
 library(ggforce)
 library(shinydashboard)
 library(prompter)
+library(shinyBS)
 #library(jsonlite);
 #library(GGally)
 
