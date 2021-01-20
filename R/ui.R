@@ -9,6 +9,8 @@ library(shinyjs)
 library(abind)
 library(ggrepel)
 library(ggforce)
+library(shinydashboard)
+library(prompter)
 #library(jsonlite);
 #library(GGally)
 
@@ -26,26 +28,45 @@ dirs = c("",dirs)
 
 # Define UI for application that plots random distributions 
 shinyUI(fluidPage(
+	
 	useShinyjs(),
-   theme="https://d2h9b02ioca40d.cloudfront.net/v8.0.1/uom.css",
+	use_prompt(),
+   theme = "https://d2h9b02ioca40d.cloudfront.net/v8.0.1/uom.css",
 	tags$head(includeHTML(file.path(basedir, "shiny-common/unset_shiny.html"))),
 	tags$head(includeHTML(file.path(basedir, "shiny-common/google-analytics.html"))),
+	tags$style(HTML("
+	
+
+	 .skin-blue .main-sidebar {
+                              background-color: #f5f5f5;
+							  padding-top:0px;
+							  border:1px solid #e3e3e3;
+                              }	
+	.skin-blue .main-sidebar .sidebar {
+									color:black;
+									}
+			"
+			
+			)),
 	htmlTemplate(file.path(basedir, "shiny-common/uomheader.html"),
             title = "Coin Lab",
 			apptitle = "SARS-COV-2 Transcriptome",
-			subapptitle = ""
+			subapptitle = "From The Coin Group at University of Melbourne",
+			papercitation = 'Chang, J. J.-Y., et al. (2020). "Transcriptional and epi-transcriptional dynamics of SARS-CoV-2 during cellular infection." BioRxiv: 2020.2012.2022.423893.'
                	),
-
-  sidebarPanel(
-    selectInput("dir", label = "Directory", choices=dirs),
-    selectInput("plottype", label = "Transcript category", choices=c("-" )),
-    selectInput("toplot5", label = "", choices=c("-")),
-    textInput("toplot7", label="All transcripts matching", value = ""),
-    selectInput("tojoin", label ="Join", choices=c("AND","OR","AND NOT"), selected="OR"),
-    textInput("toplot8", label="All transcripts matching", value = ""),
-    selectInput("group_by", label="Group transcripts by", choices = c('No grouping' ,'all', 'type', 'juncts','leader,',',ORF10','ORF1ab,','type:juncts'), selected = 'No grouping'),
-       actionButton("plotButton", "Generate plots"),
-    checkboxGroupInput("molecules", label = "Molecule type",  choices =c()),
+	dashboardPage(
+	header = dashboardHeader(disable = TRUE),
+	sidebar = dashboardSidebar(
+					  
+    add_prompt(selectInput("dir", label = "Directory", choices=dirs), position = 'right', message = 'Select directory for desired CoV data'),
+    add_prompt(selectInput("plottype", label = "Transcript category", choices=c("-" )), position = 'right', message = 'Narrow the below field to transcripts of this category'),
+    add_prompt(selectInput("toplot5", label = "", choices=c("-")), position = 'right', message = 'Select a single transcript to plot'),
+    add_prompt(textInput("toplot7", label="All transcripts matching", value = ""), position = 'right', message = 'Select transcripts by R-style regex. Above field must be blank for this option'),
+    add_prompt(selectInput("tojoin", label ="Join", choices=c("AND","OR","AND NOT"), selected="OR"), position = 'right', message = 'How to combine first and second regex fields'),
+    add_prompt(textInput("toplot8", label="All transcripts matching", value = ""), position = 'right', message = 'Enter second R-style regex in conjunction with first'),
+    add_prompt(selectInput("group_by", label="Group transcripts by", choices = c('No grouping' ,'all', 'type', 'juncts','leader,',',ORF10','ORF1ab,','type:juncts'), selected = 'No grouping'), position = 'right', message = 'Collapse selected transcripts around this grouping'),
+    add_prompt(actionButton("plotButton", "Generate plots"), position = 'right', message = 'Click to refresh plots'),
+	checkboxGroupInput("molecules", label = "Molecule type",  choices =c()),
    checkboxGroupInput("cells", label = "Cell type"),
    checkboxGroupInput("times", label = "Time points"),
   numericInput("textsize", label = "Text size", value = 20.0, min=3.0, max=100),
@@ -87,18 +108,22 @@ shinyUI(fluidPage(
    selectInput("DE_cell2", label = "DE in cell 2", choices = c()),
    selectInput("DE_time1", label = "Time 1", choices = c()),
    selectInput("DE_time2", label = "Time 2", choices = c()),
-   checkboxInput("remove_spurious", label = "Remove spurious results"),
- numericInput("mean_count_thresh", label = "Mean count thresh", value = 0.0,max=500,min=0),
- textInput("merge_by", label="Transcript group to collapse", value = ""),
+	   checkboxInput("remove_spurious", label = "Remove spurious results"),
+	 numericInput("mean_count_thresh", label = "Mean count thresh", value = 0.0,max=500,min=0),
+	 textInput("merge_by", label="Transcript group to collapse", value = ""),
      actionButton('plotDE', 'Do DE')
-  ),
- 
+	 ),
+	 
+	 
   
-  # Show a plot of the generated distribution
-  mainPanel(
-    # verbatimTextOutput("instructions"),
-    # verbatimTextOutput("variables"),
-    # verbatimTextOutput("validation"),
+body = dashboardBody(
+useShinyjs(),
+ extendShinyjs(text = 'shinyjs.hideSidebar = function(params) { $("body").addClass("sidebar-collapse"); 
+              $(window).trigger("resize"); }', functions = 'hideSidebar'),
+    extendShinyjs(text='shinyjs.showSidebar = function(params) { $("body").removeClass("sidebar-collapse"); 
+                  $(window).trigger("resize"); }', functions = 'showSidebar'),
+    bsButton("showpanel", "Show/Hide sidebar",icon = icon("toggle-off"), type = "toggle",style = "info", value = TRUE),
+
 	h2("Transcriptional activity"),
     withSpinner(plotOutput("infPlot", height=400)),
         downloadButton('downloadInf', 'Download plot'),
@@ -128,7 +153,10 @@ shinyUI(fluidPage(
   #,
   #htmlTemplate(file.path(basedir, "shiny-common/uomfooter.html"))
   
-))
+)
+)
+)
+
 
 
 
