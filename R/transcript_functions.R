@@ -2927,12 +2927,16 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
     total_reads = tr
   }
   header = names(total_reads)
+  
+  #toplot
   toplot = p_data$toplot
   if(p_data$usegrep){
     x1 = .findEntries(toplot,datafile,"/trans",p_data$tojoin);
   }else{
     x1= toplot
   }
+  #endtoplot
+  
   mat = t(data.frame( lapply(x1, .readIso, datafile, header, "/trans")))
   if(is.null(dim(mat))) mat = matrix(mat,nrow=1,ncol=length(header))
   if(p_data$merge){
