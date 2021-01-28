@@ -1,0 +1,31 @@
+<section> 
+<h1>How to operate this App</h1>
+<p>The npTranscript shiny server has been created to facilitate interactive exploration of SARS-CoV-2 transcript data. There are four main plot types to explore:
+<ul>
+	<li>Transcriptional activity</li>
+	<li>Transcript abundance </li>
+	<li>Depth of Coverage</li>
+	<li>Differential Expression</li>
+</ul>
+All plots and/or their data can be saved after being displayed using the 'Download Plot' and 'Download Data' buttons below them.
+</p>
+
+
+
+<h2> Transcriptional activity </h2>
+<p>This plot displays the ratio of ____, which we hypothesise can be used to measure how active an infection is. With greater transcriptional activity, more leader-body joining is occuring and there is a higher ratio displayed in this plot. 
+There are only a small number of input controls to this plot. The checkbox options in the 'Transcript Activity panel' section of the sidebar allow the user to toggle the plot, show confidence intervals, toggle barchart/linegraph, reverse the display order of the data,
+or toggle the display of the legend.
+</p>
+<img src="../img/activity-options.png"> </img>
+<p>Additionally, the user can choose to filter which ORF ratios are included in 'ORFs to include', or use the 'Grouping' dropdown options to set facets for the plot around a chosen feature of the data. </p>
+
+<h2>Transcript abundance</h2>
+<p>The transcript abundance plot is the primary plot for determing abundances of transcript clusters detected with npTranscript. Abundances are displayed in units of Transcripts Per Million (TPM). 
+The nomenclature for the transcript names is defined by ORFs joined together by commas, indicating a break, and underscores, indicating a contiguous sequence between the two named ORFs. 
+For example, 'leader_ORF1ab,S_3UTR' describes a transcript that begins with the leader sequence at the 5' end, contains all the genome up until a point in ORF1ab, then breaks and is joined directly onto the Spike ORF before extending through the remainder of the genome to the 3'UTR.
+
+</p>
+
+</section>
+
