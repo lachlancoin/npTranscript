@@ -679,6 +679,9 @@ output$textbox_ui <- renderUI({ textboxes() })
 
 	
 observeEvent(counter$n, {
+
+track_transcripts$update <- counter$n
+
 lapply(seq_len(counter$n), FUN = function(i) {
 	#print(i)
 	observeEvent(input[[paste0('txncat',i)]], {
@@ -691,10 +694,7 @@ lapply(seq_len(counter$n), FUN = function(i) {
 			)}
 	)}
 	)
-	track_transcripts$update <- counter$n
-
-	
-	})
+		})
 	
  transcript_list <- eventReactive( input$plotButton, {
 	 sapply(seq_len(counter$n), function(i) {
@@ -733,12 +733,13 @@ observeEvent(input$dir, readDir(input$dir, update=T) )
   observeEvent(input$add_btn, {
 	if(counter$n <10) counter$n <- counter$n + 1
 	else warning('maximum transcripts is 10')
+	
 	})
   observeEvent(input$rm_btn, {
     if (counter$n > 0) counter$n <- counter$n - 1
   })
 
-  output$counter <- renderPrint(cat(paste(counter$n, 'transcripts')))
+  output$counter <- renderPrint(cat(counter$n, ' transcripts'))
   
   
   
@@ -843,7 +844,7 @@ observeEvent(input$plotDE, {
 	output$depthEndPlot <- renderPlot({
 	shiny::validate(need(any(transcript_list() != "-") | regex_list()$regex1 != "", ''))
 	  input$plotButton
-	  isolate(depthPlot(isolate(input), isolate(transcript_list()), isolate(regex_list()), "depthEnd"))
+	  depthPlot(isolate(input), isolate(transcript_list()), isolate(regex_list()), "depthEnd")
 		
 	})
 

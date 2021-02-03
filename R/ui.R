@@ -75,8 +75,8 @@ header = dashboardHeader(disable = TRUE),
     #add_prompt(selectInput("plottype", label = "Transcript category", choices=c("-" )), position = 'right', message = 'Narrow the below field to transcripts of this category'),
 	add_prompt(fluidRow( 
 		column(2,div(style="display: inline-block; width: 20%;",actionButton("rm_btn", "-"))),
-		  column(6,div(style="display: inline-block; width: 40%;",textOutput("counter"))),
-		  column(2,div(style="display: linline-block; width: 20%;",actionButton("add_btn", "+")))), position='right', message = 'Choose number of single transcripts to be input'),
+		  column(4,div(style="position-left: 200; display: inline-block; width: 100px; text-align: center; vertical-align: center;", textOutput("counter"))),
+		  column(2,div(style="display: linline-block; width: 20%;", actionButton("add_btn", "+")))), position='right', message = 'Choose number of single transcripts to be input'),
 	actionButton('print_txn', '?'),
 	uiOutput("textbox_ui"),
       
@@ -103,13 +103,13 @@ header = dashboardHeader(disable = TRUE),
   
    checkboxGroupInput("options3", label = h3("Depth panel")) ,
  # selectInput("depth_plot_type", label ="What to plot", choices=plot_type_ch, selected="OR"),
-  numericInput("min_x", label = "Min position", value = 25000),
-  numericInput("max_x", label = "Max position", value = 29865),
+  numericInput("min_x", label = "Zoom Min", value = 25000),
+  numericInput("max_x", label = "Zoom Max", value = 29865),
   numericInput("loess", label = "Loess span", value = 0.0,max=1,min=0),
  numericInput("waterfallKmer", label = "Kmer for waterfall plot", value = 3,max=11,min=1,step=2),
  numericInput("waterfallOffset", label = "Offset for waterfall plot", value = 0,min=-50,max=50),
  numericInput("maxKmers", label = "Max kmers for waterfall plot", value = 20,max=100,min=2),
- selectInput("test", label ="test", choices=c("fisher","chisq"), selected="chisq"),
+ selectInput("test", label ="Test", choices=c("fisher","chisq"), selected="chisq"),
  
  
  numericInput("alpha", label = "Transparency", value = 0.5),
