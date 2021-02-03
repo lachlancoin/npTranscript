@@ -46,6 +46,9 @@ shinyUI(fluidPage(
 	.skin-blue .main-sidebar .sidebar {
 									color:black;
 									}
+	
+	.
+	
 			"
 			
 			)),
@@ -56,17 +59,33 @@ shinyUI(fluidPage(
 			papercitation = 'Chang, J. J.-Y., et al. (2020). "Transcriptional and epi-transcriptional dynamics of SARS-CoV-2 during cellular infection." BioRxiv: 2020.2012.2022.423893.'
                	),
 	dashboardPage(
-	header = dashboardHeader(disable = TRUE),
+	
+header = dashboardHeader(disable = TRUE),
 	sidebar = dashboardSidebar(
+	 tags$style(type='text/css',
+                   ".selectize-dropdown-content{
+                 height: 1000px;
+                 width: 1000px;
+                 background-color: #b0c4de;
+                }"),
+	
+	width=300,
 					  
     add_prompt(selectInput("dir", label = "Directory", choices=dirs), position = 'right', message = 'Select directory for desired CoV data'),
-    add_prompt(selectInput("plottype", label = "Transcript category", choices=c("-" )), position = 'right', message = 'Narrow the below field to transcripts of this category'),
-    add_prompt(selectInput("toplot5", label = "", choices=c("-")), position = 'right', message = 'Select a single transcript to plot'),
-    add_prompt(textInput("toplot7", label="All transcripts matching", value = ""), position = 'right', message = 'Select transcripts by R-style regex. Above field must be blank for this option'),
+    #add_prompt(selectInput("plottype", label = "Transcript category", choices=c("-" )), position = 'right', message = 'Narrow the below field to transcripts of this category'),
+	add_prompt(fluidRow( 
+		column(2,div(style="display: inline-block; width: 20%;",actionButton("rm_btn", "-"))),
+		  column(6,div(style="display: inline-block; width: 40%;",textOutput("counter"))),
+		  column(2,div(style="display: linline-block; width: 20%;",actionButton("add_btn", "+")))), position='right', message = 'Choose number of single transcripts to be input'),
+	actionButton('print_txn', '?'),
+	uiOutput("textbox_ui"),
+      
+    #add_prompt(selectInput("toplot5", label = "", choices=c("-")), position = 'right', message = 'Select a single transcript to plot'),
+    add_prompt(textInput("toplot7", label="All transcripts matching", value = ""), position = 'right', message = 'Select transcripts by R-style regex. Above field must be set to 0 transcripts for this option'),
     add_prompt(selectInput("tojoin", label ="Join", choices=c("AND","OR","AND NOT"), selected="OR"), position = 'right', message = 'How to combine first and second regex fields'),
     add_prompt(textInput("toplot8", label="All transcripts matching", value = ""), position = 'right', message = 'Enter second R-style regex in conjunction with first'),
     add_prompt(selectInput("group_by", label="Group transcripts by", choices = c('No grouping' ,'all', 'type', 'juncts','leader,',',ORF10','ORF1ab,','type:juncts'), selected = 'No grouping'), position = 'right', message = 'Collapse selected transcripts around this grouping'),
-    add_prompt(actionButton("plotButton", "Generate plots"), position = 'right', message = 'Click to refresh plots'),
+    add_prompt(actionButton("plotButton", "Generate plots"), position = 'right', message = 'Run/refresh plots'),
 	checkboxGroupInput("molecules", label = "Molecule type",  choices =c()),
    checkboxGroupInput("cells", label = "Cell type"),
    checkboxGroupInput("times", label = "Time points"),
@@ -104,7 +123,7 @@ shinyUI(fluidPage(
  
  
  
-   checkboxInput('LoadDE', label = 'Activate DE'),
+   add_prompt(checkboxInput('LoadDE', label = 'Activate DE'), position = 'right', message = 'Load DE data from this directory. Button inactive if no data available'),
    selectInput("DE_cell1", label = "DE in cell 1", choices = c()),
    selectInput("DE_cell2", label = "DE in cell 2", choices = c()),
    selectInput("DE_time1", label = "Time 1", choices = c()),

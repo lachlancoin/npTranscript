@@ -31,12 +31,18 @@ shinyServer(function(input, output,session) {
   reorder = FALSE
   update = TRUE
   debug = FALSE
+  counter = list()
+  counter$n=0
+  
+  track_transcripts <- reactiveValues(update=0)
+  
   DE=NULL
   shinyjs::disable('LoadDE') 
   
 	#functions
 
 readDir <- function(inputdir, update=T, debug=F) {
+		counter$n=0
 	  replace=read.table(decodeFile,sep="\t",head=F)
 	  toreplace = replace[,2]
 	  names(toreplace) = replace[,1]
@@ -185,8 +191,9 @@ readDir <- function(inputdir, update=T, debug=F) {
     	}
     
     	#toggleState('ActivateDE', condition = dir.exists(file.path(currdir,'DE')))
-      updateSelectInput(session,"plottype", label = "Transcript category", choices=ch, selected=input$plottype)
-      updateSelectInput(session, "toplot5",label = paste("Transcript",names(info$choices1)[1]),choices=c("-",info$choices1[[1]]),selected='-')
+		session$userData$transcript_categories = ch
+      #updateSelectInput(session,"plottype", label = "Transcript category", choices=ch, selected=input$plottype)
+      # updateSelectInput(session, "toplot5",label = paste("Transcript",names(info$choices1)[1]),choices=c("-",info$choices1[[1]]),selected='-')
       updateCheckboxGroupInput(session,"molecules", label = "Molecule type",  choices =info$molecules, selected = info$molecules)
       updateCheckboxGroupInput(session,"cells", label = "Cell type",  choices = info$cells, selected = info$cells)
       updateCheckboxGroupInput(session,"times", label = "Time points",  choices = info$times, selected = info$times)
@@ -208,8 +215,8 @@ readDir <- function(inputdir, update=T, debug=F) {
       session$input$cells = info$cells
       session$input$times = info$times
       session$input$orfs = orfs
-      session$input$toplot5 = "-" 
-      session$input$toplot5="-" 
+      # session$input$toplot5 = "-" 
+      # session$input$toplot5="-" 
       session$input$toplot7="5_3" 
       session$input$test="fisher"
     }
@@ -308,7 +315,7 @@ infectivityPlot <- function(input){
   }
   
  
-transcriptPlot<-function(input){
+transcriptPlot<-function(input, selected_transcripts, regex_list){
     if(is.null(session$userData$datafile)) return(ggplot())
     if(!file.exists(session$userData$datafile)) return(ggplot())
     if(!"showTranscriptPlot" %in% input$options2) return(ggplot())
@@ -360,15 +367,15 @@ transcriptPlot<-function(input){
     useReadCount  = p_data$useReadCount;
 	
 	#toplot
-    p_data$toplot = c(isolate(unique(input$toplot5)))#,isolate(input$toplot6))#,isolate(input$toplot7),isolate(input$toplot8))
+    p_data$toplot = c(isolate(unique(selected_transcripts)))#,isolate(input$toplot6))#,isolate(input$toplot7),isolate(input$toplot8))
     p_data$toplot = p_data$toplot[p_data$toplot!="-"]
     p_data$usegrep=F
     if(length(p_data$toplot)==0){
-      p_data$toplot=c(isolate(input$toplot7),isolate(input$toplot8))
+      p_data$toplot=c(isolate(regex_list$regex1),isolate(regex_list$regex2))
       p_data$toplot = p_data$toplot[unlist(lapply(p_data$toplot,nchar))>2]
       p_data$usegrep=T
     }
-    p_data$tojoin=isolate(input$tojoin)
+    p_data$tojoin=isolate(regex_list$regex_join)
 
     if(length(p_data$toplot)==0 || is.null(session$userData$datafile ) ){
       return(ggplot())
@@ -439,11 +446,12 @@ transcriptPlot<-function(input){
  
  	
 
-depthPlot= function(input, plot_type, reuse=F) {
+depthPlot= function(input, selected_transcripts, regex_list, plot_type, reuse=F) {
 
  reuseData=F
  if(is.null(session$userData$h5file)) return(ggplot())
    if(!file.exists(session$userData$h5file)) return(ggplot())
+	if(is.null(selected_transcripts)) return(ggplot())
  
    
     showDepth  = "show_depth" %in% input$options3
@@ -509,15 +517,15 @@ depthPlot= function(input, plot_type, reuse=F) {
     span=input$loess
     if(showDepth  && !is.null(h5file)){
       if(file.exists(h5file)){
-        toplot = unique(c(isolate(input$toplot5)))#,isolate(input$toplot6))#,isolate(input$toplot7),isolate(input$toplot8))
-        tojoin=isolate(input$tojoin)
+        toplot = unique(c(isolate(selected_transcripts)))#,isolate(input$toplot6))#,isolate(input$toplot7),isolate(input$toplot8))
+        tojoin=isolate(regex_list$regex_join)
         merge=F
         toplot = toplot[toplot!="-"]
         #combinedID="combined"
         sumAll = length(toplot)>1
         if(length(toplot)==0){
           ##need to get list from this
-          toplot=c(isolate(input$toplot7),isolate(input$toplot8))
+          toplot=c(isolate(regex_list$regex1),isolate(regex_list$regex2))
           toplot = toplot[unlist(lapply(toplot,nchar))>2]
           if(length(toplot)>0){
             #combinedID=toplot[1]
@@ -630,6 +638,8 @@ depthPlot= function(input, plot_type, reuse=F) {
 
 
 	#observers
+observeEvent(input$print_txn, { print(transcript_list())} )
+
 
 observe({
     if(input$showpanel == TRUE) {
@@ -639,16 +649,96 @@ observe({
       js$hideSidebar()
     }
   })
-  
-  
-observeEvent(input$plottype,{
-    dd= .process1(input$plottype,  session$userData$info)
-    updateSelectInput(session,"toplot5", label = dd$label, choices=dd$ch, selected="-")
 
-  })
+
+textboxes <- reactive({
+
+    n <- counter$n
+
+    if (n > 0) {
+      lapply(seq_len(n), function(i) {
+	  fluidRow(
+	 div(style="margin-left: 15px; display: inline-block; width: 40%;",selectInput(inputId = paste0("txncat", i),
+                  label = paste0("Category", i), choices = session$userData$transcript_categories) ),
+				  
+     div(style="display: inline-block; width: 50%;",selectInput(inputId = paste0("txnin", i),
+				label = paste0("Transcript", i), choices = "-") )
+      )}
+	  
+    
+
+  )}})
+
+# transcript_list <- reactive( {
+	# sapply(seq_len(counter$n), function(i) {
+	# input[[paste0("txnin", i)]] } )
+	# })
+
+
+output$textbox_ui <- renderUI({ textboxes() })
+
+	
+observeEvent(counter$n, {
+lapply(seq_len(counter$n), FUN = function(i) {
+	#print(i)
+	observeEvent(input[[paste0('txncat',i)]], {
+		current_box <- paste0('txncat',i)
+		update_box <- paste0('txnin',i)
+		print(paste(current_box, update_box))
+		updateSelectInput(session, update_box, 
+			label = paste('Transcript', input[[current_box]]), 
+			choices= .process1(input[[current_box]],  session$userData$info)$ch
+			)}
+	)}
+	)
+	track_transcripts$update <- counter$n
+
+	
+	})
+	
+ transcript_list <- eventReactive( input$plotButton, {
+	 sapply(seq_len(counter$n), function(i) {
+	 input[[paste0("txnin", i)]] } )
+
+		
+		
+	 })
+	
+regex_list <- eventReactive( input$plotButton, {
+	list(regex1 = input$toplot7, regex2 = input$toplot8, regex_join = input$tojoin) } )
+
+
+
+
+# observeEvent( transcript_list(), {
+	# print(paste(transcript_list(), collapse=' '))
+	
+	# })
+	
+# observeEvent( transcript_list(), {
+# print('cat changed')
+# })
+  
+  
+# observeEvent(input$plottype,{
+    # dd= .process1(input$plottype,  session$userData$info)
+    # updateSelectInput(session,"toplot5", label = dd$label, choices=dd$ch, selected="-")
+
+  # })
   
 observeEvent(input$dir, readDir(input$dir, update=T) )
   
+  counter <- reactiveValues(n = 0)
+
+  observeEvent(input$add_btn, {
+	if(counter$n <10) counter$n <- counter$n + 1
+	else warning('maximum transcripts is 10')
+	})
+  observeEvent(input$rm_btn, {
+    if (counter$n > 0) counter$n <- counter$n - 1
+  })
+
+  output$counter <- renderPrint(cat(paste(counter$n, 'transcripts')))
   
   
   
@@ -693,8 +783,8 @@ observeEvent(input$plotDE, {
  head(DE$counts)
  if (is.null(DE$counts)) {print('DE_countdata is null') } else {
 	#head(DE$counts)
-   plot_params = list(toplot5=input$toplot5, toplot2=c(input$toplot7, input$toplot8), 
-                      tojoin=input$tojoin, group_by=input$group_by, merge_by=input$merge_by)
+   plot_params = list(toplot5= transcript_list(), toplot2=c(regex_list$regex1, regex_list$regex2), 
+                      tojoin=regex_list$regex_join, group_by=input$group_by, merge_by=input$merge_by)
 	DE$main_out <- try(runDE(count_list = DE$counts, cell1 = input$DE_cell1 ,
 	                     cell2 = input$DE_cell2, time1 = input$DE_time1, 
 	                     time2 = input$DE_time2,  thresh=input$mean_count_thresh,
@@ -723,79 +813,7 @@ observeEvent(input$plotDE, {
 	#1 resolve transcripts selected before run_depth and run_tpm
 	#determine which are add ons for ggplot and put them in a reactive to add on after plot is produced
   
-
-# # gather_transcripts_depth <- reactive( {
-		# # if(file.exists(session$userData$h5file)){
-        # # toplot = unique(c(isolate(input$toplot5)))
-		# # tojoin=isolate(input$tojoin)
-		# # merge=FALSE
-		# # toplot = toplot[toplot!="-"]
-		# # sumAll = length(toplot)>1
-		# # if(length(toplot)==0){
-          # # toplot=c(isolate(input$toplot7),isolate(input$toplot8))
-		  # # print(toplot)
-          # # toplot = toplot[unlist(lapply(toplot,nchar))>2]
-		  # # print(toplot)
-          # # if(length(toplot)>0){
-            # # toplot = .findEntries(toplot,session$userData$h5file,"/depth",tojoin)
-          # # }
-		  # # merge=T
-          # # sumAll=F
-        # # }
-		# # }
-		# need to return toplot and combinedID
-		#return(toplot)
-		# # })
-		
-		
-		
-	#gather_transcripts_tpm <- reactive( {
-	
-			# from .extractTPM
-		
-		  # toplot
-  # # toplot = p_data$toplot
-  # # if(p_data$usegrep){
-    # # x1 = .findEntries(toplot,datafile,"/trans",p_data$tojoin);
-  # # }else{
-    # # x1= toplot
-  # # }
-  # endtoplot
-	#})
-
-
-  # gather_transcripts <- reactive( {
-		# if(file.exists(session$userData$h5file)){
-        # toplot = unique(c(isolate(input$toplot5)))
-		# print(toplot)
-        # tojoin=isolate(input$tojoin)
-		# print(tojoin)
-        # merge=F
-        # toplot = toplot[toplot!="-"]
-		# print(toplot)
-        # sumAll = length(toplot)>1
-		# print(sumAll)
-        # if(length(toplot)==0){
-          ##need to get list from this
-          # toplot=c(isolate(input$toplot7),isolate(input$toplot8))
-		  # print(toplot)
-          # toplot = toplot[unlist(lapply(toplot,nchar))>2]
-		  # print(toplot)
-          # if(length(toplot)>0){
-            # toplot = .findEntries(toplot,session$userData$h5file,"/depth",tojoin)
-          # }
-		  # merge=T
-          # sumAll=F
-        # }
-		# }
-		# 
-		# print(toplot)
-		# return(list(toplot, combined))
-		# })
-
  
-  
-
 	#render plots
 
 	output$infPlot<-renderPlot({
@@ -806,37 +824,36 @@ observeEvent(input$plotDE, {
 
 	output$distPlot <- renderPlot({
 		shiny::validate(need(input$dir, ''))
-		print(input$toplot7)
-		shiny::validate(need(input$toplot5 != "-" | input$toplot7 != "", 'Select transcripts to plot'))
+		shiny::validate(need(any(transcript_list() != "-") | regex_list()$regex1 != "", 'Select transcripts to plot'))
 		shiny::validate(need(length(input$molecules) > 0 & length(input$cells) > 0 & length(input$times) > 0, 'At least one molecule, cell and time point must be supplied') )
 	    input$plotButton
-  	    transcriptPlot(input)
+  	    transcriptPlot(isolate(input), isolate(transcript_list()), isolate(regex_list()))
   	  })
 
 	output$depthPlot <- renderPlot({
-	shiny::validate(need(input$toplot5 != "-" | input$toplot7 != "", ''))
+	shiny::validate(need(any(transcript_list() != "-") | regex_list()$regex1 != "", ''))
 	input$plotButton
-	depthPlot(input, "depth")
+	depthPlot(isolate(input), isolate(transcript_list()), isolate(regex_list()), "depth")
 	})
 	output$depthStartPlot <- renderPlot({
-	shiny::validate(need(input$toplot5 != "-" | input$toplot7 != "", ''))
+	shiny::validate(need(any(transcript_list() != "-") | regex_list()$regex1 != "", ''))
 	  input$plotButton
-	  depthPlot(input,"depthStart")
+	  depthPlot(isolate(input), isolate(transcript_list()), isolate(regex_list()), "depthStart")
 	})
 	output$depthEndPlot <- renderPlot({
-	shiny::validate(need(input$toplot5 != "-" | input$toplot7 != "", ''))
+	shiny::validate(need(any(transcript_list() != "-") | regex_list()$regex1 != "", ''))
 	  input$plotButton
-	  depthPlot(input,"depthEnd")
+	  isolate(depthPlot(isolate(input), isolate(transcript_list()), isolate(regex_list()), "depthEnd"))
 		
 	})
 
 	 
 #Downloads
 output$downloadInf <- downloadHandler(filename = function() {'plotInfectivity.pdf'}, content = function(file) ggsave(file, infectivityPlot(input), device='pdf', height = 20, width = 40, units='cm' ) )
-output$downloadDepth <- downloadHandler(filename = function() {'plotDepth.pdf'}, content = function(file) ggsave(file, depthPlot(input,"depth", T), device = 'pdf', height = 20, width = 40, units='cm') )
-output$downloadDepthStart <- downloadHandler(filename = function() {'plotDepthStart.pdf'}, content = function(file) ggsave(file, depthPlot(input,"depthStart", T), device = 'pdf', height = 20, width = 40, units='cm') )
-output$downloadDepthEnd <- downloadHandler(filename = function() {'plotDepthEnd.pdf'}, content = function(file) ggsave(file, depthPlot(input,"depthEnd",T), device = 'pdf', height = 20, width = 40, units='cm') )
-output$downloadDist <- downloadHandler(filename = function() {'plotDist.pdf'}, content = function(file) ggsave(file, transcriptPlot(input), device = 'pdf' , height = 20, width = 40, units='cm') )
+output$downloadDepth <- downloadHandler(filename = function() {'plotDepth.pdf'}, content = function(file) ggsave(file, depthPlot(input, transcript_list(),regex_list(), "depth", T), device = 'pdf', height = 20, width = 40, units='cm') )
+output$downloadDepthStart <- downloadHandler(filename = function() {'plotDepthStart.pdf'}, content = function(file) ggsave(file, depthPlot(input, transcript_list(),regex_list(), "depthStart", T), device = 'pdf', height = 20, width = 40, units='cm') )
+output$downloadDepthEnd <- downloadHandler(filename = function() {'plotDepthEnd.pdf'}, content = function(file) ggsave(file, depthPlot(input, transcript_list(), regex_list(),"depthEnd",T), device = 'pdf', height = 20, width = 40, units='cm') )
+output$downloadDist <- downloadHandler(filename = function() {'plotDist.pdf'}, content = function(file) ggsave(file, transcriptPlot(input, transcript_list(), regex_list()), device = 'pdf' , height = 20, width = 40, units='cm') )
 output$downloadResults<-downloadHandler(filename = function() {'results.xlsx'}, content = function(file) write_xlsx( session$userData$results,file ) )
 output$downloadResultsInf<-downloadHandler(filename = function() {'resultsInf.xlsx'}, content = function(file) write_xlsx( session$userData$resultsInf,file ) )
 output$downloadResultsDepth<-downloadHandler(filename = function() {'resultsDepth.xlsx'}, content = function(file) write_xlsx( session$userData$dataDepth,file ) )
