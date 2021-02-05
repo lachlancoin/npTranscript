@@ -598,7 +598,9 @@ if(is.null(levels)){
   min(x[2]-y[1], y[2] - x[1])
 }
 .makeCombinedArray<-function(clusters_, errors_, xlim, downsample=F, thresh = 1000, alpha = 1.0, ci = 0.995, max_num= 10, t=NULL,motifpos=list(), fisher=F){
-  
+  print("xlim")
+  if(is.null(thresh)) stop("should not be null")
+  print(xlim)
   dm = dim(clusters_)
   print(head(clusters_))
   print(head(errors_))
@@ -616,7 +618,10 @@ if(is.null(levels)){
   depth[1,,] = as.matrix(clusters_[range,-(1:ij)])
   depth[2,,] = as.matrix(errors_[range,-(1:ij)])
  # print(dim(depth))
-  .plotError(depth,  thresh = 1000, downsample = downsample, alpha = alpha, 
+  print("here!!!")
+  print(head(depth[1,,]))
+  print(thresh)
+  .plotError(depth,  thresh = thresh, downsample = downsample, alpha = alpha, 
              ci = ci, max_num =max_num,t=t, xlim =xlim, pvAsSize=T, logy=T, fisher=fisher, motifpos=motifpos)
 }
 .restrict<-function(x,thresh){
@@ -631,16 +636,23 @@ if(is.null(levels)){
   x
   
 }
-.plotError<-function(depth,range = 1:dim(depth)[[2]],alpha = 1.0, downsample = F, t1=NULL, method="logit",  
+.plotError<-function(depth,alpha = 1.0, downsample = F, t1=NULL, method="logit",  
                      max_num = 20, pval_thresh = 1e-3,
                      ci=0.95, thresh = 1000, extend=T, log=F, adj=F, 
                      xlim = NULL,pvAsSize=T, logy=T, fisher=F, motifpos = list()){
-  inds1 = apply(depth[1,range,],1,min)>thresh
-  range = range[inds1]
-  if(length(range)==0) return(ggplot())
+  inds1 = apply(depth[1,,],1,min)>thresh
+  
+  if(length(which(inds1))==0) {
+    print(thresh)
+    stop(paste("nothing greather than ",thresh,max(apply(depth[1,,],1,min))))
+    #print(paste(min(range), max(range)))
+   ## print())
+    
+    #return(NULL)
+  }
+  
+  range = inds1
  
-  inds1 = apply(depth[1,range,],1,min)>thresh
-  range = range[inds1]
   dfs = list()
   pos = as.numeric(dimnames(depth)[[2]][range])
   
@@ -692,6 +704,8 @@ if(is.null(levels)){
 .plotError1<-function(df,  t1, xlim, motifpos,pval_thresh=1e-3, logy=T, pvAsSize=T,ci=0.95, alpha=1.0,zoom=F){
   posy = max(df$upper)
   li = which(names(df)=="clusterID")
+  print("hherere")
+  print(names(df))
   if(length(li)==1) names(df)[li[1]] = "type"
  df$type=as.factor(df$type)
  #print(head(subset(df,pval <= pval_thresh & diff>0)))
