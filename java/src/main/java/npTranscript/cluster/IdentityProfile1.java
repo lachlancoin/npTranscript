@@ -24,6 +24,7 @@ import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 public class IdentityProfile1 {
 	public static boolean trainStrand = true;
+	public static int min_first_last_exon_length= 20;
 //	public static  ExecutorService executor ;
 	/*final String[] type_nmes; 
 	public  Sequence ref;
@@ -134,6 +135,7 @@ static char delim1 = ',';
 		Annotation annot =parent.all_clusters.annot;
 
 		CigarHash2 breaks  = coRefPositions.breaks;
+		
 		int seqlen = refSeq.length();
 	
 		if(polyAlen>0){
@@ -160,6 +162,28 @@ static char delim1 = ',';
 					coRefPositions.breaks.add(0, newStartPos);
 				}
 			}
+		}
+		if(min_first_last_exon_length>0 && breaks.size()>2){ // only apply to first and last exon of multi-exon gene
+			int sze = breaks.size();
+			int diff0 = breaks.get(1) - startPos;
+			int diff1 = endPos - breaks.get(breaks.size()-2);
+			if(sze==4  && diff0 < min_first_last_exon_length && diff1 < min_first_last_exon_length){ // make sure at least one exon left
+				if(diff1<diff0){
+					breaks.remove(sze-1); breaks.remove(sze-2);
+				}else{
+					breaks.remove(1); breaks.remove(0);
+				}
+			}
+			else{
+				if(diff1<min_first_last_exon_length){
+					breaks.remove(sze-1); breaks.remove(sze-2);
+				}
+				if(diff0<min_first_last_exon_length){
+					breaks.remove(1); breaks.remove(0);
+				}
+			}
+			endPos = breaks.get(breaks.size()-1);
+			startPos = breaks.get(0);
 		}
 		if( align3prime!=null ){
 			
@@ -209,7 +233,7 @@ static char delim1 = ',';
 				secondKey.append(annot.nextUpstream(startPos,chrom_index, forward)+delim);
 			}
 		}
-		if(annotByBreakPosition){
+		if(true){
 			boolean firstBreak=true;
 			for(int i=1; i<breaks.size()-1; i+=2){
 				int gap = breaks.get(i+1)-breaks.get(i);
@@ -219,11 +243,11 @@ static char delim1 = ',';
 				if(gap > break_thresh){
 					if(firstBreak){
 						firstBreak=false;
-						parent.addBreakPoint(source_index, 0, breaks.get(i), breaks.get(i+1));
+						if(annotByBreakPosition) parent.addBreakPoint(source_index, 0, breaks.get(i), breaks.get(i+1));
 					//	if(bp!=null) this.bp.addBreakPoint(source_index, 0, breaks.get(i), breaks.get(i+1));
 						hasLeaderBreak = true;
 					}else{
-						 parent.addBreakPoint(source_index, 1, breaks.get(i), breaks.get(i+1));
+						if(annotByBreakPosition)  parent.addBreakPoint(source_index, 1, breaks.get(i), breaks.get(i+1));
 
 					}
 				}
@@ -248,10 +272,7 @@ static char delim1 = ',';
 
 		String type_nme = annot.getTypeNme( startPos, endPos, forward); //coRefPositions.getTypeNme(seqlen);
 		geneNames.clear();
-		
-			
-			this.coRefPositions.setStartEnd(startPos,endPos,src_index);
-
+		this.coRefPositions.setStartEnd(startPos,endPos,src_index);
 		String span_str = annot.getSpan(coRefPositions.breaks, forward,  coRefPositions.span, geneNames);
 		
 		int  span = geneNames.size();

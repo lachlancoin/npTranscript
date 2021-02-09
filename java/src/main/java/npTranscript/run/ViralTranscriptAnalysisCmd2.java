@@ -327,6 +327,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		if(coronavirus){
 		//	
 		//	CigarCluster.recordDepthByPosition = true;
+			IdentityProfile1.min_first_last_exon_length = 0;
 			System.err.println("running in coronavirus mode");
 			calcBreaks  = true; 
 			filterBy5_3 = true;
@@ -346,6 +347,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		//	TranscriptUtils.reAlignExtra = false;
 		//	TranscriptUtils.findPolyA = false;
 		//Outputs.writeGFF = false;
+			IdentityProfile1.min_first_last_exon_length = 0;
 			Outputs.calcBreaks=true;
 			sorted = true;
 			TranscriptUtils.coronavirus = false;
