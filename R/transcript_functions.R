@@ -598,7 +598,9 @@ if(is.null(levels)){
   min(x[2]-y[1], y[2] - x[1])
 }
 .makeCombinedArray<-function(clusters_, errors_, xlim, downsample=F, thresh = 1000, alpha = 1.0, ci = 0.995, max_num= 10, t=NULL,motifpos=list(), fisher=F){
-  
+  print("xlim")
+  if(is.null(thresh)) stop("should not be null")
+  print(xlim)
   dm = dim(clusters_)
   print(head(clusters_))
   print(head(errors_))
@@ -616,7 +618,10 @@ if(is.null(levels)){
   depth[1,,] = as.matrix(clusters_[range,-(1:ij)])
   depth[2,,] = as.matrix(errors_[range,-(1:ij)])
  # print(dim(depth))
-  .plotError(depth,  thresh = 1000, downsample = downsample, alpha = alpha, 
+  print("here!!!")
+  print(head(depth[1,,]))
+  print(thresh)
+  .plotError(depth,  thresh = thresh, downsample = downsample, alpha = alpha, 
              ci = ci, max_num =max_num,t=t, xlim =xlim, pvAsSize=T, logy=T, fisher=fisher, motifpos=motifpos)
 }
 .restrict<-function(x,thresh){
@@ -631,16 +636,23 @@ if(is.null(levels)){
   x
   
 }
-.plotError<-function(depth,range = 1:dim(depth)[[2]],alpha = 1.0, downsample = F, t1=NULL, method="logit",  
+.plotError<-function(depth,alpha = 1.0, downsample = F, t1=NULL, method="logit",  
                      max_num = 20, pval_thresh = 1e-3,
                      ci=0.95, thresh = 1000, extend=T, log=F, adj=F, 
                      xlim = NULL,pvAsSize=T, logy=T, fisher=F, motifpos = list()){
-  inds1 = apply(depth[1,range,],1,min)>thresh
-  range = range[inds1]
-  if(length(range)==0) return(ggplot())
+  inds1 = apply(depth[1,,],1,min)>thresh
+  
+  if(length(which(inds1))==0) {
+    print(thresh)
+    stop(paste("nothing greather than ",thresh,max(apply(depth[1,,],1,min))))
+    #print(paste(min(range), max(range)))
+   ## print())
+    
+    #return(NULL)
+  }
+  
+  range = inds1
  
-  inds1 = apply(depth[1,range,],1,min)>thresh
-  range = range[inds1]
   dfs = list()
   pos = as.numeric(dimnames(depth)[[2]][range])
   
@@ -692,6 +704,8 @@ if(is.null(levels)){
 .plotError1<-function(df,  t1, xlim, motifpos,pval_thresh=1e-3, logy=T, pvAsSize=T,ci=0.95, alpha=1.0,zoom=F){
   posy = max(df$upper)
   li = which(names(df)=="clusterID")
+  print("hherere")
+  print(names(df))
   if(length(li)==1) names(df)[li[1]] = "type"
  df$type=as.factor(df$type)
  #print(head(subset(df,pval <= pval_thresh & diff>0)))
@@ -2927,12 +2941,16 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
     total_reads = tr
   }
   header = names(total_reads)
+  
+  #toplot
   toplot = p_data$toplot
   if(p_data$usegrep){
     x1 = .findEntries(toplot,datafile,"/trans",p_data$tojoin);
   }else{
     x1= toplot
   }
+  #endtoplot
+  
   mat = t(data.frame( lapply(x1, .readIso, datafile, header, "/trans")))
   if(is.null(dim(mat))) mat = matrix(mat,nrow=1,ncol=length(header))
   if(p_data$merge){
@@ -3107,12 +3125,12 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
       countsHostVirus[3] = countsHostVirus[3] /scaling_factor
       types=c("Host","Virus","Sequin")
       linetype=c("dashed","twodash","solid")
-      shape = c(1,2,3)
+      shape = c(0,1,2)
       
-      ggp<-ggp+geom_point(data=countsHostVirus, aes_string(x=x_lab, y="Reads" , shape="Type"))
+      ggp<-ggp+geom_point(data=countsHostVirus, aes_string(x=x_lab, y="Reads" , shape="Type"),size=5)
       ggp<-ggp+geom_line(data=countsHostVirus, aes_string(x=x_lab, y="Reads" , linetype="Type", group="Type"))
       ggp<-ggp+  scale_color_manual(values = cols_subs)
-      ggp<-ggp+ scale_linetype_manual(values = linetype)+scale_shape_manual(values=shape)
+      ggp<-ggp+ scale_linetype_manual(values = linetype)+scale_shape(solid=F)
       ggp<-ggp+xlab("Conditions")
       ggp<-ggp+ scale_y_continuous(limits=ylim,
         name = yname,
@@ -3137,7 +3155,9 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
       }else{
         ggp<-ggp+ geom_line(position=position_dodge(width=0.1))  + geom_point(position=position_dodge(width=0.1),inherit.aes=T,aes(shape = molecule_type,size=10))
         ggp<-ggp+geom_errorbar(position=position_dodge(width=0.1)) #,colour="black")
+        
       }
+      ggp<-ggp+scale_shape(solid=F)
     }else{
       ggp<-ggplot(subs, aes(x=time, y=TPM ,group=interaction(molecule_type, cell, ID), color = cell, linetype=ID))
       ggp<-ggp+ geom_line()  + geom_point(inherit.aes=T,aes(shape = molecule_type,size=10))

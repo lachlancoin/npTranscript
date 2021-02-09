@@ -205,7 +205,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
  public static int maxReads = Integer.MAX_VALUE;
  public static String pool_sep="";
  public static boolean limit_to_read_list = true;
-	public static boolean sequential = true;
+	public static boolean sequential = false;
 	
 	public static String mm2_index;
  public static void run(CommandLine cmdLine, String[] bamFiles, String resDir,File anno, String chrs, String chrsToIgnore,  boolean fastq, String reference) throws IOException{
@@ -342,8 +342,9 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			sorted = false;
 		//	CigarHash2.subclusterBasedOnStEnd = false;
 			SequenceUtils.mm2_splicing= "-un";
-		
+		sequential = true;
 		}else{
+			sequential = false;
 		//	TranscriptUtils.reAlignExtra = false;
 		//	TranscriptUtils.findPolyA = false;
 		//Outputs.writeGFF = false;

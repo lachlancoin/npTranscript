@@ -21,8 +21,12 @@ options("np.adjustMethod"="BH");
 ##specific options for running on windows machine
 #options("np.source"="../../R")
 #options("np.libdir"="C:/Users/LCOIN/R-4.0.2/library")
-
+#.libPaths("C:/Users/LCOIN/R-4.0.2/library")
 args = commandArgs(trailingOnly=TRUE)
+
+###for debugging
+#args1="np.analysis=betabinom np.depth_thresh=100 np.isoformDepth=100 np.isoform.test=chisq.test np.dm.test=chisq.test np.maxIsoformGroups=5 np.adjustMethod=BH np.libdir=/data/gpfs/projects/punim1068/Rlib np.source=/data/gpfs/projects/punim1068/npTranscript/R"
+#args = strsplit(args1," ")[[1]]
 
 #args = c("np.libdir=/data/gpfs/projects/punim1068/Rlib",  "np.source=/data/gpfs/projects/punim1068/npTranscript/R",
 #		"np.datasource=/data/gpfs/projects/punim1068/npTranscript/data/SARS-Cov2/VIC01",
@@ -60,11 +64,7 @@ control_names = unlist(strsplit(getOption("np.control"),':'))
 infected_names = unlist(strsplit(getOption("np.case"),':'))
 type_names = c(control_names[1], infected_names[1])
 
-if(getOption("np.analysis","betabinom")=="edgeR"){
-		library(edgeR)
-	}else{
-	  library(VGAM)
-}
+library(VGAM)
 library(stats)
 library(writexl)
 library(rhdf5)
@@ -103,7 +103,6 @@ files = dir()
 chroms = NULL
 isVirus=  getOption("np.virus","FALSE")=="TRUE"
 start_text = "start"
-filter = NULL
 #if(isVirus){
 #  start_text ="endBreak"
 
@@ -117,31 +116,20 @@ filter = NULL
 }
 
 
-target= list( chrom="character",
-             span ="character",ORFs="character",start = "numeric", 
-             end="numeric", ID="character" ,type_nme="character", countTotal="numeric")
 
 
 
 ##READ TRANSCRIPT DATA
 
-infilesT = grep("transcripts.txt", dir(), v=T)
+infilesT = grep("transcripts.fc.txt", dir(), v=T)
 combined_depth_thresh = as.numeric(getOption("np.combined_depth_thresh","100"))
-transcriptsl_unmerged = try(.readTranscriptsHost(infilesT,target=target,filter = filter, 
+transcriptsl_unmerged = try(.readTranscriptsHost(infilesT,
                                                  combined_depth_thresh = combined_depth_thresh))
 
 transcriptsl = transcriptsl_unmerged
 attributes = attributes(transcriptsl)
 filenames = attr(transcriptsl,"info")
-if(!isVirus){
-jointind = grep(';', transcriptsl$span)
-transcriptsl$span[jointind] = unlist(lapply(transcriptsl$span[jointind],function(x) strsplit(x,";")[[1]][1]))
-nullind = grep('^-$',transcriptsl$span)
-transcriptsl$span[nullind] = .rename(transcriptsl[nullind,])
-transcriptsl =.mergeRows(transcriptsl,sum_names = filenames,append_names = "ID", colid="span")
-transcriptsl = transcriptsl[,-which(names(transcriptsl)=="ORFs")]
-names(transcriptsl) = sub("span","ORFs",names(transcriptsl))
-}
+
 print(filenames)
 print(control_names)
 control_names = unlist(lapply(control_names, grep, filenames, v=T));#  grep(control_names,filenames,v=T)
@@ -164,33 +152,38 @@ if(!is.null(getOption("np.casecontrol",NULL))){
 
 
 if(length(control_names)!=length(infected_names)) error(" lengths different")
-transcriptsl =  .processTranscripts(transcriptsl)
-
-  remove_inds =  regexpr("^[0-9]{1,}\\.", as.character(transcriptsl$ORFs))>=0
+transcriptsl$Geneid = gsub("[-+]","",transcriptsl$Geneid)
+  remove_inds =  regexpr("^[0-9]{1,}\\.", as.character(transcriptsl$Geneid))>=0
   keep_inds = !remove_inds
-  sequins_inds = regexpr(getOption("np.prefix_sequins"), transcriptsl$ORFs)>=0
+  sequins_inds = regexpr(getOption("np.prefix_sequins"), transcriptsl$Geneid)>=0
   grp = rep(NA, dim(transcriptsl)[[1]])
   grp[!remove_inds]="genes"
   grp[remove_inds] = "unknown"
   grp[sequins_inds]="sequins"
   grp = as.factor(grp)
-#transcripts_all1 = lapply(transcripts_all, .mergeRows,sum_names= c(control_names, infected_names), colid="geneID" )
-  dimnames(transcriptsl)[[1]] = transcriptsl$ID
+  #dimnames(transcriptsl)[[1]] = transcriptsl$ID
 # 
 #info = attr(transcripts,'info')
   if(!isVirus){
-  transcriptsl1 =.addAnnotation(annotFile, transcriptsl,grp,  colid="geneID", nmes = c("chr" , "ID" , "Name" , "Description","biotype"))
+  transcriptsl1 =.addAnnotation(annotFile, transcriptsl,grp,  colid="Geneid", nmes = c("chr" , "ID" , "Name" , "Description","biotype"))
 }else{
   transcriptsl1 = cbind(transcriptsl,grp)
 }
+  transcriptsl1$Name = as.character(transcriptsl1$Name)
+  transcriptsl1$Name[which(unlist(lapply(transcriptsl1$Name,nchar))==0)]=NA
 if(length(control_names)==0) stop(" control_names has 0 length" )
+  
+  #transcriptsl1 = transcriptsl1[1:500,]
+  
   DE_list =  .processDE(transcriptsl1, attributes, resdir, control_names, infected_names, type_names, type="")
   
 #  DE2 = .transferAttributes(DE2, attributes)
   
  
 ##OUTPUT FILE
-h5DE = paste(resdir,"DE.h5",sep="/")
+  writeH5 = F
+if(writeH5){
+  h5DE = paste(resdir,"DE.h5",sep="/")
 file.remove(h5DE)
 h5createFile(h5DE)
 h5write(transcriptsl1, h5DE, "transcripts")
@@ -199,6 +192,7 @@ for(i in 1:length(DE_list)){
   grpnme = paste("DE",names(DE_list)[i], sep="/")
   h5write(DE_list[[i]], h5DE, grpnme)
 }
+}
 prefix = "" #paste(control_names[1], infected_names[1], sep=" v " )
 towrite = lapply(DE_list,.xlim, pthresh = 1.0, col = "p.adj")
 #towrite[[length(towrite)+1]] = transcriptsl1
@@ -206,9 +200,9 @@ towrite = lapply(DE_list,.xlim, pthresh = 1.0, col = "p.adj")
 .write_xlsx1(towrite,paste(resdir, "DE.xlsx",sep="/") )
 DE2 = data.frame(unlist(DE_list,recursive=FALSE))
 #write_xlsx(lapply(list(transcripts=transcriptsl1,DE=DE2),function(x) x[attr(x,"order"),,drop=F]), paste(resdir, "DE.xlsx",sep="/"))
-volcanos = lapply(DE_list, .volcano, logFCthresh = 0.5, prefix=prefix, top=10, exclude=c())
+volcanos = lapply(DE_list, .volcano, logFCthresh = 0.5, prefix=prefix, top=10, exclude=c("sequins"))
 todo=.getAllPairwiseComparisons(names(DE_list), start=2)
-comparisonPlots = lapply(todo, function(x) .comparisonPlot(DE2,transcriptsl1 , inds  = x, excl=c()))
+comparisonPlots = lapply(todo, function(x) .comparisonPlot(DE2,transcriptsl1 , inds  = x, excl=c("sequins")))
 
 pdf(paste(resdir, "/DE.pdf",sep=""))
 if(TRUE){
