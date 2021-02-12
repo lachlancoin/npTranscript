@@ -113,7 +113,7 @@ header = dashboardHeader(disable = TRUE),
  
  
  numericInput("alpha", label = "Transparency", value = 0.5),
- numericInput("depth_thesh", label = "Depth threshold for errors", value = 1000),
+ numericInput("depth_thresh", label = "Depth threshold for errors", value = 100),
  
  #numericInput("linesize", label = "Thickness", value = 0.1, min = 0.0,max=1),
  

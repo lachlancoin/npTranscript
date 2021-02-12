@@ -97,19 +97,7 @@ public class IdentityProfileHolder {
 	}
  
  
-	/*public void update(Annotation annot){
-		this.all_clusters.update(annot);
-	}
-	public void refresh(Sequence chr, int chrom_index){
-		this.all_clusters.clear();
-		this.genome = chr;
-		this.chrom_ = chr.getName();
-		this.chrom_index = chrom_index;
-		if(bp!=null) bp.refresh(chr.length());
-		this.genome =chr;
-		chr5prime = TranscriptUtils.coronavirus ? chr.subSequence(0	, Math.min( primelen, chr.length())) : null;
-		 chr3prime = TranscriptUtils.coronavirus ? chr.subSequence(Math.max(0, chr.length()-primelen), chr.length()) : null;
-	}*/
+	
 	public synchronized void addBreakPoint(int source_index, int i, int br_i, int br_i1) {
 	 	this.bp.addBreakPoint(source_index, i, br_i, br_i1);
 		

@@ -613,9 +613,12 @@ depthPlot= function(input, selected_transcripts, regex_list, plot_type, reuse=F)
                     ci = ci, depth_thresh = depth_thresh,toreplace=toreplace,toreplace1 = toreplace1, toreplace2 = toreplace2,
                     showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers
                     )
-             print(head(tpm_df))
+            # print(head(tpm_df))
+          if(!is.null(tpm_df)){
           session$userData$dataDepth[[which(names(session$userData$dataDepth)==plot_type)]] = tpm_df
           }
+              }
+            if(!is.null(tpm_df)){
          ggp =plot_depth(tpm_df,total_reads,toplot,zoom=zoom, seq_df=seq_df, downsample = downsample, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
                      showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type,
                       alpha=alpha,plotCorr=plotCorr,linesize=linesize, reverseOrder=reverseOrder,
@@ -623,6 +626,7 @@ depthPlot= function(input, selected_transcripts, regex_list, plot_type, reuse=F)
                      ci = ci, depth_thresh = depth_thresh,
                      showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers
           )
+       }
          if(!showLegend){
          ggp<-ggp+ theme(legend.position = "none")
          }
@@ -888,12 +892,19 @@ output$downloadDEdata <- downloadHandler(filename = function() {'DE_data.xlsx'},
     session=readDir(inputdir,update=F,debug=T)
    # session$input$options2
    # session$input$group_by="type"
-    session$input$toplot7="^leader_leader,M_3UTR$"
-    session$input$toplot8="^leader_leader,N_3UTR$"
+    session$input$toplot7="leader_leader,M_3UTR"
+    session$input$toplot8="leader_leader,N_3UTR"
     session$input$options3 = c("showErrors",grep("mergeCounts" ,session$input$options3,v=T,inv=T))
    # session$input$group_by=
     infectivityPlot(session$input)
+<<<<<<< HEAD
     transcriptPlot(session$input, selected_transcripts = c(session$input$toplot7, session$input$toplot8), regex_list())
+=======
+ #   session$input$selected_transcripts = c("^leader_leader,M_3UTR$","^leader_leader,N_3UTR$")
+    transcriptPlot(session$input)
+  #  depthPlot(session$input, "depth")
+    
+>>>>>>> 99ade8967fc7ce9b8d79e8152e7c911c5cd47de8
     depthPlot(session$input, selected_transcripts = c(session$input$toplot7, session$input$toplot8), regex_list = list(regex1 = '', regex2='', to_join=''), "depth")
   }
 
