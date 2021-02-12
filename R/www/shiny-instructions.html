@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+
+<body style='background-color:#ecf0f5; max-width:700px;'> 
+<div align='justify'>
+<h1>npTranscript shiny app usage instructions</h1>
+<p>The npTranscript shiny server has been created to facilitate interactive exploration of SARS-CoV-2 transcript data. There are four main plot types to explore:
+<ul>
+	<li>Transcriptional activity</li>
+	<li>Transcript abundance </li>
+	<li>Depth of Coverage</li>
+	<li>Differential Expression</li>
+</ul>
+All plots and/or their data can be saved after being displayed using the 'Download Plot' and 'Download Data' buttons below them.
+</p>
+
+<p>To begin, select a directory for the dataset of interest. The Transcriptional activity plot will be loaded automatically. For the Transcript abundance and Depth of Coverage plots, transcripts(s) must be selected from the sidebar. 
+Transcripts can be selected individually using the counter and then selecting from the drop-down menus, or by using the regex input fields and a joining operator (AND, OR, AND NOT) to match and select transcript names. 
+Only one of these methods can be used at once. Once the desired transcripts have been selected, press the 'Generate Plots' button to extract and display the data.
+The DE Plots by default are switched off, and are activated by a checkbox at the bottom of the sidebar. 
+Be aware that this checkbox is unavailable if DE data is not in the directory. At present, DE data is only available for SARS-Cov2/VIC01 sequence data. 
+</p>
+<p> Plots can be further refined be de-selecting any molecules, cells, or time points from the sidebar.</p>
+
+
+<h2> Transcriptional activity </h2>
+<p>This plot displays the ratio, within each ORF, of leader-containing reads to total reads spanning the given ORF, which we hypothesise can be used to measure how active an infection is. With greater transcriptional activity, more leader-body joining occurs and a higher ratio is produced. 
+There are only a small number of input controls to this plot. The checkbox options in the 'Transcript Activity panel' section of the sidebar allow the user to toggle the plot, show confidence intervals, toggle barchart/linegraph, reverse the display order of the data,
+or toggle the display of the legend.
+</p>
+<figure style="text-align:center; color:#094183">
+<img src="img/activity-options.png" width="200"> </img><figcaption>Transcript activity plot checkbox options</figcaption></figure>
+<p>Additionally, the user can choose to filter which ORF ratios are included in 'ORFs to include', or use the 'Grouping' dropdown options to set facets for the plot around a chosen feature of the data. </p>
+
+<h2>Transcript abundance</h2>
+<p>The transcript abundance plot is the primary plot for determing abundances of transcript clusters detected with npTranscript. Abundances are displayed in units of Transcripts Per Million (TPM). 
+The nomenclature for the transcript names is defined by ORFs joined together by commas, indicating a break, and underscores, indicating a contiguous sequence between the two named ORFs. 
+For example, 'leader_ORF1ab,S_3UTR' describes a transcript that begins with the leader sequence at the 5' end, contains all the genome up until a point in ORF1ab, then breaks and is joined directly onto the Spike ORF before extending through the remainder of the genome to the 3'UTR.
+The checkbox options in 'Transcript abundance panel' edit similar paramaters to those for the transcriptional activity plot, with further controls added for whether TPM is calculated over all reads or viral-only reads, whether abundances should be summed among all selected transcripts ('mergeCounts'), and whether the barchart elements should be stacked or parallel. 
+The 'Maximum number of transcripts' input reduces the total number of displayed transcripts for ease of reading. 
+</p>
+<figure style="text-align:center; color:#094183">
+<img src="img/abundance-options.png" width="200"> </img><figcaption>Transcript abundance plot checkbox options</figcaption></figure>
+
+<h2> Depth of Coverage </h2>
+<p>The Depth of Coverage plots display the amount and location of viral genomic coverage that is captured by the selected transcripts. This can be useful for visualising what segments of the genome are contained within the transcripts,
+and for viewing the divergent genome-joining patterns among and between different transcripts. To further assist with interpreting the differences in genomic-joining patterns, we provide three separate windows
+in the coverage plots: overall depth, concentration of depthStart, and concentration of depthEnd. depthStart and depthEnd display the mapped locations of transcript start and stop sites, so as to
+demonstrate whether a particular transcript cluster shows diffuse or concentrated breakpoint locations.</p>
+<p>Controls for the depth plots are pictured below, and include some of the same paramaters from earlier plot types. Important additions are 'showORFs/showPeptides/showSequence' to overlay ORF locations, ORF1ab polypeptide boundaries, or sequence composition, and  'zoom' to toggle the zoomed facets beneath each depth plot. 
+The x-min and x-max for the zoomed facets are set by numerical input boxes just beneath the depth plot options. Be aware that there is currently a bug in the zoom facet where an entire depth plot will appear blank if the zoomed region contains no data. Likewise, the 'showSequence' option will fail to appear on the plot 
+if the zoomed region is too large. Try restricting the zoom window to 100 bases for the sequence to appear, or refocusing the zoomed window on a segment which contains depth data if the plot has disappeared entirely.
+</p>
+<figure style="text-align:center; color:#094183">
+<img src="img/depth-options.png" width="200"> </img> <figcaption> Depth plot checkbox options </figcaption> </figure>
+<p> Some extra functionality is built into the depth plots to enable them to be converted into two other charts: a chart showing the basecalling error rate along the transcript ('showErrors' option), or a chart quantifying the intial and terminal k-mers among the selected transcripts ('showWaterfall' option).
+The Error plot was designed to visualise any differences in error rate between clusters in order to add weight to evidence of transcript-specific RNA modifications. The Waterfall plot was made to discover any terminal motifs that may explain transcripts lacking the 3'UTR region.
+These were our motivations for creating the plots, but there may be further uses beyond this.</p>
+<p>The Waterfall chart should appear without altering any of the input paramaters. Exactly two transcripts must be selected in order to show the Error plot so that the two clusters can be tested using the named test in 'Test' input field (Chi-squared or FET).
+</p>
+<figure style="text-align:center; color:#094183;"> <img src="img/waterfall-example.png" width="700"> </img> <figcaption> Waterfall plot activated by checking 'showWaterfall' checkbox in depth plot options</figcaption></figure>
+<h2> DE Plots </h2>
+<p>
+DE Plots are at present not functional in shiny-npTranscript.
+</p>
+</div>
+</body>
+
