@@ -893,8 +893,8 @@ output$downloadDEdata <- downloadHandler(filename = function() {'DE_data.xlsx'},
     session$input$options3 = c("showErrors",grep("mergeCounts" ,session$input$options3,v=T,inv=T))
    # session$input$group_by=
     infectivityPlot(session$input)
-    transcriptPlot(session$input)
-    depthPlot(session$input, "depth")
+    transcriptPlot(session$input, selected_transcripts = c(session$input$toplot7, session$input$toplot8), regex_list())
+    depthPlot(session$input, selected_transcripts = c(session$input$toplot7, session$input$toplot8), regex_list = list(regex1 = '', regex2='', to_join=''), "depth")
   }
 
 })
