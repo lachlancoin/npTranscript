@@ -35,8 +35,7 @@ shinyServer(function(input, output,session) {
   counter$n=0
   
   track_transcripts <- reactiveValues(update=0)
-  
-  DE=NULL
+  session$userData$DE=NULL
   shinyjs::disable('LoadDE') 
   
 	#functions
@@ -182,7 +181,7 @@ readDir <- function(inputdir, update=T, debug=F) {
     	hide("DE_cell2")
     	hide("DE_time1")
     	hide("DE_time2")	
-  	  DE$counts = NULL
+  	  session$userData$DE$counts = NULL
     	if (!dir.exists(file.path(currdir,'DE'))) {
     		shinyjs::disable('LoadDE') 
     		} else {
@@ -751,7 +750,8 @@ observeEvent( input$LoadDE,
 {
   if(input$LoadDE){
 	print('loadingDE')
-	DE$counts = loadDE()
+	
+	
 	shinyjs::show("plotDE")
 	shinyjs::show("DE_cell1")
 	shinyjs::show("DE_cell2")
@@ -761,10 +761,13 @@ observeEvent( input$LoadDE,
 	shinyjs::show("mean_count_thresh")
 	shinyjs::show("merge_by")
 	
+	
+	session$userData$DE$counts = loadDE()
+	#print(head(session$userData$DE$counts))
+	
   }else{
     print("de-activating DE")
-	
-    DE$counts = list()
+	print('reset DE')
 	shinyjs::hide("plotDE")
 	shinyjs::hide("DE_cell1")
 	shinyjs::hide("DE_cell2")
@@ -774,51 +777,55 @@ observeEvent( input$LoadDE,
 	shinyjs::hide("mean_count_thresh")
 	shinyjs::hide("merge_by")
 	
+	
+    session$userData$DE$counts = list()
+
+	
   }
-	updateSelectInput(session, "DE_cell1",  choices = names(DE$counts))
-	updateSelectInput(session, "DE_cell2", choices = names(DE$counts))
+	updateSelectInput(session, "DE_cell1",  choices = names(session$userData$DE$counts))
+	updateSelectInput(session, "DE_cell2", choices = names(session$userData$DE$counts))
 	updateSelectInput(session, "DE_time1",  choices = session$userData$info$times)
 	updateSelectInput(session, "DE_time2",  choices = session$userData$info$times)
-
+	
 } )
 
 
 #DE Plots
 observeEvent(input$plotDE, {
- head(DE$counts)
- if (is.null(DE$counts)) {print('DE_countdata is null') } else {
-	#head(DE$counts)
-   plot_params = list(toplot5= transcript_list(), toplot2=c(regex_list$regex1, regex_list$regex2), 
-                      tojoin=regex_list$regex_join, group_by=input$group_by, merge_by=input$merge_by)
-	DE$main_out <- try(runDE(count_list = DE$counts, cell1 = input$DE_cell1 ,
+print('running DE')
+ if (is.null(session$userData$DE$counts)) {print('DE_countdata is null') } else {
+	#head(session$userData$DE$counts)
+	#not working maybe because of isolate???
+   plot_params <- list(toplot5= isolate(transcript_list()), toplot2=isolate(c(regex_list()$regex1, regex_list()$regex2)), 
+                      tojoin=isolate(regex_list()$regex_join), group_by=input$group_by, merge_by=input$merge_by)
+	print(plot_params)
+	print('arrived here')
+	session$userData$DE$main_out <- tryCatch( {runDE(count_list = session$userData$DE$counts, cell1 = input$DE_cell1 ,
 	                     cell2 = input$DE_cell2, time1 = input$DE_time1, 
 	                     time2 = input$DE_time2,  thresh=input$mean_count_thresh,
-	                     plot_params=plot_params))
-	if(!inherits(DE$main_out,"try-error")) {
-	print(paste('DEout done', names(DE$main_out)))
+	                     plot_params=plot_params ) }, error = function(e) message(paste(e)))
+						 
+	if(!inherits(session$userData$DE$main_out,"try-error")) {
+	print(paste('DEout done', names(session$userData$DE$main_out)))
 	
 	
 	output$DEPlot_volcano <- renderPlot( {
-	DE$main_out[['volcano_params']][['remove_spurious']] <- input$remove_spurious 
+	session$userData$DE$main_out[['volcano_params']][['remove_spurious']] <- input$remove_spurious 
 	do.call(volcanoplot, 
-	DE$main_out[['volcano_params']] )
+	session$userData$DE$main_out[['volcano_params']] )
 	})
 	
 	output$DEPlot_PCA <- renderPlot( {
 	do.call(rld_pca, 
-	DE$main_out[['rld_pca_params']]
+	session$userData$DE$main_out[['rld_pca_params']]
 	)
 	})
-	}
+	} else {print('try-error caught')}
 	
 		}
 	 } )
 
-	#reactives THESE ARE NEEDED FOR IMPROVEMENTS.
-	#1 resolve transcripts selected before run_depth and run_tpm
-	#determine which are add ons for ggplot and put them in a reactive to add on after plot is produced
-  
- 
+
 	#render plots
 
 	output$infPlot<-renderPlot({
@@ -897,14 +904,11 @@ output$downloadDEdata <- downloadHandler(filename = function() {'DE_data.xlsx'},
     session$input$options3 = c("showErrors",grep("mergeCounts" ,session$input$options3,v=T,inv=T))
    # session$input$group_by=
     infectivityPlot(session$input)
-<<<<<<< HEAD
-    transcriptPlot(session$input, selected_transcripts = c(session$input$toplot7, session$input$toplot8), regex_list())
-=======
+   # transcriptPlot(session$input, selected_transcripts = c(session$input$toplot7, session$input$toplot8), regex_list())
  #   session$input$selected_transcripts = c("^leader_leader,M_3UTR$","^leader_leader,N_3UTR$")
     transcriptPlot(session$input)
   #  depthPlot(session$input, "depth")
-    
->>>>>>> 99ade8967fc7ce9b8d79e8152e7c911c5cd47de8
+  
     depthPlot(session$input, selected_transcripts = c(session$input$toplot7, session$input$toplot8), regex_list = list(regex1 = '', regex2='', to_join=''), "depth")
   }
 
