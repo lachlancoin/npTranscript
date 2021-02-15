@@ -60,7 +60,14 @@ These were our motivations for creating the plots, but there may be further uses
 <figure style="text-align:center; color:#094183;"> <img src="img/waterfall-example.png" width="700"> </img> <figcaption> Waterfall plot activated by checking 'showWaterfall' checkbox in depth plot options</figcaption></figure>
 <h2> DE Plots </h2>
 <p>
-DE Plots are at present not functional in shiny-npTranscript.
+DE Plots rely on the presence of feature counts filed which are not generated through the npTranscript java program, so the DE plots are currently only available for SARS-Cov2/VIC01 data which have had feature counts prepared in advance.
+On the server, Differential Expression is calculated with DESeq2 using a parametric fittype by default. Should the analysis fail with paramatric, the calculation reverts to a fittype of mean (indicated on the resulting chart).
+</p>
+</p>
+The DE analysis produces two separate plots - one for PCA calculated using stats::prcomp, and a volcano plot of the DE results. 
+Controls for the DE plots are shown below. In addition to controls for cell and timepoint in the DE comparison, input is taken from 'Mean count thresh' to filter out genes below the given count, 
+and 'Transcript group to collapse' to merge counts of transcripts with the given string in the transcript name before DE analysis.
+
 </p>
 </div>
 </body>
