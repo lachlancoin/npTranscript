@@ -37,7 +37,6 @@ shinyUI(fluidPage(
 	tags$head(includeHTML(file.path(basedir, "shiny-common/google-analytics.html"))),
 	tags$style(HTML("
 	
-
 	 .skin-blue .main-sidebar {
                               background-color: #f5f5f5;
 							  padding-top:0px;

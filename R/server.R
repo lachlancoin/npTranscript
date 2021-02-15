@@ -37,6 +37,7 @@ shinyServer(function(input, output,session) {
   track_transcripts <- reactiveValues(update=0)
   session$userData$DE=NULL
   shinyjs::disable('LoadDE') 
+  shinyjs::disable("add_btn")
   
 	#functions
 
@@ -82,6 +83,7 @@ readDir <- function(inputdir, update=T, debug=F) {
       session$userData$toreplace=toreplace
       isoInfo = .getIsoInfo(datafile, h5file,toreplace)
       total_reads = isoInfo$total_reads
+	  shinyjs::enable("add_btn")
       #  #   toreplace1=names(isoInfo$total_reads)
       #   grep("SRR",toreplace1)
       #   names(toreplace) = unlist( lapply(toreplace,.fixName))
@@ -796,17 +798,17 @@ print('running DE')
  if (is.null(session$userData$DE$counts)) {print('DE_countdata is null') } else {
 	#head(session$userData$DE$counts)
 	#not working maybe because of isolate???
-   plot_params <- list(toplot5= isolate(transcript_list()), toplot2=isolate(c(regex_list()$regex1, regex_list()$regex2)), 
-                      tojoin=isolate(regex_list()$regex_join), group_by=input$group_by, merge_by=input$merge_by)
-	print(plot_params)
+   plot_params <- isolate(list(toplot5= '-', toplot2= '', tojoin='', group_by=isolate(input$group_by), merge_by=isolate(input$merge_by)))
+	#print(plot_params)
 	print('arrived here')
 	session$userData$DE$main_out <- tryCatch( {runDE(count_list = session$userData$DE$counts, cell1 = input$DE_cell1 ,
 	                     cell2 = input$DE_cell2, time1 = input$DE_time1, 
 	                     time2 = input$DE_time2,  thresh=input$mean_count_thresh,
-	                     plot_params=plot_params ) }, error = function(e) message(paste(e)))
+	                     plot_params=isolate(plot_params)) }, error = function(e) message(paste(e)))
 						 
 	if(!inherits(session$userData$DE$main_out,"try-error")) {
-	print(paste('DEout done', names(session$userData$DE$main_out)))
+	print(paste('DEout done'))
+	print(names(session$userData$DE$main_out))
 	
 	
 	output$DEPlot_volcano <- renderPlot( {
@@ -875,16 +877,16 @@ output$downloadSequence<-downloadHandler(filename = function() {'sequence.fa'}, 
 
 output$downloadPCA <- downloadHandler(filename = function() {'plotPCA.pdf'}, content = function(file) {
 	pdf(file, 18, 18, pointsize=50)
-	do.call(rld_pca, DE$main_out[['rld_pca_params']])
+	do.call(rld_pca, session$userData$DE$main_out[['rld_pca_params']])
 	dev.off()
 		})
 output$downloadVOLCANO <- downloadHandler(filename = function() {'plotVOLCANO.pdf'}, content = function(file) {
 	pdf(file, 18, 18, pointsize=20)
-	do.call(volcanoplot, DE$main_out[['volcano_params']] )
+	do.call(volcanoplot, session$userData$DE$main_out[['volcano_params']] )
 	dev.off()
 		})
 output$downloadDEdata <- downloadHandler(filename = function() {'DE_data.xlsx'}, content = function(file) {
-	write_xlsx(DE$main_out[['data']], file)
+	write_xlsx(session$userData$DE$main_out[['data']], file)
 	})
 
 

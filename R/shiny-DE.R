@@ -135,7 +135,8 @@ runDE <- function(count_list, cell1, cell2, time1, time2, thresh=50, plot_params
                        by = "row.names", sort = FALSE) %>% 
                 transform(row.names=Row.names, Row.names=NULL) %>%
               as.matrix()
-
+print(count_trim)
+print('count trim here')
 if(!is.null(plot_params))  count_trim=.subsetFCFile(count_trim,plot_params)
   count_trim=count_trim[apply(count_trim,1,sum)>thresh*dim(count_trim)[2],,drop=F] 
  # print(head(count_trim))
@@ -148,7 +149,8 @@ if(!is.null(plot_params))  count_trim=.subsetFCFile(count_trim,plot_params)
   # Make DESeq dataset
   (coldata <- data.frame(row.names=colnames(count_trim), condition))
   dds <- DESeqDataSetFromMatrix(countData=count_trim, colData=coldata, design=~condition)
-  
+  print(dds)
+  print('dds here')
   keep <- rowSums(counts(dds)) >= 5
   dds <- dds[keep,]
   
