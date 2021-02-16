@@ -61,7 +61,8 @@ These were our motivations for creating the plots, but there may be further uses
 <h2> DE Plots </h2>
 <p>
 DE Plots rely on the presence of feature counts filed which are not generated through the npTranscript java program, so the DE plots are currently only available for SARS-Cov2/VIC01 data which have had feature counts prepared in advance.
-On the server, Differential Expression is calculated with DESeq2 using a parametric fittype by default. Should the analysis fail with paramatric, the calculation reverts to a fittype of mean (indicated on the resulting chart).
+On the server, Differential Expression is calculated with DESeq2 using a parametric fittype by default. Should the analysis fail with the default paramatric fittype, the calculation reverts to an alternative (indicated on the resulting chart). Should the DESeq model-fitting fail more broadly, the resulting
+error will be presented in the plot area.
 </p>
 </p>
 The DE analysis produces two separate plots - one for PCA calculated using stats::prcomp, and a volcano plot of the DE results. 
@@ -70,7 +71,7 @@ and 'Transcript group to collapse' to merge the counts of transcripts with the g
 the data are flagged as spurious. This is to highlight the possibility of these genes being marked as false-positive if a third non-zero count value inflates the mean value and results in detected Differential Expression. A flag for spuriousness is included in the data download and can be viewed by the user to investigate further.
 </p>
 <figure style="text-align:center; color:#094183">
-<img src = "img/DE-options.png" width="200"> </img> <figcaption> Input options for Differential Expression analysis powered by DESeq2 </figcaption> </figure?
+<img src = "img/DE-options.png" width="200"> </img> <figcaption> Input options for Differential Expression analysis powered by DESeq2 </figcaption> </figure>
 </div>
 </body>
 

@@ -796,8 +796,6 @@ observeEvent( input$LoadDE,
 observeEvent(input$plotDE, {
 print('running DE')
  if (is.null(session$userData$DE$counts)) {print('DE_countdata is null') } else {
-	#head(session$userData$DE$counts)
-	#not working maybe because of isolate???
    plot_params <- isolate(list(toplot5= '-', toplot2= '', tojoin='', group_by=isolate(input$group_by), merge_by=isolate(input$merge_by)))
 	#print(plot_params)
 	print('arrived here')
@@ -805,12 +803,17 @@ print('running DE')
 	                     cell2 = input$DE_cell2, time1 = input$DE_time1, 
 	                     time2 = input$DE_time2,  thresh=input$mean_count_thresh,
 	                     plot_params=isolate(plot_params)) }, error = function(e) message(paste(e)))
-						 
-	if(!inherits(session$userData$DE$main_out,"try-error")) {
+	print('finished DESeq')
+	
+	if(is.character(session$userData$DE$main_out)) {
+		output$DEPlot_PCA <- renderPlot( {
+					stop(session$userData$DE$main_out) })
+		output$DEPlot_volcano <- renderPlot( {
+					stop(session$userData$DE$main_out) })
+		}
+	else {
 	print(paste('DEout done'))
-	print(names(session$userData$DE$main_out))
-	
-	
+		
 	output$DEPlot_volcano <- renderPlot( {
 	session$userData$DE$main_out[['volcano_params']][['remove_spurious']] <- input$remove_spurious 
 	do.call(volcanoplot, 
@@ -822,16 +825,29 @@ print('running DE')
 	session$userData$DE$main_out[['rld_pca_params']]
 	)
 	})
-	} else {print('try-error caught')}
+	}
 	
-		}
-	 } )
+		} 
+	 })
+	 
 
 
 	#render plots
 
 	output$infPlot<-renderPlot({
 	   shiny::validate(need(input$dir, 'Please select a directory to begin'))
+	   
+	   
+	   #depends on 
+			# options1
+			# textsize
+			# conf.int
+			# facet1
+			# molecules
+			# cells
+			# times
+			# orfs
+	   
 	  input$plotButton
 	  infectivityPlot(input)
 	})

@@ -159,23 +159,20 @@ if(!is.null(plot_params))  count_trim=.subsetFCFile(count_trim,plot_params)
   
   # Run DESeq2 pipeline and save the results
   dds <- tryCatch( {
-  fit = 'parametric'
-    DESeq(dds, fitType = fit) },
+    DESeq(dds, fitType = 'parametric') },
     error = function(cond) {
-      message(paste('Parametric fit failure :', cond))
-      message(paste('attempting DE with fitType = mean'))
-	  fit = 'mean'
-	  tryCatch( {
-		DESeq(dds, fitType = fit) },
-		error = function(cond) {
-		stop(paste('DESeq failed with:', cond))
-		} )
+      return(paste('DESeq parametric fit failure :', cond))
+      
 		}
     
   )
-                  
-  res <- DESeq2::results(dds)
-  
+ #if it produceses an error, return it here
+if (is.character(dds)) return(dds) 
+
+#record what the fit was
+final_fit <- attr(dispersionFunction(dds), 'fitType')
+
+res <- DESeq2::results(dds)
 ##For flagging of spurious results
 count_results_melt <- counts(dds, normalized=TRUE) %>%
     `colnames<-`(condition) %>%
@@ -223,8 +220,8 @@ count_results_with_mean <- merge(x = count_results_melt, y = num_zeros, by = 'Va
   
   #Volcano
   #pdf(paste0("volcanoplot_", output, ".pdf"), 18, 18, pointsize=20)
-  vp_command <- list(res = resdata, lfcthresh=0.5, sigthresh=0.05, textcx=0.8, xlim=c(-10, 10), legendpos="topright", main = paste('DESeq2', cell1, time1, 'vs', cell2, time2, 'using', fit, 'fit' ))
-  vp_ggp_command <- list(df = resdata, main = paste('DESeq2', cell1, time1, 'vs', cell2, time2, 'using', fit, 'fit'))
+  vp_command <- list(res = resdata, lfcthresh=0.5, sigthresh=0.05, textcx=0.8, xlim=c(-10, 10), legendpos="topright", main = paste('DESeq2', cell1, time1, 'vs', cell2, time2, 'using', final_fit, 'fit' ))
+  vp_ggp_command <- list(df = resdata, main = paste('DESeq2', cell1, time1, 'vs', cell2, time2, 'using', final_fit, 'fit'))
   #dev.off()
   
   return(list(data = resdata, rld_pca_params = rpca_command, volcano_params = vp_command, volcano_ggp_params = vp_ggp_command))
