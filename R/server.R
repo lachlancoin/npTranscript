@@ -804,30 +804,21 @@ print('running DE')
 	                     time2 = input$DE_time2,  thresh=input$mean_count_thresh,
 	                     plot_params=isolate(plot_params)) }, error = function(e) message(paste(e)))
 	print('finished DESeq')
-	
-	if(is.character(session$userData$DE$main_out)) {
-		output$DEPlot_PCA <- renderPlot( {
-					stop(session$userData$DE$main_out) })
-		output$DEPlot_volcano <- renderPlot( {
-					stop(session$userData$DE$main_out) })
-		}
-	else {
-	print(paste('DEout done'))
-		
+			
 	output$DEPlot_volcano <- renderPlot( {
+	validate(need(is.character(session$userData$DE$main_out) == F, session$userData$DE$main_out))
 	session$userData$DE$main_out[['volcano_params']][['remove_spurious']] <- input$remove_spurious 
 	do.call(volcanoplot, 
 	session$userData$DE$main_out[['volcano_params']] )
 	})
 	
 	output$DEPlot_PCA <- renderPlot( {
+	validate(need(is.character(session$userData$DE$main_out) == F, session$userData$DE$main_out))
 	do.call(rld_pca, 
 	session$userData$DE$main_out[['rld_pca_params']]
 	)
 	})
-	}
-	
-		} 
+		}
 	 })
 	 
 
