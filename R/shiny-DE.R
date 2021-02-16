@@ -169,6 +169,7 @@ if(!is.null(plot_params))  count_trim=.subsetFCFile(count_trim,plot_params)
 		DESeq(dds, fitType = fit) },
 		error = function(cond) {
 		stop(paste('DESeq failed with:', cond))
+		} )
 		}
     
   )
