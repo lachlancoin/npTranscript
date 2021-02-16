@@ -66,9 +66,11 @@ On the server, Differential Expression is calculated with DESeq2 using a paramet
 </p>
 The DE analysis produces two separate plots - one for PCA calculated using stats::prcomp, and a volcano plot of the DE results. 
 Controls for the DE plots are shown below. In addition to controls for cell and timepoint in the DE comparison, input is taken from 'Mean count thresh' to filter out genes below the given count, 
-and 'Transcript group to collapse' to merge counts of transcripts with the given string in the transcript name before DE analysis.
-
+and 'Transcript group to collapse' to merge the counts of transcripts with the given string in the transcript name before DE analysis. 'Remove spurious results' provides the user with the option to filter out data points which may represent false-positives. If two of the three replicates for either time point have contain calculated gene counts of zero,
+the data are flagged as spurious. This is to highlight the possibility of these genes being marked as false-positive if a third non-zero count value inflates the mean value and results in detected Differential Expression. A flag for spuriousness is included in the data download and can be viewed by the user to investigate further.
 </p>
+<figure style="text-align:center; color:#094183">
+<img src = "img/DE-options.png" width="200"> </img> <figcaption> Input options for Differential Expression analysis powered by DESeq2 </figcaption> </figure?
 </div>
 </body>
 
