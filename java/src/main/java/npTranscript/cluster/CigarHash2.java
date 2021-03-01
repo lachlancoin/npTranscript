@@ -9,24 +9,31 @@ import java.util.List;
  */
 
 public class CigarHash2 extends ArrayList<Integer> {
-	
+	public CigarHash2(boolean rounded){
+		this.rounded = rounded;
+	}
 	//public static boolean subclusterBasedOnStEnd = false;
-	
+	boolean rounded = false;
 	public CigarHash2 clone(boolean round, int start, int end){
-		CigarHash2 obj =new CigarHash2();
+		if(round && this.rounded) {
+			throw new RuntimeException("already rounded");
+		}
+		CigarHash2 obj =new CigarHash2(round || rounded);
 		if(round) obj.addAllR(this,start, end);
 		else obj.addAll(this, start);
 		return obj;
 	}
 	public CigarHash2 clone(){
-		CigarHash2 obj =new CigarHash2();
+		CigarHash2 obj =new CigarHash2(this.rounded);
 		obj.addAll(this);
 		return obj;
 	}
 	
 	public static CigarHash2 merge(List<CigarHash2> suppl) {
-		CigarHash2 obj =new CigarHash2();
+		boolean rounded = suppl.get(0).rounded;
+		CigarHash2 obj =new CigarHash2(rounded);
 		for(int j=0; j<suppl.size(); j++){
+			if(j>0 && suppl.get(j).rounded!=rounded) throw new RuntimeException("!! inconsistent rounding");
 			obj.addAll(suppl.get(j));
 		}
 		Collections.sort(obj);
@@ -41,6 +48,7 @@ public class CigarHash2 extends ArrayList<Integer> {
 	}
 	
 	private void addAll(CigarHash2 cigarHash2, int start) {
+		if(this.rounded!=cigarHash2.rounded) throw new RuntimeException("!!");
 		for(int i= start; i<cigarHash2.size(); i++){
 			add(cigarHash2.get(i));
 		}
@@ -51,14 +59,12 @@ public class CigarHash2 extends ArrayList<Integer> {
 	}
 
 	public void addAllR(CigarHash2 obj, int start, int end) {
-		/*if(subclusterBasedOnStEnd){
-			addR(obj.get(0));
-			addR(obj.get(obj.size()-1));
-		}else{*/
+		if(this.size()>0) throw new RuntimeException("not empty");
+		if(obj.rounded) throw new RuntimeException("is rounded");
+		this.rounded = true;
 			for(int i=start; i<end; i++){
 				addR(obj.get(i));
 			}
-		//}
 		
 	}
 	
@@ -107,6 +113,7 @@ public class CigarHash2 extends ArrayList<Integer> {
 	
 	
 	private boolean addR(Integer i){ 
+		if(!this.rounded) throw new RuntimeException("!!");
 		Integer i1 = TranscriptUtils.round(i, round);
 		return (super.add(i1));
 	}

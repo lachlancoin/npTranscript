@@ -29,7 +29,7 @@ public class CigarCluster  {
 	
 		static int round2 = 100;
 		public static boolean recordDepthByPosition = false;
-		public static int annotationToRemoveFromGFF = -1;
+		//public static int annotationToRemoveFromGFF = -1;
 		int breakSt = -1;
 		int breakEnd = -1;
 		int breakSt2 = -1;
@@ -50,6 +50,7 @@ public class CigarCluster  {
 		int prev_position =-1; // if negative then indicates that it must be first
 		int break_point_cluster = -1;		
 	//	boolean first = true;
+		
 		
 	
 		public void addReadCount(int source_index) {
@@ -72,8 +73,8 @@ public class CigarCluster  {
 		private int id;
 		private int[] count;
 		
-		private double[]  true_breaks; //in 100kb
-		private static double divisor = 1e5;
+		private double[]  true_breaks; //in 1kb
+		private static double divisor = 1e3;
 		public void addBreaks(List<Integer>breaks){
 			if(true_breaks==null) true_breaks =new double[breaks.size()];
 			if(true_breaks.length!=breaks.size()){
@@ -84,6 +85,8 @@ public class CigarCluster  {
 				}
 			}
 		}
+		
+		
 		public List<Integer> getBreaks(){
 			if(true_breaks==null) return null;
 			Integer[] res = new Integer[true_breaks.length];
@@ -122,19 +125,21 @@ public class CigarCluster  {
 	}
 		
    	Map<CigarHash2, Count> all_breaks  ;
-   	CigarHash2 breaks = new CigarHash2();
+   	CigarHash2 breaks = new CigarHash2(false);
    	CigarHash breaks_hash = new CigarHash();
    	
    	//chr1    HAVANA  gene    11869   14409   .       +       .       
    	//ID=ENSG00000223972.5;gene_id=ENSG00000223972.5;gene_type=transcribed_unprocessed_pseudogene;gene_name=DDX11L1;level=2;havana_gene=OTTHUMG00000000961.2
 private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutputStream os,  PrintWriter[] bedW, String chr, 
-		String type,  String parent, String ID,  int start, int end, String type_nme, String secondKey, String geneID, char strand, Sequence seq,  int []counts){
+		String type,  String parent, String ID,  int start, int end, String type_nme, String secondKey, 
+		String geneID, char strand, Sequence seq,  int []counts){
+	//if(counts.length!=2) throw new RuntimeException("!!");
 	//String secondKey = this.breaks_hash.secondKey;
 	 //char strand = '+';//secondKey.charAt(secondKey.length()-1);
-	 int count_ref= CigarCluster.annotationToRemoveFromGFF>=0  ? counts[annotationToRemoveFromGFF]:0;
-		if(count_ref>0) return;// do not print if count ref greater than zero;
+	// int count_ref= CigarCluster.annotationToRemoveFromGFF>=0  ? counts[annotationToRemoveFromGFF]:0;
+	//	if(count_ref>0) return;// do not print if count ref greater than zero;
 
-	pw.print(chr);pw.print("\tnp\t"+type+"\t");
+	 pw.print(chr);pw.print("\tnp\t"+type+"\t");
 	 pw.print(start);pw.print("\t"); pw.print(end);
 	 pw.print("\t.\t"); pw.print(strand);pw.print("\t.\t");
 	 pw.print("ID="); pw.print(ID);
@@ -146,13 +151,15 @@ private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutpu
 	 pw.print(";type=ORF;");
 	 pw.print("gene_name=");pw.print(secondKey.replace(';','_'  ));
 	 int count =0 ;
-	
-	 for(int i=0 ; i<counts.length; i++){
-		 count+=counts[i];
-		
+	 pw.print(";count=");
+	 for(int k=0; k<counts.length; k++){
+		 count+=counts[k];
+		 pw.print(counts[k]);
+		 if(k<counts.length-1) pw.print(",");
 	 }
-	 String tpmstr = count+"";//String.format("%5.3g", "tpm");
-	 pw.print(";count=");pw.print(tpmstr);
+	
+	// String tpmstr = count+"";//String.format("%5.3g", "tpm");
+	
 
 	 pw.println();
 	 if(breaks!=null){
@@ -169,10 +176,15 @@ private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutpu
 		 pw.print(";gene_id=");pw.print(geneID);
 		 pw.print(";type=ORF;");
 		 pw.print("gene_name=");pw.print(secondKey.replace(';','_'  ));
+		 pw.print(";count=");
+		for(int k=0; k<counts.length; k++){
+			 pw.print(counts[k]);
+			 if(k<counts.length-1) pw.print(",");
+		 }
 		 pw.println();
 	 }
 	  Sequence seq1 = new Sequence(seq.alphabet(), sb.toString(), ID);
-	  seq1.setDesc(chr+" "+breaks.toString()+" "+type_nme+" "+tpmstr);
+	  seq1.setDesc(chr+" "+breaks.toString()+" "+type_nme);//+" "+tpmstr);
 	  try{
 	  seq1.writeFasta(os);
 	  }catch(Exception exc){
@@ -211,37 +223,50 @@ public static  synchronized void printBed(PrintWriter bedW, String chrom, List<I
 
 }
 
- public void writeGFF(PrintWriter pw, SequenceOutputStream os, PrintWriter[] bedW, String chr, double  iso_thresh, String type_nme, Sequence seq){
+ public void writeGFF(PrintWriter[] pw, SequenceOutputStream os, PrintWriter[] bedW, String chr, double  iso_thresh, 
+		 String type_nme, Sequence seq){
 	// String secondKey =  this.breaks_hash.secondKey;
-		if(this.readCountSum< Outputs.gffThreshGene) return;
+		//if(this.readCountSum< Outputs.gffThreshGene) return;
 //if(!type_nme.equals("5_3")) return;
 	//double tpm = (double) this.readCountSum() / (double) mapped_read_count;
-	
+	//this.readCount
+	 int num_sources = pw.length;
 	if(all_breaks.size()==0) throw new RuntimeException("no transcripts");
 	List<Count> counts= new ArrayList<Count>(all_breaks.values());
 	Collections.sort(counts);
 	int max_cnt = counts.get(counts.size()-1).sum();
 	int min_cnt = counts.get(0).sum();
+	boolean[] writeGene = new boolean[pw.length]; 
 	//System.err.println(min_cnt+" "+max_cnt+" "+counts.size());
-	if(max_cnt >=Outputs.gffThreshTranscript){
+	if(max_cnt >=Outputs.gffThreshTranscriptSum){
 		 if(min_cnt >max_cnt) throw new RuntimeException();
-		 writeGFF1(null, pw, os,null, chr, "gene",  null, this.id, this.startPos, this.endPos, type_nme, this.breaks_hash.secondKey, 
-					this.id, strand, seq,this.readCount);
+		 
 		 //double thresh1 = Math.min(Outputs.gffThresh, b)
 		inner: for(int i=counts.size()-1; i>=counts.size()-Outputs.maxTranscriptsPerGeneInGFF; i--) {
 			if(i>=0){
 			Count br_next = counts.get(i);
+			int[] cnt = br_next.count;
 			String gene_id =this.id +".t"+i;
-			if(br_next.sum() < Outputs.gffThreshTranscript) break inner;
-			
+			int firstNonZero =num_sources-1;
+			for(int k=num_sources-1;k>=0; k--){
+				if(cnt[k]>0) firstNonZero=k;
+				if(cnt[k] < Outputs.gffThreshTranscript[k]) continue inner; // exclude transcript if it fails on any threshold
+			}
+			writeGene[firstNonZero]=true;
 			List<Integer> br_ = br_next.getBreaks();
-				writeGFF1(br_, pw, os ,bedW, chr, "transcript", 
+				writeGFF1(br_, pw[firstNonZero], os ,bedW, chr, "transcript", 
 						this.id, gene_id,  br_.get(0),
 						br_.get(br_.size()-1), type_nme, this.breaks_hash.secondKey,gene_id,  strand,seq,  br_next.count);
 				
 			}
 			
 		}
+		 for(int i=0; i<pw.length; i++){
+			 if(writeGene[i]){
+				 writeGFF1(null, pw[i], os,null, chr, "gene",  null, this.id, this.startPos, this.endPos, type_nme, this.breaks_hash.secondKey, 
+							this.id, strand, seq,this.readCount);
+			 }
+		 }
 	}
  }
 	
@@ -289,12 +314,16 @@ public static  synchronized void printBed(PrintWriter bedW, String chrom, List<I
 			this.breakEnd = c1.breakEnd;
 			this.breakSt2 = c1.breakSt2;
 			this.breakEnd2 = c1.breakEnd2;
-			this.breaks.addAllR(c1.breaks,0);
 			all_breaks = new HashMap<CigarHash2, Count>();
-			//if(all_breaks.size()>0) throw new RuntimeException("should be zero");
 			Count cnt =new Count(num_sources, source_index,  0);
+
+			this.all_breaks.put(c1.cloneBreaks(),cnt);
+			this.breaks.addAllR(c1.breaks,0);
+
+			//if(all_breaks.size()>0) throw new RuntimeException("should be zero");
 			if(Outputs.writeGFF || Outputs.writeIsoforms) cnt.addBreaks(c1.breaks);
-			this.all_breaks.put(IdentityProfile1.includeStartEnd  || breaks.size()==2  ? breaks : breaks.clone(true, 1, breaks.size()-1),cnt);
+			//this.all_breaks.put(IdentityProfile1.includeStartEnd  || breaks.size()==2  ? breaks : breaks.clone(true, 1, breaks.size()-1),cnt);
+
 			this.breaks_hash.setSecondKey(c1.breaks_hash.secondKey);
 			
 			addReadCount(source_index);
@@ -350,7 +379,11 @@ public static  synchronized void printBed(PrintWriter bedW, String chrom, List<I
 			this.breaks_hash.clear();
 	   }
 
-		
+	   public void addStart(int alignmentStart) {
+			// TODO Auto-generated method stub
+			breaks.add(alignmentStart);
+			this.prev_position=  alignmentStart;
+		}
 	
 public static boolean recordStartEnd = false;
 	public void addBlock(int start, int len, boolean first, boolean last) {
@@ -360,14 +393,14 @@ public static boolean recordStartEnd = false;
 		}
 		else if(first){
 			breaks.add(start);
-			prev_position = end;
 		}else if (last){
 			breaks.add(end);
 		}else if(start-prev_position>IdentityProfile1.break_thresh){
 			breaks.add(prev_position);
 			breaks.add(start);
-			prev_position = end;
 		}
+		prev_position = end;
+		
 	}
 		
 		public void addEnd(int alignmentEnd) {
@@ -524,6 +557,19 @@ public static boolean recordStartEnd = false;
 			return source.values().stream() .reduce(0, Integer::sum);
 		}*/
 		
+		public CigarHash2 cloneBreaks(){
+			if(IdentityProfile1.includeStartEnd ) return  (CigarHash2)  breaks.clone(true,0, breaks.size()) ;
+			else if(forward!=null){ // we know strand
+				if(forward){
+					return breaks.clone(true,1,breaks.size());
+				}else{
+					return breaks.clone(true,0,breaks.size()-1);
+				}
+			}else{
+				 return  (CigarHash2)  breaks.clone(true,0, breaks.size()) ;
+			}
+		}
+		
 		public CigarHash2 merge(CigarCluster c1, int num_sources, int src_index) {
 			if(c1.startPos < startPos) startPos = c1.startPos;
 			if(c1.endPos > endPos) endPos = c1.endPos;
@@ -543,8 +589,8 @@ public static boolean recordStartEnd = false;
 				throw new RuntimeException("!!");
 			}
 			
-			CigarHash2 br = IdentityProfile1.includeStartEnd  || breaks.size()==2  ? (CigarHash2) c1.breaks.clone(true,0, c1.breaks.size()) : 
-				c1.breaks.clone(true,1, c1.breaks.size()-1);
+			CigarHash2 br = c1.cloneBreaks();
+				
 			Count	count = this.all_breaks.get(br);
 				if(count==null) {
 					count = new Count(num_sources, src_index, all_breaks.size());
@@ -616,6 +662,8 @@ public static boolean recordStartEnd = false;
 			String st = sb.toString();
 			return st;
 		}
+
+		
 
 		
 

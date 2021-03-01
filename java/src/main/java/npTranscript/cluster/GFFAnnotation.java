@@ -73,11 +73,11 @@ public class GFFAnnotation extends Annotation{
 	
 	
 	/** left is left of break point and right is right break point */
-	public synchronized Integer nextUpstream(int l1,  int r1, int chrom_index, boolean forward) {
+	public synchronized Integer nextUpstream(int l1,  int r1, int chrom_index, Boolean forward) {
 		if(l1<0) return null;
 		SortedMap<Integer, Integer> indices = new TreeMap<Integer,Integer>();
 		for(int i=start.size()-1; i>=0 ;i--){
-			if(!enforceStrand || forward==this.strand.get(i)){
+			if(forward==null ||  forward==this.strand.get(i)){
 				//
 				 boolean sc2 = contains(l1,r1,i);
 					
@@ -95,11 +95,11 @@ public class GFFAnnotation extends Annotation{
 	}
 	
 	/** left is left of break point and right is right break point */
-	public synchronized Integer nextUpstream(int l1,  int r1, int l2, int r2, int chrom_index, boolean forward) {
+	public synchronized Integer nextUpstream(int l1,  int r1, int l2, int r2, int chrom_index, Boolean forward) {
 		if(l1<0) return null;
 		SortedMap<Integer, Integer> indices = new TreeMap<Integer,Integer>();
 		for(int i=start.size()-1; i>0 ;i--){
-			if(!enforceStrand || forward==this.strand.get(i)){
+			if(forward==null || forward==this.strand.get(i)){
 				//
 				boolean sc1 = contains(l2,r2,i);
 				
@@ -444,7 +444,7 @@ public class GFFAnnotation extends Annotation{
 						process(str[8], transcript_vals, headers,split,removeQ);
 						
 					//}
-					System.err.println("treating as transcript "+Arrays.asList(transcript_vals));
+				//	System.err.println("treating as transcript "+Arrays.asList(transcript_vals));
 			}else if(type.equals("CDS") || type.endsWith("UTR") || type.indexOf("codon")>=0){
 				
 			}else{
