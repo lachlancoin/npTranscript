@@ -22,6 +22,11 @@ public class TranscriptUtils {
 		return res;
 	}
 	
+	static int round(int pos, int round, boolean left) {
+		int res = (int) Math.floor((double) (pos) / (double) round);
+		return left ? res : res+1;
+	}
+	
 //	static int[] printedLines =new int[] {0,0,0,0};
 	public static int overlap(int st1, int end1, int st2, int end2){
 		int minlen = Math.min(end1-st1, end2 - st2);
@@ -186,6 +191,7 @@ public class TranscriptUtils {
 
 	 /* flips read and quality without chaning the flag */
 	public static void flip(SAMRecord sam, boolean switchFlag) {
+		if(true) throw new RuntimeException ("!!");
 		String sa = sam.getReadString();
 		byte[]phredQs = sam.getBaseQualities();
 		byte[] bases = sam.getReadBases();

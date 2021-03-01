@@ -121,6 +121,7 @@ public class Outputs{
 	public static int minClusterEntries = 5;
 	public static Collection numExonsMSA = Arrays.asList(new Integer[0]); // numBreaks for MSA 
 	public static boolean calcBreaks;
+	public static boolean writeH5=false;
 	
 		public File transcripts_file;
 		public File reads_file; 
@@ -169,7 +170,7 @@ public class Outputs{
 				}
 			}
 			if(clusterW!=null) clusterW.close();
-			this.altT.close();
+			if(altT!=null) this.altT.close();
 			this.annotP.close();
 			//this.clusters.close();
 			for(int i=0; i<clusters.length; i++){
@@ -330,12 +331,13 @@ if(IdentityProfile1.trainStrand){
 				str.add(this.type_nmes[j]);
 			}
 			this.col_inds = new int[this.type_nmes.length];
-			altT = HDF5Factory.open(outfile10);
+			if(Outputs.writeH5) altT = HDF5Factory.open(outfile10);
 			if(Outputs.calcBreaks){
 				this.breakPW =  HDF5Factory.open(outfile12);
 
 			}
-			writeStringArray(altT, "header", str.toArray(new String[0]),this.col_inds,0);
+			
+			if(altT!=null) writeStringArray(altT, "header", str.toArray(new String[0]),this.col_inds,0);
 			this.new_max_cols = Arrays.stream(col_inds) .max() .getAsInt()+1;
 				     
 				     
@@ -347,7 +349,7 @@ if(IdentityProfile1.trainStrand){
 			for(int j=0; j<num_sources; j++){
 				str.add(type_nmes[j]);
 			}
-			if(cluster_depth){
+			if(cluster_depth && writeH5){
 			clusterW = 	 HDF5Factory.open(outfile2);
 			col_inds_depth =new int[num_sources];
 			writeStringArray(clusterW, "header", str.toArray(new String[0]),col_inds_depth,1);
@@ -478,7 +480,7 @@ if(IdentityProfile1.trainStrand){
 		
 		
 		
-		public synchronized void writeToCluster(String ID, String subID,  int i, Sequence seq, String baseQ,  String str, String name, char strand) throws IOException{
+		public synchronized void writeToCluster(String ID, String subID,  int i, Sequence seq, String baseQ,  String name, char strand) throws IOException{
 			CompressDir cluster = this.getCluster(i);
 			//if(strand=='-'){
 				//seq = TranscriptUtils.revCompl(seq);
@@ -677,6 +679,7 @@ if(IdentityProfile1.trainStrand){
 		SortedSet<String> geneNames = new TreeSet<String>();
 		
 		public synchronized void writeTotalString(CigarClusters cigarClusters){
+			if(altT==null) return;
 			 String id2 = "counts/"+cigarClusters.chr;
 			int[]   obj;
 			if(altT.exists(id2)){

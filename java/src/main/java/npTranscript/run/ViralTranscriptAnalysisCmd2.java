@@ -120,7 +120,9 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addString("reference", null, "Name of reference genome", true);
 		addString("annotation", null, "ORF annotation file or GFF file", false);
 		addBoolean("useExons", true, "wehether to use exons");
-		addBoolean("enforceStrand", false, "wehether to enforce strandedness");
+		addBoolean("sorted", false, "whether bamfile sorted in terms of position.");
+
+		addBoolean("enforceStrand", false, "whether to enforce strandedness");
 		addString("readList", "", "List of reads", false);
 		addString("gffThresh","10:10", "gene and transcript threshold for including in annotation.");
 		addInt("maxTranscriptsPerGeneInGFF",1,"Maximum number of transcripts per gene (highest abundance first");
@@ -173,7 +175,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addBoolean("coronavirus", true, "whether to run in coronavirus mode (necessary to do breakpoint analysis, but takes more memory)");
 		addBoolean("writeGFF", false, "whether to output gff ");
 		addBoolean("writeIsoforms", false, "whether to write isoforms");
-
+		addBoolean("enforceKnownLinkedExons", false, "whether to use exon_exon boundaries from annotation ");
+		addBoolean("writeH5", false,"whether to write h5 outputs");
 		addString("mm2_path", "/sw/minimap2/current/minimap2",  "minimap2 path", false);
 		addString("mm2Preset", "splice",  "preset for minimap2", false);
 	//	addBoolean("writeBed", false, "whether to write bed",false);
@@ -202,6 +205,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		pw.close();
 		
 	}
+ public static int supplementaryQ = 1000;
+ public static boolean coronavirus = false;
  public static int maxReads = Integer.MAX_VALUE;
  public static String pool_sep="";
  public static boolean limit_to_read_list = true;
@@ -228,8 +233,10 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		Outputs.library = new File(cmdLine.getStringVal("library"));
 		Outputs.gffThreshTranscript = Integer.parseInt(gffThresh_[1]);
 		Outputs.maxTranscriptsPerGeneInGFF = cmdLine.getIntVal("maxTranscriptsPerGeneInGFF");
+		Outputs.writeH5 = cmdLine.getBooleanVal("writeH5");
 		Annotation.enforceStrand = cmdLine.getBooleanVal("enforceStrand");
 		IdentityProfile1.trainStrand = cmdLine.getBooleanVal("trainStrand");
+		GFFAnnotation.enforceKnownLinkedExons = cmdLine.getBooleanVal("enforceKnownLinkedExons");
 		if(IdentityProfile1.trainStrand && Annotation.enforceStrand) throw new RuntimeException("cant enforce and train");
 		String[] RNAstr = 		cmdLine.getStringVal("RNA").split(":");
 		boolean[] RNA = new boolean[bamFiles.length];
@@ -274,11 +281,11 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				patt.splitAsStream(cmdLine.getStringVal("numExonsMSA"))
 		                            .map(Integer::valueOf)
 		                            .collect(Collectors.toList());
-		IdentityProfile1.includeStart = cmdLine.getBooleanVal("includeStart");
+		IdentityProfile1.includeStartEnd = cmdLine.getBooleanVal("includeStart");
 		GFFAnnotation.setGFFFeatureNames(cmdLine.getStringVal("GFF_features").split(":"));
 		GFFAnnotation.span_only = cmdLine.getStringVal("span").equals("all") ?new ArrayList<String>() :   Arrays.asList(cmdLine.getStringVal("span").split(":"));
 		SequenceOutputStream1.max_seqs_per_cluster = cmdLine.getIntVal("max_seqs_per_cluster");
-		boolean coronavirus = cmdLine.getBooleanVal("coronavirus");
+		 coronavirus = cmdLine.getBooleanVal("coronavirus");
 		String[] msaOpts = cmdLine.getStringVal("doMSA").split(":"); //e.g 5_3:sep or all:sep
 		String msa_source = cmdLine.getStringVal("msa_source");
 		double probInclude = cmdLine.getDoubleVal("probInclude");
@@ -339,7 +346,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			IdentityProfile1.extra_threshold1 =50;
 			annotByBreakPosition = true;
 			TranscriptUtils.writeAnnotP = true;
-			sorted = false;
+			
 		//	CigarHash2.subclusterBasedOnStEnd = false;
 			SequenceUtils.mm2_splicing= "-un";
 		sequential = true;
@@ -348,9 +355,9 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		//	TranscriptUtils.reAlignExtra = false;
 		//	TranscriptUtils.findPolyA = false;
 		//Outputs.writeGFF = false;
-			IdentityProfile1.min_first_last_exon_length = 0;
+			IdentityProfile1.min_first_last_exon_length = 10;
 			Outputs.calcBreaks=true;
-			sorted = true;
+			
 			TranscriptUtils.coronavirus = false;
 			IdentityProfile1.extra_threshold1 = 1000000;
 			//Outputs.writeUnSplicedFastq = false;
@@ -361,6 +368,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			calcBreaks = false;
 			SequenceUtils.mm2_splicing = "-uf";
 		}
+		sorted = cmdLine.getBooleanVal("sorted");
 			errorAnalysis(bamFiles, RNA,reference, annotFile,readList,annotationType, 
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  
 				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, chrsToIgnore,  isoformDepthThresh, coverageDepthThresh, probInclude, fastq, chromsToRemap==null ? null: chromsToRemap.split(":"));
@@ -443,7 +451,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					}
 				}
 		}
-		run(cmdLine, bamFiles_, resdir, new File(annot_file),  chroms, chroms_ignore, fastq, reference);
+		run(cmdLine, bamFiles_, resdir, annot_file==null ? null : new File(annot_file),  chroms, chroms_ignore, fastq, reference);
 		System.err.println("shutting down executors");
 		
 		IdentityProfileHolder.shutDownExecutor();
@@ -468,13 +476,13 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		CigarHash2.round = round;
 		Annotation.tolerance = round;
 		
-		 Integer[] basesStart = new Integer[] {0,0,0,0};
-		 Integer[] basesEnd  = new Integer[] {0,0,0,0};
-		 int leng = 10; int thresh_A = 4;int thresh_T = 5; // how many As or Ts required for determination of strand
-		 String chars_forward = "ACGT";
-		 String chars_reverse = "TGCA";
+		// Integer[] basesStart = new Integer[] {0,0,0,0};
+		// Integer[] basesEnd  = new Integer[] {0,0,0,0};
+	//	 int leng = 10; int thresh_A = 4;int thresh_T = 5; // how many As or Ts required for determination of strand
+	//	 String chars_forward = "ACGT";
+	//	 String chars_reverse = "TGCA";
 		 
-		 Integer[] counts = new Integer[] {0,0,0};
+		// Integer[] counts = new Integer[] {0,0,0};
 		IdentityProfile1.annotByBreakPosition = annotByBreakPosition;
 		CigarHash.cluster_by_annotation =true;// cluster_by_annotation;
 		TranscriptUtils.startThresh = startThresh;
@@ -540,7 +548,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		String[] in_nmes  = new String[len];
 		ZipFile  anno  = null;
 		boolean writeDirect = true;
-		if(gffFile.getName().indexOf(".gff")>=0 || gffFile.getName().indexOf(".gtf")>=0){
+		if(gffFile!=null && (gffFile.getName().indexOf(".gff")>=0 || gffFile.getName().indexOf(".gtf")>=0)){
 			if(gffFile.getName().endsWith(".zip")){
 				anno = new ZipFile(gffFile);
 				System.err.println(anno.getName());
@@ -679,6 +687,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			float time0 = System.currentTimeMillis();//- tme0)/1000.0
 			int cnt0=0;
 			int ij=0;
+			String previousRead = "";
+			int previousRefIndex=-1;
 			outer: for ( ij=0; samIter.hasNext() ;ij++ ) {
 				final SAMRecord sam=samIter.next();
 			    if(sam==null) break outer;
@@ -725,45 +735,36 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				
 				String sa  = sam.getReadString();
 				boolean negFlag = sam.getReadNegativeStrandFlag();
-				Arrays.fill(basesStart,0);
-				Arrays.fill(basesEnd,0);
 				
-				if(sam.getReadNegativeStrandFlag()){
-					TranscriptUtils.flip(sam, false); // switch read but keep flag. This corrects minimaps correction when it maps
-				}
-				//now the read has been corrected back to what is in the fastq but flag remains same
+			//	if(sam.getReadNegativeStrandFlag()){
+			//		TranscriptUtils.flip(sam, false); // switch read but keep flag. This corrects minimaps correction when it maps
+			//	}
+
 				boolean flip = false;
 				if(RNA[source_index]  ){
 					flip=false;
-			//		flip = sam.getReadNegativeStrandFlag(); // if its direct RNA, only flip if its been flipped by minimap
 				}
 				else if(Annotation.enforceStrand){
+					//at this stage cannot enforce strand with cDNA data
 					throw new RuntimeException("need to implement");
 					//}
 				}
 				
 				if(flip){
-					// this time we adjust flag too
+					// this time we adjust flag too because we "fixing the read"  however, as yet we dont have a good way to detect if it should be flipped here
 					//negFlag = !negFlag;
 					
-				//	System.err.println("flipping "+negFlag);
+					System.err.println("flipping "+negFlag);
 					TranscriptUtils.flip(sam, true);
 					negFlag = sam.getReadNegativeStrandFlag();
 					//sam.setReadNegativeStrandFlag(negFlag);
 				}
-				if(negFlag){
-					
+				/*if(negFlag){
 					counts[1] = counts[1] +1;
-					// System.err.println(Arrays.asList(basesStart));
-					 //   System.err.println(Arrays.asList(basesEnd));
-					//	String sequence =  sa;
-					//	System.err.println(sequence.substring(0,10));
-					//	System.err.println(sequence.substring(sequence.length()-10));
-					//	System.err.println(" neg strand read "+Arrays.asList(counts)+" "+flip);
 				}else{
 					counts[0] = counts[0]+1;
 							
-				}
+				}*/
 				Sequence readSeq = new Sequence(Alphabet.DNA(), sa, sam.getReadName());
 				//String poolID = readSeq.get
 				if (readSeq.length() <= 1) {
@@ -843,7 +844,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					}
 					int seqlen = chr.length();
 					Annotation annot  = null;
-					if(gffFile.getName().indexOf(".gff")>=0 || gffFile.getName().indexOf(".gtf")>=0){
+					if(gffFile!=null && (gffFile.getName().indexOf(".gff")>=0 || gffFile.getName().indexOf(".gtf")>=0)){
 						String chrn = refname;
 							annot = new GFFAnnotation(anno,chrn, seqlen, annotation_pw, gffFile.getName().indexOf(".gff")<0);
 							
@@ -904,10 +905,26 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					});
 					continue outer;
 				}
-				
+				boolean supplementary = false;
+				//System.err.println(sam.getMappingQuality());
 				if(sam.isSecondaryOrSupplementary()) {
+					boolean supp = sam.getSupplementaryAlignmentFlag();
+					if(supp && sam.getReadName().equals(previousRead) && sam.getReferenceIndex()==previousRefIndex){
+						supplementary = true;
+					int qual1 = sam.getMappingQuality();
+					
+					if(qual1 < supplementaryQ ){
+						//System.err.println("remove "+qual1);
+						continue; // need secondary read quality of 5
+					}else{
+						//System.err.println("include " + qual1);
+					}
+						
+					}else{
 					numSecondary++;
+					
 					continue;
+					}
 				}
 					
 				
@@ -915,12 +932,14 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 						
 						String pool = readList==null || readList.length==0 ||  poolID<0 ? null : (readList[poolID]+pool_sep);
 						if(ViralTranscriptAnalysisCmd2.limit_to_read_list) pool = null;
-						
-						profile.identity1(readSeq, sam, source_index, cluster_reads,  pool, q1);
+				//		boolean flag = sam.getReadNegativeStrandFlag();
+						profile.identity1(readSeq, sam, source_index, cluster_reads,  pool, q1, supplementary);
 					}catch(NumberFormatException exc){
 						System.err.println(readSeq.getName());
 						exc.printStackTrace();
 					}
+					previousRead = sam.getReadName();
+					previousRefIndex = sam.getReferenceIndex();
 			}//samIter.hasNext()
 			{
 				double timeperread = (double) ( System.currentTimeMillis() - time0)/(double) (ij-cnt0);

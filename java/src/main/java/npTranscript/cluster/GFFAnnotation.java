@@ -1,11 +1,8 @@
 package npTranscript.cluster;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,13 +16,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.SortedSet;
-import java.util.zip.GZIPInputStream;
+import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-
-import japsa.seq.ZipGFF;
-import npTranscript.run.CompressDir;
 
 public class GFFAnnotation extends Annotation{
 
@@ -39,29 +34,112 @@ public class GFFAnnotation extends Annotation{
 	@Override
 	public String nextDownstream(int rightBreak, int chrom_index, boolean forward){
 		if(rightBreak<0) return null;
+		SortedMap<Integer, Integer> indices = new TreeMap<Integer,Integer>();
 		for(int i=0; i<end.size(); i++){
 			if(!enforceStrand || forward==this.strand.get(i)){
 			if(rightBreak -tolerance <= end.get(i) && rightBreak+tolerance>=start.get(i) ){//&& rightBreak < end.get(i)){
-				return genes.get(i);
+				indices.put(Math.abs(rightBreak - start.get(i)),i);
+				
 			}
 			}
 		}
-		return   chrom_index+"."+TranscriptUtils.round(rightBreak,CigarHash2.round);//+(enforceStrand ? (forward ? "+" : "-") : "");
+		if(indices.size()>0) return genes.get(indices.get(indices.firstKey()));
+		return null;
+		
 		
 	}
 	
 	@Override
 	public String nextUpstream(int leftBreak, int chrom_index, boolean forward){
 		if(leftBreak<0) return null;
+		SortedMap<Integer, Integer> indices = new TreeMap<Integer,Integer>();
 		for(int i=start.size()-1; i>=0 ;i--){
 			if(!enforceStrand || forward==this.strand.get(i)){
 			if(leftBreak + tolerance >= start.get(i) && leftBreak-tolerance<=end.get(i)){// && leftBreak-tolerance<end.get(i)){
-				return genes.get(i);
+				
+				indices.put(Math.abs(leftBreak - end.get(i)),i);
 			}
 			}
 		}
-		return chrom_index+"."+TranscriptUtils.round(leftBreak,CigarHash2.round);//+(enforceStrand ? (forward ? "+" : "-") : "");
+		if(indices.size()>0) return genes.get(indices.get(indices.firstKey()));
+		return null;
 	}
+	
+	boolean contains(int l2, int r2, int i){
+		boolean match = r2 -tolerance <= end.get(i) && r2+tolerance>=start.get(i)  && l2 -tolerance <= end.get(i) && l2+tolerance>=start.get(i) ;
+		return match;
+//		return match ? Math.abs(r2 - end.get(i)) + Math.abs(l2 - start.get(i)) : -1;
+	}
+	
+	
+	/** left is left of break point and right is right break point */
+	public synchronized Integer nextUpstream(int l1,  int r1, int chrom_index, boolean forward) {
+		if(l1<0) return null;
+		SortedMap<Integer, Integer> indices = new TreeMap<Integer,Integer>();
+		for(int i=start.size()-1; i>=0 ;i--){
+			if(!enforceStrand || forward==this.strand.get(i)){
+				//
+				 boolean sc2 = contains(l1,r1,i);
+					
+					 if(sc2){
+							indices.put(Math.abs(l1 - start.get(i))+Math.abs(r1 - end.get(i)),i);
+					 }
+			}
+		}
+	//	System.err.println(indices.size());
+		if(indices.size()>0) {
+			int key = indices.firstKey();
+			if(key<=2*tolerance) return indices.get(indices.firstKey());
+		}
+		return null;
+	}
+	
+	/** left is left of break point and right is right break point */
+	public synchronized Integer nextUpstream(int l1,  int r1, int l2, int r2, int chrom_index, boolean forward) {
+		if(l1<0) return null;
+		SortedMap<Integer, Integer> indices = new TreeMap<Integer,Integer>();
+		for(int i=start.size()-1; i>0 ;i--){
+			if(!enforceStrand || forward==this.strand.get(i)){
+				//
+				boolean sc1 = contains(l2,r2,i);
+				
+				if( sc1 ) {
+					 boolean sc2 = contains(l1,r1,i-1);
+					 if(sc2){
+					//System.err.println("left "+starti+","+endi);
+						if(this.transcripts.get(i).equals(this.transcripts.get(i-1))) {
+						//	int endi = end.get(i); int starti = start.get(i); int endi_1 = end.get(i-1); int starti_1 = start.get(i-1);
+						//	System.err.println(starti_1+","+endi_1+" "+starti+" "+endi+"  "+l1+","+r1+"->"+l2+","+r2);
+							indices.put(Math.abs(l2 - start.get(i))+Math.abs(r1 - end.get(i-1)),i);
+						//	return transcripts.get(i);
+						}
+					 }
+				}
+			}
+		}
+	//	System.err.println(indices.size());
+		if(indices.size()>0) {
+			int key = indices.firstKey();
+			//System.err.println("key "+key);
+			if(key <= 2*tolerance) return indices.get(indices.firstKey());
+		}
+		return null;
+	}
+	public String getCoord(int l1,  int r1, int l2, int r2, int chrom_index, boolean forward){
+		return chrom_index+"."+TranscriptUtils.round(r1,CigarHash2.round)+"."+TranscriptUtils.round(l2,CigarHash2.round);//+(enforceStrand ? (forward ? "+" : "-") : "");
+
+	}
+	public String getCoord(int leftBreak, int chrom_index, boolean forward){
+		return chrom_index+"."+TranscriptUtils.round(leftBreak,CigarHash2.round);//+(enforceStrand ? (forward ? "+" : "-") : "");
+
+	}
+	public String getCoord(int leftBreak, int rightBreak, int chrom_index, boolean forward){
+		return chrom_index+"."+TranscriptUtils.round(leftBreak,CigarHash2.round)+"$"+TranscriptUtils.round(rightBreak,CigarHash2.round);//+(enforceStrand ? (forward ? "+" : "-") : "");
+
+	}
+	//return chrom_index+"."+TranscriptUtils.round(leftBreak,CigarHash2.round);//+(enforceStrand ? (forward ? "+" : "-") : "");
+	//return   chrom_index+"."+TranscriptUtils.round(rightBreak,CigarHash2.round);//+(enforceStrand ? (forward ? "+" : "-") : "");
+	
 	private int nextUpstreamIndex(int leftBreak, boolean forward){
 		if(leftBreak<0) return -1;
 		for(int i=start.size()-1; i>=0 ;i--){
@@ -283,7 +361,8 @@ public class GFFAnnotation extends Annotation{
 		if(target[2].length()==0) target[2] = target[0];
 	}
 	
-	
+	List<String> transcripts = new ArrayList<String>(); // whether the exon is linked to previous one in a transcript
+	public static boolean enforceKnownLinkedExons = false;
 	
 	//chr1    HAVANA  exon    13453   13670   .       +       .       ID
 	public GFFAnnotation(ZipFile zf , String chrom,  int seqlen, PrintWriter pw, boolean gtf) throws IOException{
@@ -343,13 +422,19 @@ public class GFFAnnotation extends Annotation{
 				//}
 				//if(!paren.equals(gene_vals[0])) gene_vals = gene_vals_map.get(paren);
 				//if(paren.equals(gene_vals[0])){
+				int ind1 = this.start.indexOf(start);
+			//	if(ind1>=0 && Math.abs(this.end.get(ind1)-end)<10){
+				//	System.err.println("warning edundant exon "+start+" "+end);
+			//	}
+				{
 					this.start.add(start);
 					this.end.add(end);
 					this.strand.add(strand=='+');
 					//this hopefully saves memory by only keeping a pointer, rather than multiple copies.
 					genemap.putIfAbsent(paren, paren);
 					genes.add(genemap.get(paren));
-					
+					transcripts.add(transcript_vals[0]);
+				}
 				//}else{
 					//System.err.println("missed "+st);
 				//}
@@ -357,8 +442,9 @@ public class GFFAnnotation extends Annotation{
 				hasTranscript=true;
 					//else if(type.equals("transcript")){
 						process(str[8], transcript_vals, headers,split,removeQ);
+						
 					//}
-				//	System.err.println("treating as transcript "+Arrays.asList(transcript_vals));
+					System.err.println("treating as transcript "+Arrays.asList(transcript_vals));
 			}else if(type.equals("CDS") || type.endsWith("UTR") || type.indexOf("codon")>=0){
 				
 			}else{
@@ -437,4 +523,6 @@ public class GFFAnnotation extends Annotation{
 		// TODO Auto-generated constructor stub
 		super(chrom,seqlen);
 	}
+
+	
 }

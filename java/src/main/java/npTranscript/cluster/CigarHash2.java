@@ -1,6 +1,7 @@
 package npTranscript.cluster;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 /**
  * @author Lachlan Coin
@@ -11,10 +12,31 @@ public class CigarHash2 extends ArrayList<Integer> {
 	
 	//public static boolean subclusterBasedOnStEnd = false;
 	
-	public CigarHash2 clone(boolean round, int start){
+	public CigarHash2 clone(boolean round, int start, int end){
 		CigarHash2 obj =new CigarHash2();
-		if(round) obj.addAllR(this,start);
+		if(round) obj.addAllR(this,start, end);
 		else obj.addAll(this, start);
+		return obj;
+	}
+	public CigarHash2 clone(){
+		CigarHash2 obj =new CigarHash2();
+		obj.addAll(this);
+		return obj;
+	}
+	
+	public static CigarHash2 merge(List<CigarHash2> suppl) {
+		CigarHash2 obj =new CigarHash2();
+		for(int j=0; j<suppl.size(); j++){
+			obj.addAll(suppl.get(j));
+		}
+		Collections.sort(obj);
+		if(obj.size() % 2 !=0) {
+			for(int i=0; i<suppl.size();i++){
+				if(suppl.get(i).size() %2 !=0) {
+					throw new RuntimeException("!!");
+				}
+			}
+		}
 		return obj;
 	}
 	
@@ -23,13 +45,17 @@ public class CigarHash2 extends ArrayList<Integer> {
 			add(cigarHash2.get(i));
 		}
 	}
-
+	
 	public void addAllR(CigarHash2 obj, int start) {
+		this.addAllR(obj, start, obj.size());
+	}
+
+	public void addAllR(CigarHash2 obj, int start, int end) {
 		/*if(subclusterBasedOnStEnd){
 			addR(obj.get(0));
 			addR(obj.get(obj.size()-1));
 		}else{*/
-			for(int i=start; i<obj.size(); i++){
+			for(int i=start; i<end; i++){
 				addR(obj.get(i));
 			}
 		//}
@@ -84,6 +110,19 @@ public class CigarHash2 extends ArrayList<Integer> {
 		Integer i1 = TranscriptUtils.round(i, round);
 		return (super.add(i1));
 	}
+	public int overlaps(int st, int length) {
+		int end = st + length;
+	 for(int i=0; i<this.size(); i+=2){
+		 int st1 = this.get(i);
+		 int end1 = this.get(i+1);
+		 if(Math.min(end1 - st, end-st1)>=0) {
+			 return i;
+		 }
+	 }
+	 return -1;
+	}
+
+	
 
 
 

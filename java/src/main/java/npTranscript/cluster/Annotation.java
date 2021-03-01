@@ -18,10 +18,9 @@ import java.util.SortedSet;
 
 public class Annotation{
 		List<String> genes= new ArrayList<String>();
-		 List<Integer> start = new ArrayList<Integer>();
+		List<Integer> start = new ArrayList<Integer>();
 		 List<Integer> end = new ArrayList<Integer>();
 		 List<Boolean> strand = new ArrayList<Boolean>();
-		
 		 
 		
 		 
@@ -33,7 +32,7 @@ public class Annotation{
 	//	5'UTR,5'UTR,1,265,265,forward,none
 
 		public static String NAstring = "NA";
-		public static int tolerance = 100;
+		public static int tolerance = 10;
 		public static int correctionDistLeft = 10000;
 		public static int correctionDistRight = 10000;	
 		public static boolean enforceStrand = true;

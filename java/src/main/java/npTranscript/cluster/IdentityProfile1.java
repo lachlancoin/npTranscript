@@ -3,11 +3,15 @@ package npTranscript.cluster;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.SortedSet;
 import java.util.Stack;
 import java.util.TreeSet;
 
+import htsjdk.samtools.AlignmentBlock;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMRecord;
 import japsa.bio.np.barcode.SWGAlignment;
@@ -41,7 +45,7 @@ public class IdentityProfile1 {
 	public static int writeCoverageDepthThresh = 100;
 	public static int[] writeIsoformDepthThresh = new int[] {10};
 	public static int msaDepthThresh = 10;
-	public static boolean includeStart = true;
+	public static boolean includeStartEnd = true;
 	
 	public static boolean attempt5rescue = false;
 	public static boolean attempt3rescue = false;
@@ -108,6 +112,7 @@ public class IdentityProfile1 {
 
 static char delim = '_'; // delim for second key
 static char delim1 = ',';
+static char delim_start ='$';
 
 	static double break_round = 10.0;
 	static String NAstring = "NA";
@@ -118,23 +123,51 @@ static char delim1 = ',';
 	SortedSet<String> geneNames = new TreeSet<String>();
 	
 	public String[] clusterID = new String[2];
-	public String processRefPositions(SAMRecord sam, String id, boolean cluster_reads, Sequence refSeq, int src_index , Sequence readSeq, String baseQ, 
+	
+	//** this adds coRefPositions into the clusters
+	public void commit(){
+		char strand = this.coRefPositions.strand;
+		int start_read = this.readSt; int end_read = this.readEn;int readLength = end_read-start_read;
+		 parent.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources,  this.chrom_index, clusterID, strand); // this also clears current cluster
+	//	int len1 = readSeq.length();
+		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"+start_read+"\t"+end_read+"\t"
+		+type_nme+"\t"+chrom_+"\t"
+		+startPos+"\t"+endPos+"\t"+(forward? "+":"-")+"\t"+coRefPositions.numIsoforms()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
+		+coRefPositions.getError(source_index)+"\t"+secondKeySt+"\t"+strand+"\t"+breakSt+"\t"+span_str+"\t"+geneNames.size()+"\t"+String.format("%5.3g", q_value).trim();
+	//	if(trainStrand){
+		//	str = str+"\t"+readSeq.subSequence(0, 10)+"\t"+readSeq.subSequence(len1-10, len1)
+//				+"\t"+toString(phredQ,0,10)+"\t"+toString(phredQ,len1-10,len1)
+	//			+"\t"+ViralChimericReadsAnalysisCmd.median(phredQ,0,10)+"\t"+ViralChimericReadsAnalysisCmd.median(phredQ,len1-10,10)+"\t"+annot.getStrand(coRefPositions.span.iterator());			
+		//}
+		parent.o.printRead(str);
+		
+	}
+	boolean hasLeaderBreak;		String breakSt; String secondKeySt;boolean includeInConsensus = true;
+	byte[] phredQ; String baseQ; String type_nme; String span_str; int span; boolean forward; double q_value; String id;
+
+	/*Note:  align5prime will be null if not coronavirus */
+	public String processRefPositions( SAMRecord sam, String id, boolean cluster_reads, Sequence refSeq, int src_index , Sequence readSeq, String baseQ, 
 			byte[] phredQ,
 			int start_read, int end_read, char strand, SWGAlignment align5prime, SWGAlignment align3prime,
 			SWGAlignment align3primeRev,
 			int offset_3prime, int polyAlen, String pool, double q_value
 			) throws IOException, NumberFormatException{
-		
-		startPos = sam.getAlignmentStart()+1; // transfer to one based
-		endPos = sam.getAlignmentEnd()+1;
+		//CigarHash2 breaks  = coRefPositions.breaks;
+		this.baseQ  = baseQ; this.phredQ = phredQ; this.q_value = q_value;
+		this.coRefPositions.strand = strand; this.id = id; 
+		CigarHash2 breaks = this.coRefPositions.breaks;
+		startPos = breaks.get(0);
+		endPos= breaks.get(breaks.size()-1);
+		//startPos = sam.getAlignmentStart();//+1; // transfer to one based
+		//endPos = sam.getAlignmentEnd();
 		
 		readSt = start_read; readEn = end_read;
-		boolean forward = !sam.getReadNegativeStrandFlag();
+		 forward = !sam.getReadNegativeStrandFlag();
 		//boolean hasSplice = false;
 		int  readLength = readSeq.length();
 		Annotation annot =parent.all_clusters.annot;
 
-		CigarHash2 breaks  = coRefPositions.breaks;
+	
 		
 		int seqlen = refSeq.length();
 	
@@ -143,11 +176,11 @@ static char delim1 = ',';
 			annot.adjust3UTR(seqlen);
 		}
 	
-		coRefPositions.start = startPos;
-		coRefPositions.end = endPos;
+	//	coRefPositions.start = startPos;
+	//	coRefPositions.end = endPos;
 		coRefPositions.forward = forward;
-		breaks.add(coRefPositions.end);
-		boolean includeInConsensus = true;
+		//breaks.add(coRefPositions.end);
+		
 		if( align5prime!=null ){
 			if(align5prime.getIdentity()>0.85 * Math.max(start_read,align5prime.getLength())){
 				System.err.println("rescued 5' "+readSeq.getName()+" "+align5prime.getIdentity()+" "+align5prime.getLength());
@@ -157,13 +190,15 @@ static char delim1 = ',';
 				if(newBreakPos < startPos){
 					readSt = align5prime.getStart1();
 					startPos = newStartPos;
-					coRefPositions.start = newStartPos;
+					//coRefPositions.start = newStartPos;
 					coRefPositions.breaks.add(0, newBreakPos);
 					coRefPositions.breaks.add(0, newStartPos);
 				}
 			}
 		}
-		if(min_first_last_exon_length>0 && breaks.size()>2){ // only apply to first and last exon of multi-exon gene
+		if(min_first_last_exon_length>0 && breaks.size()>2){ 
+			// this removes very small first or last exons
+			// only apply to first and last exon of multi-exon gene
 			int sze = breaks.size();
 			int diff0 = breaks.get(1) - startPos;
 			int diff1 = endPos - breaks.get(breaks.size()-2);
@@ -201,7 +236,7 @@ static char delim1 = ',';
 					this.readEn = end_read+align3prime.getStart1()+align3prime.getLength()-align3prime.getGaps1();
 					System.err.println("rescued 3' "+readSeq.getName());
 					endPos = newEndPos;
-					coRefPositions.end = newEndPos;
+				//	coRefPositions.end = newEndPos;
 					coRefPositions.breaks.add( newBreakPos);
 					coRefPositions.breaks.add( newEndPos);
 				}
@@ -211,29 +246,21 @@ static char delim1 = ',';
 		//String roundStartP = annotByBreakPosition ? TranscriptUtils.round(startPos, CigarHash2.round)+"" : 	"";
 		StringBuffer secondKey =new StringBuffer();
 		
-	//	if(pool!=null)secondKey.append(pool);
-		//String upstream, upstream2, downstream, downstream2;
-		int maxg = 0;
-		int maxg_ind = -1;
-		int maxg2=0;
-		int maxg_ind2 =-1; 
-		boolean hasLeaderBreak = TranscriptUtils.coronavirus? (breaks.size()>1 &&  annot.isLeader(breaks.get(1))) : false;
-		if(includeStart){
-			//if pool is not null
-			
-			if(pool!=null) {
-				String[] pool_ = pool.split(":");
+	
+		 hasLeaderBreak = TranscriptUtils.coronavirus? (breaks.size()>1 &&  annot.isLeader(breaks.get(1))) : false;
+		if(pool!=null) {
+			String[] pool_ = pool.split(":");
 
-				secondKey.append(pool_[0]+delim1+annot.nextDownstream(startPos,chrom_index, forward)+delim);
-				if(pool_.length>1){
-					parent.addBreakPoint(src_index, pool_[0], Integer.parseInt(pool_[1]), startPos);
-				}
-			}
-			else{
-				secondKey.append(annot.nextUpstream(startPos,chrom_index, forward)+delim);
+			secondKey.append(pool_[0]+delim1); //+annot.nextDownstream(startPos,chrom_index, forward)+delim);
+			if(pool_.length>1){
+				parent.addBreakPoint(src_index, pool_[0], Integer.parseInt(pool_[1]), startPos);
 			}
 		}
-		if(true){
+		
+		if(ViralTranscriptAnalysisCmd2.coronavirus){
+			if(includeStartEnd || breaks.size()==2){
+				secondKey.append(annot.nextUpstream(startPos,chrom_index, forward)+delim);
+			}
 			boolean firstBreak=true;
 			for(int i=1; i<breaks.size()-1; i+=2){
 				int gap = breaks.get(i+1)-breaks.get(i);
@@ -251,59 +278,106 @@ static char delim1 = ',';
 
 					}
 				}
+		
+			}
+			if(includeStartEnd || breaks.size()==2) {
+				secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), chrom_index, forward)); //last break is upstream start pos
+			}
 				
-				if(gap>maxg && annot.isLeader(breaks.get(i))){
-					maxg2 = maxg;
-					maxg_ind2 = maxg_ind;
-					maxg = gap;
-					maxg_ind = i;
-				}else if(gap>maxg2){
-					maxg2 = gap;
-					maxg_ind2 = i;
+		}else{
+			boolean discarded = false;
+			//List<Integer> annot_i = new ArrayList<Integer>(); // should make this part of coRefPositions
+			if(breaks.size()==2){ // so no exons
+				if(annot instanceof GFFAnnotation ){
+					Integer upst_i = ((GFFAnnotation)annot).nextUpstream(breaks.get(0),breaks.get(1), chrom_index,forward); //5prime break
+				//	annot_i.add(upst_i);
+					if(upst_i==null){
+					//	System.err.println("did not match single exon, excluding read "+sam.getReadName()+ " "+breaks.get(0)+" "+breaks.get(1));
+						String upst =  ((GFFAnnotation)annot).getCoord(breaks.get(0),breaks.get(1),chrom_index,forward);
+						secondKey.append(upst);
+						secondKey.append("_inconsistent");
+					}else{	
+						String upst =  ((GFFAnnotation)annot).getCoord(breaks.get(0),breaks.get(1),chrom_index,forward);
+						secondKey.append(upst);
+						//secondKey.append(annot.genes.get(upst_i));
+					}
+					//
+					//secondKey.append(upst);
+					//secondKey.append(delim);
+				}else{
+					secondKey.append(annot.nextUpstream(startPos,chrom_index, forward)+delim);
+					secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), chrom_index, forward));
+				}
+			}else{
+				if(includeStartEnd) {
+					secondKey.append(annot.nextUpstream(startPos,chrom_index, forward)+delim);
+				}
+				Set<String> genes = new HashSet<String>();
+				Set<Boolean> strands = new HashSet<Boolean>();
+				for(int i=1; i<breaks.size()-1; i+=2){
+					if(GFFAnnotation.enforceKnownLinkedExons){
+						Integer upst_i = ((GFFAnnotation)annot).nextUpstream(breaks.get(i-1),breaks.get(i), breaks.get(i+1), breaks.get(i+2), chrom_index,forward); //5prime break
+						//annot_i.add(upst_i);
+						
+						if(upst_i==null){
+							discarded = true;
+							//System.err.println("did not match, excluding read "+sam.getReadName()+ " "+breaks.get(i-1)+" "+breaks.get(i)+" "+breaks.get(i+1)+" "+breaks.get(i+2));
+							//return null; 
+						}else{
+							genes.add(annot.genes.get(upst_i));
+							strands.add(annot.strand.get(upst_i));
+						}
+						String upst =  ((GFFAnnotation)annot).getCoord(breaks.get(i-1),breaks.get(i), breaks.get(i+1), breaks.get(i+2), chrom_index,forward);
+						secondKey.append(upst);
+						secondKey.append(delim);
+					}else{
+						String upst = annot.nextUpstream(breaks.get(i), chrom_index,forward); //5prime break
+						if(upst==null){
+							discarded = true;
+							upst = ((GFFAnnotation)annot).getCoord(breaks.get(i), chrom_index,forward);
+						}
+							secondKey.append(upst+delim1);
+						upst = annot.nextDownstream(breaks.get(i+1), chrom_index,forward);
+						if(upst==null) {
+							discarded=true;
+							upst = ((GFFAnnotation)annot).getCoord(breaks.get(i+1), chrom_index,forward);
+						}
+	//					if(upst==null) 
+						secondKey.append(upst+delim);  //3prime break
+					}
+				}
+				if(GFFAnnotation.enforceKnownLinkedExons){
+					if(strands.size()>1) discarded=true;
+					
+				}
+				if(includeStartEnd ) secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), chrom_index, forward));
+				if(discarded) {
+					secondKey.append("_inconsistent");
 				}
 			}
 		}
-		secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), chrom_index, forward)); //last break is upstream start pos
 		
 		if(Annotation.enforceStrand){
 			secondKey.append(forward ? '+' : '-');
 		}
 		//System.err.println(secondKey);
 
-		String type_nme = annot.getTypeNme( startPos, endPos, forward); //coRefPositions.getTypeNme(seqlen);
+		type_nme = ViralTranscriptAnalysisCmd2.coronavirus  ?  annot.getTypeNme( startPos, endPos, forward) : "NA"; //coRefPositions.getTypeNme(seqlen);
 		geneNames.clear();
 		this.coRefPositions.setStartEnd(startPos,endPos,src_index);
-		String span_str = annot.getSpan(coRefPositions.breaks, forward,  coRefPositions.span, geneNames);
+		 span_str = annot.getSpan(coRefPositions.breaks, forward,  coRefPositions.span, geneNames);
 		
-		int  span = geneNames.size();
+		 span = geneNames.size();
 		if(!TranscriptUtils.coronavirus && span==0 && q_value < ViralTranscriptAnalysisCmd2.fail_thresh1){
 			return secondKey.toString();
 		}
-		String breakSt = coRefPositions.breaks.toString();
+		breakSt = coRefPositions.breaks.toString();
 		//coRefPositions.breaks.adjustBreaks(annot);
 		// need to group by start position if we annotating by break pos,e.g. so 5'mapping reads map together
-		String secondKeySt = secondKey.toString();
+		secondKeySt = secondKey.toString();
 		coRefPositions.breaks_hash.setSecondKey(secondKeySt);//, endPos);
+	//	commit();
 		
-		
-		
-		if(cluster_reads)  parent.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources,  this.chrom_index, clusterID, strand); // this also clears current cluster
-		else{
-		clusterID[0] = chrom_+".NA";
-		clusterID[1] = "NA";
-		}
-		int len1 = readSeq.length();
-		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"+start_read+"\t"+end_read+"\t"
-		+type_nme+"\t"+chrom_+"\t"
-		+startPos+"\t"+endPos+"\t"+(forward? "+":"-")+"\t"+coRefPositions.numIsoforms()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
-		+coRefPositions.getError(src_index)+"\t"+secondKeySt+"\t"+strand+"\t"+breakSt+"\t"+span_str+"\t"+geneNames.size()+"\t"+String.format("%5.3g", q_value).trim();
-		if(trainStrand){
-			str = str+"\t"+readSeq.subSequence(0, 10)+"\t"+readSeq.subSequence(len1-10, len1)
-		
-				+"\t"+toString(phredQ,0,10)+"\t"+toString(phredQ,len1-10,len1)
-				+"\t"+ViralChimericReadsAnalysisCmd.median(phredQ,0,10)+"\t"+ViralChimericReadsAnalysisCmd.median(phredQ,len1-10,10)+"\t"+annot.getStrand(coRefPositions.span.iterator());			
-		}
-		parent.o.printRead(str);
 		int num_exons =(int) Math.floor( (double)  coRefPositions.breaks.size()/2.0);
 
 		boolean writeMSA = Outputs.doMSA!=null && Outputs.msa_sources !=null && includeInConsensus  && Outputs.msa_sources.containsKey(source_index);
@@ -339,7 +413,7 @@ static char delim1 = ',';
 							Sequence readSeq1 = readSeq.subSequence(start_read1, end_read1);
 							String baseQ1 = baseQ.length()<=1 ? baseQ : baseQ.substring(start_read1, end_read1);
 							readSeq1.setDesc(chrom_index+" "+start_ref+","+end_ref+" "+start_read1+","+end_read1+" "+(end_read1-start_read1)+" "+strand+" "+source_index);
-							parent.o.writeToCluster("annot_"+annot.genes.get(i),null, source_index, readSeq1, baseQ1,null, readSeq.getName(), strand);
+							parent.o.writeToCluster("annot_"+annot.genes.get(i),null, source_index, readSeq1, baseQ1, readSeq.getName(), strand);
 						}
 					}
 				}
@@ -358,8 +432,9 @@ static char delim1 = ',';
 			//need to put breaks back in 0 coords for fasta file
 			readSeq1.setDesc(chrom_index+" "+CigarHash2.getString(breaks,-1)+" "+CigarHash2.getString(read_breaks)+" "+(end_read-start_read)+ " "+strand+" "+source_index);
 			String prefix = TranscriptUtils.coronavirus ? "": num_exons+"_";
-			parent.o.writeToCluster(prefix+secondKeySt,"_"+clusterID[1]+"_", source_index, readSeq1, baseQ1, str, readSeq.getName(), strand);
+			parent.o.writeToCluster(prefix+secondKeySt,"_"+clusterID[1]+"_", source_index, readSeq1, baseQ1,  readSeq.getName(), strand);
 		}
+		
 		return secondKeySt+" "+span_str;
 	}
 	
@@ -380,11 +455,9 @@ static char delim1 = ',';
 		return CigarHash2.getString(Arrays.asList(seq12));
 	}
 	
+	
 
-	public void addRefPositions(int position, boolean match) {
-		//we add back in one here to convert it to a 1 based index
-		coRefPositions.add(position+1, this.source_index, match);
-	}
+	
 
 
 	static class CigarClusterRepo{
@@ -424,31 +497,24 @@ static char delim1 = ',';
 	}
 	
 
+	 CigarHash2 suppl_read = null; //keeps track of positions on read of all alignments (primary plus suppl)
+	 List<CigarHash2> suppl = null;
+	//
+	public void processAlignmentBlocks(SAMRecord sam, CigarCluster coRefPositions1){
+		List<AlignmentBlock> li = sam.getAlignmentBlocks();
 	
-	 
-
+		for(int i=0; i<li.size(); i++){
+			AlignmentBlock ab = li.get(i);
+			coRefPositions1.addBlock(ab.getReferenceStart(), ab.getLength(), i==0, i==li.size()-1);
+		}
+	}
 	
 	
 	
-
-
-	/**
-	 * Get the identity between a read sequence from a sam and a reference sequence
-	 * 
-	 * @param refSeq
-	 * @param sam
-	 * @return
-	 */
-	public  void identity1(Sequence refSeq, Sequence fivePrimeRefSeq, Sequence threePrimeRefSeq,   Sequence readSeq, SAMRecord sam, 
-			int source_index, boolean cluster_reads,  String poolID, double qval) throws NumberFormatException{
-		int readPos = 0;// start from 0
-		int seqlen = refSeq.length();
+	public void processCigar(SAMRecord sam, Sequence refSeq, Sequence readSeq,CigarCluster coRefPositions1){
 		IdentityProfile1 profile = this;
-		//Outputs output = profile.o;
+		int readPos = 0;// start from 0
 		int refPos = sam.getAlignmentStart() - 1;// convert to 0-based index
-		String id = sam.getReadName();
-		String chrom = refSeq.getName();
-		profile.updateSourceIndex(source_index);
 		for (final CigarElement e : sam.getCigar().getCigarElements()) {
 			final int length = e.getLength();
 
@@ -480,7 +546,8 @@ static char delim1 = ',';
 				profile.refBase += length;
 				for (int i = 0; i < length && refPos + i < refSeq.length(); i++) {
 				//	profile.baseDel[refPos + i] += 1;
-					profile.addRefPositions(refPos + i, false);
+					coRefPositions1.add(refPos+i+1, this.source_index, false);
+					//profile.addRefPositions(refPos + i, false);
 				}
 				//profile.numDel++;
 				break;
@@ -497,11 +564,13 @@ static char delim1 = ',';
 					
 					if (refSeq.getBase(refPos + i) == readSeq.getBase(readPos + i)){
 				//		profile.match[refPos + i]++;
-						profile.addRefPositions(refPos + i, true);
+						coRefPositions1.add(refPos+i+1, this.source_index, true);
+						//profile.addRefPositions(refPos + i, true);
 					}
 					else{
 					//	profile.mismatch[refPos + i]++;
-						profile.addRefPositions(refPos + i, false);
+						coRefPositions1.add(refPos+i+1, this.source_index, false);
+						//profile.addRefPositions(refPos + i, false);
 					}
 				}
 				profile.readBase += length;
@@ -515,7 +584,8 @@ static char delim1 = ',';
 				readPos += length;
 				refPos += length;
 				for (int i = 0; i < length && (refPos + i) < refSeq.length(); i++) {
-					profile.addRefPositions(refPos+i, true);
+					coRefPositions1.add(refPos+i+1, this.source_index, true);
+//					profile.addRefPositions(refPos+i, true);
 				}
 				profile.readBase += length;
 				profile.refBase += length;
@@ -529,7 +599,8 @@ static char delim1 = ',';
 				profile.readBase += length;
 				profile.refBase += length;
 				for (int i = 0; i < length && (refPos + i) < refSeq.length(); i++) {
-					profile.addRefPositions(refPos+i, false);
+					coRefPositions1.add(refPos+i+1, this.source_index, false);
+					//profile.addRefPositions(refPos+i, false);
 				}
 				//profile.addRefPositions(refPos);
 			//	profile.mismatch[refPos] += length;
@@ -538,6 +609,53 @@ static char delim1 = ',';
 				throw new IllegalStateException("Case statement didn't deal with cigar op: " + e.getOperator());
 			}// case
 		} // for
+		profile.coRefPositions.addEnd(sam.getAlignmentEnd());
+	}
+
+	/**
+	 * Get the identity between a read sequence from a sam and a reference sequence
+	 * 
+	 * @param refSeq
+	 * @param sam
+	 * @return
+	 */
+	public  void identity1(Sequence refSeq, Sequence fivePrimeRefSeq, Sequence threePrimeRefSeq,   Sequence readSeq, SAMRecord sam, 
+			int source_index, boolean cluster_reads,  String poolID, double qval, boolean supplementary) throws NumberFormatException{
+		
+		if(supplementary){
+			if(!checkCompatible(this.coRefPositions, sam)) return;
+			 if(suppl==null){
+				 suppl = new ArrayList<CigarHash2>();
+				 this.suppl_read = new CigarHash2();
+			 }
+			 if(suppl.size()==0){
+				 suppl.add(this.coRefPositions.breaks.clone()); // need to add the primary alignment
+				 suppl_read.add(this.readSt); suppl_read.add(readEn);
+				 Collections.sort(suppl_read);
+			 }
+			 int rSt =  sam.getReadPositionAtReferencePosition(sam.getAlignmentStart());
+			 int rEnd =  sam.getReadPositionAtReferencePosition(sam.getAlignmentEnd());
+			 if(this.suppl_read.overlaps(rSt, rEnd-rSt+1)>=0){
+				 return ;
+			 }
+			this.coRefPositions.breaks.clear();
+		}
+		CigarCluster coref = this.coRefPositions;
+		//if(coref.forward==null) throw new RuntimeException("!!");
+		//int seqlen = refSeq.length();
+		IdentityProfile1 profile = this;
+		//Outputs output = profile.o;
+	
+		String id = sam.getReadName();
+		//String chrom = refSeq.getName();
+		profile.updateSourceIndex(source_index);
+		//List<AlignmentBlock> li = sam.getAlignmentBlocks();
+	//	li.get(0).get
+		if(CigarCluster.recordDepthByPosition  || true){
+			this.processCigar(sam, refSeq, readSeq, coref);
+		}else{
+			this.processAlignmentBlocks(sam, coref);
+		}
 		try{
 			int maxl = 100;
 			int tol=5;
@@ -627,9 +745,21 @@ static char delim1 = ',';
 					System.err.println("warning could not do polyA alignment");
 				}
 			}
-			 
-			String secondKey= profile.processRefPositions(sam, id, cluster_reads, 
-					refSeq, source_index, readSeq,baseQ, phredQs, st_r, end_r, strand, align_5prime, align_3prime,align_3primeRev, offset_3prime, polyAlen, poolID, qval);
+		//	CigarHash2 breaks;
+			if(supplementary){
+				 this.suppl.add(coref.breaks.clone());
+				 coref.breaks  =CigarHash2.merge(suppl);
+				 coref.startPos = coref.breaks.get(0);
+				 coref.endPos = coref.breaks.get(coref.breaks.size()-1);
+			 }
+			
+			String secondKey= profile.processRefPositions( sam, id, cluster_reads, 
+					refSeq, source_index, readSeq,baseQ, phredQs, st_r, end_r, strand, 
+					align_5prime, align_3prime,align_3primeRev, offset_3prime, polyAlen, poolID, qval);
+			if(supplementary){
+				 suppl_read.add(this.readSt); suppl_read.add(readEn);
+				 Collections.sort(suppl_read);
+			}
 			//String ID = profile.clusterID
 			diff_r = readSeq.length() - profile.readEn;
 			seq11[0]=  profile.readSt; seq11[1] = profile.readEn; 
@@ -737,9 +867,42 @@ static char delim1 = ',';
 
 
 
+	private boolean checkCompatible(CigarCluster coRefPositions2, SAMRecord sam) {
+		boolean strand = sam.getReadNegativeStrandFlag();
+		boolean negStrand = coRefPositions.strand=='-';
+		if(negStrand != strand){
+			//wrong strand
+			//throw new RuntimeException("wrong strand");
+			
+			return false;
+		}
+		List<AlignmentBlock> l = sam.getAlignmentBlocks();
+		for(int i=0; i<l.size(); i++){
+			AlignmentBlock bl = l.get(i);
+			int overlap_index = coRefPositions2.breaks.overlaps(bl.getReferenceStart(),bl.getLength());
+			if(overlap_index>=0){
+				return false;
+			}
+		}
+		return true;
+	}
+
+
+
 	public void clear() {
+		if(suppl!=null){
+			this.suppl_read.clear();
+			this.suppl.clear();
+		}
 		this.coRefPositions.clear();
 		
+	}
+
+String readName="";
+
+	public void setName(String readName) {
+		// TODO Auto-generated method stub
+		this.readName = readName;
 	}
 
 

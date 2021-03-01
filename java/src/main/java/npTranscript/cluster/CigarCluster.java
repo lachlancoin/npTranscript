@@ -26,6 +26,7 @@ public class CigarCluster  {
 		//final int index;
 		
 		
+	
 		static int round2 = 100;
 		public static boolean recordDepthByPosition = false;
 		public static int annotationToRemoveFromGFF = -1;
@@ -44,11 +45,11 @@ public class CigarCluster  {
 			return chrom_index+"."+id;
 		}*/
 
-		 int start=0;
-		 int end=0;
-		int prev_position =0;
+		 int startPos=0;
+		 int endPos=0;
+		int prev_position =-1; // if negative then indicates that it must be first
 		int break_point_cluster = -1;		
-		boolean first = true;
+	//	boolean first = true;
 		
 	
 		public void addReadCount(int source_index) {
@@ -215,30 +216,33 @@ public static  synchronized void printBed(PrintWriter bedW, String chrom, List<I
 		if(this.readCountSum< Outputs.gffThreshGene) return;
 //if(!type_nme.equals("5_3")) return;
 	//double tpm = (double) this.readCountSum() / (double) mapped_read_count;
-	writeGFF1(null, pw, os,null, chr, "gene",  null, this.breaks_hash.secondKey, this.start, this.end, type_nme, this.breaks_hash.secondKey, 
-			this.id, strand, seq,this.readCount);
+	
 	if(all_breaks.size()==0) throw new RuntimeException("no transcripts");
 	List<Count> counts= new ArrayList<Count>(all_breaks.values());
 	Collections.sort(counts);
 	int max_cnt = counts.get(counts.size()-1).sum();
 	int min_cnt = counts.get(0).sum();
 	//System.err.println(min_cnt+" "+max_cnt+" "+counts.size());
+	if(max_cnt >=Outputs.gffThreshTranscript){
 		 if(min_cnt >max_cnt) throw new RuntimeException();
-	
+		 writeGFF1(null, pw, os,null, chr, "gene",  null, this.id, this.startPos, this.endPos, type_nme, this.breaks_hash.secondKey, 
+					this.id, strand, seq,this.readCount);
 		 //double thresh1 = Math.min(Outputs.gffThresh, b)
 		inner: for(int i=counts.size()-1; i>=counts.size()-Outputs.maxTranscriptsPerGeneInGFF; i--) {
+			if(i>=0){
 			Count br_next = counts.get(i);
-			String gene_id =Outputs.maxTranscriptsPerGeneInGFF==1 ?  this.breaks_hash.secondKey:this.breaks_hash.secondKey +".t"+i;
+			String gene_id =this.id +".t"+i;
 			if(br_next.sum() < Outputs.gffThreshTranscript) break inner;
 			
 			List<Integer> br_ = br_next.getBreaks();
 				writeGFF1(br_, pw, os ,bedW, chr, "transcript", 
 						this.id, gene_id,  br_.get(0),
-						br_.get(br_.size()-1), type_nme, this.breaks_hash.secondKey, this.id, strand,seq,  br_next.count);
+						br_.get(br_.size()-1), type_nme, this.breaks_hash.secondKey,gene_id,  strand,seq,  br_next.count);
 				
-				
+			}
 			
 		}
+	}
  }
 	
 		
@@ -271,8 +275,8 @@ public static  synchronized void printBed(PrintWriter bedW, String chrom, List<I
 		}
 		public void setStartEnd(int startPos, int endPos, int src) {
 			if(CigarCluster.recordStartEnd){
-				this.mapStart.addToEntry(start, src,1);
-				this.mapEnd.addToEntry(end, src, 1);
+				this.mapStart.addToEntry(startPos, src,1);
+				this.mapEnd.addToEntry(endPos, src, 1);
 			}
 		}
 		
@@ -290,12 +294,12 @@ public static  synchronized void printBed(PrintWriter bedW, String chrom, List<I
 			//if(all_breaks.size()>0) throw new RuntimeException("should be zero");
 			Count cnt =new Count(num_sources, source_index,  0);
 			if(Outputs.writeGFF || Outputs.writeIsoforms) cnt.addBreaks(c1.breaks);
-			this.all_breaks.put(IdentityProfile1.includeStart  ? breaks : breaks.clone(true, 1),cnt);
+			this.all_breaks.put(IdentityProfile1.includeStartEnd  || breaks.size()==2  ? breaks : breaks.clone(true, 1, breaks.size()-1),cnt);
 			this.breaks_hash.setSecondKey(c1.breaks_hash.secondKey);
 			
 			addReadCount(source_index);
-			start = c1.start;
-			end = c1.end;
+			startPos = c1.startPos;
+			endPos = c1.endPos;
 			if(recordDepthByPosition){
 				map.merge( c1.map);
 				for(int i=0; i<maps.length; i++){
@@ -315,7 +319,7 @@ public static  synchronized void printBed(PrintWriter bedW, String chrom, List<I
 		final  SparseVector[] maps, errors;
 		SparseArrayVector mapStart, mapEnd;
 		
-		final private char strand;
+	char strand;
 	   public void clear(){
 		   span.clear();
 			this.forward = null;
@@ -338,9 +342,9 @@ public static  synchronized void printBed(PrintWriter bedW, String chrom, List<I
 			
 			readCountSum=1;
 			
-			this.prev_position = 0;
+			this.prev_position = -1;
 			this.break_point_cluster = -1;
-			first = true;
+		//	first = true;
 			this.breaks.clear();			
 			if(all_breaks!=null)this.all_breaks.clear();
 			this.breaks_hash.clear();
@@ -349,9 +353,29 @@ public static  synchronized void printBed(PrintWriter bedW, String chrom, List<I
 		
 	
 public static boolean recordStartEnd = false;
-	   
+	public void addBlock(int start, int len, boolean first, boolean last) {
+		int end = start + len-1;
+		if(first && last){
+			breaks.add(start); breaks.add(end);
+		}
+		else if(first){
+			breaks.add(start);
+			prev_position = end;
+		}else if (last){
+			breaks.add(end);
+		}else if(start-prev_position>IdentityProfile1.break_thresh){
+			breaks.add(prev_position);
+			breaks.add(start);
+			prev_position = end;
+		}
+	}
+		
+		public void addEnd(int alignmentEnd) {
+			this.breaks.add(alignmentEnd);
+			
+		}
 		public void add(int pos, int src_index, boolean match) {
-			boolean break_p = pos-prev_position>IdentityProfile1.break_thresh;
+			boolean break_p =prev_position < 0 ||  pos-prev_position>IdentityProfile1.break_thresh;
 			if(CigarCluster.recordDepthByPosition){
 				
 				map.addToEntry(pos, 1);
@@ -359,7 +383,7 @@ public static boolean recordStartEnd = false;
 				if(!match){
 					errors[src_index].addToEntry(pos, 1);
 				}
-				if(recordStartEnd && break_p ){
+				if(recordStartEnd && break_p && prev_position >0 ){
 					
 					mapStart.addToEntry(pos,src_index, 1);
 					mapEnd.addToEntry(prev_position,src_index, 1);
@@ -369,16 +393,12 @@ public static boolean recordStartEnd = false;
 			
 			if(match){
 			//System.err.println(prev_position + " "+pos);
-			if(first){
-				first = false; 
-				breaks.add(pos);
-			} else{	
+			
 				if(break_p){
-					this.breaks.add(prev_position);
+					if(prev_position>0) this.breaks.add(prev_position);
 					this.breaks.add(pos);
 				}
-			}
-			prev_position = pos;
+				prev_position = pos;
 			}
 
 			
@@ -505,8 +525,8 @@ public static boolean recordStartEnd = false;
 		}*/
 		
 		public CigarHash2 merge(CigarCluster c1, int num_sources, int src_index) {
-			if(c1.start < start) start = c1.start;
-			if(c1.end > end) end = c1.end;
+			if(c1.startPos < startPos) startPos = c1.startPos;
+			if(c1.endPos > endPos) endPos = c1.endPos;
 			if(breakSt<0 || (c1.breakSt>=0 & c1.breakSt > breakSt)) breakSt = c1.breakSt;
 			if(breakEnd<0 || (c1.breakEnd>=0 &  c1.breakEnd < breakEnd)) breakEnd = c1.breakEnd;
 			if(breakSt2<0 || (c1.breakSt2>=0 & c1.breakSt2 > breakSt2)) breakSt2 = c1.breakSt2;
@@ -523,7 +543,8 @@ public static boolean recordStartEnd = false;
 				throw new RuntimeException("!!");
 			}
 			
-			CigarHash2 br = (CigarHash2) c1.breaks.clone(true,IdentityProfile1.includeStart ? 0 : 1);
+			CigarHash2 br = IdentityProfile1.includeStartEnd  || breaks.size()==2  ? (CigarHash2) c1.breaks.clone(true,0, c1.breaks.size()) : 
+				c1.breaks.clone(true,1, c1.breaks.size()-1);
 			Count	count = this.all_breaks.get(br);
 				if(count==null) {
 					count = new Count(num_sources, src_index, all_breaks.size());
@@ -595,6 +616,10 @@ public static boolean recordStartEnd = false;
 			String st = sb.toString();
 			return st;
 		}
+
+		
+
+		
 
 		
 
