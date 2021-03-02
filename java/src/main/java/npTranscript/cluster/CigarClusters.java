@@ -81,14 +81,15 @@ public class CigarClusters {
 			clusterID = newc.id();
 			l.put(newc.breaks_hash, newc);
 			subID = newc.breaks;
+			clusterIDs[1] = 0+"";
 		}else{
 			
-			subID = clust.merge(c1, num_sources, source_index);
+			subID = clust.merge(c1, num_sources, source_index, clusterIDs);
 			clusterID = clust.id();
+			
 		}
 	clusterIDs[0] = clusterID;
-	
-	clusterIDs[1] = subID.toString(CigarHash2.round, 1, subID.size()-1).hashCode()+"";
+	//clusterIDs[1] = subID.rescale().toString();
 		//return clusterID;
 	}
 	

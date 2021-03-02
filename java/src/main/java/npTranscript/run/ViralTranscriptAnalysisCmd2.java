@@ -125,7 +125,9 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 
 		addBoolean("enforceStrand", false, "whether to enforce strandedness");
 		addString("readList", "", "List of reads", false);
-		addString("gffThresh","10:10", "gene and transcript threshold for including in annotation.");
+		addString("gffThreshAny","10:10", "reports if greater than in any datasets.");
+		addString("gffThreshAll","10:10", "reports if greater than in all datasets");
+
 		addInt("maxTranscriptsPerGeneInGFF",1,"Maximum number of transcripts per gene (highest abundance first");
 			addString("annotType", null, "Type of annotation (only included if annotation is GFF file", false);
 		addString("chroms_to_include", "all", "Restrict to these chroms, colon delimited", false);
@@ -231,14 +233,18 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		 maxReads = cmdLine.getIntVal("maxReads");
 		//SequenceUtils.max_per_file = maxReads*4;
 		 ViralTranscriptAnalysisCmd2.supplementaryQ =cmdLine.getIntVal("supplementaryQ");
-		String[] gffThresh_ = cmdLine.getStringVal("gffThresh").split(":");
+		String[] gffThresh_all = cmdLine.getStringVal("gffThreshAll").split(":");
+		String[] gffThresh_any = cmdLine.getStringVal("gffThreshAny").split(":");
+
 		//Outputs.gffThreshGene = Integer.parseInt(gffThresh_[0]);
 		Outputs.library = new File(cmdLine.getStringVal("library"));
-		Outputs.gffThreshTranscript = new Integer[gffThresh_.length];
+		Outputs.gffThreshAny = new Integer[gffThresh_any.length];
+		Outputs.gffThreshAll = new Integer[gffThresh_all.length];
 		Outputs.gffThreshTranscriptSum=0;
-		for(int k=0; k<gffThresh_.length; k++){
-			Outputs.gffThreshTranscript[k] = Integer.parseInt(gffThresh_[k]);
-			Outputs.gffThreshTranscriptSum += 	Outputs.gffThreshTranscript[k];
+		for(int k=0; k<gffThresh_any.length; k++){
+			Outputs.gffThreshAll[k] = Integer.parseInt(gffThresh_all[k]);
+			Outputs.gffThreshAny[k] = Integer.parseInt(gffThresh_any[k]);
+			Outputs.gffThreshTranscriptSum += 	Outputs.gffThreshAll[k];
 		}
 		Outputs.maxTranscriptsPerGeneInGFF = cmdLine.getIntVal("maxTranscriptsPerGeneInGFF");
 		Outputs.writeH5 = cmdLine.getBooleanVal("writeH5");

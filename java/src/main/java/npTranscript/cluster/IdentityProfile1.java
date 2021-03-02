@@ -3,10 +3,11 @@ package npTranscript.cluster;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 import java.util.SortedSet;
 import java.util.Stack;
 import java.util.TreeSet;
@@ -17,7 +18,6 @@ import htsjdk.samtools.SAMRecord;
 import japsa.bio.np.barcode.SWGAlignment;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
-import npTranscript.run.ViralChimericReadsAnalysisCmd;
 import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 /**
@@ -289,78 +289,34 @@ static char delim_start ='$';
 				secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), chrom_index, forward)); //last break is upstream start pos
 			}
 				
-		}else{
-			boolean discarded = false;
-			//List<Integer> annot_i = new ArrayList<Integer>(); // should make this part of coRefPositions
-			if(breaks.size()==2){ // so no exons
-				if(annot instanceof GFFAnnotation ){
-					Integer upst_i = ((GFFAnnotation)annot).nextUpstream(breaks.get(0),breaks.get(1), chrom_index,forward); //5prime break
-				//	annot_i.add(upst_i);
-					if(upst_i==null){
-					//	System.err.println("did not match single exon, excluding read "+sam.getReadName()+ " "+breaks.get(0)+" "+breaks.get(1));
-						String upst =  ((GFFAnnotation)annot).getCoord(breaks.get(0),breaks.get(1),chrom_index,forward);
-						secondKey.append(upst);
-						secondKey.append("_inconsistent");
-					}else{	
-						String upst =  ((GFFAnnotation)annot).getCoord(breaks.get(0),breaks.get(1),chrom_index,forward);
-						secondKey.append(upst);
-						//secondKey.append(annot.genes.get(upst_i));
-					}
-					//
-					//secondKey.append(upst);
-					//secondKey.append(delim);
-				}else{
-					secondKey.append(annot.nextUpstream(startPos,chrom_index, forward)+delim);
-					secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), chrom_index, forward));
-				}
+		}else if(annot instanceof EmptyAnnotation){
+			if(forward!=null){
+				if(forward) secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), chrom_index, forward));
+				else secondKey.append(annot.nextUpstream(breaks.get(0), chrom_index, forward));
 			}else{
-				if(includeStartEnd ||(forward!=null &&  !forward) ){
-					//only include beginning if its actually they end due to being on other strand
-					secondKey.append(annot.nextUpstream(startPos,chrom_index, forward)+delim);
-				}
-				Set<String> genes = new HashSet<String>();
-				Set<Boolean> strands = new HashSet<Boolean>();
-				for(int i=1; i<breaks.size()-1; i+=2){
-					if(GFFAnnotation.enforceKnownLinkedExons){
-						Integer upst_i = ((GFFAnnotation)annot).nextUpstream(breaks.get(i-1),breaks.get(i), breaks.get(i+1), breaks.get(i+2), chrom_index,forward); //5prime break
-						//annot_i.add(upst_i);
-						
-						if(upst_i==null){
-							discarded = true;
-							//System.err.println("did not match, excluding read "+sam.getReadName()+ " "+breaks.get(i-1)+" "+breaks.get(i)+" "+breaks.get(i+1)+" "+breaks.get(i+2));
-							//return null; 
-						}else{
-							genes.add(annot.genes.get(upst_i));
-							strands.add(annot.strand.get(upst_i));
-						}
-						String upst =  ((GFFAnnotation)annot).getCoord(breaks.get(i-1),breaks.get(i), breaks.get(i+1), breaks.get(i+2), chrom_index,forward);
-						secondKey.append(upst);
-						secondKey.append(delim);
+				secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), chrom_index, forward));
+			}
+		}else{
+			Collection<String> genes = new HashSet<String>();
+			List<String> coords = new ArrayList<String>();
+			{
+				for(int i=0; i<breaks.size(); i+=2){
+					int l1 = breaks.get(i);
+					int r1 = breaks.get(i+1);
+					Integer upst = ((GFFAnnotation)annot).nextUpstream(l1, r1, chrom_index, forward);
+					if(upst!=null){
+						genes.add(annot.genes.get(upst));
 					}else{
-						String upst = annot.nextUpstream(breaks.get(i), chrom_index,forward); //5prime break
-						if(upst==null){
-							discarded = true;
-							upst = ((GFFAnnotation)annot).getCoord(breaks.get(i), chrom_index,forward);
-						}
-							secondKey.append(upst+delim1);
-						upst = annot.nextDownstream(breaks.get(i+1), chrom_index,forward);
-						if(upst==null) {
-							discarded=true;
-							upst = ((GFFAnnotation)annot).getCoord(breaks.get(i+1), chrom_index,forward);
-						}
-	//					if(upst==null) 
-						secondKey.append(upst+delim);  //3prime break
+						String coord = ((GFFAnnotation)annot).getCoord(forward == null || forward ? breaks.get(i+1) : breaks.get(i), chrom_index,forward);
+						coords.add(coord);
 					}
 				}
-				if(GFFAnnotation.enforceKnownLinkedExons){
-					if(strands.size()>1) discarded=true;
-					
-				}
-				if(includeStartEnd || (forward!=null && forward )) {
-					secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), chrom_index, forward));
-				}
-				if(discarded) {
-					secondKey.append("_inconsistent");
+				if(genes.size()>0){
+					for(Iterator<String> it = genes.iterator(); it.hasNext();){
+						secondKey.append(it.next()+delim);
+					}
+				}else{
+					secondKey.append(forward==null || forward ?  coords.get(coords.size()-1): coords.get(0));
 				}
 			}
 		}

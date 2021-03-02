@@ -5,11 +5,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -122,6 +123,7 @@ public class CigarCluster  {
 		}
 		
 		
+		
 	}
 		
    	Map<CigarHash2, Count> all_breaks  ;
@@ -130,7 +132,7 @@ public class CigarCluster  {
    	
    	//chr1    HAVANA  gene    11869   14409   .       +       .       
    	//ID=ENSG00000223972.5;gene_id=ENSG00000223972.5;gene_type=transcribed_unprocessed_pseudogene;gene_name=DDX11L1;level=2;havana_gene=OTTHUMG00000000961.2
-private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutputStream os,  PrintWriter[] bedW, String chr, 
+private static void writeGFF1(List<Integer> breaks, String key, PrintWriter pw,SequenceOutputStream os,  PrintWriter[] bedW, String chr, 
 		String type,  String parent, String ID,  int start, int end, String type_nme, String secondKey, 
 		String geneID, char strand, Sequence seq,  int []counts){
 	//if(counts.length!=2) throw new RuntimeException("!!");
@@ -146,9 +148,12 @@ private static void writeGFF1(List<Integer> breaks, PrintWriter pw,SequenceOutpu
 	 if(parent!=null) {
 		 pw.print(";Parent=");pw.print(parent);
 	 }
-	 pw.print(";gene_id=");pw.print(geneID);
+	 pw.print(";gene_id=");pw.print(parent==null ? ID: parent);
 	 pw.print(";gene_type=");pw.print(type_nme);
 	 pw.print(";type=ORF;");
+	 if(key!=null){
+		 pw.print(";key="+key+";"); 
+	 }
 	 pw.print("gene_name=");pw.print(secondKey.replace(';','_'  ));
 	 int count =0 ;
 	 pw.print(";count=");
@@ -222,6 +227,13 @@ public static  synchronized void printBed(PrintWriter bedW, String chrom, List<I
 			+Outputs.col_str[col_id]+"\t"+num_exons+"\t"+block_sizes.toString()+"\t"+block_start.toString());
 
 }
+static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
+	@Override
+	public int compare(Entry<CigarHash2, Count> o1, Entry<CigarHash2, Count> o2) {
+		return o1.getValue().compareTo(o2.getValue());
+	}
+	
+};
 
  public void writeGFF(PrintWriter[] pw, SequenceOutputStream os, PrintWriter[] bedW, String chr, double  iso_thresh, 
 		 String type_nme, Sequence seq){
@@ -232,10 +244,11 @@ public static  synchronized void printBed(PrintWriter bedW, String chrom, List<I
 	//this.readCount
 	 int num_sources = pw.length;
 	if(all_breaks.size()==0) throw new RuntimeException("no transcripts");
-	List<Count> counts= new ArrayList<Count>(all_breaks.values());
-	Collections.sort(counts);
-	int max_cnt = counts.get(counts.size()-1).sum();
-	int min_cnt = counts.get(0).sum();
+	List<Entry<CigarHash2,Count>> counts= new ArrayList<Entry<CigarHash2,Count>>(all_breaks.entrySet());
+	Collections.sort(counts, entryComparator);
+	
+	int max_cnt = counts.get(counts.size()-1).getValue().sum();
+	int min_cnt = counts.get(0).getValue().sum();
 	boolean[] writeGene = new boolean[pw.length]; 
 	//System.err.println(min_cnt+" "+max_cnt+" "+counts.size());
 	if(max_cnt >=Outputs.gffThreshTranscriptSum){
@@ -244,17 +257,26 @@ public static  synchronized void printBed(PrintWriter bedW, String chrom, List<I
 		 //double thresh1 = Math.min(Outputs.gffThresh, b)
 		inner: for(int i=counts.size()-1; i>=counts.size()-Outputs.maxTranscriptsPerGeneInGFF; i--) {
 			if(i>=0){
-			Count br_next = counts.get(i);
+			//	String keyv1 = counts.get(i).getKey().toString();
+			String keyv=	null;//counts.get(i).getKey().rescale().toString();
+			
+			Count br_next = counts.get(i).getValue();
 			int[] cnt = br_next.count;
-			String gene_id =this.id +".t"+i;
+			String gene_id =this.id +".t"+br_next.id();
 			int firstNonZero =num_sources-1;
+			boolean incl = false;
+			boolean excl = false;
 			for(int k=num_sources-1;k>=0; k--){
 				if(cnt[k]>0) firstNonZero=k;
-				if(cnt[k] < Outputs.gffThreshTranscript[k]) continue inner; // exclude transcript if it fails on any threshold
+				if(cnt[k] >= Outputs.gffThreshAny[k]) incl=true; // exclude transcript if it fails on any threshold
+				if(cnt[k] < Outputs.gffThreshAll[k]) excl=true; 
 			}
+
+			if(!incl || excl) continue inner;
+			//firstNonZero=0;
 			writeGene[firstNonZero]=true;
 			List<Integer> br_ = br_next.getBreaks();
-				writeGFF1(br_, pw[firstNonZero], os ,bedW, chr, "transcript", 
+				writeGFF1(br_, keyv , pw[firstNonZero], os ,bedW, chr, "transcript", 
 						this.id, gene_id,  br_.get(0),
 						br_.get(br_.size()-1), type_nme, this.breaks_hash.secondKey,gene_id,  strand,seq,  br_next.count);
 				
@@ -263,7 +285,7 @@ public static  synchronized void printBed(PrintWriter bedW, String chrom, List<I
 		}
 		 for(int i=0; i<pw.length; i++){
 			 if(writeGene[i]){
-				 writeGFF1(null, pw[i], os,null, chr, "gene",  null, this.id, this.startPos, this.endPos, type_nme, this.breaks_hash.secondKey, 
+				 writeGFF1(null, null, pw[i], os,null, chr, "gene",  null, this.id, this.startPos, this.endPos, type_nme, this.breaks_hash.secondKey, 
 							this.id, strand, seq,this.readCount);
 			 }
 		 }
@@ -316,9 +338,9 @@ public static  synchronized void printBed(PrintWriter bedW, String chrom, List<I
 			this.breakEnd2 = c1.breakEnd2;
 			all_breaks = new HashMap<CigarHash2, Count>();
 			Count cnt =new Count(num_sources, source_index,  0);
-
-			this.all_breaks.put(c1.cloneBreaks(),cnt);
-			this.breaks.addAllR(c1.breaks,0);
+			this.breaks = c1.cloneBreaks();
+			this.all_breaks.put(breaks,cnt);
+			
 
 			//if(all_breaks.size()>0) throw new RuntimeException("should be zero");
 			if(Outputs.writeGFF || Outputs.writeIsoforms) cnt.addBreaks(c1.breaks);
@@ -570,7 +592,7 @@ public static boolean recordStartEnd = false;
 			}
 		}
 		
-		public CigarHash2 merge(CigarCluster c1, int num_sources, int src_index) {
+		public CigarHash2 merge(CigarCluster c1, int num_sources, int src_index, String[] clusterID) {
 			if(c1.startPos < startPos) startPos = c1.startPos;
 			if(c1.endPos > endPos) endPos = c1.endPos;
 			if(breakSt<0 || (c1.breakSt>=0 & c1.breakSt > breakSt)) breakSt = c1.breakSt;
@@ -600,6 +622,7 @@ public static boolean recordStartEnd = false;
 				else{
 				count.increment(src_index);
 				}
+				clusterID[1] = count.id()+"";
 			if(Outputs.writeGFF || Outputs.writeIsoforms) count.addBreaks(c1.breaks);
 			for(int i=0; i<this.readCount.length;i++) {
 				readCount[i]+=c1.readCount[i];

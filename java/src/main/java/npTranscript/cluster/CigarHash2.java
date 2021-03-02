@@ -128,6 +128,13 @@ public class CigarHash2 extends ArrayList<Integer> {
 	 }
 	 return -1;
 	}
+	public List<Integer> rescale() {
+		List<Integer> keyv = this.clone();
+		for(int j=0; j<keyv.size(); j++){
+			keyv.set(j, keyv.get(j)*round);
+		}
+		return keyv;
+	}
 
 	
 
