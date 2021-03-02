@@ -48,8 +48,7 @@ public class Outputs{
 	
 	public static final FastqWriterFactory factory = new FastqWriterFactory();
 	//public static int gffThreshGene = 10;
-	public static Integer[] gffThreshAny = new Integer[] {0};
-	public static Integer[] gffThreshAll = new Integer[] {0};
+	public static int[][] gffThresh = null;;
 
 	public static int gffThreshTranscriptSum = 0;
 	

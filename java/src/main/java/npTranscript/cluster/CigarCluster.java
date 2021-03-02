@@ -26,7 +26,7 @@ import japsa.seq.SequenceOutputStream;
 public class CigarCluster  {
 		//final int index;
 		
-		
+		public static boolean singleGFF = true;
 	
 		static int round2 = 100;
 		public static boolean recordDepthByPosition = false;
@@ -258,8 +258,9 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 	int max_cnt = counts.get(counts.size()-1).getValue().sum();
 	int min_cnt = counts.get(0).getValue().sum();
 	boolean[] writeGene = new boolean[pw.length]; 
+	boolean[] writeAny = new boolean[pw.length];
 	//System.err.println(min_cnt+" "+max_cnt+" "+counts.size());
-	if(max_cnt >=Outputs.gffThreshTranscriptSum){
+	if(max_cnt >=1){
 		 if(min_cnt >max_cnt) throw new RuntimeException();
 		 
 		 //double thresh1 = Math.min(Outputs.gffThresh, b)
@@ -271,28 +272,31 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 			Count br_next = counts.get(i).getValue();
 			int[] cnt = br_next.count;
 			String gene_id =this.id +".t"+br_next.id();
-			int firstNonZero =num_sources-1;
+			//int firstNonZero =num_sources-1;
 			boolean incl = false;
-			boolean excl = false;
-			for(int k=num_sources-1;k>=0; k--){
-				if(cnt[k]>0) firstNonZero=k;
-				if(cnt[k] >= Outputs.gffThreshAny[k]) incl=true; // exclude transcript if it fails on any threshold
-				if(cnt[k] < Outputs.gffThreshAll[k]) excl=true; 
+			Arrays.fill(writeGene, true);
+			for(int k=0;k<num_sources; k++){
+				boolean excl = false;
+				for(int j=0; j<num_sources; j++){
+					if(cnt[j] < Outputs.gffThresh[k][j]) writeGene[k] = false;
+				}
 			}
 
-			if(!incl || excl) continue inner;
-			//firstNonZero=0;
-			writeGene[firstNonZero]=true;
 			List<Integer> br_ = br_next.getBreaks();
-				writeGFF1(br_, keyv , pw[firstNonZero], os ,bedW, chr, "transcript", 
+			 for(int k=0; k<pw.length; k++){
+				 if(writeGene[k]){
+					 writeAny[k] = true;
+					// System.err.println(k+this.id);
+				writeGFF1(br_, keyv , pw[k], os ,bedW, chr, "transcript", 
 						this.id, gene_id,  br_.get(0),
 						br_.get(br_.size()-1), type_nme, this.breaks_hash.secondKey,gene_id,  strand,seq,  br_next.count);
-				
+				 }
+			 }
 			}
 			
 		}
 		 for(int i=0; i<pw.length; i++){
-			 if(writeGene[i]){
+			 if(writeAny[i]){
 				 writeGFF1(null, null, pw[i], os,null, chr, "gene",  null, this.id, this.startPos, this.endPos, type_nme, this.breaks_hash.secondKey, 
 							this.id, strand, seq,this.readCount);
 			 }

@@ -127,15 +127,14 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 
 		addBoolean("enforceStrand", false, "whether to enforce strandedness");
 		addString("readList", "", "List of reads", false);
-		addString("gffThreshAny","10:10", "reports if greater than in any datasets.");
-		addString("gffThreshAll","10:10", "reports if greater than in all datasets");
+		addString("gffThresh","1", "reports if greater than in dataset");
 
 		addInt("maxTranscriptsPerGeneInGFF",1,"Maximum number of transcripts per gene (highest abundance first");
 			addString("annotType", null, "Type of annotation (only included if annotation is GFF file", false);
 		addString("chroms_to_include", "all", "Restrict to these chroms, colon delimited", false);
 		addString("chroms_to_ignore", "none", "Ignore these chroms", false);
 	//	addString("bedChr", null, "Use this for the chrom in bed chr, e.g. NC_045512v2, false");
-
+        addBoolean("singleGFF", false, "whether to have single output gff, rather than different for different input. ");
 		addString("resdir", "results"+System.currentTimeMillis(), "results directory");
 		addString("GFF_features", "gene_name:description:gene_id:gene_biotype:gene_id", "GFF feature names");
 		addString("RNA", "name", "If is direct RNA.  Can be tab delimmited boolean, e.g. true:true  or if set to name it will look for RNA string in name");
@@ -223,6 +222,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		Count.baseBreakPointsOnFirst = cmdLine.getBooleanVal("baseBreakPointsOnFirst");
 		int qual = cmdLine.getIntVal("qual");
 		int bin = cmdLine.getIntVal("bin");
+		CigarCluster.singleGFF = cmdLine.getBooleanVal("singleGFF");
 		int breakThresh = cmdLine.getIntVal("breakThresh");
 		String pattern = cmdLine.getStringVal("pattern");
 		String annotFile = cmdLine.getStringVal("annotation");
@@ -235,19 +235,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		 maxReads = cmdLine.getIntVal("maxReads");
 		//SequenceUtils.max_per_file = maxReads*4;
 		 ViralTranscriptAnalysisCmd2.supplementaryQ =cmdLine.getIntVal("supplementaryQ");
-		String[] gffThresh_all = cmdLine.getStringVal("gffThreshAll").split(":");
-		String[] gffThresh_any = cmdLine.getStringVal("gffThreshAny").split(":");
-
-		//Outputs.gffThreshGene = Integer.parseInt(gffThresh_[0]);
-		Outputs.library = new File(cmdLine.getStringVal("library"));
-		Outputs.gffThreshAny = new Integer[gffThresh_any.length];
-		Outputs.gffThreshAll = new Integer[gffThresh_all.length];
-		Outputs.gffThreshTranscriptSum=0;
-		for(int k=0; k<gffThresh_any.length; k++){
-			Outputs.gffThreshAll[k] = Integer.parseInt(gffThresh_all[k]);
-			Outputs.gffThreshAny[k] = Integer.parseInt(gffThresh_any[k]);
-			Outputs.gffThreshTranscriptSum += 	Outputs.gffThreshAll[k];
-		}
+		
 		Outputs.maxTranscriptsPerGeneInGFF = cmdLine.getIntVal("maxTranscriptsPerGeneInGFF");
 		Outputs.writeH5 = cmdLine.getBooleanVal("writeH5");
 		Annotation.enforceStrand = cmdLine.getBooleanVal("enforceStrand");
@@ -386,6 +374,19 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		}
 		sequential = cmdLine.getBooleanVal("sequential");
 		sorted = cmdLine.getBooleanVal("sorted");
+		
+		String[] gffThresh_1 = cmdLine.getStringVal("gffThresh").split(":");
+		Outputs.library = new File(cmdLine.getStringVal("library"));
+		Outputs.gffThresh = new int[bamFiles.length][bamFiles.length];
+		
+		//Outputs.gffThreshTranscriptSum=0;
+		for(int j=0; j<bamFiles.length; j++){
+			String[] gffThresh_2  = gffThresh_1[j].split(",");
+			for(int k=0; k<bamFiles.length; k++){
+				Outputs.gffThresh[j][k] = Integer.parseInt(gffThresh_2[k]);
+			}
+		}
+		
 			errorAnalysis(bamFiles, RNA,reference, annotFile,readList,annotationType, 
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  
 				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, chrsToIgnore,  isoformDepthThresh, coverageDepthThresh, probInclude, fastq, chromsToRemap==null ? null: chromsToRemap.split(":"));
