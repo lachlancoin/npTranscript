@@ -76,13 +76,21 @@ public class CigarCluster  {
 		
 		private double[]  true_breaks; //in 1kb
 		private static double divisor = 1e3;
-		public void addBreaks(List<Integer>breaks){
-			if(true_breaks==null) true_breaks =new double[breaks.size()];
-			if(true_breaks.length!=breaks.size()){
-				System.err.println("warning breaks have different lengths, so not updating");
-			}else{
-				for(int i=0; i<true_breaks.length; i++){
-					true_breaks[i] += breaks.get(i)/divisor;
+		
+		int break_sum=0;
+		
+		public static boolean baseBreakPointsOnFirst = true;
+		
+		public void addBreaks(List<Integer>breaks, int src_index){
+			if(!baseBreakPointsOnFirst || src_index==0 || this.count[0]==0){
+				break_sum+=1;
+				if(true_breaks==null) true_breaks =new double[breaks.size()];
+				if(true_breaks.length!=breaks.size()){
+					System.err.println("warning breaks have different lengths, so not updating");
+				}else{
+					for(int i=0; i<true_breaks.length; i++){
+						true_breaks[i] += breaks.get(i)/divisor;
+					}
 				}
 			}
 		}
@@ -91,8 +99,8 @@ public class CigarCluster  {
 		public List<Integer> getBreaks(){
 			if(true_breaks==null) return null;
 			Integer[] res = new Integer[true_breaks.length];
-			int sum = this.sum();
-			double mult = (divisor/sum);
+			int sum = this.break_sum;//this.sum();
+			double mult = (divisor/(double) sum);
 			for(int i=0; i<res.length; i++){
 				res[i] = (int) Math.round(true_breaks[i]*mult);
 			}
@@ -343,7 +351,7 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 			
 
 			//if(all_breaks.size()>0) throw new RuntimeException("should be zero");
-			if(Outputs.writeGFF || Outputs.writeIsoforms) cnt.addBreaks(c1.breaks);
+			if(Outputs.writeGFF || Outputs.writeIsoforms) cnt.addBreaks(c1.breaks, source_index);
 			//this.all_breaks.put(IdentityProfile1.includeStartEnd  || breaks.size()==2  ? breaks : breaks.clone(true, 1, breaks.size()-1),cnt);
 
 			this.breaks_hash.setSecondKey(c1.breaks_hash.secondKey);
@@ -623,7 +631,9 @@ public static boolean recordStartEnd = false;
 				count.increment(src_index);
 				}
 				clusterID[1] = count.id()+"";
-			if(Outputs.writeGFF || Outputs.writeIsoforms) count.addBreaks(c1.breaks);
+			if(Outputs.writeGFF || Outputs.writeIsoforms){
+				count.addBreaks(c1.breaks, src_index);
+			}
 			for(int i=0; i<this.readCount.length;i++) {
 				readCount[i]+=c1.readCount[i];
 			}
