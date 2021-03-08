@@ -359,10 +359,12 @@ if(join_and || join_not)  x2 =  matname else   x2 =  c()
   #total_reads = apply(allcnts,2,sum)
   if(is.null(trans))  trans = names[grep("/trans",names$group),]$name
   allcnts = t(data.frame(lapply(trans, .readIso, isofile, isoheader)))
+  rownames(allcnts) <- trans
+  
   dimnames(allcnts) = list(trans, isoheader)
-  cnts=apply(allcnts,1,sum)
-  names(cnts) = trans
-  order(cnts, decreasing=T)
+  #cnts=apply(allcnts,1,sum)
+  #names(cnts) = trans
+  return(allcnts)
 }
 
 

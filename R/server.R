@@ -41,7 +41,7 @@ shinyServer(function(input, output,session) {
   
 	#functions
 
-readDir <- function(inputdir, update=T, debug=F) {
+readDir <- function(inputdir, update=T, debug=F, filter =TRUE) {
 		counter$n=0
 	  replace=read.table(decodeFile,sep="\t",head=F)
 	  toreplace = replace[,2]
@@ -87,12 +87,21 @@ readDir <- function(inputdir, update=T, debug=F) {
       #  #   toreplace1=names(isoInfo$total_reads)
       #   grep("SRR",toreplace1)
       #   names(toreplace) = unlist( lapply(toreplace,.fixName))
+	  total_counts <- .readTotalIso(datafile, group="/trans", trans=as.character(isoInfo$orfs$ORFs))
       ##this gets order by counts
       if(reorder){
-        order = .readTotalIso(datafile, group="/trans", trans=as.character(isoInfo$orfs$ORFs))
+		sum_cnts=apply(total_counts,1,sum)
+		order = order(sum_cnts, decreasing = TRUE)
         isoInfo$orfs = isoInfo$orfs[order,,drop=F]
       }
-      
+      if(filter){
+		#PUT FILTER STUFF HERE. IF Any Count >20
+			#will need to filter down isoinfo total I think
+			#would mean a change in TPM value because you are then ignoring the low count transcripts (may add to a fair bit - worth checking!)
+			threshOrfs <- rownames(total_counts)[which(apply(X = total_counts, MARGIN = 1, FUN = function(x) any(x > 50)) == TRUE)]
+			isoInfo$orfs = isoInfo$orfs[which(isoInfo$orfs$ORFs %in% threshOrfs),]
+		}
+		
       info=.processInfo(isoInfo)
       print(paste("set", datafile))
       ch=c(names(info$choices1), names(info$choices))
