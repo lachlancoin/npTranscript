@@ -71,8 +71,9 @@ public class CigarClusters {
 	
 	public synchronized void matchCluster(CigarCluster c1,  int source_index, int num_sources, int chrom_index,String[] clusterIDs, char strand) throws NumberFormatException{
 		String clusterID;
+		CigarHash br = c1.breaks_hash;
 		CigarHash2 subID ;
-		CigarCluster clust = l.get(c1.breaks_hash);
+		CigarCluster clust = l.get(br);
 		this.totalCounts[source_index]++;
 		if(clust==null){
 			
@@ -80,14 +81,15 @@ public class CigarClusters {
 			clusterID = newc.id();
 			l.put(newc.breaks_hash, newc);
 			subID = newc.breaks;
+			clusterIDs[1] = 0+"";
 		}else{
 			
-			subID = clust.merge(c1, num_sources, source_index);
+			subID = clust.merge(c1, num_sources, source_index, clusterIDs);
 			clusterID = clust.id();
+			
 		}
 	clusterIDs[0] = clusterID;
-	
-	clusterIDs[1] = subID.toString(CigarHash2.round, 1, subID.size()-1).hashCode()+"";
+	//clusterIDs[1] = subID.rescale().toString();
 		//return clusterID;
 	}
 	
@@ -131,7 +133,7 @@ public class CigarClusters {
 		boolean forward = cc.forward;
 		boolean hasLeaderBreak = TranscriptUtils.coronavirus  ? (cc.breaks.size()>1 &&  annot.isLeader(cc.breaks.get(1)*CigarHash2.round)) : false;
 		geneNames.clear();
-		int type_ind = annot.getTypeInd(cc.start, cc.end, forward);
+		int type_ind = annot.getTypeInd(cc.startPos, cc.endPos, forward);
 		String type_nme = annot.nmes[type_ind];
 		String geneNme = annot.getString(cc.span, geneNames);
 	if(Outputs.writeGFF){
@@ -141,7 +143,7 @@ public class CigarClusters {
 		
 		o.printTranscriptAlt(cc);
 		o.printTranscript(
-			cc.id()+"\t"+chrom+"\t"+cc.start+"\t"+cc.end+"\t"+type_nme+"\t"+
+			cc.id()+"\t"+chrom+"\t"+cc.startPos+"\t"+cc.endPos+"\t"+type_nme+"\t"+
 	
 		cc.exonCount()+"\t"+cc.numIsoforms()+"\t"+(hasLeaderBreak? 1: 0)+"\t"+cc.breaks_hash.secondKey+"\t"+geneNme+"\t"+
 		geneNames.size()+"\t"+
@@ -161,7 +163,7 @@ public class CigarClusters {
 				strand.append("+"+ext); chroms.append(chrom+ext);
 			}
 			}else{
-				starts.append(cc.start); ends.append(cc.end); chroms.append(cc.end); strand.append("+");
+				starts.append(cc.startPos); ends.append(cc.endPos); chroms.append(cc.endPos); strand.append("+");
 			}
 			
 		
@@ -171,7 +173,7 @@ public class CigarClusters {
 		//I
 //				CigarCluster.recordDepthByPosition ?  cc.getTotDepthSt(true)+"\t"+cc.getTotDepthSt(false): "");
 	}
-	CigarHash fromKey = new CigarHash("",0);
+	//CigarHash fromKey = new CigarHash("",0);
 	/** clears consensus up to certain start position.  This designed to keep memory foot print under control.  Assumes the bams are sorted */
 	public synchronized int clearUpTo(int endThresh, 	Outputs o, Sequence chrom, int chrom_index){
 		//fromKey.end = endThresh;
@@ -184,7 +186,7 @@ public class CigarClusters {
 			
 				for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();){
 					CigarCluster cc = it.next();
-					if(cc.end<endThresh){
+					if(cc.endPos<endThresh){
 						int totalDepth = cc.readCountSum();
 						process1(cc, o, chrom, chrom_index,  geneNames);
 						if(Outputs.writeIsoforms) o.writeIsoforms(cc, this, chrom, chrom_index, totalDepth);

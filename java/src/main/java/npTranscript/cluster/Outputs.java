@@ -47,8 +47,11 @@ public class Outputs{
 	//public static  ExecutorService executor ;
 	
 	public static final FastqWriterFactory factory = new FastqWriterFactory();
-	public static int gffThreshGene = 10;
-	public static int gffThreshTranscript = 10;
+	//public static int gffThreshGene = 10;
+	public static int[][] gffThresh = null;;
+
+	public static int gffThreshTranscriptSum = 0;
+	
 	public static int maxTranscriptsPerGeneInGFF = Integer.MAX_VALUE;
 	public static boolean writeIsoforms = false;
 
@@ -121,16 +124,19 @@ public class Outputs{
 	public static int minClusterEntries = 5;
 	public static Collection numExonsMSA = Arrays.asList(new Integer[0]); // numBreaks for MSA 
 	public static boolean calcBreaks;
+	public static boolean writeH5=false;
 	
 		public File transcripts_file;
 		public File reads_file; 
 		public File feature_counts_file;
-		private final File  outfile2,  outfile4, outfile5,  outfile10, outfile11, outfile12, gff_output;
+		private final File  outfile2,  outfile4, outfile5,  outfile10, outfile11, outfile12;
+		//private final File[] gff_output;
 		//outfile9;
 		private final FOutp[] leftover_l, polyA;//, leftover_r, fusion_l, fusion_r;
 	
 	//	final int seqlen;
-		 PrintWriter transcriptsP,readClusters, annotP,  gffW, featureCP;//, plusMinus;
+		 PrintWriter transcriptsP,readClusters, annotP,  featureCP;//, plusMinus;
+		 PrintWriter[] gffW;
 		 PrintWriter[] bedW;
 		 SequenceOutputStream[] refOut;
 		 IHDF5SimpleWriter clusterW = null;
@@ -162,14 +168,14 @@ public class Outputs{
 			if(bedW!=null){
 				for(int i=0; i<bedW.length; i++) bedW[i].close();
 			}
-			if(gffW!=null) gffW.close();
+			if(gffW!=null) for(int i=0; i<gffW.length; i++) gffW[i].close();
 			if(refOut!=null){
 				for(int i=0; i<refOut.length; i++){
 					refOut[i].close();
 				}
 			}
 			if(clusterW!=null) clusterW.close();
-			this.altT.close();
+			if(altT!=null) this.altT.close();
 			this.annotP.close();
 			//this.clusters.close();
 			for(int i=0; i<clusters.length; i++){
@@ -200,7 +206,9 @@ public class Outputs{
 			this.chrom = ((chrom.startsWith("chr") || chrom.startsWith("NC")) ? chrom : "chr"+chrom).split("\\.")[0];
 			//this.genome_index = currentIndex;
 			if(this.gffW!=null){
-				gffW.println("##sequence-region "+chr+" "+0+" "+seq.length());
+				for(int i=0; i<gffW.length; i++){
+				gffW[i].println("##sequence-region "+chr+" "+0+" "+seq.length());
+				}
 			}
 		}
 	
@@ -224,7 +232,7 @@ public class Outputs{
 			 outfile5 = new File(resDir,genome_index+ "clusters.fa.gz");
 			 outfile10 = new File(library,genome_index+"isoforms.h5");
 			outfile12 = new File(library,genome_index+"breakpoints.h5");
-			gff_output = new File(resDir,genome_index+"gff.gz");
+			//gff_output = new File(resDir,genome_index+"gff.gz");
 			
 			 outfile11 = new File(resDir, genome_index+"annot.txt.gz");
 		//	String prefix = readsF.getName().split("\\.")[0];
@@ -276,15 +284,19 @@ public class Outputs{
 				 }
 			 }
 			 if(writeGFF){
-				 gffW= new PrintWriter(
-							new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.gff_output))));
+				 gffW= new PrintWriter[num_sources];
+				 for(int i=0; i<num_sources; i++){
+					 gffW[i] = new PrintWriter(
+							new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(
+									new File(resDir,i+".gff.gz")))));
 				 Date d = new Date();
-					gffW.println("##gff-version 3\n"+
+					gffW[i].println("##gff-version 3\n"+
 							"#description: \n"+
 							"#provider: \n"+
 							"#contact: \n"+
 							"#format: gff3\n"+
 							"#date: "+d.toGMTString()+"\n");
+				 }
 					this.refOut =new SequenceOutputStream[Annotation.nmes.length];
 					for(int i=0; i<refOut.length; i++){
 						File ref_output = new File(resDir,Annotation.nmes[i]+".ref.fa");
@@ -330,12 +342,13 @@ if(IdentityProfile1.trainStrand){
 				str.add(this.type_nmes[j]);
 			}
 			this.col_inds = new int[this.type_nmes.length];
-			altT = HDF5Factory.open(outfile10);
+			if(Outputs.writeH5) altT = HDF5Factory.open(outfile10);
 			if(Outputs.calcBreaks){
 				this.breakPW =  HDF5Factory.open(outfile12);
 
 			}
-			writeStringArray(altT, "header", str.toArray(new String[0]),this.col_inds,0);
+			
+			if(altT!=null) writeStringArray(altT, "header", str.toArray(new String[0]),this.col_inds,0);
 			this.new_max_cols = Arrays.stream(col_inds) .max() .getAsInt()+1;
 				     
 				     
@@ -347,7 +360,7 @@ if(IdentityProfile1.trainStrand){
 			for(int j=0; j<num_sources; j++){
 				str.add(type_nmes[j]);
 			}
-			if(cluster_depth){
+			if(cluster_depth && writeH5){
 			clusterW = 	 HDF5Factory.open(outfile2);
 			col_inds_depth =new int[num_sources];
 			writeStringArray(clusterW, "header", str.toArray(new String[0]),col_inds_depth,1);
@@ -478,7 +491,7 @@ if(IdentityProfile1.trainStrand){
 		
 		
 		
-		public synchronized void writeToCluster(String ID, String subID,  int i, Sequence seq, String baseQ,  String str, String name, char strand) throws IOException{
+		public synchronized void writeToCluster(String ID, String subID,  int i, Sequence seq, String baseQ,  String name, char strand) throws IOException{
 			CompressDir cluster = this.getCluster(i);
 			//if(strand=='-'){
 				//seq = TranscriptUtils.revCompl(seq);
@@ -677,6 +690,7 @@ if(IdentityProfile1.trainStrand){
 		SortedSet<String> geneNames = new TreeSet<String>();
 		
 		public synchronized void writeTotalString(CigarClusters cigarClusters){
+			if(altT==null) return;
 			 String id2 = "counts/"+cigarClusters.chr;
 			int[]   obj;
 			if(altT.exists(id2)){

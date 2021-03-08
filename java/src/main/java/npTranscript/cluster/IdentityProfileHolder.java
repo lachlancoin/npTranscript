@@ -47,14 +47,42 @@ public class IdentityProfileHolder {
  
  Stack<IdentityProfile1> idents = new Stack<IdentityProfile1>();
  
+ 
  public synchronized void replace(IdentityProfile1 pr1){
-	 pr1.clear();
+	 //pr1.clear();
 	// System.err.print("returning");
 	 idents.push(pr1);
+	 
  }
- public synchronized IdentityProfile1 get(){
+ /** supp is in case this is a supplementary alignment, in which case we need to get the same profile as previously used 
+  * we assume that the primary alignment is first, and supplementary alignments follow
+  * note that this breaks multi-threading
+  * */
+ public synchronized IdentityProfile1 get(String readName, boolean supp){
+	 int len = idents.size();
 	// System.err.println(idents.size());
-	 IdentityProfile1 idp = idents.size()==0 ? new IdentityProfile1(this) : idents.pop();
+	 if(supp){
+		 
+		 for(int i=0; i<len; i++){
+			 if(idents.get(i).readName.equals(readName)){
+				 // in this case we dont clear it
+				 return idents.remove(i);
+			 }
+		 }
+		 throw new RuntimeException("we couldnt find the primary read processor - maybe this file is not sorted by read ID");
+	 }
+	 IdentityProfile1 idp;
+	 if(len==0){
+		idp =  new IdentityProfile1(this) ;
+	 }else{
+		 idp = idents.pop();
+		 idp.commit(); // should be safe to commit previous
+		 idp.clear(); // gets object clear for next use
+
+	 }
+	
+	 if(len>1) throw new RuntimeException("!!");
+	 idp.setName(readName);
 	// System.err.println(idents.size());
 	return idp;
  }
@@ -106,9 +134,19 @@ public class IdentityProfileHolder {
 	 	this.bp.addBreakPoint(source_index, i, br_i, br_i1);
 		
 	}
+	public void empty(){
+		int len =idents.size();
+		if(len>1) throw new RuntimeException(len+" !!");
+		for(int i=0; i<len; i++){
+			 IdentityProfile1 idp=idents.get(i);
+			idp.commit();
+			idp.clear();
+		}
+	}
 	SortedSet<String> geneNames = new TreeSet<String>();
 	public void getConsensus() throws IOException {
 		//waitOnThreads(100);
+		this.empty();
 		this.all_clusters.getConsensus( o, this.genome, this.chrom_index, this.geneNames);
 		
 }
@@ -125,7 +163,7 @@ public class IdentityProfileHolder {
 	final Integer[] basesStart = new Integer[4];final Integer[] basesEnd = new Integer[4];
 	final Integer[] readCounts = new Integer[] {0,0,0};
 	public void identity1(Sequence readSeq, SAMRecord sam,
-			int source_index, boolean cluster_reads,  String pool, double qval) {
+			int source_index, boolean cluster_reads,  String pool, double qval, boolean supp) {
 		// TODO Auto-generated method stub
 		final int start = sam.getStart();
 		addStart(start);
@@ -136,12 +174,12 @@ public class IdentityProfileHolder {
 		
 		Runnable run = new Runnable(){
 			public void run(){
-				final IdentityProfile1 profile = get();
-				if(profile.coRefPositions.breaks.size()>0) throw new RuntimeException("this is not clear");
+				final IdentityProfile1 profile = get(sam.getReadName(), supp);
+				if(profile.coRefPositions.breaks.size()>0 && ! supp) throw new RuntimeException("this is not clear");
+			//	if(supp && profile.suppl!=null && profile.suppl.size()>0) throw new RuntimeException("supps not empty");
 				
-				
-				
-				profile.identity1(genome, chr5prime,chr3prime, readSeq, sam, source_index, cluster_reads,  pool, qval);
+				profile.identity1(genome, chr5prime,chr3prime, readSeq, sam, source_index, cluster_reads,  pool, qval, supp);
+			//	profile.commit();
 				replace(profile);
 				removeStart(start);
 			}

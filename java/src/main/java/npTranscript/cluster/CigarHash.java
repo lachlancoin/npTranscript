@@ -12,6 +12,9 @@ public class CigarHash  {
 	public static boolean cluster_by_annotation = true;
 	public CigarHash(String string, int i) {
 		this.secondKey = string;
+		if(secondKey.length()==0){
+			System.err.println("warning");
+		}
 		//this.end = i;
 	}
 
@@ -60,12 +63,16 @@ public class CigarHash  {
 	
 	
 
-	String secondKey="";
+	String secondKey="default";
 //	Integer  end;
 	public void setSecondKey(String string) {
 		// TODO Auto-generated method stub
 	//	this.end = end;
+		
 		this.secondKey = string;
+		if(secondKey.length()==0){
+			System.err.println("warning");
+		}
 	}
 
 
