@@ -124,7 +124,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addBoolean("baseBreakPointsOnFirst", false, "whether the break points should be preferentially based on the first bam");
 		addBoolean("sorted", false, "whether bamfile sorted in terms of position.");
 		addBoolean("sequential", true, "whether to iterate through one bam at a time (in sequence) or in parallel.");
-
+		addBoolean("firstIsTranscriptome", false, "whether first bam is transcriptome");
 		addBoolean("enforceStrand", false, "whether to enforce strandedness");
 		addString("readList", "", "List of reads", false);
 		addString("gffThresh","1", "reports if greater than in dataset");
@@ -376,17 +376,16 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		sorted = cmdLine.getBooleanVal("sorted");
 		
 		String[] gffThresh_1 = cmdLine.getStringVal("gffThresh").split(":");
+		Outputs.firstIsTranscriptome = cmdLine.getBooleanVal("firstIsTranscriptome");
 		Outputs.library = new File(cmdLine.getStringVal("library"));
-		Outputs.gffThresh = new int[gffThresh_1.length][];
+		Outputs.gffThresh = new int[gffThresh_1.length];
 		
 		//Outputs.gffThreshTranscriptSum=0;
-		for(int j=0; j<Outputs.gffThresh.length; j++){
-			String[] gffThresh_2  = gffThresh_1[j].split(",");
-			Outputs.gffThresh[j] = new int[gffThresh_2.length];
-			for(int k=0; k<gffThresh_2.length; k++){
-				Outputs.gffThresh[j][k] = Integer.parseInt(gffThresh_2[k]);
+		
+			for(int k=0; k<gffThresh_1.length; k++){
+				Outputs.gffThresh[k] = Integer.parseInt(gffThresh_1[k]);
 			}
-		}
+		
 		
 			errorAnalysis(bamFiles, RNA,reference, annotFile,readList,annotationType, 
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  

@@ -273,16 +273,29 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 			int[] cnt = br_next.count;
 			String gene_id =this.id +".t"+br_next.id();
 			//int firstNonZero =num_sources-1;
-			boolean incl = false;
-			Arrays.fill(writeGene, true);
-			for(int k=0;k<Outputs.gffThresh.length; k++){
-				boolean excl = false;
-				int[] threshk = Outputs.gffThresh[k];
-				for(int j=0; j<num_sources; j++){
-					int j1 = j<threshk.length ? j: threshk.length-1;
-					if(cnt[j] < threshk[j1]) writeGene[k] = false;
+			//boolean incl = false;
+			Arrays.fill(writeGene, false);
+			int thresh0  = Outputs.gffThresh[0];
+			int thresh1 = Outputs.gffThresh[1];
+			for(int j=0; j<num_sources; j++){
+				if(cnt[j] >= thresh0) {
+					//if any greater than thresh, then write all
+					Arrays.fill(writeGene, true);
 				}
 			}
+			if(Outputs.firstIsTranscriptome){
+				//then first depends only on first cnt
+				
+				boolean someNonZero = false;
+				for(int j=1; j<num_sources; j++){
+					if(cnt[j] >= thresh1) {
+						someNonZero =true;
+					}
+				}
+				writeGene[0] = cnt[0] >=1 && someNonZero;
+			}
+			
+		
 
 			List<Integer> br_ = br_next.getBreaks();
 			 for(int k=0; k<pw.length; k++){

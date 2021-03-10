@@ -48,7 +48,8 @@ public class Outputs{
 	
 	public static final FastqWriterFactory factory = new FastqWriterFactory();
 	//public static int gffThreshGene = 10;
-	public static int[][] gffThresh = null;;
+	public static int[] gffThresh = null;;
+	public static boolean firstIsTranscriptome = false;
 
 	public static int gffThreshTranscriptSum = 0;
 	
@@ -284,7 +285,7 @@ public class Outputs{
 				 }
 			 }
 			 if(writeGFF){
-				 gffW= new PrintWriter[Outputs.gffThresh.length];
+				 gffW= new PrintWriter[firstIsTranscriptome? 2: 1];
 				 for(int i=0; i<gffW.length; i++){
 					 gffW[i] = new PrintWriter(
 							new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(
