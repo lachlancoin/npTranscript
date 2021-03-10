@@ -284,8 +284,8 @@ public class Outputs{
 				 }
 			 }
 			 if(writeGFF){
-				 gffW= new PrintWriter[num_sources];
-				 for(int i=0; i<num_sources; i++){
+				 gffW= new PrintWriter[Outputs.gffThresh.length];
+				 for(int i=0; i<gffW.length; i++){
 					 gffW[i] = new PrintWriter(
 							new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(
 									new File(resDir,i+".gff.gz")))));

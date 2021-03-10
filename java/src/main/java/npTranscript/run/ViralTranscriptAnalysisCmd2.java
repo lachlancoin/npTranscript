@@ -377,12 +377,13 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		
 		String[] gffThresh_1 = cmdLine.getStringVal("gffThresh").split(":");
 		Outputs.library = new File(cmdLine.getStringVal("library"));
-		Outputs.gffThresh = new int[bamFiles.length][bamFiles.length];
+		Outputs.gffThresh = new int[gffThresh_1.length][];
 		
 		//Outputs.gffThreshTranscriptSum=0;
-		for(int j=0; j<bamFiles.length; j++){
+		for(int j=0; j<Outputs.gffThresh.length; j++){
 			String[] gffThresh_2  = gffThresh_1[j].split(",");
-			for(int k=0; k<bamFiles.length; k++){
+			Outputs.gffThresh[j] = new int[gffThresh_2.length];
+			for(int k=0; k<gffThresh_2.length; k++){
 				Outputs.gffThresh[j][k] = Integer.parseInt(gffThresh_2[k]);
 			}
 		}

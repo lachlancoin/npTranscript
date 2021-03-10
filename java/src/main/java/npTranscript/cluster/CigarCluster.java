@@ -275,10 +275,12 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 			//int firstNonZero =num_sources-1;
 			boolean incl = false;
 			Arrays.fill(writeGene, true);
-			for(int k=0;k<num_sources; k++){
+			for(int k=0;k<Outputs.gffThresh.length; k++){
 				boolean excl = false;
+				int[] threshk = Outputs.gffThresh[k];
 				for(int j=0; j<num_sources; j++){
-					if(cnt[j] < Outputs.gffThresh[k][j]) writeGene[k] = false;
+					int j1 = j<threshk.length ? j: threshk.length-1;
+					if(cnt[j] < threshk[j1]) writeGene[k] = false;
 				}
 			}
 
