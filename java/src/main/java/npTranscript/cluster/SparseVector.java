@@ -21,6 +21,8 @@ class SparseVector{
 	private int valsum=0;
 	//double valsumByKey=0;
 	
+	
+	
 	public void addZero(int pos){
 		this.m.put(pos, zero);
 	}

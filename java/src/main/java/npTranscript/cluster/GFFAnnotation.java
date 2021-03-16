@@ -129,11 +129,11 @@ public class GFFAnnotation extends Annotation{
 		return chrom_index+"."+TranscriptUtils.round(r1,CigarHash2.round)+"."+TranscriptUtils.round(l2,CigarHash2.round);//+(enforceStrand ? (forward ? "+" : "-") : "");
 
 	}
-	public String getCoord(int leftBreak, int chrom_index, boolean forward){
+	public String getCoord(int leftBreak, int chrom_index, Boolean forward){
 		return chrom_index+"."+TranscriptUtils.round(leftBreak,CigarHash2.round);//+(enforceStrand ? (forward ? "+" : "-") : "");
 
 	}
-	public String getCoord(int leftBreak, int rightBreak, int chrom_index, boolean forward){
+	public String getCoord(int leftBreak, int rightBreak, int chrom_index, Boolean forward){
 		return chrom_index+"."+TranscriptUtils.round(leftBreak,CigarHash2.round)+"$"+TranscriptUtils.round(rightBreak,CigarHash2.round);//+(enforceStrand ? (forward ? "+" : "-") : "");
 
 	}

@@ -625,7 +625,6 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				samIters[ii] = samReaders[ii].iterator();
 			}else{
 				try{
-				
 				samIters[ii] = SequenceUtils.getSAMIteratorFromFastq(bamFile, mm2_index, maxReads);
 				}catch(Exception exc){
 					System.err.println(exc.getMessage());
