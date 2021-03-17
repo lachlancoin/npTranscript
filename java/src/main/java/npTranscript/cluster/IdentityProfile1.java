@@ -146,11 +146,11 @@ static char delim_start ='$';
 	byte[] phredQ; String baseQ; String type_nme; String span_str; int span;  double q_value; String id;
 
 	/*Note:  align5prime will be null if not coronavirus */
-	public String processRefPositions( SAMRecord sam, String id, boolean cluster_reads, Sequence refSeq, int src_index , Sequence readSeq, String baseQ, 
+	public String processRefPositions( SAMRecord sam, String id, boolean cluster_reads, Sequence refSeq1, int src_index , Sequence readSeq, String baseQ, 
 			byte[] phredQ,
 			int start_read, int end_read, char strand, SWGAlignment align5prime, SWGAlignment align3prime,
 			SWGAlignment align3primeRev,
-			int offset_3prime, int polyAlen, String pool, double q_value
+			Integer offset_3prime, Integer polyAlen, String pool, double q_value
 			) throws IOException, NumberFormatException{
 		//CigarHash2 breaks  = coRefPositions.breaks;
 		this.baseQ  = baseQ; this.phredQ = phredQ; this.q_value = q_value;
@@ -174,9 +174,10 @@ static char delim_start ='$';
 
 	
 		
-		int seqlen = refSeq.length();
 	
-		if(polyAlen>0){
+	
+		if(polyAlen!=null && polyAlen>0){
+			Integer seqlen = refSeq1.length();
 			seqlen = seqlen-(polyAlen);
 			annot.adjust3UTR(seqlen);
 		}
@@ -585,7 +586,7 @@ static char delim_start ='$';
 
 	/**
 	 * Get the identity between a read sequence from a sam and a reference sequence
-	 * 
+	 * commit indicates immediately commit the CigarHash object
 	 * @param refSeq
 	 * @param sam
 	 * @return
@@ -645,7 +646,7 @@ static char delim_start ='$';
 			SWGAlignment align_3primeRev = null;
 
 			int offset_3prime =0;
-			int polyAlen = TranscriptUtils.polyAlen(refSeq);
+			Integer polyAlen = TranscriptUtils.coronavirus ? TranscriptUtils.polyAlen(refSeq) : null;
 			if(TranscriptUtils.coronavirus && st_r > extra_threshold1 && attempt5rescue && st_r < 1000 && sam.getAlignmentStart()> 100 ){
 				//good candidate for a missed 5' alignment
 				try{
@@ -655,7 +656,7 @@ static char delim_start ='$';
 				}
 			}
 			
-			int seqlen1 = refSeq.length()-polyAlen;
+			Integer seqlen1 = TranscriptUtils.coronavirus ? refSeq.length()-polyAlen : null;
 			if(TranscriptUtils.coronavirus && diff_r > extra_threshold2 && attempt3rescue &&  diff_r < 1000 && sam.getAlignmentEnd()< seqlen1- 100 ){
 				//good candidate for a missed 3' alignment
 				try{
@@ -727,7 +728,9 @@ static char delim_start ='$';
 			String secondKey= profile.processRefPositions( sam, id, cluster_reads, 
 					refSeq, source_index, readSeq,baseQ, phredQs, st_r, end_r, strand, 
 					align_5prime, align_3prime,align_3primeRev, offset_3prime, polyAlen, poolID, qval);
-			if(supplementary){
+			if(!ViralTranscriptAnalysisCmd2.allowSuppAlignments)	profile.commit();
+			
+			if( supplementary){
 				 suppl_read.add(this.readSt); suppl_read.add(readEn);
 				 Collections.sort(suppl_read);
 			}

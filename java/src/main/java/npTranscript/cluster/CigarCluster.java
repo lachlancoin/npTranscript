@@ -148,7 +148,8 @@ private static void writeGFF1(List<Integer> breaks, String key, PrintWriter pw,S
 	 //char strand = '+';//secondKey.charAt(secondKey.length()-1);
 	// int count_ref= CigarCluster.annotationToRemoveFromGFF>=0  ? counts[annotationToRemoveFromGFF]:0;
 	//	if(count_ref>0) return;// do not print if count ref greater than zero;
-
+	byte[] seqb =  seq.toBytes();
+	boolean writeSeq = seqb!=null && seqb.length>0;
 	 pw.print(chr);pw.print("\tnp\t"+type+"\t");
 	 pw.print(start);pw.print("\t"); pw.print(end);
 	 pw.print("\t.\t"); pw.print(strand);pw.print("\t.\t");
@@ -180,7 +181,7 @@ private static void writeGFF1(List<Integer> breaks, String key, PrintWriter pw,S
 	for(int i=0; i<breaks.size();i+=2){
 		int starti = breaks.get(i);
 		int endi = breaks.get(i+1);
-		sb.append( seq.subSequence(starti, endi).toString());
+		if(writeSeq) sb.append( seq.subSequence(starti, endi).toString());
 		 pw.print(chr);pw.print("\tnp\texon\t");
 		 pw.print(starti);pw.print("\t"); pw.print(endi);
 		 pw.print("\t.\t"); pw.print(strand);pw.print("\t.\t");
@@ -196,6 +197,7 @@ private static void writeGFF1(List<Integer> breaks, String key, PrintWriter pw,S
 		 }
 		 pw.println();
 	 }
+	if(writeSeq){
 	  Sequence seq1 = new Sequence(seq.alphabet(), sb.toString(), ID);
 	  seq1.setDesc(chr+" "+breaks.toString()+" "+type_nme);//+" "+tpmstr);
 	  try{
@@ -203,6 +205,7 @@ private static void writeGFF1(List<Integer> breaks, String key, PrintWriter pw,S
 	  }catch(Exception exc){
 		  exc.printStackTrace();
 	  }
+	}
 	 int source_index =0;
 		if(bedW!=null){
 			for(int i=0; i<bedW.length; i++){
@@ -259,6 +262,9 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 	int min_cnt = counts.get(0).getValue().sum();
 	boolean[] writeGene = new boolean[pw.length]; 
 	boolean[] writeAny = new boolean[pw.length];
+	int[] starts = new int[pw.length];
+	int[] ends = new int[pw.length];
+	Arrays.fill(starts, Integer.MAX_VALUE);;
 	//System.err.println(min_cnt+" "+max_cnt+" "+counts.size());
 	if(max_cnt >=1){
 		 if(min_cnt >max_cnt) throw new RuntimeException();
@@ -276,7 +282,6 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 			//boolean incl = false;
 			Arrays.fill(writeGene, false);
 			int thresh0  = Outputs.gffThresh[0];
-			int thresh1 = Outputs.gffThresh[1];
 			for(int j=0; j<num_sources; j++){
 				if(cnt[j] >= thresh0) {
 					//if any greater than thresh, then write all
@@ -285,7 +290,8 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 			}
 			if(Outputs.firstIsTranscriptome){
 				//then first depends only on first cnt
-				
+				int thresh1 = Outputs.gffThresh[1];
+
 				boolean someNonZero = false;
 				for(int j=1; j<num_sources; j++){
 					if(cnt[j] >= thresh1) {
@@ -302,9 +308,13 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 				 if(writeGene[k]){
 					 writeAny[k] = true;
 					// System.err.println(k+this.id);
+					int  start =  br_.get(0);;
+					int end =  br_.get(br_.size()-1);
+					if(start < starts[i]) starts[k] = start;
+					if(end>ends[i]) ends[k] = end;
 				writeGFF1(br_, keyv , pw[k], os ,bedW, chr, "transcript", 
-						this.id, gene_id,  br_.get(0),
-						br_.get(br_.size()-1), type_nme, this.breaks_hash.secondKey,gene_id,  strand,seq,  br_next.count);
+						this.id, gene_id, start,end
+						, type_nme, this.breaks_hash.secondKey,gene_id,  strand,seq,  br_next.count);
 				 }
 			 }
 			}
@@ -312,7 +322,7 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 		}
 		 for(int i=0; i<pw.length; i++){
 			 if(writeAny[i]){
-				 writeGFF1(null, null, pw[i], os,null, chr, "gene",  null, this.id, this.startPos, this.endPos, type_nme, this.breaks_hash.secondKey, 
+				 writeGFF1(null, null, pw[i], os,null, chr, "gene",  null, this.id, starts[i], ends[i], type_nme, this.breaks_hash.secondKey, 
 							this.id, strand, seq,this.readCount);
 			 }
 		 }
@@ -358,6 +368,7 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 			this(id, num_sources,strand);
 			//this.strand = strand;
 			this.span.addAll(c1.span);
+		//	if(c1.forward==null) throw new RuntimeException("!!");
 			this.forward = c1.forward;
 			this.breakSt = c1.breakSt;
 			this.breakEnd = c1.breakEnd;

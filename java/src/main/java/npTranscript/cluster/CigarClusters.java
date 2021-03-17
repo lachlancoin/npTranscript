@@ -130,7 +130,7 @@ public class CigarClusters {
 	public void process1(CigarCluster cc,   Outputs o,Sequence seq, int chrom_index, SortedSet<String> geneNames ){
 		String read_count = TranscriptUtils.getString(cc.readCount);
 		String chrom = seq.getName();
-		boolean forward = cc.forward;
+		Boolean forward = cc.forward;
 		boolean hasLeaderBreak = TranscriptUtils.coronavirus  ? (cc.breaks.size()>1 &&  annot.isLeader(cc.breaks.get(1)*CigarHash2.round)) : false;
 		geneNames.clear();
 		int type_ind = annot.getTypeInd(cc.startPos, cc.endPos, forward);

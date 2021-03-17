@@ -3,7 +3,6 @@ package npTranscript.cluster;
 import java.awt.Color;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -26,12 +25,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.zip.GZIPOutputStream;
 
-import org.apache.commons.math3.linear.OpenMapRealMatrix;
 import org.apache.commons.math3.linear.SparseRealMatrix;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
 import ch.systemsx.cisd.hdf5.IHDF5SimpleWriter;
 import ch.systemsx.cisd.hdf5.IHDF5Writer;
+import htsjdk.samtools.BAMFileWriter;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.fastq.FastqRecord;
 import htsjdk.samtools.fastq.FastqWriter;
 import htsjdk.samtools.fastq.FastqWriterFactory;
@@ -40,13 +42,13 @@ import japsa.seq.SequenceOutputStream;
 import npTranscript.cluster.CigarCluster.Count;
 import npTranscript.run.CompressDir;
 import npTranscript.run.SequenceOutputStream1;
-import npTranscript.run.ViralChimericReadsAnalysisCmd;
 
 public class Outputs{
 	
 	//public static  ExecutorService executor ;
 	
 	public static final FastqWriterFactory factory = new FastqWriterFactory();
+	public static final SAMFileWriterFactory factB = new SAMFileWriterFactory();
 	//public static int gffThreshGene = 10;
 	public static int[] gffThresh = null;;
 	public static boolean firstIsTranscriptome = false;
@@ -787,6 +789,22 @@ if(IdentityProfile1.trainStrand){
 				}
 			}
 			
+		}
+		
+		public static SAMFileWriter[][] getSamWriter(String chrom,String resdir, String[] in_nmes, boolean presorted, SAMFileHeader header) {
+			// TODO Auto-generated method stub
+			factB.setUseAsyncIo(true);
+		//	factB.
+			String[] prefix = "primary:secondary:supplementary:polyA".split(":");
+			SAMFileWriter[][] res = new SAMFileWriter[prefix.length][in_nmes.length]; //second row is for supplementary alignments, first for primary alignments
+			for(int j=0; j<prefix.length; j++){
+				for(int i=0; i<in_nmes.length; i++){
+					File f = new File(resdir, in_nmes[i]+"."+chrom+"."+prefix[j]+".bam");
+					System.err.println("new sam writer "+f.getAbsolutePath());
+					res[j][i]  = factB.makeBAMWriter(header, presorted, f);//factory.newWriter(f);
+				}
+			}
+			return res;
 		}
 
 		public static FastqWriter[][] getFqWriter(String chrom,String resdir, String[] in_nmes) {

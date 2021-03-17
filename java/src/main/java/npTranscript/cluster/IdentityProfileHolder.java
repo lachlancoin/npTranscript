@@ -76,12 +76,15 @@ public class IdentityProfileHolder {
 		idp =  new IdentityProfile1(this) ;
 	 }else{
 		 idp = idents.pop();
-		 idp.commit(); // should be safe to commit previous
+		 if(ViralTranscriptAnalysisCmd2.allowSuppAlignments) idp.commit(); // should be safe to commit previous
 		 idp.clear(); // gets object clear for next use
 
 	 }
 	
-	 if(len>1) throw new RuntimeException("!!");
+	 if(supp && len>1){
+		 // need to check how this works with multi-threading
+		 throw new RuntimeException("this may not work with multi-threading");
+	 }
 	 idp.setName(readName);
 	// System.err.println(idents.size());
 	return idp;
@@ -136,10 +139,12 @@ public class IdentityProfileHolder {
 	}
 	public void empty(){
 		int len =idents.size();
-		if(len>1) throw new RuntimeException(len+" !!");
+		//if(len>1) {
+			//throw new RuntimeException(len+" !!");
+	//	}
 		for(int i=0; i<len; i++){
 			 IdentityProfile1 idp=idents.get(i);
-			idp.commit();
+			 if(ViralTranscriptAnalysisCmd2.allowSuppAlignments) idp.commit();
 			idp.clear();
 		}
 	}

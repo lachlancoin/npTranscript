@@ -79,6 +79,7 @@ import japsa.util.CommandLine;
 import japsa.util.deploy.Deployable;
 import npTranscript.cluster.Annotation;
 import npTranscript.cluster.CigarCluster;
+import npTranscript.cluster.CigarCluster.Count;
 import npTranscript.cluster.CigarHash;
 import npTranscript.cluster.CigarHash2;
 import npTranscript.cluster.EmptyAnnotation;
@@ -87,7 +88,6 @@ import npTranscript.cluster.IdentityProfile1;
 import npTranscript.cluster.IdentityProfileHolder;
 import npTranscript.cluster.Outputs;
 import npTranscript.cluster.TranscriptUtils;
-import npTranscript.cluster.CigarCluster.Count;
 
 /**
  * @author Lachlan Coin
@@ -392,6 +392,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, chrsToIgnore,  isoformDepthThresh, coverageDepthThresh, probInclude, fastq, chromsToRemap==null ? null: chromsToRemap.split(":"));
 	}
  public static boolean sorted = true;
+public static boolean allowSuppAlignments = false;; // this has to be true for allowing supp alignments
+
  static double tme0;
 	public static void main(String[] args1) throws IOException, InterruptedException {
 		tme0 = System.currentTimeMillis();
@@ -450,6 +452,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			inputFile = fastqFile;
 			sorted = false;
 		}
+//		delayComit = !sorted; // we can delay committing if not sorted according to position
 		final boolean fastq_ = fastq;
 		if(inputFile.equals("all") || inputFile.equals(".")){
 			bamFiles_ = (new File("./")).list(new FilenameFilter(){
@@ -706,6 +709,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			int ij=0;
 			String previousRead = "";
 			int previousRefIndex=-1;
+			Set<String> skipped = new HashSet<String>();
 			outer: for ( ij=0; samIter.hasNext() ;ij++ ) {
 				final SAMRecord sam=samIter.next();
 			    if(sam==null) break outer;
@@ -718,7 +722,11 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				if(chromsToInclude!=null && !chromsToInclude.containsKey(sam.getReferenceName())
 						&& (chromToRemap !=null && !chromToRemap.contains(sam.getReferenceName())
 						)){
-					System.err.println("do not have appropriate reference"+sam.getReferenceName());
+					if(!skipped.contains(sam.getReferenceName())){
+						System.err.println("skipping "+sam.getReferenceName());
+						skipped.add(sam.getReferenceName());
+					}
+				//	System.err.println("do not have appropriate reference, so ignoring this entry "+sam.getReferenceName());
 					continue;
 				}
 				int poolID = -1;
@@ -914,6 +922,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 						final FastqWriter fqw_i = fqw[sam_ind][source_index];
 						Outputs.fastQwriter.execute(new Runnable(){
 							public void run(){
+							//	fqw_i.addAlignment(sam);
 							String baseQL = sam.getBaseQualityString();
 							FastqRecord fqr= new FastqRecord(sam.getReadName(),
 									negStrand ? SequenceUtil.reverseComplement(sequence): sequence,
@@ -928,15 +937,18 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				boolean supplementary = false;
 				//System.err.println(sam.getMappingQuality());
 				if(sam.isSecondaryOrSupplementary()) {
+					if(!ViralTranscriptAnalysisCmd2.allowSuppAlignments) continue;
 					boolean supp = sam.getSupplementaryAlignmentFlag();
 					if(supp && sam.getReadName().equals(previousRead) && sam.getReferenceIndex()==previousRefIndex){
 						supplementary = true;
 					int qual1 = sam.getMappingQuality();
 					
-					if(qual1 < supplementaryQ ){
+					if(qual1 < supplementaryQ  ){
+						// we cant include supplementary if not sorted
 						//System.err.println("remove "+qual1);
 						continue; // need secondary read quality of 5
 					}else{
+						if(sorted) throw new RuntimeException("!!");;
 						System.err.println("include supplementary read " + sam.getReadName()+" " + qual1);
 					}
 						
