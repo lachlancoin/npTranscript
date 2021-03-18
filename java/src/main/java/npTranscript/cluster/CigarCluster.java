@@ -61,17 +61,17 @@ public class CigarCluster  {
 		}
 /** returns average break point position */
 	public static class Count implements Comparable{
-		public Count(int[] count, int id){
+		public Count(int[] count, String id){
 			this.count = count;
 			this.id = id;
 		}
-		public Count(int num_sources, int src_index, int id) {
+		public Count(int num_sources, int src_index, String id) {
 			this.count = new int[num_sources];
 			count[src_index]=1;
 			this.id = id;
 		
 		}
-		private int id;
+		private String id;
 		private int[] count;
 		
 		private double[]  true_breaks; //in 1kb
@@ -79,10 +79,10 @@ public class CigarCluster  {
 		
 		int break_sum=0;
 		
-		public static boolean baseBreakPointsOnFirst = true;
+		//public static boolean baseBreakPointsOnFirst = true;
 		
 		public void addBreaks(List<Integer>breaks, int src_index){
-			if(!baseBreakPointsOnFirst || src_index==0 || this.count[0]==0){
+			if(!Outputs.firstIsTranscriptome || src_index==0 || this.count[0]==0){
 				break_sum+=1;
 				if(true_breaks==null) true_breaks =new double[breaks.size()];
 				if(true_breaks.length!=breaks.size()){
@@ -115,7 +115,7 @@ public class CigarCluster  {
 		public int[] count(){
 			return count;
 		}
-		public int id(){
+		public String id(){
 			return id;
 		}
 		public int sum() {
@@ -277,7 +277,7 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 			
 			Count br_next = counts.get(i).getValue();
 			int[] cnt = br_next.count;
-			String gene_id =this.id +".t"+br_next.id();
+			String gene_id =br_next.id();
 			//int firstNonZero =num_sources-1;
 			//boolean incl = false;
 			Arrays.fill(writeGene, false);
@@ -310,8 +310,8 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 					// System.err.println(k+this.id);
 					int  start =  br_.get(0);;
 					int end =  br_.get(br_.size()-1);
-					if(start < starts[i]) starts[k] = start;
-					if(end>ends[i]) ends[k] = end;
+					if(start < starts[k]) starts[k] = start;
+					if(end>ends[k]) ends[k] = end;
 				writeGFF1(br_, keyv , pw[k], os ,bedW, chr, "transcript", 
 						this.id, gene_id, start,end
 						, type_nme, this.breaks_hash.secondKey,gene_id,  strand,seq,  br_next.count);
@@ -363,8 +363,8 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 				this.mapEnd.addToEntry(endPos, src, 1);
 			}
 		}
-		
-		public CigarCluster(String id,  int num_sources, CigarCluster c1, int source_index, char strand) throws NumberFormatException{
+		public CigarCluster(String id,  int num_sources, CigarCluster c1, int source_index, char strand,
+				String subId) throws NumberFormatException{
 			this(id, num_sources,strand);
 			//this.strand = strand;
 			this.span.addAll(c1.span);
@@ -375,7 +375,7 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 			this.breakSt2 = c1.breakSt2;
 			this.breakEnd2 = c1.breakEnd2;
 			all_breaks = new HashMap<CigarHash2, Count>();
-			Count cnt =new Count(num_sources, source_index,  0);
+			Count cnt =new Count(num_sources, source_index,  subId);
 			this.breaks = c1.cloneBreaks();
 			this.all_breaks.put(breaks,cnt);
 			
@@ -630,7 +630,7 @@ public static boolean recordStartEnd = false;
 			}
 		}
 		
-		public CigarHash2 merge(CigarCluster c1, int num_sources, int src_index, String[] clusterID) {
+		public CigarHash2 merge(CigarCluster c1, int num_sources, int src_index, String[] clusterID, String readId) {
 			if(c1.startPos < startPos) startPos = c1.startPos;
 			if(c1.endPos > endPos) endPos = c1.endPos;
 			if(breakSt<0 || (c1.breakSt>=0 & c1.breakSt > breakSt)) breakSt = c1.breakSt;
@@ -653,14 +653,26 @@ public static boolean recordStartEnd = false;
 				
 			Count	count = this.all_breaks.get(br);
 				if(count==null) {
-					count = new Count(num_sources, src_index, all_breaks.size());
+					String id;
+					if(Outputs.firstIsTranscriptome && src_index==0){
+						id = readId;
+					}else{
+						id =this.id+".t"+all_breaks.size();
+					}
+					count = new Count(num_sources, src_index, id);
 				
 					all_breaks.put(br, count);
 				}
 				else{
+					if(Outputs.firstIsTranscriptome && src_index==0){
+						count.id = readId;
+					}
 				count.increment(src_index);
 				}
 				clusterID[1] = count.id()+"";
+				//if(!clusterID[1].startsWith("R") && src_index==0){
+				//	throw new RuntimeException("!!");
+				//}
 			if(Outputs.writeGFF || Outputs.writeIsoforms){
 				count.addBreaks(c1.breaks, src_index);
 			}

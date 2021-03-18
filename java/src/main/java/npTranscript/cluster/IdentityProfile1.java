@@ -128,7 +128,7 @@ static char delim_start ='$';
 	public void commit(){
 		char strand = this.coRefPositions.strand;
 		int start_read = this.readSt; int end_read = this.readEn;int readLength = end_read-start_read;
-		 parent.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources,  this.chrom_index, clusterID, strand); // this also clears current cluster
+		 parent.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources,  this.chrom_index, clusterID, strand, this.readName); // this also clears current cluster
 	//	int len1 = readSeq.length();
 		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"+start_read+"\t"+end_read+"\t"
 		+type_nme+"\t"+chrom_+"\t"

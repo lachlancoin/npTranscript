@@ -121,7 +121,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addString("reference", null, "Name of reference genome", true);
 		addString("annotation", null, "ORF annotation file or GFF file", false);
 		addBoolean("useExons", true, "wehether to use exons");
-		addBoolean("baseBreakPointsOnFirst", false, "whether the break points should be preferentially based on the first bam");
+	//	addBoolean("baseBreakPointsOnFirst", false, "whether the break points should be preferentially based on the first bam");
 		addBoolean("sorted", false, "whether bamfile sorted in terms of position.");
 		addBoolean("sequential", true, "whether to iterate through one bam at a time (in sequence) or in parallel.");
 		addBoolean("firstIsTranscriptome", false, "whether first bam is transcriptome");
@@ -219,7 +219,6 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 	public static boolean[] RNA;
 	public static String mm2_index;
  public static void run(CommandLine cmdLine, String[] bamFiles, String resDir,File anno, String chrs, String chrsToIgnore,  boolean fastq, String reference) throws IOException{
-		Count.baseBreakPointsOnFirst = cmdLine.getBooleanVal("baseBreakPointsOnFirst");
 		int qual = cmdLine.getIntVal("qual");
 		int bin = cmdLine.getIntVal("bin");
 		CigarCluster.singleGFF = cmdLine.getBooleanVal("singleGFF");
@@ -377,6 +376,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		
 		String[] gffThresh_1 = cmdLine.getStringVal("gffThresh").split(":");
 		Outputs.firstIsTranscriptome = cmdLine.getBooleanVal("firstIsTranscriptome");
+
 		Outputs.library = new File(cmdLine.getStringVal("library"));
 		Outputs.gffThresh = new int[gffThresh_1.length];
 		

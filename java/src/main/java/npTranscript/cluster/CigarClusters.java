@@ -7,11 +7,13 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
 import japsa.seq.Sequence;
+import npTranscript.cluster.CigarCluster.Count;
 
 
 /**
@@ -68,23 +70,29 @@ public class CigarClusters {
 		
 	}*/
 	int rem_count =0;
-	
-	public synchronized void matchCluster(CigarCluster c1,  int source_index, int num_sources, int chrom_index,String[] clusterIDs, char strand) throws NumberFormatException{
+	static String zero ="0";
+
+	public synchronized void matchCluster(CigarCluster c1,  int source_index, int num_sources, int chrom_index,String[] clusterIDs, 
+			char strand, String readId) throws NumberFormatException{
 		String clusterID;
 		CigarHash br = c1.breaks_hash;
 		CigarHash2 subID ;
 		CigarCluster clust = l.get(br);
 		this.totalCounts[source_index]++;
 		if(clust==null){
-			
-			CigarCluster newc = new CigarCluster("ID"+chrom_index+"."+(l.keySet().size()+rem_count), num_sources, c1, source_index, strand);
+			String id =  "ID"+chrom_index+"."+(l.keySet().size()+rem_count);
+			String subID1 = 
+					Outputs.firstIsTranscriptome && source_index==0 ? readId:	id+".t0";
+				
+			CigarCluster newc = new CigarCluster(id, num_sources, c1, source_index, strand, subID1);
 			clusterID = newc.id();
+			
 			l.put(newc.breaks_hash, newc);
 			subID = newc.breaks;
-			clusterIDs[1] = 0+"";
+			clusterIDs[1] = subID1;
 		}else{
 			
-			subID = clust.merge(c1, num_sources, source_index, clusterIDs);
+			subID = clust.merge(c1, num_sources, source_index, clusterIDs, readId);
 			clusterID = clust.id();
 			
 		}
@@ -139,10 +147,23 @@ public class CigarClusters {
 	if(Outputs.writeGFF){
 		cc.writeGFF(o.gffW, o.refOut[type_ind], o.bedW,chrom,  Outputs.isoThresh, type_nme, seq);
 	}
-	String depth_str = "\t"+cc.getTotDepthSt(true)+"\t"+cc.getTotDepthSt(false);
-		
+	
+	
+	String depth_str ="";// "\t"+cc.getTotDepthSt(true)+"\t"+cc.getTotDepthSt(false);
+		Iterator<Entry<CigarHash2, Count>> it = cc.all_breaks.entrySet().iterator();
+		while(it.hasNext()){
+			Entry<CigarHash2, Count> nxt = it.next();
+			CigarHash2 h2 = nxt.getKey();
+			Count cnt = nxt.getValue();
+			List<Integer> breaks = cnt.getBreaks();
+			int exonCount =(int) Math.round((double) breaks.size()/2.0);
+			String read_count1 =  TranscriptUtils.getString(cnt.count());
+			o.printTranscript(cnt.id()+"\t"+chrom+"\t"+breaks.get(0)+"\t"+breaks.get(breaks.size()-1)+"\t"+type_nme+"\t"+exonCount+"\t1"+
+			"\t"+(hasLeaderBreak? 1: 0)+"\t"+h2.toString()+"\t"+cnt.id()+"\t"+geneNames.size()+"\tNA\t"+cnt.sum()+"\t"+read_count1,
+					depth_str);
+		}
 		o.printTranscriptAlt(cc);
-		o.printTranscript(
+		o.printGene(
 			cc.id()+"\t"+chrom+"\t"+cc.startPos+"\t"+cc.endPos+"\t"+type_nme+"\t"+
 	
 		cc.exonCount()+"\t"+cc.numIsoforms()+"\t"+(hasLeaderBreak? 1: 0)+"\t"+cc.breaks_hash.secondKey+"\t"+geneNme+"\t"+

@@ -129,7 +129,7 @@ public class Outputs{
 	public static boolean calcBreaks;
 	public static boolean writeH5=false;
 	
-		public File transcripts_file;
+		public File transcripts_file, genes_file;
 		public File reads_file; 
 		public File feature_counts_file;
 		private final File  outfile2,  outfile4, outfile5,  outfile10, outfile11, outfile12;
@@ -138,7 +138,7 @@ public class Outputs{
 		private final FOutp[] leftover_l, polyA;//, leftover_r, fusion_l, fusion_r;
 	
 	//	final int seqlen;
-		 PrintWriter transcriptsP,readClusters, annotP,  featureCP;//, plusMinus;
+		 PrintWriter transcriptsP,readClusters, annotP,  featureCP, genesP;//, plusMinus;
 		 PrintWriter[] gffW;
 		 PrintWriter[] bedW;
 		 SequenceOutputStream[] refOut;
@@ -165,7 +165,7 @@ public class Outputs{
 				Outputs.waitOnThreads(h5writer, 100);
 			}
 			
-			transcriptsP.close();
+			transcriptsP.close();genesP.close();
 			this.featureCP.close();
 			readClusters.close();
 			if(bedW!=null){
@@ -318,12 +318,16 @@ if(IdentityProfile1.trainStrand){
 			 readClusters.println(header); //\tbreakStart\tbreakEnd\tbreakStart2\tbreakEnd2\tstrand\tbreaks");
 		
 			 transcripts_file = new File(resDir,genome_index+ "transcripts.txt.gz");
+			genes_file = new File(resDir,genome_index+ "genes.txt.gz");
+
 			 feature_counts_file = new File(resDir,genome_index+ "transcripts.fc.txt.gz");
 			
 			 featureCP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.feature_counts_file))));
 			 String featureCP_header = "Geneid\tChr\tStart\tEnd\tStrand\tLength";
  
 			 transcriptsP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(transcripts_file))));
+			 genesP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(genes_file))));
+
 				String transcriptP_header = "ID\tchrom\tstart\tend\ttype_nme\tnum_exons\tisoforms\tleader_break\tORFs\tspan\tspan_length"
 					+"\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true);
 				if(cluster_depth){
@@ -335,6 +339,8 @@ if(IdentityProfile1.trainStrand){
 				for(int i=0; i<type_nmes.length; i++) nme_info.append(type_nmes[i]+"\t");
 				transcriptsP.println("#"+nme_info.toString());
 				transcriptsP.println(transcriptP_header);
+				genesP.println("#"+nme_info.toString());
+				genesP.println(transcriptP_header);
 				featureCP.println("#npTranscript output");
 				featureCP.println(featureCP_header+"\t"+nme_info.toString());
 				
@@ -346,7 +352,7 @@ if(IdentityProfile1.trainStrand){
 			}
 			this.col_inds = new int[this.type_nmes.length];
 			if(Outputs.writeH5) altT = HDF5Factory.open(outfile10);
-			if(Outputs.calcBreaks){
+			if(Outputs.calcBreaks && Outputs.writeH5){
 				this.breakPW =  HDF5Factory.open(outfile12);
 
 			}
@@ -427,6 +433,10 @@ if(IdentityProfile1.trainStrand){
 		public synchronized void printTranscript(String str, String depth_str){
 			this.transcriptsP.print(str);
 			transcriptsP.println(depth_str);
+		}
+		public synchronized void printGene(String str, String depth_str){
+			this.genesP.print(str);
+			genesP.println(depth_str);
 		}
 		public synchronized void printFC(String str){
 			this.featureCP.println(str);
