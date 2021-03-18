@@ -158,7 +158,7 @@ public class CigarClusters {
 			List<Integer> breaks = cnt.getBreaks();
 			int exonCount =(int) Math.round((double) breaks.size()/2.0);
 			String read_count1 =  TranscriptUtils.getString(cnt.count());
-			o.printTranscript(cnt.id()+"\t"+chrom+"\t"+breaks.get(0)+"\t"+breaks.get(breaks.size()-1)+"\t"+type_nme+"\t"+exonCount+"\t1"+
+			o.printTranscript(cnt.id()+"\t"+chrom+"\t"+breaks.get(0)+"\t"+breaks.get(breaks.size()-1)+"\t"+geneNme+"\t"+exonCount+"\t1"+
 			"\t"+(hasLeaderBreak? 1: 0)+"\t"+h2.toString()+"\t"+cnt.id()+"\t"+geneNames.size()+"\tNA\t"+cnt.sum()+"\t"+read_count1,
 					depth_str);
 		}

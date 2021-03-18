@@ -328,8 +328,10 @@ if(IdentityProfile1.trainStrand){
 			 transcriptsP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(transcripts_file))));
 			 genesP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(genes_file))));
 
-				String transcriptP_header = "ID\tchrom\tstart\tend\ttype_nme\tnum_exons\tisoforms\tleader_break\tORFs\tspan\tspan_length"
+				String transcriptP_header = "ID\tchrom\tstart\tend\tgene_nme\tnum_exons\tisoforms\tleader_break\tORFs\tspan\tspan_length"
 					+"\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true);
+				String geneP_header = "ID\tchrom\tstart\tend\ttype_nme\tnum_exons\tisoforms\tleader_break\tORFs\tspan\tspan_length"
+						+"\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true);
 				if(cluster_depth){
 					transcriptP_header = transcriptP_header
 							+"\t"+TranscriptUtils.getString("depth", num_sources, true)+"\t"+TranscriptUtils.getString("errors", num_sources, true);
@@ -340,7 +342,7 @@ if(IdentityProfile1.trainStrand){
 				transcriptsP.println("#"+nme_info.toString());
 				transcriptsP.println(transcriptP_header);
 				genesP.println("#"+nme_info.toString());
-				genesP.println(transcriptP_header);
+				genesP.println(geneP_header);
 				featureCP.println("#npTranscript output");
 				featureCP.println(featureCP_header+"\t"+nme_info.toString());
 				
