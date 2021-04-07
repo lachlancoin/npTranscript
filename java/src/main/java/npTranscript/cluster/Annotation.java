@@ -230,7 +230,7 @@ public class Annotation{
 			return nmes[getTypeInd(start,end, forward)];
 			//return null;
 		}
-		public int getTypeInd(int start, int end, boolean forward) {
+		public int getTypeInd(int start, int end, Boolean forward) {
 			if(start <=TranscriptUtils.startThresh) return end >= seqlen -TranscriptUtils.endThresh ? 0:1;
 			else return end >= seqlen -TranscriptUtils.endThresh ? 2:3;
 			//return null;
@@ -249,7 +249,7 @@ public class Annotation{
 			
 		}
 
-		public String getSpan(List<Integer>breaks, boolean forward, Collection<Integer> span, SortedSet<String> parents) {
+		public String getSpan(List<Integer>breaks, Boolean forward, Collection<Integer> span, SortedSet<String> parents) {
 			// TODO Auto-generated method stub
 			return ".";
 		}
