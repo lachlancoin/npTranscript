@@ -216,7 +216,7 @@ public class GFFAnnotation extends Annotation{
 	
 	//following seems clunky
 	@Override
-	public synchronized String  getSpan(List<Integer> breaks,boolean forward,  Collection<Integer> l, SortedSet<String> geneNames){
+	public synchronized String  getSpan(List<Integer> breaks,Boolean forward,  Collection<Integer> l, SortedSet<String> geneNames){
 		int istart =-1;
 		int iend = -1;
 		int start_ = breaks.get(0);

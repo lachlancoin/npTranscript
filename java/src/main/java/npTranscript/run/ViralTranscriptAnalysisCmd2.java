@@ -79,7 +79,6 @@ import japsa.util.CommandLine;
 import japsa.util.deploy.Deployable;
 import npTranscript.cluster.Annotation;
 import npTranscript.cluster.CigarCluster;
-import npTranscript.cluster.CigarCluster.Count;
 import npTranscript.cluster.CigarHash;
 import npTranscript.cluster.CigarHash2;
 import npTranscript.cluster.EmptyAnnotation;
