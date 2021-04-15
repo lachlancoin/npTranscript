@@ -1,0 +1,25 @@
+--bin=10
+--breakThresh=50  
+--coronavirus=false  
+--extra_threshold=50 
+--RNA=false  
+--useExons=true 
+--span=protein_coding  
+--GFF_features=gene_name:description:transcript_id:gene_biotype:gene_id 
+--doMSA=0  
+--msa_source=cDNA   
+--maxThreads=1  
+--isoformDepthThresh 1 
+--writeGFF=true  
+--writeIsoforms=false 
+--recordDepthByPosition=false 
+--coverageDepthThresh=100   
+--maxTranscriptsPerGeneInGFF=1000 
+--gffThresh=20:1  
+--firstIsTranscriptome=true   
+--writeH5=false 
+--qual=10  
+--fail_thresh=7 
+--supplementaryQ=1000 
+--includeStart=false 
+--enforceStrand=false
