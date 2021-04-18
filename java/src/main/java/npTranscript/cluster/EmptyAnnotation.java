@@ -7,10 +7,8 @@ import java.io.PrintWriter;
 public class EmptyAnnotation extends Annotation {
 String chrom1;
 	public EmptyAnnotation(String chrom, String string, int seqlen, PrintWriter pw) throws IOException {
-		super(chrom, seqlen);
 		//pw.println("ID\tName\tdescription");
 		this.chrom1 = chrom;
-		
 		pw.println(chrom1+"\t"+string);
 		// TODO Auto-generated constructor stub
 	}

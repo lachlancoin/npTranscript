@@ -90,7 +90,7 @@ public class CompressDir {
 	    		  	//}
 	    	File[] f = inDir.listFiles();
 	    	int min_seqs = (int) Math.floor((double)min_lines/2.0);
-	    
+	    	
 		    	//int min_seqs = (int) Math.floor((double)min_lines/2.0);
 		    	for(int i=0; i<f.length; i++){
 		    		if(!f[i].getName().startsWith(".")){

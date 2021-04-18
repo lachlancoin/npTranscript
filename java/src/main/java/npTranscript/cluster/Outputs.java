@@ -30,7 +30,6 @@ import org.apache.commons.math3.linear.SparseRealMatrix;
 import ch.systemsx.cisd.hdf5.HDF5Factory;
 import ch.systemsx.cisd.hdf5.IHDF5SimpleWriter;
 import ch.systemsx.cisd.hdf5.IHDF5Writer;
-import htsjdk.samtools.BAMFileWriter;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
@@ -48,6 +47,9 @@ public class Outputs{
 	//public static  ExecutorService executor ;
 	
 	public static final FastqWriterFactory factory = new FastqWriterFactory();
+	{
+		factory.setUseAsyncIo(true);
+	}
 	public static final SAMFileWriterFactory factB = new SAMFileWriterFactory();
 	//public static int gffThreshGene = 10;
 	public static int[] gffThresh = null;;
@@ -60,7 +62,7 @@ public class Outputs{
 
 	public static File library = new File("./");
 	public static final ExecutorService writeCompressDirsExecutor  = Executors.newSingleThreadExecutor();
-	public static final ExecutorService fastQwriter = Executors.newSingleThreadExecutor();
+	//public static final ExecutorService fastQwriter = Executors.newSingleThreadExecutor();
 	public static final ExecutorService h5writer = Executors.newSingleThreadExecutor();
 	
 	public static void shutDownExecutor() {
@@ -69,11 +71,11 @@ public class Outputs{
 			waitOnThreads(writeCompressDirsExecutor,100);
 			writeCompressDirsExecutor.shutdown();
 		}
-		if(fastQwriter!=null){
+	/*	if(fastQwriter!=null){
 			waitOnThreads(fastQwriter,100);
 
 			Outputs.fastQwriter.shutdown();
-		}
+		}*/
 		if(h5writer!=null){
 			waitOnThreads(h5writer,100);
 
@@ -138,7 +140,7 @@ public class Outputs{
 		private final FOutp[] leftover_l, polyA;//, leftover_r, fusion_l, fusion_r;
 	
 	//	final int seqlen;
-		 PrintWriter transcriptsP,readClusters, annotP,  featureCP, genesP;//, plusMinus;
+		public  PrintWriter transcriptsP,readClusters, annotP,  featureCP, genesP;//, plusMinus;
 		 PrintWriter[] gffW;
 		 PrintWriter[] bedW;
 		 SequenceOutputStream[] refOut;
@@ -158,9 +160,9 @@ public class Outputs{
 				Outputs.waitOnThreads(writeCompressDirsExecutor,100);
 				
 			}
-			if(fastQwriter!=null){
+			/*if(fastQwriter!=null){
 				Outputs.waitOnThreads(fastQwriter, 100);
-			}
+			}*/
 			if(h5writer!=null){
 				Outputs.waitOnThreads(h5writer, 100);
 			}
@@ -202,17 +204,15 @@ public class Outputs{
 		String genome_index;
 		String chrom;
 		
-		public  void updateChrom(Sequence seq, int currentIndex) {
-			String chr = seq.getName();
-			// TODO Auto-generated method stub
+		public  void updateChrom( Sequence seq, String chr1, int currentIndex) {
+			String chr = chr1;
 			this.chrom = chr;
 			this.chrom = ((chrom.startsWith("chr") || chrom.startsWith("NC")) ? chrom : "chr"+chrom).split("\\.")[0];
-			//this.genome_index = currentIndex;
-			if(this.gffW!=null){
+		/*	if(this.gffW!=null){
 				for(int i=0; i<gffW.length; i++){
-				gffW[i].println("##sequence-region "+chr+" "+0+" "+seq.length());
+				gffW[i].println("##sequence-region "+chr+" "+0+" "+(seq==null ? "NA" :seq.length()));
 				}
-			}
+			}*/
 		}
 	
 		
@@ -534,18 +534,13 @@ if(IdentityProfile1.trainStrand){
 		}
 			public synchronized void  writeFastq(FastqWriter writer, Sequence subseq,String baseQ,  boolean negStrand, int source_index)  throws IOException{
 				if(writer==null) return;
-				Runnable run = new Runnable(){
-					@Override
-					public void run() {
+				
 						 writer.write(new FastqRecord(subseq.getName()+ " "+subseq.getDesc(), 
 								 
 								 new String( subseq.charSequence()), "", 
 								 negStrand ? new StringBuilder(baseQ).reverse().toString() : baseQ));
 						
-					}
-					
-				};
-				Outputs.fastQwriter.execute(run);
+				
 			}
 
 		
@@ -556,7 +551,7 @@ if(IdentityProfile1.trainStrand){
 			
 		}
 		
-		public void writeDepthH5(CigarCluster cc, CigarClusters cigarClusters, Sequence chrom, int chrom_index, int totalDepth) {
+		public void writeDepthH5(CigarCluster cc, CigarClusters cigarClusters,  int totalDepth) {
 			int offset=1;
 			if(clusterW!=null && totalDepth>IdentityProfile1.writeCoverageDepthThresh){
 				String  key = "depth/"+cc.breaks_hash.secondKey;
@@ -706,7 +701,7 @@ if(IdentityProfile1.trainStrand){
 		
 		public synchronized void writeTotalString(CigarClusters cigarClusters){
 			if(altT==null) return;
-			 String id2 = "counts/"+cigarClusters.chr;
+			 String id2 = "counts/";//+cigarClusters.chr;
 			int[]   obj;
 			if(altT.exists(id2)){
 				obj = expand( altT.readIntArray(id2),this.new_max_cols);
@@ -779,8 +774,7 @@ if(IdentityProfile1.trainStrand){
 			
 		}
 
-		public void writeIsoforms(CigarCluster cc, CigarClusters cigarClusters, Sequence chrom, int chrom_index
-				, int totalDepth){
+		public void writeIsoforms(CigarCluster cc, CigarClusters cigarClusters,  int totalDepth){
 			String id = cc.breaks_hash.secondKey;
 			int[] rcount=cc.readCount;
 			if(altT!=null){

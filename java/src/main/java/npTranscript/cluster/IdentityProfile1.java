@@ -29,7 +29,6 @@ import npTranscript.run.ViralTranscriptAnalysisCmd2;
 public class IdentityProfile1 {
 	public static boolean trainStrand = true;
 	public static int min_first_last_exon_length= 20;
-//	public static  ExecutorService executor ;
 	/*final String[] type_nmes; 
 	public  Sequence ref;
 	public String chrom_;
@@ -38,8 +37,10 @@ public class IdentityProfile1 {
 	public CigarClusters all_clusters;
 	final public BreakPoints bp;
 	*/
-	final public  int chrom_index;
-	final String chrom_;
+	public  int chrom_index;
+	String chrom_;
+	
+	
 	
 	public static boolean annotByBreakPosition = true;
 	public static int writeCoverageDepthThresh = 100;
@@ -73,16 +74,21 @@ public class IdentityProfile1 {
 	final CigarClusters all_clusters;
 	public IdentityProfile1(IdentityProfileHolder parent) {
 		this.parent=parent;
-		this.chrom_index = parent.chrom_index;
-		this.chrom_ = parent.chrom_;
+		//this.chrom_index = parent.chrom_index;
+		//this.chrom_ = parent.chrom_;
 		this.num_sources = parent.num_sources;
-		this.coRefPositions = new CigarCluster("-1",num_sources,'.');
+		this.coRefPositions = new CigarCluster("", "-1",num_sources,'.');
 		this.o = parent.o;
 		this.all_clusters = parent.all_clusters;
 		
 	}
 	
-	
+	public void setName(String readName, String chrom_, int chrom_index) {
+		// TODO Auto-generated method stub
+		this.readName = readName;
+		this.chrom_ = chrom_;
+		this.chrom_index = chrom_index;
+	}
 	/*public IdentityProfile1(Sequence refSeq,
 			Outputs o, CigarClusters all_clusters, BreakPoints bp, 
 			String[] in_nmes,  int startThresh, int endThresh, boolean calcBreakpoints, Sequence chrom, int chrom_index) throws IOException {
@@ -128,7 +134,7 @@ static char delim_start ='$';
 	public void commit(){
 		char strand = this.coRefPositions.strand;
 		int start_read = this.readSt; int end_read = this.readEn;int readLength = end_read-start_read;
-		 parent.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources,  this.chrom_index, clusterID, strand, this.readName); // this also clears current cluster
+		 parent.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources,  this.chrom_,this.chrom_index,  clusterID, strand, this.readName); // this also clears current cluster
 	//	int len1 = readSeq.length();
 		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"+start_read+"\t"+end_read+"\t"
 		+type_nme+"\t"+chrom_+"\t"
@@ -150,7 +156,7 @@ static char delim_start ='$';
 			byte[] phredQ,
 			int start_read, int end_read, char strand, SWGAlignment align5prime, SWGAlignment align3prime,
 			SWGAlignment align3primeRev,
-			Integer offset_3prime, Integer polyAlen, String pool, double q_value
+			Integer offset_3prime, Integer polyAlen, String pool, double q_value, Annotation annot
 			) throws IOException, NumberFormatException{
 		//CigarHash2 breaks  = coRefPositions.breaks;
 		this.baseQ  = baseQ; this.phredQ = phredQ; this.q_value = q_value;
@@ -170,7 +176,7 @@ static char delim_start ='$';
 		Boolean forward = coRefPositions.forward;
 		//boolean hasSplice = false;
 		int  readLength = readSeq.length();
-		Annotation annot =parent.all_clusters.annot;
+		//Annotation annot =parent.all_clusters.annot;
 
 	
 		
@@ -434,7 +440,7 @@ static char delim_start ='$';
 	
 		public synchronized CigarCluster get(){
 			if(s.size()==0){
-				return new CigarCluster("-1",num_sources,'.');
+				return new CigarCluster("","-1",num_sources,'.');
 			}
 			return s.pop();
 		}
@@ -484,6 +490,7 @@ static char delim_start ='$';
 		int readPos = 0;// start from 0
 		int refPos = sam.getAlignmentStart() - 1;// convert to 0-based index
 		coRefPositions1.addStart(sam.getAlignmentStart());
+		boolean nullchr = refSeq==null || refSeq.length()==0;
 		for (final CigarElement e : sam.getCigar().getCigarElements()) {
 			final int length = e.getLength();
 
@@ -513,7 +520,7 @@ static char delim_start ='$';
 			case D:// deletion
 				refPos += length;
 				profile.refBase += length;
-				for (int i = 0; i < length && refPos + i < refSeq.length(); i++) {
+				for (int i = 0; i < length && (nullchr || refPos + i < refSeq.length()); i++) {
 				//	profile.baseDel[refPos + i] += 1;
 					coRefPositions1.add(refPos+i+1, this.source_index, false);
 					//profile.addRefPositions(refPos + i, false);
@@ -529,9 +536,9 @@ static char delim_start ='$';
 			//	profile.numIns++;
 				break;
 			case M:
-				for (int i = 0; i < length && refPos + i < refSeq.length(); i++) {
+				for (int i = 0; i < length && (nullchr || refPos + i < refSeq.length()); i++) {
 					
-					if (refSeq.getBase(refPos + i) == readSeq.getBase(readPos + i)){
+					if (nullchr || refSeq.getBase(refPos + i) == readSeq.getBase(readPos + i)){
 				//		profile.match[refPos + i]++;
 						coRefPositions1.add(refPos+i+1, this.source_index, true);
 						//profile.addRefPositions(refPos + i, true);
@@ -552,7 +559,7 @@ static char delim_start ='$';
 			case EQ:
 				readPos += length;
 				refPos += length;
-				for (int i = 0; i < length && (refPos + i) < refSeq.length(); i++) {
+				for (int i = 0; i < length && (nullchr || (refPos + i) < refSeq.length()); i++) {
 					coRefPositions1.add(refPos+i+1, this.source_index, true);
 //					profile.addRefPositions(refPos+i, true);
 				}
@@ -567,7 +574,7 @@ static char delim_start ='$';
 
 				profile.readBase += length;
 				profile.refBase += length;
-				for (int i = 0; i < length && (refPos + i) < refSeq.length(); i++) {
+				for (int i = 0; i < length && (nullchr || (refPos + i) < refSeq.length()); i++) {
 					coRefPositions1.add(refPos+i+1, this.source_index, false);
 					//profile.addRefPositions(refPos+i, false);
 				}
@@ -592,7 +599,7 @@ static char delim_start ='$';
 	 * @return
 	 */
 	public  void identity1(Sequence refSeq, Sequence fivePrimeRefSeq, Sequence threePrimeRefSeq,   Sequence readSeq, SAMRecord sam, 
-			int source_index, boolean cluster_reads,  String poolID, double qval, boolean supplementary) throws NumberFormatException{
+			int source_index, boolean cluster_reads,  String poolID, double qval, boolean supplementary, Annotation annot) throws NumberFormatException{
 		
 		if(supplementary){
 			if(!checkCompatible(this.coRefPositions, sam)) return;
@@ -727,7 +734,7 @@ static char delim_start ='$';
 			
 			String secondKey= profile.processRefPositions( sam, id, cluster_reads, 
 					refSeq, source_index, readSeq,baseQ, phredQs, st_r, end_r, strand, 
-					align_5prime, align_3prime,align_3primeRev, offset_3prime, polyAlen, poolID, qval);
+					align_5prime, align_3prime,align_3primeRev, offset_3prime, polyAlen, poolID, qval, annot);
 			if(!ViralTranscriptAnalysisCmd2.allowSuppAlignments)	profile.commit();
 			
 			if( supplementary){
@@ -767,7 +774,7 @@ static char delim_start ='$';
 							refSeq.subSequence(profile.startPos - 10000, profile.endPos+1000);
 				align_5prime = SWGAlignment.align(leftseq, refSeq1);
 				 TranscriptUtils.getStartEnd(align_5prime, seq1, seq2, 0, 0, sam.getReadNegativeStrandFlag());
-				String secondKey1 =  profile.all_clusters.annot.nextUpstream(seq1[2], profile.chrom_index, forward)+";"+profile.all_clusters.annot.nextDownstream(seq1[3], profile.chrom_index,forward);
+				String secondKey1 =  annot.nextUpstream(seq1[2], profile.chrom_index, forward)+";"+annot.nextDownstream(seq1[3], profile.chrom_index,forward);
 				desc.append(" "+String.format("%5.3g",(double)seq2[1]/(double) seq2[0]).trim()+" "+secondKey1+" "+getString(seq1)+";"+getString(seq2));
 				/*if(tryComplementOnExtra){
 					align_5prime = SWGAlignment.align(TranscriptUtils.revCompl(leftseq), refSeq);
@@ -809,7 +816,7 @@ static char delim_start ='$';
 				 align_3prime = SWGAlignment.align(rightseq, refSeq1);
 					
 				 TranscriptUtils.getStartEnd(align_3prime, seq1, seq2, end_r, 0, sam.getReadNegativeStrandFlag());
-					String secondKey1 =  profile.all_clusters.annot.nextUpstream(seq1[2], profile.chrom_index,forward)+";"+profile.all_clusters.annot.nextDownstream(seq1[3], profile.chrom_index,forward);
+					String secondKey1 =  annot.nextUpstream(seq1[2], profile.chrom_index,forward)+";"+annot.nextDownstream(seq1[3], profile.chrom_index,forward);
 
 				 desc.append(" "+String.format("%5.3g",(double)seq2[1]/(double) seq2[0]).trim()+" "+secondKey1+" "+getString(seq1)+";"+getString(seq2));
 				 /*if(tryComplementOnExtra){
@@ -874,10 +881,7 @@ static char delim_start ='$';
 
 String readName="";
 
-	public void setName(String readName) {
-		// TODO Auto-generated method stub
-		this.readName = readName;
-	}
+	
 
 
 

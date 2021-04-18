@@ -39,6 +39,8 @@ public class CigarCluster  {
 		
 		private final String id;
 		
+		final String chrom;
+		
 		public String id(){
 			return id;
 		}
@@ -143,12 +145,7 @@ public class CigarCluster  {
 private static void writeGFF1(List<Integer> breaks, String key, PrintWriter pw,SequenceOutputStream os,  PrintWriter[] bedW, String chr, 
 		String type,  String parent, String ID,  int start, int end, String type_nme, String secondKey, 
 		String geneID, char strand, Sequence seq,  int []counts){
-	//if(counts.length!=2) throw new RuntimeException("!!");
-	//String secondKey = this.breaks_hash.secondKey;
-	 //char strand = '+';//secondKey.charAt(secondKey.length()-1);
-	// int count_ref= CigarCluster.annotationToRemoveFromGFF>=0  ? counts[annotationToRemoveFromGFF]:0;
-	//	if(count_ref>0) return;// do not print if count ref greater than zero;
-	byte[] seqb =  seq.toBytes();
+	byte[] seqb =  seq==null ? null : seq.toBytes();
 	boolean writeSeq = seqb!=null && seqb.length>0;
 	 pw.print(chr);pw.print("\tnp\t"+type+"\t");
 	 pw.print(start);pw.print("\t"); pw.print(end);
@@ -248,12 +245,6 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 
  public void writeGFF(PrintWriter[] pw, SequenceOutputStream os, PrintWriter[] bedW, String chr, double  iso_thresh, 
 		 String type_nme, Sequence seq){
-	// String secondKey =  this.breaks_hash.secondKey;
-		//if(this.readCountSum< Outputs.gffThreshGene) return;
-//if(!type_nme.equals("5_3")) return;
-	//double tpm = (double) this.readCountSum() / (double) mapped_read_count;
-	//this.readCount
-	 int num_sources = pw.length;
 	if(all_breaks.size()==0) throw new RuntimeException("no transcripts");
 	List<Entry<CigarHash2,Count>> counts= new ArrayList<Entry<CigarHash2,Count>>(all_breaks.entrySet());
 	Collections.sort(counts, entryComparator);
@@ -282,7 +273,7 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 			//boolean incl = false;
 			Arrays.fill(writeGene, false);
 			int thresh0  = Outputs.gffThresh[0];
-			for(int j=0; j<num_sources; j++){
+			for(int j=0; j<cnt.length; j++){
 				if(cnt[j] >= thresh0) {
 					//if any greater than thresh, then write all
 					Arrays.fill(writeGene, true);
@@ -293,7 +284,7 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 				int thresh1 = Outputs.gffThresh[1];
 
 				boolean someNonZero = false;
-				for(int j=1; j<num_sources; j++){
+				for(int j=1; j<cnt.length; j++){
 					if(cnt[j] >= thresh1) {
 						someNonZero =true;
 					}
@@ -334,8 +325,9 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 			this.breaks.addAll(breaks);
 		}*/
 
-		public CigarCluster(String id,  int num_sources, char strand){
+		public CigarCluster(String chrom,String id,  int num_sources, char strand){
 			this.id = id;
+			this.chrom = chrom;
 			this.strand = strand;
 			this.readCount = new int[num_sources];
 			if(recordDepthByPosition){
@@ -363,9 +355,9 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 				this.mapEnd.addToEntry(endPos, src, 1);
 			}
 		}
-		public CigarCluster(String id,  int num_sources, CigarCluster c1, int source_index, char strand,
+		public CigarCluster(String chr, String id,  int num_sources, CigarCluster c1, int source_index, char strand,
 				String subId) throws NumberFormatException{
-			this(id, num_sources,strand);
+			this(chr, id, num_sources,strand);
 			//this.strand = strand;
 			this.span.addAll(c1.span);
 		//	if(c1.forward==null) throw new RuntimeException("!!");

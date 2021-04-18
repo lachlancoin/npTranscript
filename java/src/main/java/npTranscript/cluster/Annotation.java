@@ -11,6 +11,8 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.SortedSet;
+
+import japsa.seq.Sequence;
 /**
  * @author Lachlan Coin
  *
@@ -23,10 +25,16 @@ public class Annotation{
 		 List<Boolean> strand = new ArrayList<Boolean>();
 		 
 		
+		 public void clear(){
+				this.genes.clear();
+				this.start.clear();
+				this.end.clear();
+				this.strand.clear();
+			}
 		 
 	//	List<Integer> breakSt =  new ArrayList<Integer>();
 		//List<Integer> breakEnd =  new ArrayList<Integer>();
-		 final int seqlen;
+		  int seqlen;
 
 		//Name,Type,Minimum,Maximum,Length,Direction,gene
 	//	5'UTR,5'UTR,1,265,265,forward,none
@@ -130,13 +138,22 @@ public class Annotation{
 		breaks_out[1] = this.updateRight(breaks_in[1], refEnd);
 		breaks_out[0] = this.updateLeft(breaks_in[0], refStart);
 	}
-	public Annotation(String chrom, int seqlen){
-		this.seqlen = seqlen;
-		this.chrom = chrom;
+	public Annotation(){
+		
 	}
 	
-	public	Annotation(File f,String chrom, int seqlen,  PrintWriter pw,int source_count) throws IOException{
-		this(chrom, seqlen);
+
+	public void updateChrom( String chrname,  int seqlen) {
+		if(this.chrom.equals(chrname)){
+			return;
+		}
+		this.seqlen = seqlen;
+		this.chrom = chrname;
+		this.clear();
+	}
+	
+	public	Annotation(File f, PrintWriter pw,int source_count) throws IOException{
+		//this(chrom, seqlen);
 		BufferedReader br = new BufferedReader(new FileReader(f)) ;
 			List<String> header = Arrays.asList(br.readLine().split(","));
 			int gene_ind = header.indexOf("gene");
@@ -178,7 +195,7 @@ public class Annotation{
 			
 		}
 	
-	String chrom;
+	String chrom="";
 	 void mkOrfs(int source_count) {
 		orfs = new int[start.size()][];
 		overlap = new double[start.size()];
@@ -265,4 +282,7 @@ public class Annotation{
 			}
 			return sb.toString();
 		}
+
+
+		
 	}

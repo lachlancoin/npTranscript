@@ -22,6 +22,8 @@ import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import japsa.seq.Sequence;
+
 public class GFFAnnotation extends Annotation{
 
 //	 List<String> type = new ArrayList<String>();
@@ -363,14 +365,32 @@ public class GFFAnnotation extends Annotation{
 	
 	List<String> transcripts = new ArrayList<String>(); // whether the exon is linked to previous one in a transcript
 	public static boolean enforceKnownLinkedExons = false;
-	
+	ZipFile zf;
+	PrintWriter pw;
+	boolean gtf;
 	//chr1    HAVANA  exon    13453   13670   .       +       .       ID
-	public GFFAnnotation(ZipFile zf , String chrom,  int seqlen, PrintWriter pw, boolean gtf) throws IOException{
-		super(chrom, seqlen);
-		ZipEntry entry = zf.getEntry(chrom);
-		if(entry==null && !chrom.startsWith("chr")) entry = zf.getEntry("chr"+chrom);
-		if(entry==null && chrom.startsWith("chr")) entry = zf.getEntry(chrom.substring(3));
-		if(entry==null) System.err.println("WARNING NO ANNOTATION FOR CHROM "+chrom);
+	public GFFAnnotation(ZipFile zf ,PrintWriter pw1, boolean gtf) throws IOException{
+		//super(chrom, seqlen);
+		this.zf = zf;
+		this.pw = pw1;
+		this.gtf = gtf;
+	}
+	@Override
+	public void clear(){
+		super.clear();
+		this.transcripts.clear();
+	}
+	public void updateChrom(String chrname,  int seqlen) {
+		if(this.chrom.equals(chrname)){
+			return;
+		}
+		super.updateChrom( chrname, seqlen);
+		this.clear();
+		try{
+		ZipEntry entry = zf.getEntry(chrname);
+		if(entry==null && !chrname.startsWith("chr")) entry = zf.getEntry("chr"+chrname);
+		if(entry==null && chrname.startsWith("chr")) entry = zf.getEntry(chrname.substring(3));
+		if(entry==null) System.err.println("WARNING NO ANNOTATION FOR CHROM "+chrname);
 		BufferedReader br;
 		//String name = zf.getName();
 		String split = gtf ? " " : "=";
@@ -456,6 +476,9 @@ public class GFFAnnotation extends Annotation{
 		//	System.err.println("didnt exist "+chrom);
 		}
 		pw.flush();
+		}catch(Exception exc ){
+			exc.printStackTrace();
+		}
 	}
 	
 	/*public	GFFAnnotation(String chr, JapsaAnnotation annot, int seqlen, PrintWriter pw, int source_count) throws IOException{
@@ -519,9 +542,7 @@ public class GFFAnnotation extends Annotation{
 	
 	
 	
-	public GFFAnnotation(String chrom, int seqlen) {
-		// TODO Auto-generated constructor stub
-		super(chrom,seqlen);
+	public GFFAnnotation() {
 	}
 
 	
