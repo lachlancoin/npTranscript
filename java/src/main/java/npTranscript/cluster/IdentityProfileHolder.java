@@ -58,7 +58,7 @@ public class IdentityProfileHolder {
   * we assume that the primary alignment is first, and supplementary alignments follow
   * note that this breaks multi-threading
   * */
- public synchronized IdentityProfile1 get(String readName, boolean supp, String chrom_, int chrom_index){
+ public synchronized IdentityProfile1 get(String readName, boolean supp, String chrom_, int chrom_index, int seqlen){
 	 int len = idents.size();
 	// System.err.println(idents.size());
 	 if(supp){
@@ -85,7 +85,7 @@ public class IdentityProfileHolder {
 		 // need to check how this works with multi-threading
 		 throw new RuntimeException("this may not work with multi-threading");
 	 }
-	 idp.setName(readName, chrom_, chrom_index);
+	 idp.setName(readName, chrom_, chrom_index, seqlen);
 	// System.err.println(idents.size());
 	return idp;
  }
@@ -123,7 +123,7 @@ public class IdentityProfileHolder {
 	boolean calcBreakpoints;
 	ArrayList<Sequence> genomes;
  public IdentityProfileHolder(ArrayList<Sequence> genomes, Sequence refSeq,
-		 Outputs o, String[] in_nmes,  boolean calcBreakpoints, int chrom_index, Annotation annot)
+		 Outputs o, String[] in_nmes,  boolean calcBreakpoints)//, Annotation annot)
 		 throws IOException {
 	 this.genomes = genomes;
 	 
@@ -183,7 +183,7 @@ public class IdentityProfileHolder {
 	final Integer[] basesStart = new Integer[4];final Integer[] basesEnd = new Integer[4];
 	final Integer[] readCounts = new Integer[] {0,0,0};
 	public void identity1(Sequence readSeq, SAMRecord sam,
-			int source_index, boolean cluster_reads,  String pool, double qval, boolean supp, Annotation annot, Sequence genome, 
+			int source_index, boolean cluster_reads,  String pool, double qval, boolean supp,  Sequence genome, 
 			String chrom_, int chrom_index) {
 		// TODO Auto-generated method stub
 		final int start = sam.getStart();
@@ -195,11 +195,11 @@ public class IdentityProfileHolder {
 		
 		Runnable run = new Runnable(){
 			public void run(){
-				final IdentityProfile1 profile = get(sam.getReadName(), supp,chrom_, chrom_index);
+				final IdentityProfile1 profile = get(sam.getReadName(), supp,chrom_, chrom_index, genome.length());
 				if(profile.coRefPositions.breaks.size()>0 && ! supp) throw new RuntimeException("this is not clear");
 			//	if(supp && profile.suppl!=null && profile.suppl.size()>0) throw new RuntimeException("supps not empty");
 				
-				profile.identity1(genome, chr5prime,chr3prime, readSeq, sam, source_index, cluster_reads,  pool, qval, supp, annot);
+				profile.identity1(genome, chr5prime,chr3prime, readSeq, sam, source_index, cluster_reads,  pool, qval, supp);
 			//	profile.commit();
 				replace(profile);
 				removeStart(start);

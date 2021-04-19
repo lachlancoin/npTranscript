@@ -68,7 +68,6 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
-import htsjdk.samtools.fastq.BasicFastqWriter;
 import htsjdk.samtools.fastq.FastqRecord;
 import htsjdk.samtools.fastq.FastqWriter;
 import htsjdk.samtools.util.SequenceUtil;
@@ -77,6 +76,7 @@ import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
 import japsa.seq.ZipGFF;
 import japsa.tools.seq.SequenceUtils;
+import japsa.tools.seq.SequenceUtils.FilteredIterator;
 import japsa.util.CommandLine;
 import japsa.util.deploy.Deployable;
 import npTranscript.cluster.Annotation;
@@ -462,7 +462,8 @@ public static boolean allowSuppAlignments = false;; // this has to be true for a
 		if(fastqFile!=null){
 			try{
 				//make a minimap index
-			mm2_index = SequenceUtils.minimapIndex(refFile,  false);
+				boolean saveSeqs = false;
+			mm2_index = SequenceUtils.minimapIndex(refFile,  false, saveSeqs);
 			}catch(Exception exc){
 				exc.printStackTrace();
 			}
@@ -665,26 +666,23 @@ public static boolean allowSuppAlignments = false;; // this has to be true for a
 		final Iterator<SAMRecord>[] samIters = new Iterator[len];
 		SamReader[] samReaders = new SamReader[len];
 		boolean allNull = true;
-	
+		
+		Iterator<SAMRecord> samIter=null;
+		if(!bamFiles_[0].endsWith(".bam")){
+			allNull = false;
+			samIter = SequenceUtils.getSAMIteratorFromFastq(bamFiles_, mm2_index, maxReads, readList==null ? null : Arrays.asList(readList), fail_thresh, null);
+		}else{
 		inner: for (int ii = 0; ii < len; ii++) {
-			String bamFile = bamFiles_[ii];
 			SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
-			if(bamFile.endsWith(".bam")){
-				File bam = new File( bamFile);
-				samReaders[ii] = SamReaderFactory.makeDefault().open(bam);
+				samReaders[ii] = SamReaderFactory.makeDefault().open(new File(bamFiles_[ii]));
 				samIters[ii] = samReaders[ii].iterator();
-			}else{
-				try{
-				samIters[ii] = SequenceUtils.getSAMIteratorFromFastq(bamFile, mm2_index, maxReads);
-				}catch(Exception exc){
-					System.err.println(exc.getMessage());
-					System.err.println(exc.getStackTrace());
-					throw new RuntimeException("could not process "+bamFile);
-					//continue inner;
-				}
-				
 			}
 			allNull = false;
+		
+		 samIter= 
+				new FilteredIterator(
+				SequenceUtils.getCombined(samIters, sorted, sequential)
+				, readList==null ? null : Arrays.asList(readList), max_reads, fail_thresh);
 		}
 		Map<String, int[]> chromsToInclude = getChromsToInclude(genomes, chrToInclude, chrToIgnore);
 		
@@ -706,6 +704,7 @@ public static boolean allowSuppAlignments = false;; // this has to be true for a
 		
 			
 			Sequence chr =  new Sequence( Alphabet.DNA(), 0, ""); 
+			int seqlen = chr.length();
 			FastqWriter[][] fqw = chromsToRemap==null ? null : Outputs.getFqWriter(chromsToRemap, resdir, in_nmes);   //chromToRemap.contains(chr.getName()) ? Outputs.getFqWriter(chr.getName(), resdir) : null;
 				// first row is primary , second is supplementary
 			
@@ -713,18 +712,20 @@ public static boolean allowSuppAlignments = false;; // this has to be true for a
 			
 			Outputs 	outp = new Outputs(resDir,  in_nmes,   true, CigarCluster.recordDepthByPosition); 
 			
-			Annotation annot  = null;
-			if(gffFile!=null && (gffFile.getName().indexOf(".gff")>=0 || gffFile.getName().indexOf(".gtf")>=0)){
-				//String chrn = refname;
-					annot = new GFFAnnotation(anno,annotation_pw, gffFile.getName().indexOf(".gff")<0);
-					
-			}else{
-				annot = annot_file == null ? new EmptyAnnotation(chr.getName(), chr.getDesc(), 0, annotation_pw) : 
-					new Annotation(new File(annot_file),  annotation_pw, len);
-			}
+			/*
+				Annotation annot  = null;
+				if(gffFile!=null && (gffFile.getName().indexOf(".gff")>=0 || gffFile.getName().indexOf(".gtf")>=0)){
+					//String chrn = refname;
+						annot = new GFFAnnotation(anno,annotation_pw, gffFile.getName().indexOf(".gff")<0);
+						
+				}else{
+					annot = annot_file == null ? new EmptyAnnotation(chr.getName(), chr.getDesc(), 0, annotation_pw) : 
+						new Annotation(new File(annot_file),  annotation_pw, len);
+				}
+			*/
 		//	boolean calcBreaks1 = calcBreaks;// && break_thresh < seqlen && chr!=null;
 			IdentityProfileHolder profile =  	
-					new IdentityProfileHolder(genomes, null, outp,  in_nmes, calcBreaks, currentIndex, annot);
+					new IdentityProfileHolder(genomes, null, outp,  in_nmes, calcBreaks);//, annot);
 			//boolean updateProfile = true;
 			
 			
@@ -732,7 +733,7 @@ public static boolean allowSuppAlignments = false;; // this has to be true for a
 
 			int numNotAligned = 0;
 			int numSecondary =0;
-			Iterator<SAMRecord> samIter= SequenceUtils.getCombined(samIters, sorted, sequential, max_reads);
+			
 			float time0 = System.currentTimeMillis();//- tme0)/1000.0
 			int cnt0=0;
 			int ij=0;
@@ -857,19 +858,13 @@ public static boolean allowSuppAlignments = false;; // this has to be true for a
 				//if(refIndex==null) refIndex=sam.getReferenceIndex();
 				// if move to another chrom, get that chrom
 				if (refIndex != currentIndex) {
-					System.err.println("new chrom "+refIndex + ((double)System.currentTimeMillis()- tme0)/1000.0+" secs");
 					currentIndex = refIndex;
-				//	String prev_chrom = chr==null ? "null": chr.getName();
 					if(genomes!=null){
 						chr = genomes.get(currentIndex);
 					}else{
 						chr.setName(refname);
-					}
-					String chrname =  chr.getName();
-					outp.updateChrom(chr,chrname,currentIndex );
-					int seqlen = chr==null ? Integer.MAX_VALUE : chr.length();
-					annot.updateChrom( chrname, seqlen);
-					//profile.updateChrom(chr, chrname, currentIndex);
+			     	}
+					 seqlen =  chr.length();
 				}
 		
 				
@@ -920,7 +915,7 @@ public static boolean allowSuppAlignments = false;; // this has to be true for a
 						String pool = readList==null || readList.length==0 ||  poolID<0 ? null : (readList[poolID]+pool_sep);
 						if(ViralTranscriptAnalysisCmd2.limit_to_read_list) pool = null;
 				//		boolean flag = sam.getReadNegativeStrandFlag();
-						profile.identity1(readSeq, sam, source_index, cluster_reads,  pool, q1, supplementary, annot, chr, refname, currentIndex);
+						profile.identity1(readSeq, sam, source_index, cluster_reads,  pool, q1, supplementary, chr, refname, currentIndex);
 					}catch(NumberFormatException exc){
 						System.err.println(readSeq.getName());
 						exc.printStackTrace();
@@ -945,9 +940,9 @@ public static boolean allowSuppAlignments = false;; // this has to be true for a
 				IdentityProfileHolder.waitOnThreads(100);
 				profile.printBreakPoints(currentIndex);
 				profile.getConsensus();
-				if(TranscriptUtils.writeAnnotP) {
+				/*if(TranscriptUtils.writeAnnotP) {
 					annot.print(outp.annotP);
-				}
+				}*/
 			}
 			if(outp!=null) outp.close();
 			if(fqw!=null) {

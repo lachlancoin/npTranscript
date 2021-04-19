@@ -27,6 +27,30 @@ import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 
 public class IdentityProfile1 {
+	
+	public static String[] nmes = new String[] {"5_3", "5_no3", "no5_3", "no5_no3"};
+	public String nextDownstream(int rightBreak, int chrom_index, boolean forward){
+		return chrom_+"."+TranscriptUtils.round(rightBreak,CigarHash2.round);
+	}
+	public String  nextUpstream(int rightBreak, int chrom_index, boolean forward){
+		return chrom_+"."+TranscriptUtils.round(rightBreak,CigarHash2.round);
+	}
+	public void adjust3UTR(int seqlen2) {
+		
+	}
+	public boolean isLeader(int prev_pos) {
+		return prev_pos<100;
+	}
+	public int getTypeInd(int start, int end, Boolean forward) {
+		if(start <=TranscriptUtils.startThresh) return end >= seqlen -TranscriptUtils.endThresh ? 0:1;
+		else return end >= seqlen -TranscriptUtils.endThresh ? 2:3;
+		//return null;
+	}
+	public String getTypeNme(int start, int end, boolean forward) {
+		return nmes[getTypeInd(start,end, forward)];
+	}
+	
+	
 	public static boolean trainStrand = true;
 	public static int min_first_last_exon_length= 20;
 	/*final String[] type_nmes; 
@@ -37,7 +61,7 @@ public class IdentityProfile1 {
 	public CigarClusters all_clusters;
 	final public BreakPoints bp;
 	*/
-	public  int chrom_index;
+	public  int chrom_index, seqlen;
 	String chrom_;
 	
 	
@@ -83,33 +107,14 @@ public class IdentityProfile1 {
 		
 	}
 	
-	public void setName(String readName, String chrom_, int chrom_index) {
+	public void setName(String readName, String chrom_, int chrom_index, int seqlen) {
 		// TODO Auto-generated method stub
 		this.readName = readName;
 		this.chrom_ = chrom_;
 		this.chrom_index = chrom_index;
+		this.seqlen = seqlen;
 	}
-	/*public IdentityProfile1(Sequence refSeq,
-			Outputs o, CigarClusters all_clusters, BreakPoints bp, 
-			String[] in_nmes,  int startThresh, int endThresh, boolean calcBreakpoints, Sequence chrom, int chrom_index) throws IOException {
-	this.ref = chrom;
-	this.bp = bp;
-	this.all_clusters = all_clusters;
-	this.chrom_ =chrom.getName();
-	this.chrom_index = chrom_index;
-	this.type_nmes = in_nmes;
-		this.num_sources = in_nmes.length;
-		this.coRefPositions = new CigarCluster("-1",num_sources,'.');
-		this.genome = refSeq;
-		this.source_index = 0;		
-		this.o  = o;
-		refBase = 0;
-		readBase = 0;
-		int seqlen = refSeq.length();
-		
-	}*/
 
-	
 
 	
 	
@@ -156,9 +161,10 @@ static char delim_start ='$';
 			byte[] phredQ,
 			int start_read, int end_read, char strand, SWGAlignment align5prime, SWGAlignment align3prime,
 			SWGAlignment align3primeRev,
-			Integer offset_3prime, Integer polyAlen, String pool, double q_value, Annotation annot
+			Integer offset_3prime, Integer polyAlen, String pool, double q_value//, Annotation annot
 			) throws IOException, NumberFormatException{
 		//CigarHash2 breaks  = coRefPositions.breaks;
+		IdentityProfile1  annot = this;
 		this.baseQ  = baseQ; this.phredQ = phredQ; this.q_value = q_value;
 		this.coRefPositions.strand = strand; this.id = id; 
 		CigarHash2 breaks = this.coRefPositions.breaks;
@@ -296,14 +302,15 @@ static char delim_start ='$';
 				secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), chrom_index, forward)); //last break is upstream start pos
 			}
 				
-		}else if(annot instanceof EmptyAnnotation){
+		}else if(true) {//annot instanceof EmptyAnnotation){
 			if(forward!=null){
 				if(forward) secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), chrom_index, forward));
 				else secondKey.append(annot.nextUpstream(breaks.get(0), chrom_index, forward));
 			}else{
 				secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), chrom_index, forward));
 			}
-		}else{
+		}
+		/*else{
 			Collection<String> genes = new HashSet<String>();
 			List<String> coords = new ArrayList<String>();
 			{
@@ -326,17 +333,17 @@ static char delim_start ='$';
 					secondKey.append(forward==null || forward ?  coords.get(coords.size()-1): coords.get(0));
 				}
 			}
-		}
+		}*/
 		
 		if(Annotation.enforceStrand){
 			secondKey.append(forward ? '+' : '-');
 		}
 		//System.err.println(secondKey);
 
-		type_nme = ViralTranscriptAnalysisCmd2.coronavirus  ?  annot.getTypeNme( startPos, endPos, forward) : "NA"; //coRefPositions.getTypeNme(seqlen);
+		type_nme =  getTypeNme( startPos, endPos, forward) ; //coRefPositions.getTypeNme(seqlen);
 		geneNames.clear();
 		this.coRefPositions.setStartEnd(startPos,endPos,src_index);
-		 span_str = annot.getSpan(coRefPositions.breaks, forward,  coRefPositions.span, geneNames);
+		 span_str = "";//annot.getSpan(coRefPositions.breaks, forward,  coRefPositions.span, geneNames);
 		
 		 span = geneNames.size();
 		if(!TranscriptUtils.coronavirus && span==0 && q_value < ViralTranscriptAnalysisCmd2.fail_thresh1){
@@ -352,7 +359,7 @@ static char delim_start ='$';
 		int num_exons =(int) Math.floor( (double)  coRefPositions.breaks.size()/2.0);
 
 		boolean writeMSA = Outputs.doMSA!=null && Outputs.msa_sources !=null && includeInConsensus  && Outputs.msa_sources.containsKey(source_index);
-		if(includeInConsensus && TranscriptUtils.coronavirus){
+		/*if(includeInConsensus && TranscriptUtils.coronavirus){
 			//int st1 = startPos; //position>0 ? position : startPos; // start after break
 			int st1 = breaks.get(breaks.size()-2); // start of last segment
 			inner: for(int i=annot.start.size()-1; i>=0; i--){
@@ -389,7 +396,7 @@ static char delim_start ='$';
 					}
 				}
 			}
-		}
+		}*/
 		if(includeInConsensus  && Outputs.msa_sources.containsKey(source_index) && 
 				(Outputs.doMSA!=null && Outputs.doMSA.contains(type_nme)  || 
 						Outputs.doMSA!=null && Outputs.doMSA.contains(span) && Outputs.numExonsMSA.contains(num_exons) )
@@ -599,8 +606,8 @@ static char delim_start ='$';
 	 * @return
 	 */
 	public  void identity1(Sequence refSeq, Sequence fivePrimeRefSeq, Sequence threePrimeRefSeq,   Sequence readSeq, SAMRecord sam, 
-			int source_index, boolean cluster_reads,  String poolID, double qval, boolean supplementary, Annotation annot) throws NumberFormatException{
-		
+			int source_index, boolean cluster_reads,  String poolID, double qval, boolean supplementary) throws NumberFormatException{
+		IdentityProfile1 annot = this;
 		if(supplementary){
 			if(!checkCompatible(this.coRefPositions, sam)) return;
 			 if(suppl==null){
@@ -734,7 +741,7 @@ static char delim_start ='$';
 			
 			String secondKey= profile.processRefPositions( sam, id, cluster_reads, 
 					refSeq, source_index, readSeq,baseQ, phredQs, st_r, end_r, strand, 
-					align_5prime, align_3prime,align_3primeRev, offset_3prime, polyAlen, poolID, qval, annot);
+					align_5prime, align_3prime,align_3primeRev, offset_3prime, polyAlen, poolID, qval);
 			if(!ViralTranscriptAnalysisCmd2.allowSuppAlignments)	profile.commit();
 			
 			if( supplementary){

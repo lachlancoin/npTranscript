@@ -202,18 +202,18 @@ public class Outputs{
 		boolean writeDirectToZip = false;
 		
 		String genome_index;
-		String chrom;
+	//	String chrom;
 		
-		public  void updateChrom( Sequence seq, String chr1, int currentIndex) {
+		/*public  void updateChrom( Sequence seq, String chr1, int currentIndex) {
 			String chr = chr1;
 			this.chrom = chr;
 			this.chrom = ((chrom.startsWith("chr") || chrom.startsWith("NC")) ? chrom : "chr"+chrom).split("\\.")[0];
-		/*	if(this.gffW!=null){
+			if(this.gffW!=null){
 				for(int i=0; i<gffW.length; i++){
 				gffW[i].println("##sequence-region "+chr+" "+0+" "+(seq==null ? "NA" :seq.length()));
 				}
-			}*/
-		}
+			}
+		}*/
 	
 		
 		 int[] col_inds, col_inds_depth;  // this is the col_inds for writing count information in h5 library
@@ -459,7 +459,7 @@ if(IdentityProfile1.trainStrand){
 		}
 		
 		void printMatrix(SparseRealMatrix cod, SparseVector breakSt2, SparseVector breakEnd2,   int chrom_index, int i, int j, String prefix) throws IOException{
-			String id = prefix+this.chrom+"/"+this.type_nmes[i]+"/"+j;
+			String id = prefix+"/"+this.type_nmes[i]+"/"+j;
 			//String id_scores = scores+"/"+this.chrom+"/"+this.type_nmes[i]+"/"+j;
 //			PrintWriter pw = getBreakPointPw(chrom_index+"",i, j);
 			StringBuffer secondLine = new StringBuffer();

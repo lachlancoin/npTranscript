@@ -231,6 +231,10 @@ public class CigarClusters {
 	}
 	
 	
+	/*public void addAnnotation(Annotation annot){
+		
+	}*/
+	
 	public void getConsensus(  
 			Outputs o
 			) throws IOException{
