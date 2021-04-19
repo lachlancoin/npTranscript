@@ -5,12 +5,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import japsa.seq.Sequence;
@@ -73,6 +73,8 @@ public class CigarClusters {
 	int rem_count =0;
 	static String zero ="0";
 
+	
+	
 	public synchronized void matchCluster(CigarCluster c1,  int source_index, int num_sources, String chr, int chrom_index,String[] clusterIDs, 
 			char strand, String readId) throws NumberFormatException{
 		String clusterID;
@@ -231,32 +233,60 @@ public class CigarClusters {
 	}
 	
 	
-	/*public void addAnnotation(Annotation annot){
+	
+	public Iterator<CigarCluster> iterator(Comparator comp){
+		if(comp==null) return l.values().iterator();
+		List<CigarCluster> ss = new ArrayList<CigarCluster>(l.values());
+		Collections.sort(ss, comp);
+		return ss.iterator();
+	}
+	
+	
+	public void annotate(Annotation annot, Map<String, Sequence> genomes) {
+		Iterator<CigarCluster> it = this.iterator(compPos);
+		String currChrom = "";
+		int seqlen  = 0;
+		Set<String> done = new HashSet<String>();
+		while(it.hasNext()){
+			CigarCluster nxt = it.next();
+			if(!nxt.chrom.equals(currChrom)){
+				if(!done.add(currChrom)) throw new RuntimeException(" already had ");
+				currChrom = nxt.chrom;
+				if(genomes!=null){
+					seqlen = genomes.get(currChrom).length();
+				}
+				annot.updateChrom(currChrom, seqlen);
+			}
+			annot.annotate(nxt);
+		}
+		annot.close();
+	}
+	static  Comparator<CigarCluster> comp = new Comparator<CigarCluster>(){
+
+		@Override
+		public int compare(CigarCluster o1, CigarCluster o2) {
+			// TODO Auto-generated method stub
+		return -1*Integer.compare(o1.readCountSum(), o2.readCountSum());
+		}
 		
-	}*/
+	};
+	static  Comparator<CigarCluster> compPos = new Comparator<CigarCluster>(){
+
+		@Override
+		public int compare(CigarCluster o1, CigarCluster o2) {
+			// TODO Auto-generated method stub
+		return o1.breaks_hash.secondKey.compareTo(o2.breaks_hash.secondKey);
+		}
+		
+	};
 	
 	public void getConsensus(  
 			Outputs o
 			) throws IOException{
 		
 		o.writeTotalString(this);
-		Iterator<CigarCluster> it;
-		if(TranscriptUtils.coronavirus ){
-		Comparator<CigarCluster> comp = new Comparator<CigarCluster>(){
-
-			@Override
-			public int compare(CigarCluster o1, CigarCluster o2) {
-				// TODO Auto-generated method stub
-			return -1*Integer.compare(o1.readCountSum(), o2.readCountSum());
-			}
-			
-		};
-		List<CigarCluster> ss = new ArrayList<CigarCluster>(l.values());
-		Collections.sort(ss, comp);
-			it = ss.iterator();
-		}else{
-			it = l.values().iterator();
-		}
+		Iterator<CigarCluster> it
+			 = iterator(TranscriptUtils.coronavirus  ? comp : null);
 			while(  it.hasNext()) {
 					CigarCluster nxt = it.next();
 					process1(nxt, o);//, chrom, chrom_index, geneNames);

@@ -11,8 +11,12 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.SortedSet;
+import java.util.zip.ZipException;
+import java.util.zip.ZipFile;
 
 import japsa.seq.Sequence;
+import japsa.seq.ZipGFF;
+import npTranscript.run.ViralTranscriptAnalysisCmd2;
 /**
  * @author Lachlan Coin
  *
@@ -152,6 +156,54 @@ public class Annotation{
 		this.clear();
 	}
 	
+	public static Annotation getAnnotation(String annot_file,  PrintWriter annotation_pw, int source_count) throws ZipException, IOException{
+		ZipFile  anno  = null;
+		File gffFile = new File(annot_file);
+		if(!gffFile.exists()) gffFile = null;
+		boolean writeDirect = true;
+		if(gffFile!=null && (gffFile.getName().indexOf(".gff")>=0 || gffFile.getName().indexOf(".gtf")>=0)){
+			if(gffFile.getName().endsWith(".zip")){
+				anno = new ZipFile(gffFile);
+				System.err.println(anno.getName());
+			}
+			else {
+				String out_nme = gffFile.getName();
+				int ind = out_nme.lastIndexOf('.');
+				out_nme = out_nme.substring(0, ind);
+				File outzip = new File(gffFile.getParentFile(),out_nme+".zip");
+				if(outzip.exists()){
+					System.err.println("reading existing gff zip file "+outzip.getAbsolutePath());
+					anno = new ZipFile(outzip);
+				}
+				else{
+					System.err.println("making gff.zip file");
+					ZipGFF gffin =  new ZipGFF( gffFile, outzip,writeDirect);
+					gffin.run();
+					anno = new ZipFile(outzip);
+				}
+			}
+		}
+		
+		
+		Annotation annot  = null;
+		if(gffFile!=null && (gffFile.getName().indexOf(".gff")>=0 || gffFile.getName().indexOf(".gtf")>=0)){
+			//String chrn = refname;
+				annot = new GFFAnnotation(anno,annotation_pw, gffFile.getName().indexOf(".gff")<0);
+				
+		}else{
+			
+			annot=	new Annotation(new File(annot_file),  annotation_pw, source_count);
+		}
+		return annot;
+	
+		
+	
+	}
+	
+	public void close(){
+		
+	}
+	
 	public	Annotation(File f, PrintWriter pw,int source_count) throws IOException{
 		//this(chrom, seqlen);
 		BufferedReader br = new BufferedReader(new FileReader(f)) ;
@@ -281,6 +333,40 @@ public class Annotation{
 				if(it.hasNext())sb.append(";");
 			}
 			return sb.toString();
+		}
+
+		
+		public void annotate(CigarCluster nxt) {
+			/*if(ViralTranscriptAnalysisCmd2.coronavirus){
+				if(includeStartEnd || breaks.size()==2){
+					secondKey.append(annot.nextUpstream(startPos,chrom_index, forward)+delim);
+				}
+				boolean firstBreak=true;
+				for(int i=1; i<breaks.size()-1; i+=2){
+					int gap = breaks.get(i+1)-breaks.get(i);
+					String upst = annot.nextUpstream(breaks.get(i), chrom_index,forward); //5prime break
+					secondKey.append(upst+delim1);
+					secondKey.append(annot.nextDownstream(breaks.get(i+1), chrom_index,forward)+delim);  //3prime break
+					if(gap > break_thresh){
+						if(firstBreak){
+							firstBreak=false;
+							if(annotByBreakPosition) parent.addBreakPoint(source_index, 0, breaks.get(i), breaks.get(i+1));
+						//	if(bp!=null) this.bp.addBreakPoint(source_index, 0, breaks.get(i), breaks.get(i+1));
+							hasLeaderBreak = true;
+						}else{
+							if(annotByBreakPosition)  parent.addBreakPoint(source_index, 1, breaks.get(i), breaks.get(i+1));
+
+						}
+					}
+			
+				}
+				if(includeStartEnd || breaks.size()==2) {
+					secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), chrom_index, forward)); //last break is upstream start pos
+				}
+					
+			}else */
+			throw new RuntimeException ("need to re-implement");/// TODO Auto-generated method stub
+			
 		}
 
 

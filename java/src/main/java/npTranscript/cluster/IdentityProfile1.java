@@ -275,34 +275,7 @@ static char delim_start ='$';
 			}
 		}
 		
-		if(ViralTranscriptAnalysisCmd2.coronavirus){
-			if(includeStartEnd || breaks.size()==2){
-				secondKey.append(annot.nextUpstream(startPos,chrom_index, forward)+delim);
-			}
-			boolean firstBreak=true;
-			for(int i=1; i<breaks.size()-1; i+=2){
-				int gap = breaks.get(i+1)-breaks.get(i);
-				String upst = annot.nextUpstream(breaks.get(i), chrom_index,forward); //5prime break
-				secondKey.append(upst+delim1);
-				secondKey.append(annot.nextDownstream(breaks.get(i+1), chrom_index,forward)+delim);  //3prime break
-				if(gap > break_thresh){
-					if(firstBreak){
-						firstBreak=false;
-						if(annotByBreakPosition) parent.addBreakPoint(source_index, 0, breaks.get(i), breaks.get(i+1));
-					//	if(bp!=null) this.bp.addBreakPoint(source_index, 0, breaks.get(i), breaks.get(i+1));
-						hasLeaderBreak = true;
-					}else{
-						if(annotByBreakPosition)  parent.addBreakPoint(source_index, 1, breaks.get(i), breaks.get(i+1));
-
-					}
-				}
-		
-			}
-			if(includeStartEnd || breaks.size()==2) {
-				secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), chrom_index, forward)); //last break is upstream start pos
-			}
-				
-		}else if(true) {//annot instanceof EmptyAnnotation){
+		if(true) {//annot instanceof EmptyAnnotation){
 			if(forward!=null){
 				if(forward) secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), chrom_index, forward));
 				else secondKey.append(annot.nextUpstream(breaks.get(0), chrom_index, forward));
@@ -310,30 +283,7 @@ static char delim_start ='$';
 				secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), chrom_index, forward));
 			}
 		}
-		/*else{
-			Collection<String> genes = new HashSet<String>();
-			List<String> coords = new ArrayList<String>();
-			{
-				for(int i=0; i<breaks.size(); i+=2){
-					int l1 = breaks.get(i);
-					int r1 = breaks.get(i+1);
-					Integer upst = ((GFFAnnotation)annot).nextUpstream(l1, r1, chrom_index, forward);
-					if(upst!=null){
-						genes.add(annot.genes.get(upst));
-					}else{
-						String coord = ((GFFAnnotation)annot).getCoord(forward == null || forward ? breaks.get(i+1) : breaks.get(i), chrom_index,forward);
-						coords.add(coord);
-					}
-				}
-				if(genes.size()>0){
-					for(Iterator<String> it = genes.iterator(); it.hasNext();){
-						secondKey.append(it.next()+delim);
-					}
-				}else{
-					secondKey.append(forward==null || forward ?  coords.get(coords.size()-1): coords.get(0));
-				}
-			}
-		}*/
+		
 		
 		if(Annotation.enforceStrand){
 			secondKey.append(forward ? '+' : '-');

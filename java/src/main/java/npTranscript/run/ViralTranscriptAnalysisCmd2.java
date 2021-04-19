@@ -613,30 +613,7 @@ public static boolean allowSuppAlignments = false;; // this has to be true for a
 		int len = bamFiles_.length;
 		// len = 1;
 		String[] in_nmes  = new String[len];
-		ZipFile  anno  = null;
-		boolean writeDirect = true;
-		if(gffFile!=null && (gffFile.getName().indexOf(".gff")>=0 || gffFile.getName().indexOf(".gtf")>=0)){
-			if(gffFile.getName().endsWith(".zip")){
-				anno = new ZipFile(gffFile);
-				System.err.println(anno.getName());
-			}
-			else {
-				String out_nme = gffFile.getName();
-				int ind = out_nme.lastIndexOf('.');
-				out_nme = out_nme.substring(0, ind);
-				File outzip = new File(gffFile.getParentFile(),out_nme+".zip");
-				if(outzip.exists()){
-					System.err.println("reading existing gff zip file "+outzip.getAbsolutePath());
-					anno = new ZipFile(outzip);
-				}
-				else{
-					System.err.println("making gff.zip file");
-					ZipGFF gffin =  new ZipGFF( gffFile, outzip,writeDirect);
-					gffin.run();
-					anno = new ZipFile(outzip);
-				}
-			}
-		}
+		
 		System.err.println("reading genomes " + (System.currentTimeMillis()- tme0)/1000+" secs");
 		ArrayList<Sequence> genomes = refFile==null ? null : SequenceReader.readAll(refFile, Alphabet.DNA());
 		System.err.println("done reading genomes" + (System.currentTimeMillis()- tme0)/1000+" secs");
@@ -712,17 +689,7 @@ public static boolean allowSuppAlignments = false;; // this has to be true for a
 			
 			Outputs 	outp = new Outputs(resDir,  in_nmes,   true, CigarCluster.recordDepthByPosition); 
 			
-			/*
-				Annotation annot  = null;
-				if(gffFile!=null && (gffFile.getName().indexOf(".gff")>=0 || gffFile.getName().indexOf(".gtf")>=0)){
-					//String chrn = refname;
-						annot = new GFFAnnotation(anno,annotation_pw, gffFile.getName().indexOf(".gff")<0);
-						
-				}else{
-					annot = annot_file == null ? new EmptyAnnotation(chr.getName(), chr.getDesc(), 0, annotation_pw) : 
-						new Annotation(new File(annot_file),  annotation_pw, len);
-				}
-			*/
+			
 		//	boolean calcBreaks1 = calcBreaks;// && break_thresh < seqlen && chr!=null;
 			IdentityProfileHolder profile =  	
 					new IdentityProfileHolder(genomes, null, outp,  in_nmes, calcBreaks);//, annot);
@@ -954,8 +921,8 @@ public static boolean allowSuppAlignments = false;; // this has to be true for a
 			
 				
 				
-	if(anno!=null) anno.close();
-		if(annotation_pw!=null) annotation_pw.close();
+	//if(anno!=null) anno.close();
+	//	if(annotation_pw!=null) annotation_pw.close();
 	}
 	private static Map<String, int[]> getChromsToInclude(ArrayList<Sequence> genomes, String chrToInclude,
 			String chrToIgnore) {

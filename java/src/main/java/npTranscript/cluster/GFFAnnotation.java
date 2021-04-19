@@ -366,7 +366,7 @@ public class GFFAnnotation extends Annotation{
 	List<String> transcripts = new ArrayList<String>(); // whether the exon is linked to previous one in a transcript
 	public static boolean enforceKnownLinkedExons = false;
 	ZipFile zf;
-	PrintWriter pw;
+	public PrintWriter pw;
 	boolean gtf;
 	//chr1    HAVANA  exon    13453   13670   .       +       .       ID
 	public GFFAnnotation(ZipFile zf ,PrintWriter pw1, boolean gtf) throws IOException{
@@ -380,6 +380,45 @@ public class GFFAnnotation extends Annotation{
 		super.clear();
 		this.transcripts.clear();
 	}
+	
+	@Override
+public void close(){
+	try{
+		this.zf.close();
+		this.pw.close();
+	}catch(Exception exc){
+		exc.printStackTrace();
+	}
+	}
+	
+	@Override
+	public void annotate(CigarCluster nxt){
+		/*else{
+		Collection<String> genes = new HashSet<String>();
+		List<String> coords = new ArrayList<String>();
+		{
+			for(int i=0; i<breaks.size(); i+=2){
+				int l1 = breaks.get(i);
+				int r1 = breaks.get(i+1);
+				Integer upst = ((GFFAnnotation)annot).nextUpstream(l1, r1, chrom_index, forward);
+				if(upst!=null){
+					genes.add(annot.genes.get(upst));
+				}else{
+					String coord = ((GFFAnnotation)annot).getCoord(forward == null || forward ? breaks.get(i+1) : breaks.get(i), chrom_index,forward);
+					coords.add(coord);
+				}
+			}
+			if(genes.size()>0){
+				for(Iterator<String> it = genes.iterator(); it.hasNext();){
+					secondKey.append(it.next()+delim);
+				}
+			}else{
+				secondKey.append(forward==null || forward ?  coords.get(coords.size()-1): coords.get(0));
+			}
+		}
+	}*/
+	}
+	
 	public void updateChrom(String chrname,  int seqlen) {
 		if(this.chrom.equals(chrname)){
 			return;
