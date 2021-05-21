@@ -133,7 +133,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addString("gffThresh","1", "reports if greater than in dataset");
 
 		addInt("maxTranscriptsPerGeneInGFF",1,"Maximum number of transcripts per gene (highest abundance first");
-			addString("annotType", null, "Type of annotation (only included if annotation is GFF file", false);
+		addString("annotType", null, "Type of annotation (only included if annotation is GFF file", false);
 		addString("chroms_to_include", "all", "Restrict to these chroms, colon delimited", false);
 		addString("chroms_to_ignore", "none", "Ignore these chroms", false);
 	//	addString("bedChr", null, "Use this for the chrom in bed chr, e.g. NC_045512v2, false");
@@ -373,6 +373,8 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			//CigarHash2.subclusterBasedOnStEnd = false;
 			calcBreaks = false;
 			SequenceUtils.mm2_splicing = "-uf";
+		//	SequenceUtils.mm2_splicing= "-un";
+
 		}
 		sequential = cmdLine.getBooleanVal("sequential");
 		sorted = cmdLine.getBooleanVal("sorted");
@@ -396,7 +398,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 				chromsToRemap);
 	}
  public static boolean sorted = true;
-public static boolean allowSuppAlignments = false;; // this has to be true for allowing supp alignments
+public static boolean allowSuppAlignments = true;; // this has to be true for allowing supp alignments
 
  static double tme0;
 	public static void main(String[] args1) throws IOException, InterruptedException {
@@ -647,7 +649,7 @@ public static boolean allowSuppAlignments = false;; // this has to be true for a
 		Iterator<SAMRecord> samIter=null;
 		if(!bamFiles_[0].endsWith(".bam")){
 			allNull = false;
-			samIter = SequenceUtils.getSAMIteratorFromFastq(bamFiles_, mm2_index, maxReads, readList==null ? null : Arrays.asList(readList), fail_thresh, null);
+			samIter = SequenceUtils.getSAMIteratorFromFastq(bamFiles_, mm2_index, maxReads, readList==null ? null : reads.keySet(), fail_thresh, null);
 		}else{
 		inner: for (int ii = 0; ii < len; ii++) {
 			SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
@@ -659,7 +661,7 @@ public static boolean allowSuppAlignments = false;; // this has to be true for a
 		 samIter= 
 				new FilteredIterator(
 				SequenceUtils.getCombined(samIters, sorted, sequential)
-				, readList==null ? null : Arrays.asList(readList), max_reads, fail_thresh);
+				, readList==null ? null :reads.keySet(), max_reads, fail_thresh, false);
 		}
 		Map<String, int[]> chromsToInclude = getChromsToInclude(genomes, chrToInclude, chrToIgnore);
 		
@@ -822,6 +824,7 @@ public static boolean allowSuppAlignments = false;; // this has to be true for a
 				// int refPos = sam.getAlignmentStart() - 1;//convert to 0-based index
 				String refname = sam.getReferenceName();
 				Integer refIndex = refname==null || chrNameToIndex==null ? sam.getReferenceIndex() : chrNameToIndex.get(refname);
+				if(refIndex==null) refIndex = sam.getReferenceIndex();
 				//if(refIndex==null) refIndex=sam.getReferenceIndex();
 				// if move to another chrom, get that chrom
 				if (refIndex != currentIndex) {
@@ -856,7 +859,8 @@ public static boolean allowSuppAlignments = false;; // this has to be true for a
 				if(sam.isSecondaryOrSupplementary()) {
 					if(!ViralTranscriptAnalysisCmd2.allowSuppAlignments) continue;
 					boolean supp = sam.getSupplementaryAlignmentFlag();
-					if(supp && sam.getReadName().equals(previousRead) && sam.getReferenceIndex()==previousRefIndex){
+					boolean sameIndex = sam.getReferenceIndex()==previousRefIndex;
+					if(supp && sam.getReadName().equals(previousRead) ){
 						supplementary = true;
 					int qual1 = sam.getMappingQuality();
 					

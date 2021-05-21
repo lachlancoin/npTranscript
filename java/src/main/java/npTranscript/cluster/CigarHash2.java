@@ -117,12 +117,17 @@ public class CigarHash2 extends ArrayList<Integer> {
 		Integer i1 = TranscriptUtils.round(i, round);
 		return (super.add(i1));
 	}
+	
+	public static  double overlap(int start, int end, int st1, int end1){
+		return Math.min(Math.min(end-start, end1 - st1),Math.min(end1 - start, end-st1));
+	}
 	public int overlaps(int st, int length) {
 		int end = st + length;
 	 for(int i=0; i<this.size(); i+=2){
 		 int st1 = this.get(i);
 		 int end1 = this.get(i+1);
-		 if(Math.min(end1 - st, end-st1)>=0) {
+		 double overlap  = overlap(st,end, st1,end1);
+		 if(overlap>=0) {
 			 return i;
 		 }
 	 }

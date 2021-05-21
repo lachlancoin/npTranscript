@@ -66,7 +66,9 @@ public class IdentityProfileHolder {
 		 for(int i=0; i<len; i++){
 			 if(idents.get(i).readName.equals(readName)){
 				 // in this case we dont clear it
-				 return idents.remove(i);
+				 IdentityProfile1 idp =  idents.remove(i);
+				 idp.setName(readName, chrom_, chrom_index, seqlen, supp);
+				 return idp;
 			 }
 		 }
 		 throw new RuntimeException("we couldnt find the primary read processor - maybe this file is not sorted by read ID");
@@ -76,7 +78,9 @@ public class IdentityProfileHolder {
 		idp =  new IdentityProfile1(this) ;
 	 }else{
 		 idp = idents.pop();
-		 if(ViralTranscriptAnalysisCmd2.allowSuppAlignments) idp.commit(); // should be safe to commit previous
+		 if(ViralTranscriptAnalysisCmd2.allowSuppAlignments) {
+			 idp.commit(); // should be safe to commit previous
+		 }
 		 idp.clear(); // gets object clear for next use
 
 	 }
@@ -85,7 +89,7 @@ public class IdentityProfileHolder {
 		 // need to check how this works with multi-threading
 		 throw new RuntimeException("this may not work with multi-threading");
 	 }
-	 idp.setName(readName, chrom_, chrom_index, seqlen);
+	 idp.setName(readName, chrom_, chrom_index, seqlen, supp);
 	// System.err.println(idents.size());
 	return idp;
  }
@@ -195,6 +199,8 @@ public class IdentityProfileHolder {
 		
 		Runnable run = new Runnable(){
 			public void run(){
+				System.err.println("HHH,"+chrom_+","+sam.getAlignmentStart()+ ","+sam.getAlignmentEnd()+","+sam.getReadName()+","
+			+sam.getReadLength());
 				final IdentityProfile1 profile = get(sam.getReadName(), supp,chrom_, chrom_index, genome.length());
 				if(profile.coRefPositions.breaks.size()>0 && ! supp) throw new RuntimeException("this is not clear");
 			//	if(supp && profile.suppl!=null && profile.suppl.size()>0) throw new RuntimeException("supps not empty");
