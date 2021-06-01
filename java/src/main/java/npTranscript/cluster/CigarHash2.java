@@ -80,17 +80,32 @@ public class CigarHash2 extends ArrayList<Integer> {
 	public String toString(){
 		return getString(this);
 	}
+	public String toString(List<Integer> startp) {
+		// TODO Auto-generated method stub
+		return getString(this, startp);
+	}
+	
 	
 	
 	public String toString(int round, int st, int end){
 		return getString(this, round, st, end);
 	}
+	private String getString(CigarHash2 l, List<Integer> startp) {
+		StringBuffer sb = new StringBuffer();
+		for(int j=0; j<startp.size(); j++){
+			int from = startp.get(j);
+			int to  = j < startp.size()-1 ? startp.get(j+1) : l.size();
+			sb.append(getString(l.subList(from, to)));
+			if(j<startp.size()-1) sb.append(";");
+		}
+		return sb.toString();
+	}
 	
 	public static String getString(List<Integer> l){
 		StringBuffer sb = new StringBuffer();
-		for(int i=0; i<l.size(); i++){
+		for(int i=0; i<l.size(); i+=2){
 			if(i>0) sb.append(",");
-			sb.append(l.get(i));
+			sb.append(l.get(i)+"_"+l.get(i+1));
 		}
 		return sb.toString();
 	}
@@ -140,6 +155,7 @@ public class CigarHash2 extends ArrayList<Integer> {
 		}
 		return keyv;
 	}
+	
 
 	
 

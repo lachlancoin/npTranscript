@@ -742,11 +742,12 @@ if(IdentityProfile1.trainStrand){
 			//Map<CigarHash2, Count> all_breaks=cc.all_breaks;
 			CigarHash2 key = cc.breaks;
 			CigarHash2 key2 = cc.cloneBreaks();
+			List<Integer> startp = cc.start_positions;
 			//Iterator<Entry<CigarHash2, Count>> it = all_breaks.entrySet().iterator();
 			//while( it.hasNext()){
 				//Entry<CigarHash2,Count> ch = it.next();
 				//CigarHash2 key = ch.getKey();
-				String id_2 = key2.toString();
+				String id_2 = key2.toString(startp);
 				//Count cnt = ch.getValue();
 				//List<Integer> br = cnt.getBreaks();
 				
