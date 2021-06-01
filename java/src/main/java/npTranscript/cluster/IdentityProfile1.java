@@ -1,9 +1,7 @@
 package npTranscript.cluster;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.Stack;
@@ -12,6 +10,7 @@ import java.util.TreeSet;
 import htsjdk.samtools.AlignmentBlock;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMRecord;
+import japsa.bio.np.barcode.SWGAlignment;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import npTranscript.run.ViralTranscriptAnalysisCmd2;
@@ -23,12 +22,13 @@ import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 
 public class IdentityProfile1 {
-	
+	public static boolean checkPolyA = true;
+//	public static double fusion_overlap_thresh = 0.5;
 	public static String[] nmes = new String[] {"5_3", "5_no3", "no5_3", "no5_no3"};
-	public String nextDownstream(int rightBreak, int chrom_index, boolean forward){
+	public String nextDownstream(int rightBreak, int chrom_index, Boolean forward){
 		return chrom_+"."+TranscriptUtils.round(rightBreak,CigarHash2.round);
 	}
-	public String  nextUpstream(int rightBreak, int chrom_index, boolean forward){
+	public String  nextUpstream(int rightBreak, Boolean forward){
 		return chrom_+"."+TranscriptUtils.round(rightBreak,CigarHash2.round);
 	}
 	public void adjust3UTR(int seqlen2) {
@@ -38,11 +38,11 @@ public class IdentityProfile1 {
 		return prev_pos<100;
 	}
 	public int getTypeInd(int start, int end, Boolean forward) {
-		if(start <=TranscriptUtils.startThresh) return end >= seqlen -TranscriptUtils.endThresh ? 0:1;
-		else return end >= seqlen -TranscriptUtils.endThresh ? 2:3;
+		if(start <=TranscriptUtils.startThresh) return 0; //end >= seqlen -TranscriptUtils.endThresh ? 0:1;
+		else return 2; //end >= seqlen -TranscriptUtils.endThresh ? 2:3;
 		//return null;
 	}
-	public String getTypeNme(int start, int end, boolean forward) {
+	public String getTypeNme(int start, int end, Boolean forward) {
 		return nmes[getTypeInd(start,end, forward)];
 	}
 	
@@ -57,7 +57,7 @@ public class IdentityProfile1 {
 	public CigarClusters all_clusters;
 	final public BreakPoints bp;
 	*/
-	public  int chrom_index, seqlen;
+	//public  int chrom_index;//, seqlen;
 	String chrom_;
 	
 	
@@ -76,16 +76,24 @@ public class IdentityProfile1 {
 	public static double qual_thresh = 20.0D;
 	public static int break_thresh = 1000;
 	
-	public static Sequence polyA = new Sequence(Alphabet.DNA(), "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".toCharArray(), "polyA");
+	public static Sequence polyA , polyT;
+	static {
+		char[] As = new char[20];
+		Arrays.fill(As, 'A');
+		char[] Ts = new char[20];
+		Arrays.fill(As, 'T');
+		polyA= new Sequence(Alphabet.DNA(), As, "polyA");
+		polyT= new Sequence(Alphabet.DNA(), As, "polyA");
+	}
 	//public  static boolean tryComplementOnExtra = false;
 	public static boolean reAlignExtra = false;
 	
 	public int startPos, endPos;
-	public int readSt, readEn; 
+	//public int readSt, readEn; 
 	
 	static Integer[] seq1 = new Integer[4];
 	static Integer[] seq2 = new  Integer[2];
-	static Integer[] seq11 = new Integer[4];
+	//static Integer[] seq11 = new Integer[4];
 	static Integer[] seq21 = new  Integer[2];
 
 	
@@ -97,21 +105,33 @@ public class IdentityProfile1 {
 		//this.chrom_index = parent.chrom_index;
 		//this.chrom_ = parent.chrom_;
 		this.num_sources = parent.num_sources;
-		this.coRefPositions = new CigarCluster("", "-1",num_sources,'.');
+		this.coRefPositions = new CigarCluster("", "-1",num_sources,".");
+		this.coRefPositions1 = new CigarCluster("", "-1",num_sources,".");
+
 		this.o = parent.o;
 		this.all_clusters = parent.all_clusters;
 		
 	}
-	public void setName(String readName, String chrom_, int chrom_index, int seqlen, boolean supp) {
+	public String strand;
+	public void setName(String readName, String chrom_, String strand, String q_value, int source_index, boolean fusion) {
 		// TODO Auto-generated method stub
-		if(!supp) fusion = false;
-		else if(chrom_index!=this.chrom_index) fusion = true;
-
+		this.id = readName;
+		this.fusion = fusion;
+	//	if(!supp) fusion = false;
+		//else if(chrom_index!=this.chrom_index) fusion = true;
+this.strand = strand;
+this.q_value_str = q_value;
+this.updateSourceIndex(source_index);
 		this.readName = readName;
-		this.chrom_ = fusion ? this.chrom_+";"+chrom_ : chrom_;
+		this.chrom_ = chrom_;// fusion ? this.chrom_+";"+chrom_ : chrom_;
 		
-		this.chrom_index = chrom_index;
-		this.seqlen = seqlen;
+		if(ViralTranscriptAnalysisCmd2.RNA[source_index]){
+			coRefPositions.forward = strand.charAt(0)=='+';
+		}else{
+			coRefPositions.forward = null;
+		}
+		//this.chrom_index = chrom_index;
+		//this.seqlen = seqlen;
 	}
 
 boolean fusion = false;
@@ -135,15 +155,33 @@ static char delim_start ='$';
 	public String[] clusterID = new String[2];
 	
 	//** this adds coRefPositions into the clusters
-	public void commit(){
-		char strand = this.coRefPositions.strand;
-		int start_read = this.readSt; int end_read = this.readEn;int readLength = end_read-start_read;
-		 parent.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources,  this.chrom_,this.chrom_index,  clusterID, strand, this.readName); // this also clears current cluster
+	public void commit(Sequence readSeq){
+		int[] res = new int[2];
+		StringBuffer st = new StringBuffer("_");
+		
+		if(fusion  && checkPolyA){
+			if (this.coRefPositions.forward) {
+				for(int j=0; j<coRefPositions.start_positions.size(); j++){
+					int br = coRefPositions1.breaks.get(coRefPositions.start_positions.get(j));
+				this.coRefPositions.start_positions.get(0);
+				  boolean hasPoly = getPolyA(readSeq, polyA, Math.max(0, br-50), Math.min(readSeq.length(), br+50), res);
+				  if(hasPoly){
+					st.append(readSeq.subSequence(res[0], res[1]));
+					st.append("_");
+				  }
+				}
+			}
+		}
+		
+		
+		String strand = this.coRefPositions.strand;
+	//	int start_read = this.readSt; int end_read = this.readEn;int readLength = end_read-start_read;
+		 parent.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources,  this.chrom_,  clusterID, strand, this.readName); // this also clears current cluster
 	//	int len1 = readSeq.length();
-		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\t"+readLength+"\t"+start_read+"\t"+end_read+"\t"
+		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\tNA\tNA\tNA\t"
 		+type_nme+"\t"+chrom_+"\t"
 		+startPos+"\t"+endPos+"\t"+strand+"\t"+coRefPositions.numIsoforms()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
-		+coRefPositions.getError(source_index)+"\t"+secondKeySt+"\t"+strand+"\t"+breakSt+"\t"+span_str+"\t"+geneNames.size()+"\t"+String.format("%5.3g", q_value).trim();
+		+coRefPositions.getError(source_index)+"\t"+secondKeySt+"\t"+strand+"\t"+breakSt+"\t"+breakSt1+"\t"+span_str+"\t"+geneNames.size()+"\t"+q_value_str.trim()+"\t"+st.toString();
 	//	if(trainStrand){
 		//	str = str+"\t"+readSeq.subSequence(0, 10)+"\t"+readSeq.subSequence(len1-10, len1)
 //				+"\t"+toString(phredQ,0,10)+"\t"+toString(phredQ,len1-10,len1)
@@ -152,45 +190,37 @@ static char delim_start ='$';
 		parent.o.printRead(str);
 		
 	}
-	boolean hasLeaderBreak;		String breakSt; String secondKeySt;boolean includeInConsensus = true;
-	byte[] phredQ; String baseQ; String type_nme; String span_str; int span;  double q_value; String id;
+	boolean hasLeaderBreak;		String breakSt; String breakSt1; String secondKeySt;boolean includeInConsensus = true;
+	byte[] phredQ; String baseQ; String type_nme; String span_str; int span;  String q_value_str; String id;
 
 	/*Note:  align5prime will be null if not coronavirus */
-	public String processRefPositions( SAMRecord sam, String id, boolean cluster_reads, Sequence refSeq1, int src_index , Sequence readSeq, String baseQ, 
-			byte[] phredQ,
-			int start_read, int end_read, char strand, 
-			Integer offset_3prime, Integer polyAlen, String pool, double q_value//, Annotation annot
+	public String processRefPositions(  String id, boolean cluster_reads, 
+			 int src_index , Sequence readSeq, String baseQ, 
+			byte[] phredQ
+		//	int start_read, int end_read, char strand, 
+		//	Integer offset_3prime, 
+			//Integer polyAlen, 
+			// double q_value//, Annotation annot
 			) throws IOException, NumberFormatException{
 		//CigarHash2 breaks  = coRefPositions.breaks;
 		IdentityProfile1  annot = this;
-		this.baseQ  = baseQ; this.phredQ = phredQ; this.q_value = q_value;
-		this.coRefPositions.strand = strand; this.id = id; 
+	//	int chrom_index = sam.getReferenceIndex();
+		this.baseQ  = baseQ; this.phredQ = phredQ;// this.q_value = q_value;
+		this.coRefPositions.strand = strand; 
+		this.id = id; 
 		CigarHash2 breaks = this.coRefPositions.breaks;
 		startPos = breaks.get(0);
 		endPos= breaks.get(breaks.size()-1);
 		//startPos = sam.getAlignmentStart();//+1; // transfer to one based
 		//endPos = sam.getAlignmentEnd();
 		
-		readSt = start_read; readEn = end_read;
-		if(ViralTranscriptAnalysisCmd2.RNA[source_index]){
-			coRefPositions.forward = !sam.getReadNegativeStrandFlag();
-		}else{
-			coRefPositions.forward = null;
-		}
+	//	readSt = start_read; readEn = end_read;
+		
 		Boolean forward = coRefPositions.forward;
 		//boolean hasSplice = false;
-		int  readLength = readSeq.length();
+		//int  readLength = readSeq.length();
 		//Annotation annot =parent.all_clusters.annot;
 
-	
-		
-	
-	
-		if(polyAlen!=null && polyAlen>0){
-			Integer seqlen = refSeq1.length();
-			seqlen = seqlen-(polyAlen);
-			annot.adjust3UTR(seqlen);
-		}
 	
 	//	coRefPositions.start = startPos;
 	//	coRefPositions.end = endPos;
@@ -228,21 +258,14 @@ static char delim_start ='$';
 		
 	
 		 hasLeaderBreak = TranscriptUtils.coronavirus? (breaks.size()>1 &&  annot.isLeader(breaks.get(1))) : false;
-		if(pool!=null) {
-			String[] pool_ = pool.split(":");
-
-			secondKey.append(pool_[0]+delim1); //+annot.nextDownstream(startPos,chrom_index, forward)+delim);
-			if(pool_.length>1){
-				parent.addBreakPoint(src_index, pool_[0], Integer.parseInt(pool_[1]), startPos);
-			}
-		}
+		
 		
 		if(true) {//annot instanceof EmptyAnnotation){
 			if(forward!=null){
-				if(forward) secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), chrom_index, forward));
-				else secondKey.append(annot.nextUpstream(breaks.get(0), chrom_index, forward));
+				if(forward) secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), forward));
+				else secondKey.append(annot.nextUpstream(breaks.get(0),forward));
 			}else{
-				secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), chrom_index, forward));
+				secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), forward));
 			}
 		}
 		
@@ -258,10 +281,12 @@ static char delim_start ='$';
 		 span_str = "";//annot.getSpan(coRefPositions.breaks, forward,  coRefPositions.span, geneNames);
 		
 		 span = geneNames.size();
-		if(!TranscriptUtils.coronavirus && span==0 && q_value < ViralTranscriptAnalysisCmd2.fail_thresh1){
+	/*	if(!TranscriptUtils.coronavirus && span==0 && q_value < ViralTranscriptAnalysisCmd2.fail_thresh1){
 			return secondKey.toString();
-		}
-		breakSt = coRefPositions.breaks.toString();
+		}*/
+		breakSt = coRefPositions.getBreakString();
+		breakSt1 = coRefPositions1.getBreakString();
+
 		//coRefPositions.breaks.adjustBreaks(annot);
 		// need to group by start position if we annotating by break pos,e.g. so 5'mapping reads map together
 		secondKeySt = secondKey.toString();
@@ -309,6 +334,7 @@ static char delim_start ='$';
 				}
 			}
 		}*/
+		/*
 		if(includeInConsensus  && Outputs.msa_sources.containsKey(source_index) && 
 				(Outputs.doMSA!=null && Outputs.doMSA.contains(type_nme)  || 
 						Outputs.doMSA!=null && Outputs.doMSA.contains(span) && Outputs.numExonsMSA.contains(num_exons) )
@@ -323,7 +349,7 @@ static char delim_start ='$';
 			readSeq1.setDesc(chrom_index+" "+CigarHash2.getString(breaks,-1)+" "+CigarHash2.getString(read_breaks)+" "+(end_read-start_read)+ " "+strand+" "+source_index);
 			String prefix = TranscriptUtils.coronavirus ? "": num_exons+"_";
 			parent.o.writeToCluster(prefix+secondKeySt,"_"+clusterID[1]+"_", source_index, readSeq1, baseQ1,  readSeq.getName(), strand);
-		}
+		}*/
 		
 		return secondKeySt+" "+span_str;
 	}
@@ -359,7 +385,7 @@ static char delim_start ='$';
 	
 		public synchronized CigarCluster get(){
 			if(s.size()==0){
-				return new CigarCluster("","-1",num_sources,'.');
+				return new CigarCluster("","-1",num_sources,".");
 			}
 			return s.pop();
 		}
@@ -369,7 +395,7 @@ static char delim_start ='$';
 	}
 	
 	final CigarCluster coRefPositions; // this is a temporary object used to store information for each read as it comes through 
-	
+	final CigarCluster coRefPositions1;
 	
 	
 	
@@ -387,15 +413,17 @@ static char delim_start ='$';
 	}
 	
 
-	 CigarHash2 suppl_read = null; //keeps track of positions on read of all alignments (primary plus suppl)
-	 List<CigarHash2> suppl = null;
+	// CigarHash2 suppl_read = null; //keeps track of positions on read of all alignments (primary plus suppl)
+//	 List<CigarHash2> suppl = null;
 	//
-	public void processAlignmentBlocks(SAMRecord sam, CigarCluster coRefPositions1){
+	public void processAlignmentBlocks(SAMRecord sam, CigarCluster coRefPositions1,CigarCluster coRefPositionsRead){
 		List<AlignmentBlock> li = sam.getAlignmentBlocks();
 	
 		for(int i=0; i<li.size(); i++){
 			AlignmentBlock ab = li.get(i);
-			coRefPositions1.addBlock(ab.getReferenceStart(), ab.getLength(), i==0, i==li.size()-1);
+			int gap = coRefPositions1.addBlock(ab.getReferenceStart(), ab.getLength(), i==0, i==li.size()-1, sam.getReferenceIndex(), sam.getReadNegativeStrandFlag());
+			coRefPositionsRead.addBlock(ab.getReadStart(), ab.getLength(), i==0, i==li.size()-1, 0, gap, false);
+
 		}
 		if(coRefPositions1.breaks.size() %2 !=0) {
 			throw new RuntimeException("!!");
@@ -406,9 +434,10 @@ static char delim_start ='$';
 	
 	public void processCigar(SAMRecord sam, Sequence refSeq, Sequence readSeq,CigarCluster coRefPositions1){
 		IdentityProfile1 profile = this;
+		int ref_ind = sam.getReferenceIndex();
 		int readPos = 0;// start from 0
 		int refPos = sam.getAlignmentStart() - 1;// convert to 0-based index
-		coRefPositions1.addStart(sam.getAlignmentStart());
+		coRefPositions1.addStart(sam.getAlignmentStart(), ref_ind);
 		boolean nullchr = refSeq==null || refSeq.length()==0;
 		for (final CigarElement e : sam.getCigar().getCigarElements()) {
 			final int length = e.getLength();
@@ -441,7 +470,7 @@ static char delim_start ='$';
 				profile.refBase += length;
 				for (int i = 0; i < length && (nullchr || refPos + i < refSeq.length()); i++) {
 				//	profile.baseDel[refPos + i] += 1;
-					coRefPositions1.add(refPos+i+1, this.source_index, false);
+					coRefPositions1.add(refPos+i+1, this.source_index, false, ref_ind);
 					//profile.addRefPositions(refPos + i, false);
 				}
 				//profile.numDel++;
@@ -459,12 +488,12 @@ static char delim_start ='$';
 					
 					if (nullchr || refSeq.getBase(refPos + i) == readSeq.getBase(readPos + i)){
 				//		profile.match[refPos + i]++;
-						coRefPositions1.add(refPos+i+1, this.source_index, true);
+						coRefPositions1.add(refPos+i+1, this.source_index, true, ref_ind);
 						//profile.addRefPositions(refPos + i, true);
 					}
 					else{
 					//	profile.mismatch[refPos + i]++;
-						coRefPositions1.add(refPos+i+1, this.source_index, false);
+						coRefPositions1.add(refPos+i+1, this.source_index, false, ref_ind);
 						//profile.addRefPositions(refPos + i, false);
 					}
 				}
@@ -479,7 +508,7 @@ static char delim_start ='$';
 				readPos += length;
 				refPos += length;
 				for (int i = 0; i < length && (nullchr || (refPos + i) < refSeq.length()); i++) {
-					coRefPositions1.add(refPos+i+1, this.source_index, true);
+					coRefPositions1.add(refPos+i+1, this.source_index, true, ref_ind);
 //					profile.addRefPositions(refPos+i, true);
 				}
 				profile.readBase += length;
@@ -494,7 +523,7 @@ static char delim_start ='$';
 				profile.readBase += length;
 				profile.refBase += length;
 				for (int i = 0; i < length && (nullchr || (refPos + i) < refSeq.length()); i++) {
-					coRefPositions1.add(refPos+i+1, this.source_index, false);
+					coRefPositions1.add(refPos+i+1, this.source_index, false, ref_ind);
 					//profile.addRefPositions(refPos+i, false);
 				}
 				//profile.addRefPositions(refPos);
@@ -504,12 +533,33 @@ static char delim_start ='$';
 				throw new IllegalStateException("Case statement didn't deal with cigar op: " + e.getOperator());
 			}// case
 		} // for
-		coRefPositions1.addEnd(sam.getAlignmentEnd());
+		coRefPositions1.addEnd(sam.getAlignmentEnd(), ref_ind);
 		if(coRefPositions1.breaks.size() %2 !=0) {
 			throw new RuntimeException("!!");
 		}
 	}
 
+	static boolean getPolyA(Sequence readSeq, Sequence polyA, int st, int end, int[] res){
+		if(readSeq.length() > 200){
+		SWGAlignment polyAlign =  SWGAlignment.align(readSeq.subSequence(st, end), polyA);
+		if(polyAlign.getIdentity() > 0.9 * polyAlign.getLength()  && polyAlign.getLength()>15){ // at least 15 A wih
+			res[0] = polyAlign.getStart1()+st;
+			res[1]  = res[0] + polyAlign.getLength() - polyAlign.getGaps1();
+			return true;
+			/*if(st> 10){
+				String nme = readSeq.getName();
+				profile.o.writePolyA(readSeq.subSequence(0, end),  nme+".L",
+						baseQ.length()==1 ? baseQ: baseQ.substring(0,end), sam.getReadNegativeStrandFlag(),source_index);
+				profile.o.writePolyA(readSeq.subSequence( end+1, readSeq.length()),  nme+".R",
+						baseQ.length()==1 ? baseQ: baseQ.substring(end+1, readSeq.length()), sam.getReadNegativeStrandFlag(),source_index);
+				System.err.println("internal polyA 5´ ");
+				return;
+			}*/
+		}
+		}
+		return false;
+	}
+	
 	/**
 	 * Get the identity between a read sequence from a sam and a reference sequence
 	 * commit indicates immediately commit the CigarHash object
@@ -517,10 +567,15 @@ static char delim_start ='$';
 	 * @param sam
 	 * @return
 	 */
-	public  void identity1(Sequence refSeq, Sequence fivePrimeRefSeq, Sequence threePrimeRefSeq,   Sequence readSeq, SAMRecord sam, 
-			int source_index, boolean cluster_reads,  String poolID, double qval, boolean supplementary) throws NumberFormatException{
+	public  void identity1(List<Sequence> refSeqs,   Sequence readSeq, List<SAMRecord> sams, 
+			int source_index, boolean cluster_reads) throws NumberFormatException{
+		
+		
+		
+		
+		
 		IdentityProfile1 annot = this;
-		if(supplementary){
+		/*if(supplementary){
 			if(!checkCompatible(this.coRefPositions, sam)) return;
 			 if(suppl==null){
 				 suppl = new ArrayList<CigarHash2>();
@@ -539,66 +594,64 @@ static char delim_start ='$';
 				 int st1 = suppl_read.get(i);
 				 int end1 = suppl_read.get(i+1);
 				 double overlap = suppl_read.overlap(rSt, rEnd, st1, end1);
-				 if(overlap>=0.8 * (rEnd - rSt)){
+				 double overlap_thresh = fusion ? fusion_overlap_thresh : 0; 
+				 System.err.println("overlap is "+overlap+" vs "+(rEnd-rSt)+" "+(end1-st1));
+				 if(overlap>=overlap_thresh * (rEnd - rSt) || overlap >= overlap_thresh * (end1-st1)){
 					 return ;
+				 }else{
+					 System.err.println("overlap is ok");
 				 }
 			 }
 			this.coRefPositions.breaks.clear();
-		}
+		}*/
 		CigarCluster coref = this.coRefPositions;
 		//if(coref.forward==null) throw new RuntimeException("!!");
 		//int seqlen = refSeq.length();
 		IdentityProfile1 profile = this;
 		//Outputs output = profile.o;
 	
+		for(int j=0; j<sams.size(); j++){
+			
+		SAMRecord sam = sams.get(j);
 		String id = sam.getReadName();
+		Sequence refSeq = refSeqs.get(sam.getReferenceIndex());
 		//String chrom = refSeq.getName();
-		profile.updateSourceIndex(source_index);
+	//	profile.updateSourceIndex(source_index);
 		//List<AlignmentBlock> li = sam.getAlignmentBlocks();
 	//	li.get(0).get
-		if(CigarCluster.recordDepthByPosition || true ){
+		if(CigarCluster.recordDepthByPosition  ){
 			this.processCigar(sam, refSeq, readSeq, coref);
 		}else{
-			this.processAlignmentBlocks(sam, coref);
+			this.processAlignmentBlocks(sam, coref, coRefPositions1);
+		}
 		}
 		try{
 			int maxl = 100;
 			int tol=5;
-			int st_r = sam.getReadPositionAtReferencePosition(sam.getAlignmentStart());
-			int end_r = sam.getReadPositionAtReferencePosition(sam.getAlignmentEnd());
-			int diff_r = readSeq.length() -end_r;
-			String baseQ = sam.getBaseQualityString();
-			byte[]phredQs = sam.getBaseQualities();
-			char strand = sam.getReadNegativeStrandFlag() ? '-': '+';
-			boolean forward = !sam.getReadNegativeStrandFlag();
-			int offset_3prime =0;
-			Integer polyAlen = TranscriptUtils.coronavirus ? TranscriptUtils.polyAlen(refSeq) : null;
-			Integer seqlen1 = TranscriptUtils.coronavirus ? refSeq.length()-polyAlen : null;
-			Sequence leftseq = null;  Sequence rightseq = null;
- 		 double phredQL = st_r < 20 ? 0 : npTranscript.run.ViralChimericReadsAnalysisCmd.median(phredQs, 0,st_r);
-		 double phredQR = diff_r <20 ? 0 : npTranscript.run.ViralChimericReadsAnalysisCmd.median(phredQs,  end_r , diff_r);
-		//	CigarHash2 breaks;
-			if(supplementary){
-				 this.suppl.add(coref.breaks.clone());
-				 coref.breaks  =CigarHash2.merge(suppl);
-				 coref.startPos = coref.breaks.get(0);
-				 coref.endPos = coref.breaks.get(coref.breaks.size()-1);
-			 }
+		//	int st_r = sam.getReadPositionAtReferencePosition(sam.getAlignmentStart());
+		//	int end_r = sam.getReadPositionAtReferencePosition(sam.getAlignmentEnd());
+		//	int diff_r = readSeq.length() -end_r;
+			String baseQ = sams.get(0).getBaseQualityString();
+			byte[]phredQs = sams.get(0).getBaseQualities();
+		//	char strand = sam.getReadNegativeStrandFlag() ? '-': '+';
+		//	boolean forward = !sam.getReadNegativeStrandFlag();
+			//int offset_3prime =0;
+		
 			
-			String secondKey= profile.processRefPositions( sam, id, cluster_reads, 
-					refSeq, source_index, readSeq,baseQ, phredQs, st_r, end_r, strand,offset_3prime, polyAlen, poolID, qval);
-			if(!ViralTranscriptAnalysisCmd2.allowSuppAlignments){
-				profile.commit();
-			}
+			String secondKey= profile.processRefPositions(  id, cluster_reads, 
+					 source_index, readSeq,baseQ, phredQs);
+			//if(!ViralTranscriptAnalysisCmd2.allowSuppAlignments){
+				profile.commit(readSeq);
+		//	}
 			
-			if( supplementary){
+		/*	if( supplementary){
 				 suppl_read.add(this.readSt); suppl_read.add(readEn);
 				 Collections.sort(suppl_read);
-			}
+			}*/
 			//String ID = profile.clusterID
-			diff_r = readSeq.length() - profile.readEn;
-			seq11[0]=  profile.readSt; seq11[1] = profile.readEn; 
-			seq11[2] = profile.startPos; seq11[3] = profile.endPos;
+		//	diff_r = readSeq.length() - profile.readEn;
+			//seq11[0]=  profile.readSt; seq11[1] = profile.readEn; 
+			//seq11[2] = profile.startPos; seq11[3] = profile.endPos;
 			
 		}catch(IOException exc){
 			exc.printStackTrace();
@@ -608,20 +661,11 @@ static char delim_start ='$';
 
 	
 
-	
-
-
-
-	private boolean checkCompatible(CigarCluster coRefPositions2, SAMRecord sam) {
+	private static boolean checkCompatible(CigarCluster coRefPositions2, SAMRecord sam) {
 		boolean strand = sam.getReadNegativeStrandFlag();
-		boolean negStrand = coRefPositions.strand=='-';
-		if(negStrand != strand && ! fusion){
-			//wrong strand
-			//throw new RuntimeException("wrong strand");
-			
-			return false;
-		}
-		if(!this.fusion){
+	//	boolean negStrand = coRefPositions.strand=='-';
+		
+		//if(!this.fusion){
 		List<AlignmentBlock> l = sam.getAlignmentBlocks();
 		for(int i=0; i<l.size(); i++){
 			AlignmentBlock bl = l.get(i);
@@ -630,18 +674,19 @@ static char delim_start ='$';
 				return false;
 			}
 		}
-		}
+		//}
 		return true;
 	}
 
 
 
 	public void clear() {
-		if(suppl!=null){
+	/*	if(suppl!=null){
 			this.suppl_read.clear();
 			this.suppl.clear();
-		}
+		}*/
 		this.coRefPositions.clear();
+		this.coRefPositions1.clear();
 		
 	}
 

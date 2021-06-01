@@ -376,6 +376,9 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		//	SequenceUtils.mm2_splicing= "-un";
 
 		}
+		SequenceUtils.mm2_splicing= "-un";
+	//	SequenceUtils.mm2_splicing = null;
+	//	SequenceUtils.mm2Preset=null;//"map-ont";
 		sequential = cmdLine.getBooleanVal("sequential");
 		sorted = cmdLine.getBooleanVal("sorted");
 		
@@ -663,7 +666,7 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 				SequenceUtils.getCombined(samIters, sorted, sequential)
 				, readList==null ? null :reads.keySet(), max_reads, fail_thresh, false);
 		}
-		Map<String, int[]> chromsToInclude = getChromsToInclude(genomes, chrToInclude, chrToIgnore);
+		//Map<String, int[]> chromsToInclude = getChromsToInclude(genomes, chrToInclude, chrToIgnore);
 		
 		
 		
@@ -682,9 +685,9 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 			
 		
 			
-			Sequence chr =  new Sequence( Alphabet.DNA(), 0, ""); 
-			int seqlen = chr.length();
-			FastqWriter[][] fqw = chromsToRemap==null ? null : Outputs.getFqWriter(chromsToRemap, resdir, in_nmes);   //chromToRemap.contains(chr.getName()) ? Outputs.getFqWriter(chr.getName(), resdir) : null;
+		//	Sequence chr =  new Sequence( Alphabet.DNA(), 0, ""); 
+		//	int seqlen = chr.length();
+		//	FastqWriter[][] fqw = chromsToRemap==null ? null : Outputs.getFqWriter(chromsToRemap, resdir, in_nmes);   //chromToRemap.contains(chr.getName()) ? Outputs.getFqWriter(chr.getName(), resdir) : null;
 				// first row is primary , second is supplementary
 			
 			 
@@ -709,31 +712,18 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 			String previousRead = "";
 			int previousRefIndex=-1;
 			Set<String> skipped = new HashSet<String>();
+			List<SAMRecord> sams = new ArrayList<SAMRecord>();
+			String prev_readnme = "";
 			outer: for ( ij=0; samIter.hasNext() ;ij++ ) {
 				final SAMRecord sam=samIter.next();
-			    if(sam==null) break outer;
+			    if(sam==null){
+			    	break outer;
+			    }
 				if (sam.getReadUnmappedFlag()) {
 					numNotAligned++;
 					continue;
 				}
 				
-				if(chromsToInclude!=null && !chromsToInclude.containsKey(sam.getReferenceName())
-						&& (chromsToRemap !=null && !chromsToRemap.equals(sam.getReferenceName())
-						)){
-					if(!skipped.contains(sam.getReferenceName())){
-						System.err.println("skipping "+sam.getReferenceName());
-						skipped.add(sam.getReferenceName());
-					}
-				//	System.err.println("do not have appropriate reference, so ignoring this entry "+sam.getReferenceName());
-					continue;
-				}
-				int poolID = -1;
-				if(reads!=null){ 
-					Integer readInd = reads.get(sam.getReadName());
-					if(readInd==null) {
-						if(limit_to_read_list)	continue;
-					}else poolID = readInd;
-				}
 				byte[] b = sam.getBaseQualities();
 				double q1 = 500;
 				if(b.length>0){
@@ -753,62 +743,26 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 				
 				if(sam==null) break outer;
 				int source_index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
-				//if(source_index==null) source_index = 0;
-			//	System.err.println(source_index);
-				if (pattern != null && (!sam.getReadName().contains(pattern)))
-					continue;
-				
-				//System.err.println("source index "+source_index+" "+sam.getAlignmentStart());
 				String sa  = sam.getReadString();
 				boolean negFlag = sam.getReadNegativeStrandFlag();
-				
-			//	if(sam.getReadNegativeStrandFlag()){
-			//		TranscriptUtils.flip(sam, false); // switch read but keep flag. This corrects minimaps correction when it maps
-			//	}
-
 				boolean flip = false;
 				if(RNA[source_index]  ){
 					flip=false;
 				}
 				else if(Annotation.enforceStrand){
-					//at this stage cannot enforce strand with cDNA data
 					throw new RuntimeException("need to implement");
-					//}
 				}
 				
 				if(flip){
-					// this time we adjust flag too because we "fixing the read"  however, as yet we dont have a good way to detect if it should be flipped here
-					//negFlag = !negFlag;
-					
 					System.err.println("flipping "+negFlag);
 					TranscriptUtils.flip(sam, true);
 					negFlag = sam.getReadNegativeStrandFlag();
-					//sam.setReadNegativeStrandFlag(negFlag);
 				}
-				/*if(negFlag){
-					counts[1] = counts[1] +1;
-				}else{
-					counts[0] = counts[0]+1;
-							
-				}*/
-				Sequence readSeq = new Sequence(Alphabet.DNA(), sa, sam.getReadName());
+				
 				//String poolID = readSeq.get
-				if (readSeq.length() <= 1) {
-					//LOG.warn(sam.getReadName() +" ignored");
-					
-					// TODO: This might be secondary alignment, need to do something about it
-					continue;
-				}
-
-				numReads++;
-				/*if(numReads>max_reads) {
-					System.err.println(numReads+" "+max_reads);
-					break outer;
-				}*/
 				
 
-				//int flag = sam.getFlags();
-
+				numReads++;
 				if (sam.getMappingQuality() < qual) {
 					numNotAligned++;
 					continue;
@@ -818,60 +772,24 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 					continue;
 				}
 				
-				
-				
-				
-				// int refPos = sam.getAlignmentStart() - 1;//convert to 0-based index
-				String refname = sam.getReferenceName();
-				Integer refIndex = refname==null || chrNameToIndex==null ? sam.getReferenceIndex() : chrNameToIndex.get(refname);
-				if(refIndex==null) refIndex = sam.getReferenceIndex();
-				//if(refIndex==null) refIndex=sam.getReferenceIndex();
-				// if move to another chrom, get that chrom
-				if (refIndex != currentIndex) {
-					currentIndex = refIndex;
-					if(genomes!=null){
-						chr = genomes.get(currentIndex);
-					}else{
-						chr.setName(refname);
-			     	}
-					 seqlen =  chr.length();
-				}
-		
-				
-				if(refname.equals(chromsToRemap)){
-						boolean negStrand = sam.getReadNegativeStrandFlag();
-						String sequence = sam.getReadString();
-						int sam_ind = sam.isSecondaryOrSupplementary() ? (sam.isSecondaryAlignment() ? 1:2) : 0;
-						final FastqWriter fqw_i = fqw[sam_ind][source_index];
-							String baseQL = sam.getBaseQualityString();
-							FastqRecord fqr= new FastqRecord(sam.getReadName(),
-									negStrand ? SequenceUtil.reverseComplement(sequence): sequence,
-											"",
-											negStrand ?(new StringBuilder(baseQL)).reverse().toString(): baseQL
-													);
-							fqw_i.write(fqr);
-					//	}
-					//});
-					continue outer;
-				}
 				boolean supplementary = false;
 				//System.err.println(sam.getMappingQuality());
 				if(sam.isSecondaryOrSupplementary()) {
 					if(!ViralTranscriptAnalysisCmd2.allowSuppAlignments) continue;
-					boolean supp = sam.getSupplementaryAlignmentFlag();
-					boolean sameIndex = sam.getReferenceIndex()==previousRefIndex;
-					if(supp && sam.getReadName().equals(previousRead) ){
+					//boolean supp = sam.getSupplementaryAlignmentFlag();
+				//	boolean sameIndex = sam.getReferenceIndex()==previousRefIndex;
+					if( sam.getReadName().equals(previousRead) ){
 						supplementary = true;
-					int qual1 = sam.getMappingQuality();
-					
-					if(qual1 < supplementaryQ  ){
-						// we cant include supplementary if not sorted
-						//System.err.println("remove "+qual1);
-						continue; // need secondary read quality of 5
-					}else{
-						if(sorted) throw new RuntimeException("!!");;
-						System.err.println("include supplementary read " + sam.getReadName()+" " + qual1);
-					}
+						int qual1 = sam.getMappingQuality();
+						
+						if(qual1 < supplementaryQ  ){
+							// we cant include supplementary if not sorted
+							//System.err.println("remove "+qual1);
+							continue; // need secondary read quality of 5
+						}else{
+							if(sorted) throw new RuntimeException("!!");;
+							//System.err.println("include supplementary read " + sam.getReadName()+" " + qual1);
+						}
 						
 					}else{
 					numSecondary++;
@@ -879,21 +797,30 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 					continue;
 					}
 				}
-					
-				
-					try{
+					if(sams.size()>0 && (!sam.getReadName().equals(previousRead) )){
+						try{
+							profile.identity1(sams,  cluster_reads,     genomes);
+							sams.clear();
+						}catch(NumberFormatException exc){
 						
-						String pool = readList==null || readList.length==0 ||  poolID<0 ? null : (readList[poolID]+pool_sep);
-						if(ViralTranscriptAnalysisCmd2.limit_to_read_list) pool = null;
-				//		boolean flag = sam.getReadNegativeStrandFlag();
-						profile.identity1(readSeq, sam, source_index, cluster_reads,  pool, q1, supplementary, chr, refname, currentIndex);
-					}catch(NumberFormatException exc){
-						System.err.println(readSeq.getName());
-						exc.printStackTrace();
+							exc.printStackTrace();
+						}
 					}
+					
+					sams.add(sam);
+
 					previousRead = sam.getReadName();
 					previousRefIndex = sam.getReferenceIndex();
 			}//samIter.hasNext()
+			if(sams.size()>0){
+				try{
+					
+					profile.identity1(sams,  cluster_reads,     genomes);
+					sams.clear();
+				}catch(NumberFormatException exc){
+					exc.printStackTrace();
+				}
+			}
 			{
 				double timeperread = (double) ( System.currentTimeMillis() - time0)/(double) (ij-cnt0);
 				System.err.println(timeperread+" milliseconds per read at "+ij);
@@ -916,50 +843,18 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 				}*/
 			}
 			if(outp!=null) outp.close();
-			if(fqw!=null) {
+		/*	if(fqw!=null) {
 				//Outputs.waitOnThreads(Outputs.fastQwriter, 100); //make sure the fastqWriter has finished. 
 				for(int i=0; i<fqw.length; i++) {
 					for(int j=0; j<fqw[i].length; j++) fqw[i][j].close();
 				}
-			}
+			}*/
 			
 				
 				
 	//if(anno!=null) anno.close();
 	//	if(annotation_pw!=null) annotation_pw.close();
 	}
-	private static Map<String, int[]> getChromsToInclude(ArrayList<Sequence> genomes, String chrToInclude,
-			String chrToIgnore) {
-		//if(genomes==null) return null;
-		// TODO Auto-generated method stub
-		Map<String, int[]> chromsToInclude = new HashMap<String, int[]>();
-		if(chrToInclude!=null && !chrToInclude.equals("all")){
-			String[] chri = chrToInclude.split(":");
-			for(int i=0; i<chri.length; i++){
-				String[] str = chri[i].split(",");
-				int[] vals ;
-				if(str.length==1) vals = new int[] {0,Integer.MAX_VALUE};
-				else{
-					vals = new int[] {Integer.parseInt(str[1]), Integer.parseInt(str[2])};
-				}
-				chromsToInclude.put(str[0], vals);
-			}
-		}
-		
-	/*	if(chromsToInclude.size()==0){
-			chromsToInclude=null;
-			for(int k=0; k<genomes.size(); k++){
-				chromsToInclude.put(genomes.get(k).getName(), new int[] {0,Integer.MAX_VALUE});
-			}
-		}*/
-		
-		if(chrToIgnore!=null && chrToIgnore.equals("none")){
-			String[] chri = chrToIgnore.split(":");
-			for(int i=0; i<chri.length; i++){
-				chromsToInclude.remove(chri[i]);
-			}
-		}
-		return chromsToInclude.size()==0 ? null : chromsToInclude;
-	}
+	
 }
  

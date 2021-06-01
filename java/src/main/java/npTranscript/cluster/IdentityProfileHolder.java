@@ -3,17 +3,21 @@ package npTranscript.cluster;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.SortedMap;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
 import java.util.SortedSet;
 import java.util.Stack;
-import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 
+import htsjdk.samtools.AlignmentBlock;
 import htsjdk.samtools.SAMRecord;
+import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
-import npTranscript.run.ViralTranscriptAnalysisCmd2;
+import japsa.tools.seq.SequenceUtils;
 
 public class IdentityProfileHolder {
 	
@@ -43,7 +47,7 @@ public class IdentityProfileHolder {
  // int chrom_index;
  final String[] type_nmes;
  final int num_sources;
- Sequence chr5prime; Sequence chr3prime;
+ //Sequence chr5prime; Sequence chr3prime;
  
  Stack<IdentityProfile1> idents = new Stack<IdentityProfile1>();
  
@@ -58,39 +62,17 @@ public class IdentityProfileHolder {
   * we assume that the primary alignment is first, and supplementary alignments follow
   * note that this breaks multi-threading
   * */
- public synchronized IdentityProfile1 get(String readName, boolean supp, String chrom_, int chrom_index, int seqlen){
+ public synchronized IdentityProfile1 get(){
 	 int len = idents.size();
-	// System.err.println(idents.size());
-	 if(supp){
-		 
-		 for(int i=0; i<len; i++){
-			 if(idents.get(i).readName.equals(readName)){
-				 // in this case we dont clear it
-				 IdentityProfile1 idp =  idents.remove(i);
-				 idp.setName(readName, chrom_, chrom_index, seqlen, supp);
-				 return idp;
-			 }
-		 }
-		 throw new RuntimeException("we couldnt find the primary read processor - maybe this file is not sorted by read ID");
-	 }
 	 IdentityProfile1 idp;
 	 if(len==0){
 		idp =  new IdentityProfile1(this) ;
 	 }else{
 		 idp = idents.pop();
-		 if(ViralTranscriptAnalysisCmd2.allowSuppAlignments) {
-			 idp.commit(); // should be safe to commit previous
-		 }
+	
 		 idp.clear(); // gets object clear for next use
 
 	 }
-	
-	 if(supp && len>1){
-		 // need to check how this works with multi-threading
-		 throw new RuntimeException("this may not work with multi-threading");
-	 }
-	 idp.setName(readName, chrom_, chrom_index, seqlen, supp);
-	// System.err.println(idents.size());
 	return idp;
  }
  
@@ -144,7 +126,91 @@ public class IdentityProfileHolder {
 			bp = new BreakPoints(num_sources, refSeq, genomes);
 	 }
 	}
- 
+static class SamComparator implements Comparator<SAMRecord>{
+	boolean quality;
+	
+	public SamComparator(boolean b) {
+		this.quality = b;
+	}
+
+	@Override
+	public int compare(SAMRecord o1, SAMRecord o2) {
+		if(quality) return -1*Integer.compare(o1.getMappingQuality(), o2.getMappingQuality());
+		else return  Integer.compare(o1.getAlignmentBlocks().get(0).getReadStart(),
+			o2.getAlignmentBlocks().get(0).getReadStart());
+	}
+	
+};
+static Comparator comp = new SamComparator(false);
+static Comparator comp_q = new SamComparator(true);
+
+	public static double overlap_thresh = 0.33;
+	public static double overlap_max = 20;
+	
+	static void  groupSam(Iterator<SAMRecord> sams, List<SAMRecord> extracted){
+		//
+		
+		
+	
+		SAMRecord first = sams.next();;
+		int q1 = first.getMappingQuality();
+		sams.remove();
+		extracted.add(first);
+		int[] overl = new int[3];
+		while(sams.hasNext()){
+			SAMRecord sam = sams.next();
+			int q2 = sam.getMappingQuality();
+			if(q2>q1) throw new RuntimeException("!!");
+			Arrays.fill(overl,0);
+		//	List<AlignmentBlock> l2 = sam.getAlignmentBlocks();
+			for(int j=0; j<extracted.size(); j++){
+				read_overlap(extracted.get(j),sam,overl);
+			}
+		//	System.err.println(Arrays.asList(overl));
+			if(overl[2] < overlap_thresh *overl[1] && overl[2] < overlap_thresh*overl[0] && overl[2] < overlap_max){
+				extracted.add(sam);
+				sams.remove();
+			}
+		}
+		
+		Collections.sort(extracted , comp);
+		if(false){
+		for(int i=0; i<extracted.size(); i++){
+			SAMRecord sr = extracted.get(i);
+			System.err.println(sr.getReferenceName() + " "+sr.getReadNegativeStrandFlag());
+			AlignmentBlock ab1 = sr.getAlignmentBlocks().get(0);
+			AlignmentBlock ab2 = sr.getAlignmentBlocks().get(sr.getAlignmentBlocks().size()-1);
+			System.err.println(ab1.getReadStart()+" - "+ab1.getReferenceStart());
+			System.err.println(ab2.getReadStart()+" - "+ab2.getReferenceStart());
+
+		}
+		System.err.println("h");
+		}
+	//	return extracted;
+		//return extracted;
+	}
+
+
+	private static void read_overlap(SAMRecord s1, SAMRecord s2, int[] overl) {
+		List<AlignmentBlock> l1 = s1.getAlignmentBlocks();
+		List<AlignmentBlock> l2 = s2.getAlignmentBlocks();
+
+		AlignmentBlock b1 = l2.get(0);
+		AlignmentBlock b2 = l2.get(l2.size()-1);
+		int st = b1.getReadStart();
+		int end = b2.getReadStart()+b2.getLength();
+		AlignmentBlock a1 = l1.get(0);
+		AlignmentBlock a2 = l1.get(l1.size()-1);
+		int st1 = a1.getReadStart();
+		int end1 = a2.getReadStart()+a2.getLength();
+		int overlap = CigarHash2.overlap(st, end,st1 , end1);
+		if(overlap>overl[2]){
+			overl[0] = end -st; 
+			overl[1] = end1 -st1;
+			overl[2] = overlap;
+		}
+		
+	}
  
 	
 	public synchronized void addBreakPoint(int source_index, int i, int br_i, int br_i1) {
@@ -162,7 +228,7 @@ public class IdentityProfileHolder {
 	//	}
 		for(int i=0; i<len; i++){
 			 IdentityProfile1 idp=idents.get(i);
-			 if(ViralTranscriptAnalysisCmd2.allowSuppAlignments) idp.commit();
+			// if(ViralTranscriptAnalysisCmd2.allowSuppAlignments) idp.commit();
 			idp.clear();
 		}
 	}
@@ -174,7 +240,7 @@ public class IdentityProfileHolder {
 		this.all_clusters.getConsensus( o);
 		
 }
-	SortedMap<Integer, Integer> currentStart = new TreeMap<Integer, Integer>();
+	/*SortedMap<Integer, Integer> currentStart = new TreeMap<Integer, Integer>();
 	private synchronized void removeStart(int startPos){
 		int  v1 = currentStart.get(startPos);
 		if(v1==0) currentStart.remove(startPos);
@@ -183,32 +249,66 @@ public class IdentityProfileHolder {
 	private synchronized void addStart(int startPos){
 		Integer v = currentStart.get(startPos);
 		currentStart.put(startPos, v==null ? 1 : v+1);
-	}
+	}*/
 	final Integer[] basesStart = new Integer[4];final Integer[] basesEnd = new Integer[4];
 	final Integer[] readCounts = new Integer[] {0,0,0};
-	public void identity1(Sequence readSeq, SAMRecord sam,
-			int source_index, boolean cluster_reads,  String pool, double qval, boolean supp,  Sequence genome, 
-			String chrom_, int chrom_index) {
+	static Alphabet alph = Alphabet.DNA();
+	public void identity1(List<SAMRecord> sam,
+			 boolean cluster_reads,     List<Sequence> genome
+			) {
+		
+		Sequence readSeq = new Sequence(alph, sam.get(0).getReadString(), sam.get(0).getReadName());
 		// TODO Auto-generated method stub
-		final int start = sam.getStart();
-		addStart(start);
-		if(ViralTranscriptAnalysisCmd2.sorted && (!ViralTranscriptAnalysisCmd2.sequential || num_sources==1)  && this.all_clusters.l.size()> clearUpThreshold){ 
-		 this.all_clusters.clearUpTo(currentStart.firstKey() -cleanUpMoreThan , o);
-		}
+		
+		//final char strand2 = strand;
+	//	final int start = sam.get(0).getStart();
+	//	addStart(start);
+	//	if(ViralTranscriptAnalysisCmd2.sorted && (!ViralTranscriptAnalysisCmd2.sequential || num_sources==1)  && this.all_clusters.l.size()> clearUpThreshold){ 
+	//	 this.all_clusters.clearUpTo(currentStart.firstKey() -cleanUpMoreThan , o);
+	//	}
 		//Boolean backwardStrand =null;
 		
 		Runnable run = new Runnable(){
 			public void run(){
-				System.err.println("HHH,"+chrom_+","+sam.getAlignmentStart()+ ","+sam.getAlignmentEnd()+","+sam.getReadName()+","
-			+sam.getReadLength());
-				final IdentityProfile1 profile = get(sam.getReadName(), supp,chrom_, chrom_index, genome.length());
-				if(profile.coRefPositions.breaks.size()>0 && ! supp) throw new RuntimeException("this is not clear");
-			//	if(supp && profile.suppl!=null && profile.suppl.size()>0) throw new RuntimeException("supps not empty");
-				
-				profile.identity1(genome, chr5prime,chr3prime, readSeq, sam, source_index, cluster_reads,  pool, qval, supp);
-			//	profile.commit();
+		//		System.err.println("HHH,"+chrom_+","+sam.getAlignmentStart()+ ","+sam.getAlignmentEnd()+","+sam.getReadName()+","
+			//+sam.getReadLength());
+				Collections.sort(sam , comp_q);
+
+				int source_index = (Integer) sam.get(0).getAttribute(SequenceUtils.src_tag);
+				String rn= sam.get(0).getReadName();
+				final IdentityProfile1 profile = get();
+				int sze = sam.size();
+				List<SAMRecord>sam1 = new ArrayList<SAMRecord>();
+				int limit = 1;
+				for(int j=0; sam.size()>0 && j<limit; j++){
+					sam1.clear();
+					groupSam(sam.iterator(), sam1);
+				//	System.err.println(sam1.size()+" "+sze);
+					StringBuffer chrom = new StringBuffer();
+					StringBuffer strand = new StringBuffer();//sam1.get(0).getReadNegativeStrandFlag() ? '-': '+';
+					StringBuffer q_str = new StringBuffer();
+					for(int i=0; i<sam1.size(); i++){
+						strand.append(sam1.get(i).getReadNegativeStrandFlag() ? '-': '+');
+						q_str.append(sam1.get(i).getMappingQuality());
+						//if(strand1!=strand) strand = 'm';
+						chrom.append(sam1.get(i).getReferenceName());
+						if(i<sam1.size()-1){
+							chrom.append(",");
+							q_str.append(",");
+						}
+					}
+//					System.err.println(sam1.size());
+					 profile.setName(rn, chrom.toString(),strand.toString(), q_str.toString(), source_index, sam1.size()>1);
+				//	if(profile.coRefPositions.breaks.size()>0 && ! supp) throw new RuntimeException("this is not clear");
+				//	if(supp && profile.suppl!=null && profile.suppl.size()>0) throw new RuntimeException("supps not empty");
+					
+					profile.identity1(genome,  readSeq, sam1, source_index, cluster_reads);
+				//	profile.commit();
+					
+					
+				//	removeStart(start);
+				}
 				replace(profile);
-				removeStart(start);
 			}
 		};
 		if(executor==null) run.run();

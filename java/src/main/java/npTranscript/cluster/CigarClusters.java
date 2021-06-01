@@ -70,20 +70,21 @@ public class CigarClusters {
 		l.clear();
 		
 	}*/
-	int rem_count =0;
+//	int rem_count =0;
 	static String zero ="0";
 
+	int currID=0;
 	
-	
-	public synchronized void matchCluster(CigarCluster c1,  int source_index, int num_sources, String chr, int chrom_index,String[] clusterIDs, 
-			char strand, String readId) throws NumberFormatException{
+	public synchronized void matchCluster(CigarCluster c1,  int source_index, int num_sources, String chr,String[] clusterIDs, 
+			String strand, String readId) throws NumberFormatException{
 		String clusterID;
 		CigarHash br = c1.breaks_hash;
 		CigarHash2 subID ;
 		CigarCluster clust = l.get(br);
 		this.totalCounts[source_index]++;
 		if(clust==null){
-			String id =  "ID"+chrom_index+"."+(l.keySet().size()+rem_count);
+			String id =  "ID"+"."+currID;
+			currID++;
 			String subID1 = 
 					Outputs.firstIsTranscriptome && source_index==0 ? readId:	id+".t0";
 				

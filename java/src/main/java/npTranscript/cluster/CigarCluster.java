@@ -51,9 +51,10 @@ public class CigarCluster  {
 		 int startPos=0;
 		 int endPos=0;
 		int prev_position =-1; // if negative then indicates that it must be first
+		int prev_ind = -1;
 		int break_point_cluster = -1;		
 	//	boolean first = true;
-		
+		boolean fusion = false;
 		
 	
 		public void addReadCount(int source_index) {
@@ -138,13 +139,14 @@ public class CigarCluster  {
 		
    	Map<CigarHash2, Count> all_breaks  ;
    	CigarHash2 breaks = new CigarHash2(false);
+   	List<Integer> start_positions = new ArrayList<Integer>();
    	CigarHash breaks_hash = new CigarHash();
    	
    	//chr1    HAVANA  gene    11869   14409   .       +       .       
    	//ID=ENSG00000223972.5;gene_id=ENSG00000223972.5;gene_type=transcribed_unprocessed_pseudogene;gene_name=DDX11L1;level=2;havana_gene=OTTHUMG00000000961.2
 private static void writeGFF1(List<Integer> breaks, String key, PrintWriter pw,SequenceOutputStream os,  PrintWriter[] bedW, String chr, 
 		String type,  String parent, String ID,  int start, int end, String type_nme, String secondKey, 
-		String geneID, char strand, Sequence seq,  int []counts){
+		String geneID, String strand, Sequence seq,  int []counts){
 	byte[] seqb =  seq==null ? null : seq.toBytes();
 	boolean writeSeq = seqb!=null && seqb.length>0;
 	 pw.print(chr);pw.print("\tnp\t"+type+"\t");
@@ -215,7 +217,8 @@ private static void writeGFF1(List<Integer> breaks, String key, PrintWriter pw,S
 	 }
 }
 
-public static  synchronized void printBed(PrintWriter bedW, String chrom, List<Integer> breaks, String transcript_id, char strand, int source, String gene_id,   int read_depth){//, int span, String span_str){
+public static  synchronized void printBed(PrintWriter bedW, String chrom, List<Integer> breaks, String transcript_id, 
+		String strand, int source, String gene_id,   int read_depth){//, int span, String span_str){
 	if(bedW==null) return;
 	int num_exons =(int) Math.floor( (double)  breaks.size()/2.0);
 	int col_id = source % Outputs.col_len;
@@ -325,7 +328,7 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 			this.breaks.addAll(breaks);
 		}*/
 
-		public CigarCluster(String chrom,String id,  int num_sources, char strand){
+		public CigarCluster(String chrom,String id,  int num_sources, String strand){
 			this.id = id;
 			this.chrom = chrom;
 			this.strand = strand;
@@ -355,7 +358,7 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 				this.mapEnd.addToEntry(endPos, src, 1);
 			}
 		}
-		public CigarCluster(String chr, String id,  int num_sources, CigarCluster c1, int source_index, char strand,
+		public CigarCluster(String chr, String id,  int num_sources, CigarCluster c1, int source_index, String strand,
 				String subId) throws NumberFormatException{
 			this(chr, id, num_sources,strand);
 			//this.strand = strand;
@@ -400,7 +403,7 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 		final  SparseVector[] maps, errors;
 		SparseArrayVector mapStart, mapEnd;
 		
-	char strand;
+	String strand;
 	   public void clear(){
 		   span.clear();
 			this.forward = null;
@@ -426,41 +429,61 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 			this.prev_position = -1;
 			this.break_point_cluster = -1;
 		//	first = true;
-			this.breaks.clear();			
+			this.breaks.clear();	
+			this.start_positions.clear();
 			if(all_breaks!=null)this.all_breaks.clear();
 			this.breaks_hash.clear();
 	   }
 
-	   public void addStart(int alignmentStart) {
+	   public void addStart(int alignmentStart, int ref_ind) {
 			// TODO Auto-generated method stub
+			 this.start_positions.add(breaks.size());
+
 			breaks.add(alignmentStart);
 			this.prev_position=  alignmentStart;
+			this.prev_ind = ref_ind;
 		}
 	
 public static boolean recordStartEnd = false;
-	public void addBlock(int start, int len, boolean first, boolean last) {
+public int addBlock(int start, int len, boolean first, boolean last, int ref_ind, boolean negStrand) {
+return addBlock(start, len, first, last, ref_ind,start-prev_position , negStrand);
+}
+	public int addBlock(int start, int len, boolean first, boolean last, int ref_ind, int gap, boolean negStrand) {
+		int mult = 1;//negStrand ? -1 : 1;
+		if(first) {
+			this.start_positions.add(breaks.size());
+		}
 		int end = start + len-1;
 		if(first && last){
-			breaks.add(start); breaks.add(end);
+			breaks.add(mult*start); breaks.add(mult*end);
 		}
 		else if(first){
-			breaks.add(start);
+			breaks.add(mult*start);
 		}else if (last){
-			breaks.add(end);
-		}else if(start-prev_position>IdentityProfile1.break_thresh){
-			breaks.add(prev_position);
-			breaks.add(start);
+			breaks.add(mult*end);
+		}else if(ref_ind !=prev_ind){
+			breaks.add(mult*prev_position);
+			breaks.add(mult*start);
+		}else if(gap>IdentityProfile1.break_thresh){
+			breaks.add(mult*prev_position);
+			breaks.add(mult*start);
 		}
 		prev_position = end;
+		this.prev_ind = ref_ind;
+		return gap;
 		
 	}
 		
-		public void addEnd(int alignmentEnd) {
+		public void addEnd(int alignmentEnd, int ref_ind) {
 			this.breaks.add(alignmentEnd);
 			
 		}
-		public void add(int pos, int src_index, boolean match) {
-			boolean break_p =prev_position < 0 ||  pos-prev_position>IdentityProfile1.break_thresh;
+		public int add(int pos, int src_index, boolean match, int ref_ind) {
+			return add(pos, src_index, match, ref_ind,pos-prev_position );
+		}
+		public int add(int pos, int src_index, boolean match, int ref_ind, int gap) {
+			System.err.println(pos);
+			boolean break_p =prev_position < 0 ||  gap>IdentityProfile1.break_thresh || ref_ind!=prev_ind;
 			if(CigarCluster.recordDepthByPosition){
 				
 				map.addToEntry(pos, 1);
@@ -484,8 +507,9 @@ public static boolean recordStartEnd = false;
 					this.breaks.add(pos);
 				}
 				prev_position = pos;
+				this.prev_ind = ref_ind;
 			}
-
+			return gap;
 			
 		}
 
@@ -728,6 +752,26 @@ public static boolean recordStartEnd = false;
 			}
 			String st = sb.toString();
 			return st;
+		}
+
+		public String getBreakString() {
+			// TODO Auto-generated method stub
+			StringBuffer sb = new StringBuffer();
+			
+			for(int i=0; i<this.start_positions.size(); i++){
+				int fromIndex = start_positions.get(i);
+				
+				//String st1;
+				if(i < start_positions.size()-1){ 
+					int toIndex = start_positions.get(i+1);
+					sb.append(CigarHash2.getString(breaks.subList(fromIndex,  toIndex))); 
+					sb.append(";");	
+				}else{
+					int toIndex =  breaks.size();
+					sb.append(CigarHash2.getString(breaks.subList(fromIndex,  toIndex)));
+				}
+			}
+			return sb.toString();
 		}
 
 		

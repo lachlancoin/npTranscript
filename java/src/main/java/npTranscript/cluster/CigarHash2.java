@@ -118,8 +118,8 @@ public class CigarHash2 extends ArrayList<Integer> {
 		return (super.add(i1));
 	}
 	
-	public static  double overlap(int start, int end, int st1, int end1){
-		return Math.min(Math.min(end-start, end1 - st1),Math.min(end1 - start, end-st1));
+	public static int  overlap(int start, int end, int st1, int end1){
+		return (int) Math.min(Math.min(end-start, end1 - st1),Math.min(end1 - start, end-st1));
 	}
 	public int overlaps(int st, int length) {
 		int end = st + length;
