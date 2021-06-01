@@ -799,7 +799,9 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 				}
 					if(sams.size()>0 && (!sam.getReadName().equals(previousRead) )){
 						try{
-							profile.identity1(sams,  cluster_reads,     genomes);
+						//	List<SAMRecord> l1 = new ArrayList<SAMRecord>();
+							//l1.addAll(sams);
+							profile.identity1(new ArrayList<SAMRecord>(sams),  cluster_reads,     genomes);
 							sams.clear();
 						}catch(NumberFormatException exc){
 						
@@ -815,7 +817,7 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 			if(sams.size()>0){
 				try{
 					
-					profile.identity1(sams,  cluster_reads,     genomes);
+					profile.identity1(new ArrayList<SAMRecord>(sams),  cluster_reads,     genomes);
 					sams.clear();
 				}catch(NumberFormatException exc){
 					exc.printStackTrace();

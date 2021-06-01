@@ -76,14 +76,14 @@ public class IdentityProfile1 {
 	public static double qual_thresh = 20.0D;
 	public static int break_thresh = 1000;
 	
-	public static Sequence polyA , polyT;
+	public static Sequence polyA;// , polyT;
 	static {
 		char[] As = new char[20];
 		Arrays.fill(As, 'A');
-		char[] Ts = new char[20];
-		Arrays.fill(As, 'T');
+		//char[] Ts = new char[20];
+		//Arrays.fill(As, 'T');
 		polyA= new Sequence(Alphabet.DNA(), As, "polyA");
-		polyT= new Sequence(Alphabet.DNA(), As, "polyA");
+		//polyT= new Sequence(Alphabet.DNA(), Ts, "polyT");
 	}
 	//public  static boolean tryComplementOnExtra = false;
 	public static boolean reAlignExtra = false;
@@ -160,9 +160,10 @@ static char delim_start ='$';
 		StringBuffer st = new StringBuffer("_");
 		
 		if(fusion  && checkPolyA){
-			if (this.coRefPositions.forward) {
+		//	if (this.coRefPositions.forward) {
 				for(int j=0; j<coRefPositions.start_positions.size(); j++){
 					int br = coRefPositions1.breaks.get(coRefPositions.start_positions.get(j));
+				
 				this.coRefPositions.start_positions.get(0);
 				  boolean hasPoly = getPolyA(readSeq, polyA, Math.max(0, br-50), Math.min(readSeq.length(), br+50), res);
 				  if(hasPoly){
@@ -170,7 +171,7 @@ static char delim_start ='$';
 					st.append("_");
 				  }
 				}
-			}
+			//}
 		}
 		
 		
@@ -540,24 +541,18 @@ static char delim_start ='$';
 	}
 
 	static boolean getPolyA(Sequence readSeq, Sequence polyA, int st, int end, int[] res){
-		if(readSeq.length() > 200){
-		SWGAlignment polyAlign =  SWGAlignment.align(readSeq.subSequence(st, end), polyA);
-		if(polyAlign.getIdentity() > 0.9 * polyAlign.getLength()  && polyAlign.getLength()>15){ // at least 15 A wih
+		boolean haspolyA = false;
+		Sequence r1 = readSeq.subSequence(st, end);
+		if(true){
+		SWGAlignment polyAlign =  SWGAlignment.align(r1, polyA);
+		if(polyAlign.getIdentity() > 0.85 * polyAlign.getLength()  && polyAlign.getLength()>15){ // at least 15 A wih
 			res[0] = polyAlign.getStart1()+st;
 			res[1]  = res[0] + polyAlign.getLength() - polyAlign.getGaps1();
-			return true;
-			/*if(st> 10){
-				String nme = readSeq.getName();
-				profile.o.writePolyA(readSeq.subSequence(0, end),  nme+".L",
-						baseQ.length()==1 ? baseQ: baseQ.substring(0,end), sam.getReadNegativeStrandFlag(),source_index);
-				profile.o.writePolyA(readSeq.subSequence( end+1, readSeq.length()),  nme+".R",
-						baseQ.length()==1 ? baseQ: baseQ.substring(end+1, readSeq.length()), sam.getReadNegativeStrandFlag(),source_index);
-				System.err.println("internal polyA 5´ ");
-				return;
-			}*/
+			haspolyA = true;
 		}
 		}
-		return false;
+		if(haspolyA)		System.err.println("found polyA "+r1);
+		return haspolyA;
 	}
 	
 	/**

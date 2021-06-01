@@ -253,11 +253,15 @@ static Comparator comp_q = new SamComparator(true);
 	final Integer[] basesStart = new Integer[4];final Integer[] basesEnd = new Integer[4];
 	final Integer[] readCounts = new Integer[] {0,0,0};
 	static Alphabet alph = Alphabet.DNA();
-	public void identity1(List<SAMRecord> sam,
+	public void identity1(List<SAMRecord>sam_1,
 			 boolean cluster_reads,     List<Sequence> genome
 			) {
 		
-		Sequence readSeq = new Sequence(alph, sam.get(0).getReadString(), sam.get(0).getReadName());
+		//List<SAMRecord>sam_1 = new ArrayList<SAMRecord>();
+		//sam_1.addAll(Arrays.asList(sam));
+		if(sam_1.size()==0){
+			return ;
+		}
 		// TODO Auto-generated method stub
 		
 		//final char strand2 = strand;
@@ -270,19 +274,23 @@ static Comparator comp_q = new SamComparator(true);
 		
 		Runnable run = new Runnable(){
 			public void run(){
+				if(sam_1.size()==0) throw new RuntimeException("!!");
+
+				Sequence readSeq = new Sequence(alph, sam_1.get(0).getReadString(), sam_1.get(0).getReadName());
+
 		//		System.err.println("HHH,"+chrom_+","+sam.getAlignmentStart()+ ","+sam.getAlignmentEnd()+","+sam.getReadName()+","
 			//+sam.getReadLength());
-				Collections.sort(sam , comp_q);
+				Collections.sort(sam_1 , comp_q);
 
-				int source_index = (Integer) sam.get(0).getAttribute(SequenceUtils.src_tag);
-				String rn= sam.get(0).getReadName();
+				int source_index = (Integer) sam_1.get(0).getAttribute(SequenceUtils.src_tag);
+				String rn= sam_1.get(0).getReadName();
 				final IdentityProfile1 profile = get();
-				int sze = sam.size();
+				int sze = sam_1.size();
 				List<SAMRecord>sam1 = new ArrayList<SAMRecord>();
 				int limit = 1;
-				for(int j=0; sam.size()>0 && j<limit; j++){
+				for(int j=0; sam_1.size()>0 && j<limit; j++){
 					sam1.clear();
-					groupSam(sam.iterator(), sam1);
+					groupSam(sam_1.iterator(), sam1);
 				//	System.err.println(sam1.size()+" "+sze);
 					StringBuffer chrom = new StringBuffer();
 					StringBuffer strand = new StringBuffer();//sam1.get(0).getReadNegativeStrandFlag() ? '-': '+';
