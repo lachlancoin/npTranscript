@@ -80,6 +80,7 @@ public class CigarClusters {
 		String clusterID;
 		CigarHash br = c1.breaks_hash;
 		CigarHash2 subID ;
+		
 		CigarCluster clust = l.get(br);
 		this.totalCounts[source_index]++;
 		if(clust==null){
@@ -217,7 +218,7 @@ public class CigarClusters {
 					if(cc.endPos<endThresh){
 						int totalDepth = cc.readCountSum();
 						process1(cc, o);//, chrom, chrom_index);//,  geneNames);
-						if(Outputs.writeIsoforms) o.writeIsoforms(cc, this,  totalDepth);
+					//	if(Outputs.writeIsoforms) o.writeIsoforms(cc, this,  totalDepth);
 						o.writeDepthH5(cc, this,  totalDepth);
 						rem_count++;
 						l.remove(cc.breaks_hash);
@@ -292,7 +293,7 @@ public class CigarClusters {
 					CigarCluster nxt = it.next();
 					process1(nxt, o);//, chrom, chrom_index, geneNames);
 					int  totalDepth = nxt.readCountSum();
-					if(Outputs.writeIsoforms) o.writeIsoforms(nxt, this, totalDepth);
+				//	if(Outputs.writeIsoforms) o.writeIsoforms(nxt, this, totalDepth);
 					o.writeDepthH5(nxt, this,  totalDepth);
 			}
 			

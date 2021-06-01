@@ -330,7 +330,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		String chromsToRemap = cmdLine.getStringVal("chromsToRemap");
 		
 		//Outputs.MSA_at_cluster = false;
-		boolean calcBreaks=true;// = cmdLine.getBooleanVal("calcBreaks");// whether to calculate data for the break point heatmap, true for SARS_COV2
+		boolean calcBreaks=false;// = cmdLine.getBooleanVal("calcBreaks");// whether to calculate data for the break point heatmap, true for SARS_COV2
 		boolean filterBy5_3 = false;// should be true for SARS_COV2
 		boolean annotByBreakPosition = false;  // should be true for SARS_COV2
 		Outputs.writePolyA = cmdLine.getBooleanVal("writePolyA");
@@ -362,7 +362,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		//	TranscriptUtils.findPolyA = false;
 		//Outputs.writeGFF = false;
 			IdentityProfile1.min_first_last_exon_length = 10;
-			Outputs.calcBreaks=true;
+			Outputs.calcBreaks=false;
 			
 			TranscriptUtils.coronavirus = false;
 			IdentityProfile1.extra_threshold1 = 1000000;
@@ -540,7 +540,8 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 	/**
 	 * Error analysis of a bam file. Assume it has been sorted
 	 */
-	static void errorAnalysis(String[] bamFiles_,boolean[] RNA, String refFile, String annot_file, String[] readList,    String annotationType, String resdir, String pattern, int qual, int round, 
+	static void errorAnalysis(String[] bamFiles_,boolean[] RNA, String refFile, String annot_file, String[] readList,    String annotationType, String resdir, 
+			String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads, 
 			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,File gffFile, String chrToInclude, String chrToIgnore, 
 			int[] writeIsoformDepthThresh, int writeCoverageDepthThresh, double probInclude, boolean fastq, String chromsToRemap) throws IOException {
@@ -563,7 +564,7 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 		IdentityProfile1.writeCoverageDepthThresh =writeCoverageDepthThresh;
 		File annotSummary = new File(resdir, "annotation.csv.gz");
 		if(annotSummary.exists()) annotSummary.delete();
-		PrintWriter annotation_pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(annotSummary, false))));
+	//	PrintWriter annotation_pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(annotSummary, false))));
 		Map<String, Integer> reads= new HashMap<String, Integer>();
 		if(readList.length>0 && readList[0].length()>0){
 			 Map<String, Collection<String>> map = new HashMap<String, Collection<String>>();
@@ -838,8 +839,8 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 		
 			if(profile!=null){
 				IdentityProfileHolder.waitOnThreads(100);
-				profile.printBreakPoints(currentIndex);
-				profile.getConsensus();
+				//profile.printBreakPoints(currentIndex);
+				//profile.getConsensus();
 				/*if(TranscriptUtils.writeAnnotP) {
 					annot.print(outp.annotP);
 				}*/

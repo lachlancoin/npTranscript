@@ -26,6 +26,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.zip.GZIPOutputStream;
 
 import org.apache.commons.math3.linear.SparseRealMatrix;
+import org.checkerframework.checker.units.qual.C;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
 import ch.systemsx.cisd.hdf5.IHDF5SimpleWriter;
@@ -125,7 +126,7 @@ public class Outputs{
 	public static boolean keepinputFasta = true;
 	public static boolean writePolyA = false;
 	//public static boolean writeBed=false;
-	public static boolean writeGFF=true;
+	public static boolean writeGFF=false;
 	public static int minClusterEntries = 5;
 	public static Collection numExonsMSA = Arrays.asList(new Integer[0]); // numBreaks for MSA 
 	public static boolean calcBreaks;
@@ -167,8 +168,9 @@ public class Outputs{
 				Outputs.waitOnThreads(h5writer, 100);
 			}
 			
-			transcriptsP.close();genesP.close();
-			this.featureCP.close();
+			if(transcriptsP!=null) transcriptsP.close();
+			if(genesP!=null) genesP.close();
+			if(featureCP!=null) this.featureCP.close();
 			readClusters.close();
 			if(bedW!=null){
 				for(int i=0; i<bedW.length; i++) bedW[i].close();
@@ -181,7 +183,7 @@ public class Outputs{
 			}
 			if(clusterW!=null) clusterW.close();
 			if(altT!=null) this.altT.close();
-			this.annotP.close();
+			if(annotP!=null) this.annotP.close();
 			//this.clusters.close();
 			for(int i=0; i<clusters.length; i++){
 				if(clusters[i]!=null) this.clusters[i].run(Outputs.minClusterEntries *2, writeCompressDirsExecutor);
@@ -233,7 +235,7 @@ public class Outputs{
 			
 			 outfile4 = new File(resDir,genome_index+ "exons.txt.gz");
 			 outfile5 = new File(resDir,genome_index+ "clusters.fa.gz");
-			 outfile10 = new File(library,genome_index+"isoforms.h5");
+			 outfile10 = new File(resDir,genome_index+"isoforms.h5");
 			outfile12 = new File(library,genome_index+"breakpoints.h5");
 			//gff_output = new File(resDir,genome_index+"gff.gz");
 			
@@ -321,13 +323,18 @@ if(IdentityProfile1.trainStrand){
 			genes_file = new File(resDir,genome_index+ "genes.txt.gz");
 
 			 feature_counts_file = new File(resDir,genome_index+ "transcripts.fc.txt.gz");
-			
-			 featureCP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.feature_counts_file))));
 			 String featureCP_header = "Geneid\tChr\tStart\tEnd\tStrand\tLength";
- 
-			 transcriptsP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(transcripts_file))));
-			 genesP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(genes_file))));
 
+			 if(false){
+				 featureCP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.feature_counts_file))));
+ 
+				 transcriptsP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(transcripts_file))));
+				 genesP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(genes_file))));
+					this.annotP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.outfile11))));
+
+			 }else{
+				 featureCP=null; transcriptsP = null; genesP=null; annotP = null;
+			 }
 				String transcriptP_header = "ID\tchrom\tstart\tend\tgene_nme\tnum_exons\tisoforms\tleader_break\tORFs\tspan\tspan_length"
 					+"\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true);
 				String geneP_header = "ID\tchrom\tstart\tend\ttype_nme\tnum_exons\tisoforms\tleader_break\tORFs\tspan\tspan_length"
@@ -339,27 +346,32 @@ if(IdentityProfile1.trainStrand){
 				}
 				StringBuffer nme_info = new StringBuffer();
 				for(int i=0; i<type_nmes.length; i++) nme_info.append(type_nmes[i]+"\t");
-				transcriptsP.println("#"+nme_info.toString());
-				transcriptsP.println(transcriptP_header);
-				genesP.println("#"+nme_info.toString());
-				genesP.println(geneP_header);
-				featureCP.println("#npTranscript output");
-				featureCP.println(featureCP_header+"\t"+nme_info.toString());
 				
-				this.annotP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.outfile11))));
+				if(transcriptsP!=null) transcriptsP.println("#"+nme_info.toString());
+				if(transcriptsP!=null) transcriptsP.println(transcriptP_header);
+				if(genesP!=null) genesP.println("#"+nme_info.toString());
+				if(genesP!=null) genesP.println(geneP_header);
+				if(featureCP!=null) featureCP.println("#npTranscript output");
+				if(featureCP!=null) featureCP.println(featureCP_header+"\t"+nme_info.toString());
+				
 			List<String> str = new ArrayList<String>();
 			//str.add("subID"); //str.add("ẗype"); 
 			for(int j=0; j<num_sources; j++){
 				str.add(this.type_nmes[j]);
 			}
 			this.col_inds = new int[this.type_nmes.length];
-			if(Outputs.writeH5) altT = HDF5Factory.open(outfile10);
+			if(Outputs.writeH5){
+				outfile10.delete(); // remove existing h5 (temporary)
+				altT = HDF5Factory.open(outfile10);
+			}
 			if(Outputs.calcBreaks && Outputs.writeH5){
 				this.breakPW =  HDF5Factory.open(outfile12);
 
 			}
 			
-			if(altT!=null) writeStringArray(altT, "header", str.toArray(new String[0]),this.col_inds,0);
+			if(altT!=null) {
+				writeStringArray(altT, "header", str.toArray(new String[0]),this.col_inds,0);
+			}
 			this.new_max_cols = Arrays.stream(col_inds) .max() .getAsInt()+1;
 				     
 				     
@@ -636,42 +648,47 @@ if(IdentityProfile1.trainStrand){
 			return sb.toString();
 		}
 		
-		static class HDFObj  {
-			public HDFObj(){
-				
+		public static String getString(float[] l,char sep){
+			StringBuffer sb = new StringBuffer();
+			for(int i=0; i<l.length; i++){
+				if(i>0) sb.append(sep);
+				sb.append(l[i]);
 			}
+			return sb.toString();
+		}
+		static class HDFObj  {
 			public  String toString(){
-				return nme+"\t"+getString(br,',')+"\t"+getString(cnts,',');
+				return getString(br,',')+"\t"+getString(cnts,',');//+"\t"+this.break_sum;
 			}
 			public HDFObj(String str) {
 				String[] str_ = str.split("\t");
-				this.nme = str_[0];
-				String[] str1 = str_[1].split(",");
-				String[] str2 = str_[2].split(",");
-				br = new int[str1.length];
+				//this.nme = str_[0];
+				String[] str1 = str_[0].split(",");
+				String[] str2 = str_[1].split(",");
+				//this.break_sum=  Integer.parseInt(str_[2]);
+				br = new float[str1.length];
 				cnts = new int[str2.length];
-				for(int i=0; i<str1.length; i++)br[i] = Integer.parseInt(str1[i]);
+				for(int i=0; i<str1.length; i++)br[i] = Float.parseFloat(str1[i]);
 				for(int i=0; i<str2.length; i++)cnts[i] = Integer.parseInt(str2[i]);
 			}
-			public HDFObj(List<Integer>l1, List<Integer>l2, int[] count) {
-				nme = CigarHash2.getString(l1);
-			//	if(l2!=null){
-					br = new int[l2.size()];
-					
-					for(int i=0; i<l2.size(); i++){
-						br[i] = l2.get(i);
+			public HDFObj(List<Integer> l1, int source_index, int new_max_cols, double divisor) {
+				 cnts = new int[new_max_cols];
+				cnts[source_index]=1;
+					br = new float[l1.size()];
+					for(int j=0; j<br.length; j++){
+						br[j] = (float) (l1.get(j).doubleValue()/divisor);
 					}
-				//}
-				cnts = count;
+				//	this.break_sum = 1;
 			}
 			
-			String nme; int[]  br; int[] cnts;
+			 float[]  br; int[] cnts;// int break_sum;
 			/*@Override
 			public int compareTo(Object o) {
 				return nme.compareTo(((HDFObj)o).nme);
 			}*/
 			public void expand(int new_num_cols) {
-				cnts = Outputs.expand(cnts, new_num_cols);
+				if(cnts.length < new_num_cols)
+					cnts = Outputs.expand(cnts, new_num_cols);
 			}
 		}
 		private static int[] expand(int[] cnts_old, int new_num_cols){
@@ -718,47 +735,42 @@ if(IdentityProfile1.trainStrand){
 		}
 		
 		/** writes the isoform information */
-		public synchronized void writeString(String id_, CigarCluster cc, CigarClusters cigarClusters) {
-			Map<String, HDFObj> m = null;
+		public synchronized void writeString(CigarCluster cc, int source_index, String chrom){//, CigarClusters cigarClusters) {
+			//String chrom = cc.chrom;
+			String id_1 = cc.breaks_hash.secondKey;
 		//	int num_sources = cigarClusters.num_sources;
-			Map<CigarHash2, Count> all_breaks=cc.all_breaks;
-			String id = "isoforms/"+id_;
-			//int existing_cols=0;
-			if(altT.exists(id)){
-				m = new HashMap<String, HDFObj>();
-				String[] objs1 = altT.readStringArray(id);
-				//existing_cols = objs1[0].cnts.length;
-				for(int i=0; i<objs1.length; i++){
-					HDFObj obji = new HDFObj(objs1[i]);
-					obji.expand(this.new_max_cols);
-					m.put(obji.nme, obji);
-				}
-			}
-				List<String> objs = new ArrayList<String>();
-						Iterator<Entry<CigarHash2, Count>> it = all_breaks.entrySet().iterator();
-						for(int i=0;  it.hasNext();i++){
-							Entry<CigarHash2,Count> ch = it.next();
-							CigarHash2 key = ch.getKey();
-							Count cnt = ch.getValue();
-							List<Integer> br = cnt.getBreaks();
-							int[] cnts = ch.getValue().count();
-							HDFObj obj_i = m==null ? null : m.get(key.toString());
-							if(obj_i==null){
-								obj_i = new HDFObj(key, br, new int[this.new_max_cols]);
-							}
-							for(int j=0; j<col_inds.length; j++){
-								obj_i.cnts[col_inds[j]] = cnts[j];
-							}
-							objs.add(obj_i.toString());
-							
-						}
+			//Map<CigarHash2, Count> all_breaks=cc.all_breaks;
+			CigarHash2 key = cc.breaks;
+			CigarHash2 key2 = cc.cloneBreaks();
+			//Iterator<Entry<CigarHash2, Count>> it = all_breaks.entrySet().iterator();
+			//while( it.hasNext()){
+				//Entry<CigarHash2,Count> ch = it.next();
+				//CigarHash2 key = ch.getKey();
+				String id_2 = key2.toString();
+				//Count cnt = ch.getValue();
+				//List<Integer> br = cnt.getBreaks();
+				
+				
+				//double[] cnt.true_breaks;
+				//cnt.
+				String id = "transcripts/"+id_1+"/"+id_2;
+				//int existing_cols=0;
+				HDFObj obji;
+				if(altT.exists(id)){
+				//	m = new HashMap<String, HDFObj>();
+					 obji =  new HDFObj(altT.readString(id));
+					 obji.expand(new_max_cols);
+					 obji.cnts[source_index]+=1;
+					// obji.break_sum+=1;
+					 for(int j=0; j<key.size(); j++){
+						 obji.br[j]+=(float) key.get(j).doubleValue()/CigarCluster.Count.divisor;
+					 }
+				}else{
 					
-					//    altT.compound().writeA
-					//	System.err.println(objs);
-						altT.writeStringArray(id, objs.toArray(new String[0]));
-						//altT.compound().writeArray(id,  objs.toArray(new HDFObj[0]));;
-						//altT.writeCompoundArray(id, objs.toArray(new HDFObj[0]));
-			
+					obji = new HDFObj( key, source_index, new_max_cols, CigarCluster.Count.divisor); // need to worry about cols? 
+				}
+				altT.writeString(id,obji.toString());
+			//}
 		}
 		
 		
@@ -774,28 +786,7 @@ if(IdentityProfile1.trainStrand){
 			
 		}
 
-		public void writeIsoforms(CigarCluster cc, CigarClusters cigarClusters,  int totalDepth){
-			String id = cc.breaks_hash.secondKey;
-			int[] rcount=cc.readCount;
-			if(altT!=null){
-				if(IdentityProfile1.writeIsoformDepthThresh.length==1){
-					if(totalDepth>=IdentityProfile1.writeIsoformDepthThresh[0]){
-						writeString(id, cc, cigarClusters);
-					}
-				}else{
-					boolean write=false;
-					for(int j=0; j<rcount.length; j++){
-						if(rcount[j]>=IdentityProfile1.writeIsoformDepthThresh[j]){
-							write=true;
-						}
-					}
-					if(write){
-						writeString(id, cc, cigarClusters);
-					}
-				}
-			}
-			
-		}
+		
 		
 		public static SAMFileWriter[][] getSamWriter(String chrom,String resdir, String[] in_nmes, boolean presorted, SAMFileHeader header) {
 			// TODO Auto-generated method stub

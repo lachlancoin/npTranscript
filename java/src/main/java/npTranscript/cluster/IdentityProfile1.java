@@ -22,14 +22,14 @@ import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 
 public class IdentityProfile1 {
-	public static boolean checkPolyA = true;
+	public static boolean checkPolyA = false;
 //	public static double fusion_overlap_thresh = 0.5;
 	public static String[] nmes = new String[] {"5_3", "5_no3", "no5_3", "no5_no3"};
 	public String nextDownstream(int rightBreak, int chrom_index, Boolean forward){
-		return chrom_+"."+TranscriptUtils.round(rightBreak,CigarHash2.round);
+		return chrom_+"/"+TranscriptUtils.round(rightBreak,CigarHash2.round);
 	}
 	public String  nextUpstream(int rightBreak, Boolean forward){
-		return chrom_+"."+TranscriptUtils.round(rightBreak,CigarHash2.round);
+		return chrom_+"/"+TranscriptUtils.round(rightBreak,CigarHash2.round);
 	}
 	public void adjust3UTR(int seqlen2) {
 		
@@ -152,7 +152,7 @@ static char delim_start ='$';
 	
 	SortedSet<String> geneNames = new TreeSet<String>();
 	
-	public String[] clusterID = new String[2];
+	//public String[] clusterID = new String[2];
 	
 	//** this adds coRefPositions into the clusters
 	public void commit(Sequence readSeq){
@@ -177,9 +177,9 @@ static char delim_start ='$';
 		
 		String strand = this.coRefPositions.strand;
 	//	int start_read = this.readSt; int end_read = this.readEn;int readLength = end_read-start_read;
-		 parent.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources,  this.chrom_,  clusterID, strand, this.readName); // this also clears current cluster
+		// parent.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources,  this.chrom_,  clusterID, strand, this.readName); // this also clears current cluster
 	//	int len1 = readSeq.length();
-		String str = id+"\t"+clusterID[0]+"\t"+clusterID[1]+"\t"+source_index+"\tNA\tNA\tNA\t"
+		String str = id+"\tNA\tNA\t"+source_index+"\tNA\tNA\tNA\t"
 		+type_nme+"\t"+chrom_+"\t"
 		+startPos+"\t"+endPos+"\t"+strand+"\t"+coRefPositions.numIsoforms()+"\t"+(hasLeaderBreak ? 1:0)+"\t"
 		+coRefPositions.getError(source_index)+"\t"+secondKeySt+"\t"+strand+"\t"+breakSt+"\t"+breakSt1+"\t"+span_str+"\t"+geneNames.size()+"\t"+q_value_str.trim()+"\t"+st.toString();
@@ -189,7 +189,7 @@ static char delim_start ='$';
 	//			+"\t"+ViralChimericReadsAnalysisCmd.median(phredQ,0,10)+"\t"+ViralChimericReadsAnalysisCmd.median(phredQ,len1-10,10)+"\t"+annot.getStrand(coRefPositions.span.iterator());			
 		//}
 		parent.o.printRead(str);
-		
+		parent.o.writeString(coRefPositions, source_index, chrom_);
 	}
 	boolean hasLeaderBreak;		String breakSt; String breakSt1; String secondKeySt;boolean includeInConsensus = true;
 	byte[] phredQ; String baseQ; String type_nme; String span_str; int span;  String q_value_str; String id;

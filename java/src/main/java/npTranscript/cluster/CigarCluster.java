@@ -77,8 +77,8 @@ public class CigarCluster  {
 		private String id;
 		private int[] count;
 		
-		private double[]  true_breaks; //in 1kb
-		private static double divisor = 1e3;
+		public float[]  true_breaks; //in 1kb
+		public static double divisor = 1e3f;
 		
 		int break_sum=0;
 		
@@ -87,7 +87,7 @@ public class CigarCluster  {
 		public void addBreaks(List<Integer>breaks, int src_index){
 			if(!Outputs.firstIsTranscriptome || src_index==0 || this.count[0]==0){
 				break_sum+=1;
-				if(true_breaks==null) true_breaks =new double[breaks.size()];
+				if(true_breaks==null) true_breaks =new float[breaks.size()];
 				if(true_breaks.length!=breaks.size()){
 					System.err.println("warning breaks have different lengths, so not updating");
 				}else{
