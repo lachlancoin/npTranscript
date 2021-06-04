@@ -99,7 +99,7 @@ public class IdentityProfile1 {
 	
 	final IdentityProfileHolder parent;
 	final Outputs o; 
-	final CigarClusters all_clusters;
+	//final CigarClusters all_clusters;
 	public IdentityProfile1(IdentityProfileHolder parent) {
 		this.parent=parent;
 		//this.chrom_index = parent.chrom_index;
@@ -109,7 +109,7 @@ public class IdentityProfile1 {
 		this.coRefPositions1 = new CigarCluster("", "-1",num_sources,".");
 
 		this.o = parent.o;
-		this.all_clusters = parent.all_clusters;
+		//this.all_clusters = parent.all_clusters;
 		
 	}
 	public String strand;

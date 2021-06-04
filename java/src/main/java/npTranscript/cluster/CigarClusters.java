@@ -87,7 +87,7 @@ public class CigarClusters {
 			String id =  "ID"+"."+currID;
 			currID++;
 			String subID1 = 
-					Outputs.firstIsTranscriptome && source_index==0 ? readId:	id+".t0";
+					Outputs1.firstIsTranscriptome && source_index==0 ? readId:	id+".t0";
 				
 			CigarCluster newc = new CigarCluster(chr, id, num_sources, c1, source_index, strand, subID1);
 			clusterID = newc.id();
@@ -142,66 +142,7 @@ public class CigarClusters {
 	
 	final Map<String, Sequence> genomes;
 	
-	public void process1(CigarCluster cc,   Outputs o ){
-		String read_count = TranscriptUtils.getString(cc.readCount);
-		String chrom = cc.chrom;//seq.getName();
-		
-		Boolean forward = cc.forward;
-		boolean hasLeaderBreak = false;//TranscriptUtils.coronavirus  ? (cc.breaks.size()>1 &&  annot.isLeader(cc.breaks.get(1)*CigarHash2.round)) : false;
-		//geneNames.clear();
-		int type_ind = 0;//annot.getTypeInd(cc.startPos, cc.endPos, forward);
-		String type_nme ="NA";// annot.nmes[type_ind];
-		String geneNme = "NA";//annot.getString(cc.span, geneNames);
-		if(Outputs.writeGFF){
-			cc.writeGFF(o.gffW, o.refOut[type_ind], o.bedW,chrom,  Outputs.isoThresh, type_nme, genomes==null ? null : genomes.get(chrom));
-		}
 	
-		int gene_size = 0;
-		String depth_str ="";// "\t"+cc.getTotDepthSt(true)+"\t"+cc.getTotDepthSt(false);
-		Iterator<Entry<CigarHash2, Count>> it = cc.all_breaks.entrySet().iterator();
-		while(it.hasNext()){
-			Entry<CigarHash2, Count> nxt = it.next();
-			CigarHash2 h2 = nxt.getKey();
-			Count cnt = nxt.getValue();
-			List<Integer> breaks = cnt.getBreaks();
-			int exonCount =(int) Math.round((double) breaks.size()/2.0);
-			String read_count1 =  TranscriptUtils.getString(cnt.count());
-			o.printTranscript(cnt.id()+"\t"+chrom+"\t"+breaks.get(0)+"\t"+breaks.get(breaks.size()-1)+"\t"+geneNme+"\t"+exonCount+"\t1"+
-			"\t"+(hasLeaderBreak? 1: 0)+"\t"+h2.toString()+"\t"+cnt.id()+"\t"+gene_size+"\tNA\t"+cnt.sum()+"\t"+read_count1,
-					depth_str);
-		}
-		o.printTranscriptAlt(cc);
-		o.printGene(
-			cc.id()+"\t"+chrom+"\t"+cc.startPos+"\t"+cc.endPos+"\t"+type_nme+"\t"+
-	
-		cc.exonCount()+"\t"+cc.numIsoforms()+"\t"+(hasLeaderBreak? 1: 0)+"\t"+cc.breaks_hash.secondKey+"\t"+geneNme+"\t"+
-		"NA"+"\t"+
-		cc.totLen+"\t"+cc.readCountSum()+"\t"+read_count,depth_str);
-		List<Integer> br = cc.getBreaks();
-	
-		StringBuffer starts = new StringBuffer();
-		StringBuffer ends = new StringBuffer();
-		StringBuffer chroms = new StringBuffer();
-		StringBuffer strand = new StringBuffer();
-			int len =0;
-			if(br!=null){
-			for(int i=0; i<br.size(); i+=2){
-				len += br.get(i+1) - br.get(i);
-				String ext = i<br.size()-2 ? ";" : "";
-				starts.append(br.get(i)+ext); ends.append(br.get(i+1)+ext);
-				strand.append("+"+ext); chroms.append(chrom+ext);
-			}
-			}else{
-				starts.append(cc.startPos); ends.append(cc.endPos); chroms.append(cc.endPos); strand.append("+");
-			}
-			
-		
-		o.printFC(cc.breaks_hash.secondKey+"\t"+chroms.toString()+"\t"+starts.toString()+"\t"+ends.toString()+"\t"+"+;+\t"+len+"\t"+read_count);
-	//	Geneid  Chr     Start   End     Strand  Length  /DataOnline/Data/Projects/corona_invitro/host_analysis/direct_cDNA/vero/vero_24hpi/merged/genome/infected/mo
-	//	ID0.0   MT007544.1;MT007544.1   14;27385        66;29860        +;+     2529    0       0       0       0       0       0
-		//I
-//				CigarCluster.recordDepthByPosition ?  cc.getTotDepthSt(true)+"\t"+cc.getTotDepthSt(false): "");
-	}
 	//CigarHash fromKey = new CigarHash("",0);
 	/** clears consensus up to certain start position.  This designed to keep memory foot print under control.  Assumes the bams are sorted */
 	public synchronized int clearUpTo(int endThresh, 	Outputs o){
@@ -217,7 +158,7 @@ public class CigarClusters {
 					CigarCluster cc = it.next();
 					if(cc.endPos<endThresh){
 						int totalDepth = cc.readCountSum();
-						process1(cc, o);//, chrom, chrom_index);//,  geneNames);
+						//cc.process1( o,genomes==null ? null : genomes.get(cc.chrom));//, chrom, chrom_index);//,  geneNames);
 					//	if(Outputs.writeIsoforms) o.writeIsoforms(cc, this,  totalDepth);
 						o.writeDepthH5(cc, this,  totalDepth);
 						rem_count++;
@@ -291,7 +232,7 @@ public class CigarClusters {
 			 = iterator(TranscriptUtils.coronavirus  ? comp : null);
 			while(  it.hasNext()) {
 					CigarCluster nxt = it.next();
-					process1(nxt, o);//, chrom, chrom_index, geneNames);
+				//	nxt.process1(o,genomes==null ? null : genomes.get(nxt.chrom));//, chrom, chrom_index, geneNames);
 					int  totalDepth = nxt.readCountSum();
 				//	if(Outputs.writeIsoforms) o.writeIsoforms(nxt, this, totalDepth);
 					o.writeDepthH5(nxt, this,  totalDepth);

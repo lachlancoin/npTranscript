@@ -37,14 +37,12 @@ package npTranscript.run;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -61,20 +59,14 @@ import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
-import java.util.zip.ZipFile;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
-import htsjdk.samtools.fastq.FastqRecord;
-import htsjdk.samtools.fastq.FastqWriter;
-import htsjdk.samtools.util.SequenceUtil;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
-import japsa.seq.ZipGFF;
 import japsa.tools.seq.SequenceUtils;
 import japsa.tools.seq.SequenceUtils.FilteredIterator;
 import japsa.util.CommandLine;
@@ -83,7 +75,6 @@ import npTranscript.cluster.Annotation;
 import npTranscript.cluster.CigarCluster;
 import npTranscript.cluster.CigarHash;
 import npTranscript.cluster.CigarHash2;
-import npTranscript.cluster.EmptyAnnotation;
 import npTranscript.cluster.GFFAnnotation;
 import npTranscript.cluster.IdentityProfile1;
 import npTranscript.cluster.IdentityProfileHolder;
@@ -127,19 +118,15 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 	//	addBoolean("baseBreakPointsOnFirst", false, "whether the break points should be preferentially based on the first bam");
 		addBoolean("sorted", true, "whether bamfile sorted in terms of position.");
 		addBoolean("sequential", false, "whether to iterate through one bam at a time (in sequence) or in parallel.");
-		addBoolean("firstIsTranscriptome", false, "whether first bam is transcriptome");
+	
 		addBoolean("enforceStrand", false, "whether to enforce strandedness");
 		addString("readList", "", "List of reads", false);
-		addString("gffThresh","1", "reports if greater than in dataset");
 
-		addInt("maxTranscriptsPerGeneInGFF",1,"Maximum number of transcripts per gene (highest abundance first");
-		addString("annotType", null, "Type of annotation (only included if annotation is GFF file", false);
 		addString("chroms_to_include", "all", "Restrict to these chroms, colon delimited", false);
 		addString("chroms_to_ignore", "none", "Ignore these chroms", false);
 	//	addString("bedChr", null, "Use this for the chrom in bed chr, e.g. NC_045512v2, false");
         addBoolean("singleGFF", false, "whether to have single output gff, rather than different for different input. ");
 		addString("resdir", "results"+System.currentTimeMillis(), "results directory");
-		addString("GFF_features", "gene_name:description:gene_id:gene_biotype:gene_id", "GFF feature names");
 		addString("RNA", "name", "If is direct RNA.  Can be tab delimmited boolean, e.g. true:true  or if set to name it will look for RNA string in name");
 		addBoolean("trainStrand", false,"whether to produce training data for strand correction");
 		addBoolean("recordDepthByPosition", false, "whether to store position specific depth (high memory");
@@ -176,11 +163,10 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 	//	addBoolean("coexpression", false, "whether to calc coexperssion matrices (large memory for small bin size)");
 	//	addBoolean("overwrite", false, "whether to overwrite existing results files");
 		addBoolean("keepAlignment", false, "whether to keep alignment for MSA");
-		addBoolean("attempt5rescue", false, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
-		addBoolean("attempt3rescue", false, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
-		addBoolean("writePolyA", false, "whether write reads with polyA in middle");
+	//	addBoolean("attempt5rescue", false, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
+	//	addBoolean("attempt3rescue", false, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
+		//addBoolean("writePolyA", false, "whether write reads with polyA in middle");
 		addBoolean("coronavirus", true, "whether to run in coronavirus mode (necessary to do breakpoint analysis, but takes more memory)");
-		addBoolean("writeGFF", false, "whether to output gff ");
 		addBoolean("writeIsoforms", false, "whether to write isoforms");
 		addBoolean("enforceKnownLinkedExons", false, "whether to use exon_exon boundaries from annotation ");
 		addBoolean("writeH5", false,"whether to write h5 outputs");
@@ -221,13 +207,12 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 	public static boolean sequential = false;
 	public static boolean[] RNA;
 	public static String mm2_index;
- public static void run(CommandLine cmdLine, String[] bamFiles, String resDir,File anno, String chrs, String chrsToIgnore,  boolean fastq, String reference) throws IOException{
+ public static void run(CommandLine cmdLine, String[] bamFiles, String resDir, String chrs, String chrsToIgnore,  boolean fastq, String reference) throws IOException{
 		int qual = cmdLine.getIntVal("qual");
 		int bin = cmdLine.getIntVal("bin");
 		CigarCluster.singleGFF = cmdLine.getBooleanVal("singleGFF");
 		int breakThresh = cmdLine.getIntVal("breakThresh");
 		String pattern = cmdLine.getStringVal("pattern");
-		String annotFile = cmdLine.getStringVal("annotation");
 		String[] readList = cmdLine.getStringVal("readList").split(":");
 		//String genesToInclude = cmdLine.getStringVal("genesToInclude");
 		String  annotationType = getAnnotationsToInclude(cmdLine.getStringVal("annotType"), cmdLine.getBooleanVal("useExons"));
@@ -238,7 +223,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		//SequenceUtils.max_per_file = maxReads*4;
 		 ViralTranscriptAnalysisCmd2.supplementaryQ =cmdLine.getIntVal("supplementaryQ");
 		
-		Outputs.maxTranscriptsPerGeneInGFF = cmdLine.getIntVal("maxTranscriptsPerGeneInGFF");
+		
 		Outputs.writeH5 = cmdLine.getBooleanVal("writeH5");
 		Annotation.enforceStrand = cmdLine.getBooleanVal("enforceStrand");
 		IdentityProfile1.trainStrand = cmdLine.getBooleanVal("trainStrand");
@@ -333,7 +318,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		boolean calcBreaks=false;// = cmdLine.getBooleanVal("calcBreaks");// whether to calculate data for the break point heatmap, true for SARS_COV2
 		boolean filterBy5_3 = false;// should be true for SARS_COV2
 		boolean annotByBreakPosition = false;  // should be true for SARS_COV2
-		Outputs.writePolyA = cmdLine.getBooleanVal("writePolyA");
+		//Outputs.writePolyA = cmdLine.getBooleanVal("writePolyA");
 		CigarCluster.recordDepthByPosition = cmdLine.getBooleanVal("recordDepthByPosition");
 		CigarCluster.recordStartEnd = cmdLine.getBooleanVal("recordDepthByPosition");
 
@@ -382,79 +367,72 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		sequential = cmdLine.getBooleanVal("sequential");
 		sorted = cmdLine.getBooleanVal("sorted");
 		
-		String[] gffThresh_1 = cmdLine.getStringVal("gffThresh").split(":");
-		Outputs.firstIsTranscriptome = cmdLine.getBooleanVal("firstIsTranscriptome");
 
 		Outputs.library = new File(cmdLine.getStringVal("library"));
-		Outputs.gffThresh = new int[gffThresh_1.length];
-		
-		//Outputs.gffThreshTranscriptSum=0;
-		
-			for(int k=0; k<gffThresh_1.length; k++){
-				Outputs.gffThresh[k] = Integer.parseInt(gffThresh_1[k]);
-			}
 		
 		
-			errorAnalysis(bamFiles, RNA,reference, annotFile,readList,annotationType, 
+		
+			errorAnalysis(bamFiles, RNA,reference, readList,annotationType, 
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  
-				calcBreaks, filterBy5_3, annotByBreakPosition, anno, chrs, chrsToIgnore,  isoformDepthThresh, coverageDepthThresh, probInclude, fastq, 
+				calcBreaks, filterBy5_3, annotByBreakPosition,  chrs, chrsToIgnore,  isoformDepthThresh, coverageDepthThresh, probInclude, fastq, 
 				chromsToRemap);
 	}
  public static boolean sorted = true;
 public static boolean allowSuppAlignments = true;; // this has to be true for allowing supp alignments
 
  static double tme0;
-	public static void main(String[] args1) throws IOException, InterruptedException {
-		tme0 = System.currentTimeMillis();
-		CommandLine cmdLine = new ViralTranscriptAnalysisCmd2();
-		
-		String[] args = cmdLine.stdParseLine(args1);
-		String opts_file  = cmdLine.getStringVal("optsFile");
+ public static String[] readOpts(CommandLine cmdLine, String[] args1, String optsFile){
+	 String[] args = cmdLine.stdParseLine(args1);
+		String opts_file  = cmdLine.getStringVal(optsFile);
 		if(opts_file!=null){
-			try{
-				Map<String, String> keyval = new HashMap<String, String>();
-				for(int i=0; i<args1.length; i++){
-					String[] st2 = args1[i].split("=");
-					if(st2.length<2) throw new RuntimeException("wrong format, needs to be ke=val "+args1[i]);
-					keyval.put(st2[0], st2[1]);
-				}
-				BufferedReader br = new BufferedReader(new FileReader(opts_file));
-				String st = "";
-				while((st=br.readLine())!=null){
-					if(st.startsWith("#") || st.length()==0) continue;
-					//String[]str = st.split("=");
-					String st1 = st.split("#")[0];
-					String[] st2 = st1.trim().split("\\s+");
-					for(int k=0; k<st2.length; k++){
-						String[] st3 = st2[k].split("=");
-						if(st3.length!=2) {
-							throw new RuntimeException("wrong format, needs to be keu=val "+st2[k]);
-						}
-						if(!keyval.containsKey(st3[0])) {
-							keyval.put(st3[0], st3[1]);
-						}
+	 try{
+			Map<String, String> keyval = new HashMap<String, String>();
+			for(int i=0; i<args1.length; i++){
+				String[] st2 = args1[i].split("=");
+				if(st2.length<2) throw new RuntimeException("wrong format, needs to be ke=val "+args1[i]);
+				keyval.put(st2[0], st2[1]);
+			}
+			BufferedReader br = new BufferedReader(new FileReader(opts_file));
+			String st = "";
+			while((st=br.readLine())!=null){
+				if(st.startsWith("#") || st.length()==0) continue;
+				//String[]str = st.split("=");
+				String st1 = st.split("#")[0];
+				String[] st2 = st1.trim().split("\\s+");
+				for(int k=0; k<st2.length; k++){
+					String[] st3 = st2[k].split("=");
+					if(st3.length!=2) {
+						throw new RuntimeException("wrong format, needs to be key=val "+st2[k]);
+					}
+					if(!keyval.containsKey(st3[0])) {
+						keyval.put(st3[0], st3[1]);
 					}
 				}
-				args = new String[keyval.size()];
-				Iterator<Entry<String, String>> it = keyval.entrySet().iterator();
-				for(int i=0; it.hasNext(); i++){
-					Entry<String, String> ent = it.next();
-					args[i] = ent.getKey()+"="+ent.getValue();
-				}
-				br.close();
-			}catch(Exception exc){
-				exc.printStackTrace();
 			}
+			args = new String[keyval.size()];
+			Iterator<Entry<String, String>> it = keyval.entrySet().iterator();
+			for(int i=0; it.hasNext(); i++){
+				Entry<String, String> ent = it.next();
+				args[i] = ent.getKey()+"="+ent.getValue();
+			}
+			br.close();
+		}catch(Exception exc){
+			exc.printStackTrace();
+		}
 		}else{
 			args = args1;
 		}
-	 String[] args2 = cmdLine.stdParseLine(args);
+	 return cmdLine.stdParseLine(args);
+ }
+	public static void main(String[] args1) throws IOException, InterruptedException {
+		tme0 = System.currentTimeMillis();
+		CommandLine cmdLine = new ViralTranscriptAnalysisCmd2();
+		String[] args2 = ViralTranscriptAnalysisCmd2.readOpts(cmdLine, args1,"optsFile");
 		String bamFile = cmdLine.getStringVal("bamFile");
 		String fastqFile = cmdLine.getStringVal("fastqFile");
 		
 		
 		//Outputs.writeBed  = cmdLine.getBooleanVal("writeBed");
-		Outputs.writeGFF = cmdLine.getBooleanVal("writeGFF");
 		Outputs.writeIsoforms = cmdLine.getBooleanVal("writeIsoforms");
 
 		SequenceUtils.mm2_threads = cmdLine.getIntVal("mm2_threads");
@@ -475,7 +453,7 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 		}
 		
 		String resdir = cmdLine.getStringVal("resdir");
-		String annot_file = cmdLine.getStringVal("annotation");
+		
 		
 		String chroms= cmdLine.getStringVal("chroms_to_include");
 		String chroms_ignore= cmdLine.getStringVal("chroms_to_ignore");
@@ -523,7 +501,7 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 					}
 				}
 		}*/
-		run(cmdLine, bamFiles_, resdir, annot_file==null ? null : new File(annot_file),  chroms, chroms_ignore, fastq, reference);
+		run(cmdLine, bamFiles_, resdir,   chroms, chroms_ignore, fastq, reference);
 		System.err.println("shutting down executors");
 		
 		IdentityProfileHolder.shutDownExecutor();
@@ -540,10 +518,10 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 	/**
 	 * Error analysis of a bam file. Assume it has been sorted
 	 */
-	static void errorAnalysis(String[] bamFiles_,boolean[] RNA, String refFile, String annot_file, String[] readList,    String annotationType, String resdir, 
+	static void errorAnalysis(String[] bamFiles_,boolean[] RNA, String refFile,  String[] readList,    String annotationType, String resdir, 
 			String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads, 
-			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition,File gffFile, String chrToInclude, String chrToIgnore, 
+			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition, String chrToInclude, String chrToIgnore, 
 			int[] writeIsoformDepthThresh, int writeCoverageDepthThresh, double probInclude, boolean fastq, String chromsToRemap) throws IOException {
 		boolean cluster_reads = true;
 		CigarHash2.round = round;
@@ -562,8 +540,7 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 		TranscriptUtils.endThresh = endThresh;
 		IdentityProfile1.writeIsoformDepthThresh =writeIsoformDepthThresh;
 		IdentityProfile1.writeCoverageDepthThresh =writeCoverageDepthThresh;
-		File annotSummary = new File(resdir, "annotation.csv.gz");
-		if(annotSummary.exists()) annotSummary.delete();
+		
 	//	PrintWriter annotation_pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(annotSummary, false))));
 		Map<String, Integer> reads= new HashMap<String, Integer>();
 		if(readList.length>0 && readList[0].length()>0){

@@ -12,6 +12,11 @@ public class CigarHash2 extends ArrayList<Integer> {
 	public CigarHash2(boolean rounded){
 		this.rounded = rounded;
 	}
+	public CigarHash2(String[] str) {
+		for(int i=0; i<str.length; i++){
+			this.add(Integer.parseInt(str[i]));
+		}
+	}
 	//public static boolean subclusterBasedOnStEnd = false;
 	boolean rounded = false;
 	public CigarHash2 clone(boolean round, int start, int end){

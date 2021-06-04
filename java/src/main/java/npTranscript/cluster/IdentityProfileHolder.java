@@ -39,7 +39,7 @@ public class IdentityProfileHolder {
 	
 	static int primelen = 500;//chr.length();
 	public static  ExecutorService executor ;
- final CigarClusters all_clusters;
+ //final CigarClusters all_clusters;
   BreakPoints bp;
  final Outputs o;
  //Sequence genome;
@@ -119,7 +119,7 @@ public class IdentityProfileHolder {
 	 this.type_nmes = in_nmes;
 	 this.num_sources = in_nmes.length;
 	 this.o  = o;
-	 all_clusters =new CigarClusters( num_sources, genomes);
+	// all_clusters =new CigarClusters( num_sources, genomes);
 	 bp=null;
 	 if(calcBreakpoints && genomes!=null){
 			System.err.println("calculating break point usage");
@@ -233,13 +233,11 @@ static Comparator comp_q = new SamComparator(true);
 		}
 	}
 	SortedSet<String> geneNames = new TreeSet<String>();
-	public void getConsensus() throws IOException {
-		//waitOnThreads(100);
-		this.empty();
+	
 		
-		this.all_clusters.getConsensus( o);
+	
 		
-}
+
 	/*SortedMap<Integer, Integer> currentStart = new TreeMap<Integer, Integer>();
 	private synchronized void removeStart(int startPos){
 		int  v1 = currentStart.get(startPos);

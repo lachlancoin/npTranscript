@@ -53,12 +53,7 @@ public class Outputs{
 	}
 	public static final SAMFileWriterFactory factB = new SAMFileWriterFactory();
 	//public static int gffThreshGene = 10;
-	public static int[] gffThresh = null;;
-	public static boolean firstIsTranscriptome = false;
-
-	public static int gffThreshTranscriptSum = 0;
 	
-	public static int maxTranscriptsPerGeneInGFF = Integer.MAX_VALUE;
 	public static boolean writeIsoforms = false;
 
 	public static File library = new File("./");
@@ -86,9 +81,7 @@ public class Outputs{
 	}
 	
 	
-	 class FOutp{
-		//String nme;
-		//boolean gz;
+	/* class FOutp{
 		OutputStreamWriter os;
 		FastqWriter fastq ;
 		File f; 
@@ -110,41 +103,35 @@ public class Outputs{
 			}
 		}
 		public void close() throws IOException {
-			
 			if(os!=null) this.os.close();
 			else fastq.close();
 			if(f.length()==0) f.deleteOnExit();
-			
 		}
-	}
-	// public static boolean MSA_at_cluster = true;
+	}*/
 	public static List<String> doMSA = null;//"5_3";
 	public static Map<Integer,Integer>msa_sources = new HashMap<Integer, Integer>();
 //	public static boolean mergeSourceClusters = true;
 	public static boolean gzipFasta = false;
 	public static boolean keepAlignment = true;
 	public static boolean keepinputFasta = true;
-	public static boolean writePolyA = false;
 	//public static boolean writeBed=false;
-	public static boolean writeGFF=false;
+	
 	public static int minClusterEntries = 5;
 	public static Collection numExonsMSA = Arrays.asList(new Integer[0]); // numBreaks for MSA 
 	public static boolean calcBreaks;
 	public static boolean writeH5=false;
 	
-		public File transcripts_file, genes_file;
+		
 		public File reads_file; 
-		public File feature_counts_file;
-		private final File  outfile2,  outfile4, outfile5,  outfile10, outfile11, outfile12;
+		
+		private final File  outfile2,  outfile10,  outfile12;
 		//private final File[] gff_output;
 		//outfile9;
-		private final FOutp[] leftover_l, polyA;//, leftover_r, fusion_l, fusion_r;
+		//private final FOutp[] leftover_l, polyA;//, leftover_r, fusion_l, fusion_r;
 	
 	//	final int seqlen;
-		public  PrintWriter transcriptsP,readClusters, annotP,  featureCP, genesP;//, plusMinus;
-		 PrintWriter[] gffW;
-		 PrintWriter[] bedW;
-		 SequenceOutputStream[] refOut;
+		public  PrintWriter readClusters;//, plusMinus;
+	
 		 IHDF5SimpleWriter clusterW = null;
 		 IHDF5Writer altT = null;
 		 IHDF5Writer breakPW = null;
@@ -167,32 +154,15 @@ public class Outputs{
 			if(h5writer!=null){
 				Outputs.waitOnThreads(h5writer, 100);
 			}
-			
-			if(transcriptsP!=null) transcriptsP.close();
-			if(genesP!=null) genesP.close();
-			if(featureCP!=null) this.featureCP.close();
 			readClusters.close();
-			if(bedW!=null){
-				for(int i=0; i<bedW.length; i++) bedW[i].close();
-			}
-			if(gffW!=null) for(int i=0; i<gffW.length; i++) gffW[i].close();
-			if(refOut!=null){
-				for(int i=0; i<refOut.length; i++){
-					refOut[i].close();
-				}
-			}
 			if(clusterW!=null) clusterW.close();
 			if(altT!=null) this.altT.close();
-			if(annotP!=null) this.annotP.close();
 			//this.clusters.close();
 			for(int i=0; i<clusters.length; i++){
 				if(clusters[i]!=null) this.clusters[i].run(Outputs.minClusterEntries *2, writeCompressDirsExecutor);
 			}
 			
-			for(int i=0; i<leftover_l.length; i++){
-				if(leftover_l[i]!=null) this.leftover_l[i].close();
-				if(polyA[i]!=null) this.polyA[i].close();
-			}
+			
 		
 
 			
@@ -204,110 +174,36 @@ public class Outputs{
 		boolean writeDirectToZip = false;
 		
 		String genome_index;
-	//	String chrom;
-		
-		/*public  void updateChrom( Sequence seq, String chr1, int currentIndex) {
-			String chr = chr1;
-			this.chrom = chr;
-			this.chrom = ((chrom.startsWith("chr") || chrom.startsWith("NC")) ? chrom : "chr"+chrom).split("\\.")[0];
-			if(this.gffW!=null){
-				for(int i=0; i<gffW.length; i++){
-				gffW[i].println("##sequence-region "+chr+" "+0+" "+(seq==null ? "NA" :seq.length()));
-				}
-			}
-		}*/
-	
-		
 		 int[] col_inds, col_inds_depth;  // this is the col_inds for writing count information in h5 library
 		 int new_max_cols, new_max_cols_depth;
 		
 		public Outputs(File resDir,  String[] type_nmes, boolean isoforms, boolean cluster_depth) throws IOException{
 			this.type_nmes = type_nmes;
-		//	this.genome_index= currentIndex;
 			genome_index = "0.";
-		
 			 this.resDir = resDir;
-		//	 this.seqlen = seqlen;
 			 int num_sources = type_nmes.length;
-		//	 outfile = new File(resDir,genome_index+ ".txt");
-		//	 outfile1 = new File(resDir, genome_index+ "coref.txt");
 			 outfile2 = new File(library, genome_index+"clusters.h5");
-			
-			 outfile4 = new File(resDir,genome_index+ "exons.txt.gz");
-			 outfile5 = new File(resDir,genome_index+ "clusters.fa.gz");
 			 outfile10 = new File(resDir,genome_index+"isoforms.h5");
 			outfile12 = new File(library,genome_index+"breakpoints.h5");
-			//gff_output = new File(resDir,genome_index+"gff.gz");
-			
-			 outfile11 = new File(resDir, genome_index+"annot.txt.gz");
-		//	String prefix = readsF.getName().split("\\.")[0];
 			List<Integer> vals = new ArrayList<Integer>(new HashSet<Integer> (Outputs.msa_sources.values()));
 			Collections.sort(vals);
-			 //List<String>[] types = new ArrayList<String>[vals.size())]; 
 			 if(doMSA!=null && ( Outputs.msa_sources.size()==0)){
 				 clusters = new CompressDir[] {new CompressDir(new File(resDir,  genome_index+"clusters"), true)};
-				
-		//		 so =  new FOutp[] {new FOutp("consensus")};
 			 }else if(doMSA!=null &&  ( Outputs.msa_sources.size()>0)){
 				 clusters =  new CompressDir[vals.size()];
-			//	 this.so = new FOutp[type_nmes.length];
 				 for(int i=0; i<clusters.length; i++){
-					 
 					 String nmei =  genome_index+vals.get(i)+".";
-					// if(TranscriptUtils.coronavirus && vals.size()==type_nmes.length) nmei = genome_index+"."+type_nmes[i]+".";
 					 clusters[i] = new CompressDir(new File(resDir, nmei+"clusters"), true);
-				//	 so[i] = new FOutp(nmei+"consensus" );
 				 }
 			 }else{
 				clusters = new CompressDir[1];
 			 }
-			 leftover_l = new FOutp[type_nmes.length];
-			 polyA = new FOutp[type_nmes.length];
-		/*	 leftover_r = new FOutp[type_nmes.length];
-			 fusion_l = new FOutp[type_nmes.length];
-			 fusion_r = new FOutp[type_nmes.length];*/
-		//	 String nmei = genome_index+"."
-			 for(int i=0; i<leftover_l.length; i++){
-				 this.leftover_l[i]=  new FOutp(type_nmes[i]+".leftover", true);
-				 if(writePolyA) this.polyA[i]=  new FOutp(type_nmes[i]+".polyA", true);
-				/* this.leftover_r[i]=  new FOutp(type_nmes[i]+".leftover_r" , true);
-				 this.fusion_l[i]=  new FOutp(type_nmes[i]+".fusion_l" , true);
-				 this.fusion_r[i]=  new FOutp(type_nmes[i]+".fusion_r" , true);*/
-			 }
+		
 		//	this.right=  new SequenceOutputStream((new FileOutputStream(new File(resDir,genome_index+".right" ))));
 			 reads_file = new File(resDir,genome_index+ "readToCluster.txt.gz");
 			 readClusters = new PrintWriter(
 					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(reads_file))));
-			 if(writeGFF){
-				 bedW = new PrintWriter[type_nmes.length];
-				 for(int k=0 ;k<bedW.length; k++){
-				
-					File  bedoutput = new File(resDir,genome_index+k+".bed.gz");
-					 bedW[k] = new PrintWriter(
-						new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(bedoutput))));
-				 bedW[k].println("track name=\""+type_nmes[k]+"\" description=\""+type_nmes[k]+"\" itemRgb=\"On\" ");
-				 }
-			 }
-			 if(writeGFF){
-				 gffW= new PrintWriter[firstIsTranscriptome? 2: 1];
-				 for(int i=0; i<gffW.length; i++){
-					 gffW[i] = new PrintWriter(
-							new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(
-									new File(resDir,i+".gff.gz")))));
-				 Date d = new Date();
-					gffW[i].println("##gff-version 3\n"+
-							"#description: \n"+
-							"#provider: \n"+
-							"#contact: \n"+
-							"#format: gff3\n"+
-							"#date: "+d.toGMTString()+"\n");
-				 }
-					this.refOut =new SequenceOutputStream[Annotation.nmes.length];
-					for(int i=0; i<refOut.length; i++){
-						File ref_output = new File(resDir,Annotation.nmes[i]+".ref.fa");
-						refOut[i] =new SequenceOutputStream(new FileOutputStream(ref_output));
-					}
-			 }
+			
 //			 readID  clusterId       subID   source  length  start_read      end_read   
 			 //type_nme        chrom   startPos        endPos  breakStart      breakEnd        errorRatio
 			 //upstream        downstream      strand  breaks
@@ -319,40 +215,7 @@ if(IdentityProfile1.trainStrand){
 }
 			 readClusters.println(header); //\tbreakStart\tbreakEnd\tbreakStart2\tbreakEnd2\tstrand\tbreaks");
 		
-			 transcripts_file = new File(resDir,genome_index+ "transcripts.txt.gz");
-			genes_file = new File(resDir,genome_index+ "genes.txt.gz");
-
-			 feature_counts_file = new File(resDir,genome_index+ "transcripts.fc.txt.gz");
-			 String featureCP_header = "Geneid\tChr\tStart\tEnd\tStrand\tLength";
-
-			 if(false){
-				 featureCP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.feature_counts_file))));
- 
-				 transcriptsP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(transcripts_file))));
-				 genesP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(genes_file))));
-					this.annotP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.outfile11))));
-
-			 }else{
-				 featureCP=null; transcriptsP = null; genesP=null; annotP = null;
-			 }
-				String transcriptP_header = "ID\tchrom\tstart\tend\tgene_nme\tnum_exons\tisoforms\tleader_break\tORFs\tspan\tspan_length"
-					+"\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true);
-				String geneP_header = "ID\tchrom\tstart\tend\ttype_nme\tnum_exons\tisoforms\tleader_break\tORFs\tspan\tspan_length"
-						+"\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true);
-				if(cluster_depth){
-					transcriptP_header = transcriptP_header
-							+"\t"+TranscriptUtils.getString("depth", num_sources, true)+"\t"+TranscriptUtils.getString("errors", num_sources, true);
-							//+"\t"+TranscriptUtils.getString("error_ratio", num_sources, true);
-				}
-				StringBuffer nme_info = new StringBuffer();
-				for(int i=0; i<type_nmes.length; i++) nme_info.append(type_nmes[i]+"\t");
-				
-				if(transcriptsP!=null) transcriptsP.println("#"+nme_info.toString());
-				if(transcriptsP!=null) transcriptsP.println(transcriptP_header);
-				if(genesP!=null) genesP.println("#"+nme_info.toString());
-				if(genesP!=null) genesP.println(geneP_header);
-				if(featureCP!=null) featureCP.println("#npTranscript output");
-				if(featureCP!=null) featureCP.println(featureCP_header+"\t"+nme_info.toString());
+			
 				
 			List<String> str = new ArrayList<String>();
 			//str.add("subID"); //str.add("ẗype"); 
@@ -426,7 +289,7 @@ if(IdentityProfile1.trainStrand){
 				}
 			altT2.writeStringArray(string, newh.toArray(new String[0]));
 		}
-		public synchronized void printTranscriptAlt(CigarCluster cc){
+		/*public synchronized void printTranscriptAlt(CigarCluster cc){
 			if(altT!=null){
 			String id2 = "trans/"+cc.breaks_hash.secondKey;
 			int[]  obj;
@@ -442,19 +305,8 @@ if(IdentityProfile1.trainStrand){
 			}
 			altT.writeIntArray(id2, obj);
 			}
-		}
+		}*/
 		
-		public synchronized void printTranscript(String str, String depth_str){
-			this.transcriptsP.print(str);
-			transcriptsP.println(depth_str);
-		}
-		public synchronized void printGene(String str, String depth_str){
-			this.genesP.print(str);
-			genesP.println(depth_str);
-		}
-		public synchronized void printFC(String str){
-			this.featureCP.println(str);
-		}
 		public synchronized void printRead(String string) {
 			this.readClusters.println(string);
 			
@@ -537,31 +389,17 @@ if(IdentityProfile1.trainStrand){
 		
 		
 		
-		public void writeLeft(Sequence subseq,String baseQ,  boolean negStrand, int source_index)  throws IOException{
-			FOutp[] leftover = this.leftover_l;
-			//	fusion ? (left ? this.fusion_l : this.fusion_r) : (left ? this.leftover_l : this.leftover_r);
-			FastqWriter writer = leftover[source_index].fastq;
-			writeFastq(writer,subseq, baseQ, negStrand, source_index );
-					
-		}
+		
 			public synchronized void  writeFastq(FastqWriter writer, Sequence subseq,String baseQ,  boolean negStrand, int source_index)  throws IOException{
 				if(writer==null) return;
-				
 						 writer.write(new FastqRecord(subseq.getName()+ " "+subseq.getDesc(), 
 								 
 								 new String( subseq.charSequence()), "", 
 								 negStrand ? new StringBuilder(baseQ).reverse().toString() : baseQ));
-						
-				
 			}
 
 		
-		public synchronized void writePolyA(Sequence readseq, String nme, String baseQ, boolean negStrand, int source_index)  throws IOException{
-			if(polyA==null || polyA[source_index]==null) return ;
-			FastqWriter writer = polyA[source_index].fastq;
-			writeFastq(writer,readseq, baseQ, negStrand, source_index );
-			
-		}
+		
 		
 		public void writeDepthH5(CigarCluster cc, CigarClusters cigarClusters,  int totalDepth) {
 			int offset=1;
@@ -656,7 +494,7 @@ if(IdentityProfile1.trainStrand){
 			}
 			return sb.toString();
 		}
-		static class HDFObj  {
+		public static class HDFObj  {
 			public  String toString(){
 				return getString(br,',')+"\t"+getString(cnts,',');//+"\t"+this.break_sum;
 			}
