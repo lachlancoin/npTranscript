@@ -157,10 +157,10 @@ public class CigarClusters {
 				for(Iterator<CigarCluster> it = l.values().iterator(); it.hasNext();){
 					CigarCluster cc = it.next();
 					if(cc.endPos<endThresh){
-						int totalDepth = cc.readCountSum();
+						//int totalDepth = cc.readCountSum();
 						//cc.process1( o,genomes==null ? null : genomes.get(cc.chrom));//, chrom, chrom_index);//,  geneNames);
 					//	if(Outputs.writeIsoforms) o.writeIsoforms(cc, this,  totalDepth);
-						o.writeDepthH5(cc, this,  totalDepth);
+						o.writeDepthH5(cc.breaks_hash.secondKey, cc.map);
 						rem_count++;
 						l.remove(cc.breaks_hash);
 						//l.put(cc.breaks_hash, null); //set as null.  If we remove it creates a potential problem with threading
@@ -198,7 +198,7 @@ public class CigarClusters {
 				if(genomes!=null){
 					seqlen = genomes.get(currChrom).length();
 				}
-				annot.updateChrom(currChrom, seqlen);
+				annot.updateChrom(currChrom);
 			}
 			annot.annotate(nxt);
 		}
@@ -235,7 +235,7 @@ public class CigarClusters {
 				//	nxt.process1(o,genomes==null ? null : genomes.get(nxt.chrom));//, chrom, chrom_index, geneNames);
 					int  totalDepth = nxt.readCountSum();
 				//	if(Outputs.writeIsoforms) o.writeIsoforms(nxt, this, totalDepth);
-					o.writeDepthH5(nxt, this,  totalDepth);
+					o.writeDepthH5(nxt.breaks_hash.secondKey, nxt.map);
 			}
 			
 	}

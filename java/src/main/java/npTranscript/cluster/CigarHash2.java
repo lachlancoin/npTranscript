@@ -106,14 +106,18 @@ public class CigarHash2 extends ArrayList<Integer> {
 		return sb.toString();
 	}
 	
-	public static String getString(List<Integer> l){
+	public static String getString(List l){
 		StringBuffer sb = new StringBuffer();
-		for(int i=0; i<l.size(); i+=2){
-			if(i>0) sb.append(",");
-			sb.append(l.get(i)+"_"+l.get(i+1));
+		boolean even=l.size()%2==0;
+		for(int i=0; i<l.size(); i++){
+			if(i>0) {
+				if(!even) sb.append(i%2==0 ? "_" : ","); else sb.append(i%2==0 ? "," : "_");
+			}
+			sb.append(l.get(i));//+"_"+l.get(i+1));
 		}
 		return sb.toString();
 	}
+	
 	public static String getString(List<Integer> l, int toadd){
 		StringBuffer sb = new StringBuffer();
 		for(int i=0; i<l.size(); i++){

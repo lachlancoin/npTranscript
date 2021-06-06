@@ -23,6 +23,8 @@ class SparseVector{
 	
 	
 	
+	
+
 	public void addZero(int pos){
 		this.m.put(pos, zero);
 	}
@@ -90,6 +92,11 @@ class SparseVector{
 
 	public double valsum() {
 	return valsum;
+	}
+
+	public void transferFrom(SparseVector map) {
+		this.m.putAll(map.m);
+		this.valsum+=map.valsum;
 	}
 
 	

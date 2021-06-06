@@ -34,8 +34,8 @@ public class GFFAnnotation extends Annotation{
 	
 	
 	@Override
-	public String nextDownstream(int rightBreak, int chrom_index, boolean forward){
-		if(rightBreak<0) return null;
+	public int nextDownstream(int rightBreak,  boolean forward){
+		//if(rightBreak<0) return null;
 		SortedMap<Integer, Integer> indices = new TreeMap<Integer,Integer>();
 		for(int i=0; i<end.size(); i++){
 			if(!enforceStrand || forward==this.strand.get(i)){
@@ -45,15 +45,15 @@ public class GFFAnnotation extends Annotation{
 			}
 			}
 		}
-		if(indices.size()>0) return genes.get(indices.get(indices.firstKey()));
-		return null;
+		if(indices.size()>0) return indices.get(indices.firstKey());
+		return genes.size();
 		
 		
 	}
 	
 	@Override
-	public String nextUpstream(int leftBreak, int chrom_index, boolean forward){
-		if(leftBreak<0) return null;
+	public int nextUpstream(int leftBreak,  boolean forward){
+	//	if(leftBreak<0) return null;
 		SortedMap<Integer, Integer> indices = new TreeMap<Integer,Integer>();
 		for(int i=start.size()-1; i>=0 ;i--){
 			if(!enforceStrand || forward==this.strand.get(i)){
@@ -63,8 +63,8 @@ public class GFFAnnotation extends Annotation{
 			}
 			}
 		}
-		if(indices.size()>0) return genes.get(indices.get(indices.firstKey()));
-		return null;
+		if(indices.size()>0) return indices.get(indices.firstKey());
+		return -1;
 	}
 	
 	boolean contains(int l2, int r2, int i){
@@ -73,6 +73,22 @@ public class GFFAnnotation extends Annotation{
 //		return match ? Math.abs(r2 - end.get(i)) + Math.abs(l2 - start.get(i)) : -1;
 	}
 	
+
+	public List<String> matchExons(List<Integer> br, String chrom, Boolean forward) {
+		List<Integer> l = new ArrayList<Integer>();
+		if(!this.chrom.equals(chrom)){
+			return empty_list;
+		}
+		l.add(this.nextUpstream(br.get(0) , forward));
+		for(int i=1;i<br.size(); i++){
+				if(i%2 ==0 ){//exon start
+					l.add(this.nextUpstream(br.get(i) , forward));
+				}else{
+					l.add(this.nextDownstream(br.get(i) , forward));
+				}
+			}
+		return getStr(l);
+	}
 	
 	/** left is left of break point and right is right break point */
 	public synchronized Integer nextUpstream(int l1,  int r1, int chrom_index, Boolean forward) {
@@ -294,7 +310,7 @@ public class GFFAnnotation extends Annotation{
 	}
 	 public static List<String> span_only = Arrays.asList("protein_coding".split(":"));
 	
-	@Override
+	/*
 	public String getTypeNme(int start_, int end_, boolean forward) {
 		int iend = nextDownstreamIndex(end_, forward);
 		int istart = nextUpstreamIndex(start_, forward);
@@ -302,7 +318,7 @@ public class GFFAnnotation extends Annotation{
 		String right = iend<0 ? "NA" : (end_>= this.end.get(iend)- TranscriptUtils.endThresh ? "3" : "no3");
 		return left+"_"+right;
 		//return null;
-	}
+	}*/
 	public static void setGFFFeatureNames(String[] str){
 		
 		name = str[0];
@@ -381,6 +397,8 @@ public class GFFAnnotation extends Annotation{
 		this.transcripts.clear();
 	}
 	
+	
+	
 	@Override
 public void close(){
 	try{
@@ -419,11 +437,18 @@ public void close(){
 	}*/
 	}
 	
-	public void updateChrom(String chrname,  int seqlen) {
+	
+	
+	
+	
+	
+	public void updateChrom(String chrname) {
 		if(this.chrom.equals(chrname)){
 			return;
 		}
-		super.updateChrom( chrname, seqlen);
+	
+			//this.seqlen = seqlen;
+			this.chrom = chrname;
 		this.clear();
 		try{
 		ZipEntry entry = zf.getEntry(chrname);

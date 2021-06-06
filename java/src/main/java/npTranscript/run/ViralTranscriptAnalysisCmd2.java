@@ -92,17 +92,6 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 
 //	private static final Logger LOG = LoggerFactory.getLogger(HTSErrorAnalysisCmd.class);
 
-public static String getAnnotationsToInclude(String annotationType, boolean useExons){
-	if(annotationType!=null) return annotationType;//.split(":");
-	 if(!useExons) {
-		 return  "gene:ncRNA:pseudogene:miRNA";	
-	 }
-	 else{
-		 return "all";
-//		 return "exon";
-	 }
-		
-}
 	public ViralTranscriptAnalysisCmd2() {
 		super();
 		Deployable annotation = getClass().getAnnotation(Deployable.class);
@@ -172,6 +161,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addBoolean("writeH5", false,"whether to write h5 outputs");
 		addString("mm2_path", "/sw/minimap2/current/minimap2",  "minimap2 path", false);
 		addString("mm2Preset", "splice",  "preset for minimap2", false);
+		addString("mm2_splicing", null, "splicing option", false);
 		addInt("supplementaryQ", 1000,"quality threshold for including supplementary mapping");
 	//	addBoolean("writeBed", false, "whether to write bed",false);
 		//addString("mm2Preset", "map-ont",  "preset for minimap2", false);
@@ -215,7 +205,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		String pattern = cmdLine.getStringVal("pattern");
 		String[] readList = cmdLine.getStringVal("readList").split(":");
 		//String genesToInclude = cmdLine.getStringVal("genesToInclude");
-		String  annotationType = getAnnotationsToInclude(cmdLine.getStringVal("annotType"), cmdLine.getBooleanVal("useExons"));
+		
 		//boolean overwrite  = cmdLine.getBooleanVal("overwrite");
 		int startThresh = cmdLine.getIntVal("startThresh");
 		int endThresh = cmdLine.getIntVal("endThresh");
@@ -258,11 +248,11 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		}
 		int coverageDepthThresh = cmdLine.getIntVal("coverageDepthThresh");
 		IdentityProfile1.msaDepthThresh =(int) Math.floor(cmdLine.getDoubleVal("msaDepthThresh"));
-	IdentityProfile1.extra_threshold = cmdLine.getIntVal("extra_threshold");
+	//IdentityProfile1.extra_threshold = cmdLine.getIntVal("extra_threshold");
 //	IdentityProfile1.tryComplementOnExtra = cmdLine.getBooleanVal("tryComplementOnExtra");
-	IdentityProfile1.reAlignExtra = cmdLine.getBooleanVal("reAlignExtra");
-	IdentityProfile1.attempt5rescue = cmdLine.getBooleanVal("attempt5rescue");
-	IdentityProfile1.attempt3rescue = cmdLine.getBooleanVal("attempt3rescue");
+//	IdentityProfile1.reAlignExtra = cmdLine.getBooleanVal("reAlignExtra");
+//	IdentityProfile1.attempt5rescue = cmdLine.getBooleanVal("attempt5rescue");
+//	IdentityProfile1.attempt3rescue = cmdLine.getBooleanVal("attempt3rescue");
 	String[]	fail_thresh = cmdLine.getStringVal("fail_thresh").split(":");
 	ViralTranscriptAnalysisCmd2.fail_thresh = Double.parseDouble(fail_thresh[0]);
 	ViralTranscriptAnalysisCmd2.fail_thresh1 = fail_thresh.length>1 ? Double.parseDouble(fail_thresh[1]) : Double.parseDouble(fail_thresh[0]);
@@ -273,9 +263,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		                            .map(Integer::valueOf)
 		                            .collect(Collectors.toList());
 		IdentityProfile1.includeStartEnd = cmdLine.getBooleanVal("includeStart");
-		GFFAnnotation.setGFFFeatureNames(cmdLine.getStringVal("GFF_features").split(":"));
-		GFFAnnotation.span_only = cmdLine.getStringVal("span").equals("all") ?new ArrayList<String>() :   Arrays.asList(cmdLine.getStringVal("span").split(":"));
-		SequenceOutputStream1.max_seqs_per_cluster = cmdLine.getIntVal("max_seqs_per_cluster");
+	SequenceOutputStream1.max_seqs_per_cluster = cmdLine.getIntVal("max_seqs_per_cluster");
 		 coronavirus = cmdLine.getBooleanVal("coronavirus");
 		String[] msaOpts = cmdLine.getStringVal("doMSA").split(":"); //e.g 5_3:sep or all:sep
 		String msa_source = cmdLine.getStringVal("msa_source");
@@ -334,12 +322,12 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		//	Outputs.MSA_at_cluster = true;
 			TranscriptUtils.checkAlign = true;
 			TranscriptUtils.coronavirus = true;
-			IdentityProfile1.extra_threshold1 =50;
+			//IdentityProfile1.extra_threshold1 =50;
 			annotByBreakPosition = true;
 			TranscriptUtils.writeAnnotP = true;
 			
 		//	CigarHash2.subclusterBasedOnStEnd = false;
-			SequenceUtils.mm2_splicing= "-un";
+			SequenceUtils.mm2_splicing= "-"+cmdLine.getStringVal("mm2_splicing","un");
 		//sequential = true;
 		}else{
 			//sequential = false;
@@ -350,20 +338,18 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			Outputs.calcBreaks=false;
 			
 			TranscriptUtils.coronavirus = false;
-			IdentityProfile1.extra_threshold1 = 1000000;
+			//IdentityProfile1.extra_threshold1 = 1000000;
 			//Outputs.writeUnSplicedFastq = false;
 			TranscriptUtils.checkAlign = false;
 			TranscriptUtils.writeAnnotP = false;
 			System.err.println("running in host mode");
 			//CigarHash2.subclusterBasedOnStEnd = false;
 			calcBreaks = false;
-			SequenceUtils.mm2_splicing = "-uf";
-		//	SequenceUtils.mm2_splicing= "-un";
+			SequenceUtils.mm2_splicing= "-"+cmdLine.getStringVal("mm2_splicing","uf");
+
 
 		}
-		SequenceUtils.mm2_splicing= "-un";
-	//	SequenceUtils.mm2_splicing = null;
-	//	SequenceUtils.mm2Preset=null;//"map-ont";
+	//	SequenceUtils.mm2Preset=fnull;//"map-ont";
 		sequential = cmdLine.getBooleanVal("sequential");
 		sorted = cmdLine.getBooleanVal("sorted");
 		
@@ -372,7 +358,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		
 		
 		
-			errorAnalysis(bamFiles, RNA,reference, readList,annotationType, 
+			errorAnalysis(bamFiles, RNA,reference, readList,
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  
 				calcBreaks, filterBy5_3, annotByBreakPosition,  chrs, chrsToIgnore,  isoformDepthThresh, coverageDepthThresh, probInclude, fastq, 
 				chromsToRemap);
@@ -518,7 +504,7 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 	/**
 	 * Error analysis of a bam file. Assume it has been sorted
 	 */
-	static void errorAnalysis(String[] bamFiles_,boolean[] RNA, String refFile,  String[] readList,    String annotationType, String resdir, 
+	static void errorAnalysis(String[] bamFiles_,boolean[] RNA, String refFile,  String[] readList,    String resdir, 
 			String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads, 
 			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition, String chrToInclude, String chrToIgnore, 

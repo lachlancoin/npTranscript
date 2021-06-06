@@ -24,11 +24,11 @@ public class Outputs1 {
 	public synchronized void printFC(String str){
 		this.featureCP.println(str);
 	}
-	String genome_index="";
+	final String genome_index="";
 	public File transcripts_file, genes_file;
 	public File feature_counts_file, outfile11;
 	public static boolean writeGFF=false;
-	 SequenceOutputStream[] refOut;
+	 SequenceOutputStream refOut;
 
 	 PrintWriter[] gffW;
 	 PrintWriter[] bedW;
@@ -56,10 +56,9 @@ public class Outputs1 {
 					this.annotP =  new PrintWriter( new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.outfile11))));
 					 outfile11 = new File(resDir, genome_index+"annot.txt.gz");
 			
-				String transcriptP_header = "ID\tchrom\tstart\tend\tgene_nme\tnum_exons\tisoforms\tleader_break\tORFs\tspan\tspan_length"
-					+"\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true);
-				String geneP_header = "ID\tchrom\tstart\tend\ttype_nme\tnum_exons\tisoforms\tleader_break\tORFs\tspan\tspan_length"
-						+"\ttotLen\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true);
+				String transcriptP_header = "ID\tchrom\tstart\tend\tnum_exons\tbreaks\texons\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true);
+				String geneP_header = "ID\tchrom\tstart\tend\tnum_exons\tisoforms\texons\tcountTotal\t"+TranscriptUtils.getString("count", num_sources,true);
+
 				/*if(cluster_depth){
 					transcriptP_header = transcriptP_header
 							+"\t"+TranscriptUtils.getString("depth", num_sources, true)+"\t"+TranscriptUtils.getString("errors", num_sources, true);
@@ -99,11 +98,11 @@ public class Outputs1 {
 								"#format: gff3\n"+
 								"#date: "+d.toGMTString()+"\n");
 					 }
-						this.refOut =new SequenceOutputStream[Annotation.nmes.length];
-						for(int i=0; i<refOut.length; i++){
-							File ref_output = new File(resDir,Annotation.nmes[i]+".ref.fa");
-							refOut[i] =new SequenceOutputStream(new FileOutputStream(ref_output));
-						}
+//						this.refOut =new SequenceOutputStream[Annotation.nmes.length];
+						//for(int i=0; i<refOut.length; i++){
+							File ref_output = new File(resDir,"ref.fa");
+							refOut =new SequenceOutputStream(new FileOutputStream(ref_output));
+						//}
 				 }
 	}
 	
@@ -118,9 +117,7 @@ public class Outputs1 {
 		}
 		if(gffW!=null) for(int i=0; i<gffW.length; i++) gffW[i].close();
 		if(refOut!=null){
-			for(int i=0; i<refOut.length; i++){
-				refOut[i].close();
-			}
+				refOut.close();
 		}
 	}
 	

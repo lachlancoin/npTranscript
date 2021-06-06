@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -89,49 +90,88 @@ public class PrintResults extends CommandLine {
 
 		
 	}
-	public static CigarCluster readH5(IHDF5Reader reader, String chrom, String key){
-			String id1 = "/transcripts/"+chrom+"/"+key;
+	 
+	static class ClusterIterator implements Iterator<CigarCluster> {
+		
+		 CigarCluster readH5(String chrom_, String strand, String key){
+			String id1 = "/transcripts/"+chrom_+"/"+strand+"/"+key;
 			
 			List<String > str1 = reader.getGroupMembers(id1);
 			HDFObj[] objs = new HDFObj[str1.size()];
 			for(int j=0; j<str1.size(); j++){
 				String id2 = id1+"/"+str1.get(j);
+				//System.err.println(id2);
 				objs[j] =  new  HDFObj(reader.readString(id2));
 				
 			}
-			return new CigarCluster(chrom,key, str1.toArray(new String[0]),objs);
+			return new CigarCluster(chrom_,strand,key, str1.toArray(new String[0]),objs);
 			//System.err.println("h");
-	}
-	static class ClusterIterator implements Iterator<CigarCluster> {
+		}
+		
 		final IHDF5Reader reader;
 		String chrom;
+		String strand;
 		final Iterator<String> chroms;
 		Iterator<String> keys;
+		Iterator<String> strands;
 		final String[] sources;
 		ClusterIterator(String h5file){
 			 reader= HDF5Factory.openForReading(h5file);
 			sources =  reader.readStringArray("header");
 			chroms = new HashSet<String>(reader.getGroupMembers("/transcripts")).iterator();
 			chrom = chroms.next();
-			keys= new HashSet<String>(reader.getGroupMembers("/transcripts/"+chrom)).iterator();
+			List<String> strands_ = reader.getGroupMembers("/transcripts/"+chrom);
+			strands= new HashSet<String>(strands_).iterator();
+			
+			strand = strands.next();
+			keys= new HashSet<String>(reader.getGroupMembers("/transcripts/"+chrom+"/"+strand)).iterator();
 		}
 		public void close(){
 			reader.close();
 		}
 		
+		Annotation annot = null;
 			@Override
 			public boolean hasNext() {
-				return keys.hasNext() || chroms.hasNext();
+				return keys.hasNext() || chroms.hasNext() || strands.hasNext();
 			}
 			@Override
 			public CigarCluster next() {
 				if(!keys.hasNext()){
-					chrom = chroms.next();
-					keys= new HashSet<String>(reader.getGroupMembers("/transcripts/"+chrom)).iterator();
+					if(!strands.hasNext()){
+						chrom = chroms.next();
+						if(annot!=null){
+							this.annot.updateChrom(chrom);
+						}
+						List<String> strands_ = reader.getGroupMembers("/transcripts/"+chrom);
+						strands= new HashSet<String>(strands_).iterator();
+					}
+					this.strand = strands.next();
+				//	if(strand.equals("-")){
+				//		System.err.println("he");
+				//	}
+					keys= new HashSet<String>(reader.getGroupMembers("/transcripts/"+chrom+"/"+strand)).iterator();
 				}
-				return readH5(reader, chrom, keys.next());
+				return readH5(chrom, strand, keys.next());
+			}
+			public void setAnnotation(Annotation annot) {
+				this.annot = annot;
+				this.annot.updateChrom(chrom);
+				
 			}
 	}
+
+public static String getAnnotationsToInclude(String annotationType, boolean useExons){
+	if(annotationType!=null) return annotationType;//.split(":");
+	 if(!useExons) {
+		 return  "gene:ncRNA:pseudogene:miRNA";	
+	 }
+	 else{
+		 return "all";
+//		 return "exon";
+	 }
+		
+}
 	public static void main(String[] args1) throws IOException, InterruptedException {
 		CommandLine cmdLine = new PrintResults();
 		String[] args2 = ViralTranscriptAnalysisCmd2.readOpts(cmdLine, args1,"optsFile");
@@ -139,6 +179,9 @@ public class PrintResults extends CommandLine {
 		Outputs1.firstIsTranscriptome = cmdLine.getBooleanVal("firstIsTranscriptome");
 		String[] gffThresh_1 = cmdLine.getStringVal("gffThresh").split(":");
 		Outputs1.gffThresh = new int[gffThresh_1.length];
+		GFFAnnotation.setGFFFeatureNames(cmdLine.getStringVal("GFF_features").split(":"));
+		//GFFAnnotation.span_only = cmdLine.getStringVal("span").equals("all") ?new ArrayList<String>() :   Arrays.asList(cmdLine.getStringVal("span").split(":"));
+		//String  annotationType = getAnnotationsToInclude(cmdLine.getStringVal("annotType"), cmdLine.getBooleanVal("useExons"));
 		
 		//Outputs.gffThreshTranscriptSum=0;
 		
@@ -156,22 +199,23 @@ public class PrintResults extends CommandLine {
 		
 		
 		
-		String h5file = cmdLine.getStringVal("h5File");
-		ClusterIterator it = new ClusterIterator(h5file);
+		
 		
 		
 		String annot_file = cmdLine.getStringVal("annotation");
+		String h5file = resDir+"/"+cmdLine.getStringVal("h5File");
+		ClusterIterator it = new ClusterIterator(h5file);
 		int len = it.sources.length;
 
 		String reference = cmdLine.getStringVal("reference");
 		
-		
-		if(false){
+		Annotation annot  = null;
+		if(annot_file!=null ){
 			File annotSummary = new File(resdir, "annotation.csv.gz");
 			if(annotSummary.exists()) annotSummary.delete();
 			PrintWriter annotation_pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(annotSummary, false))));
 			File gffFile=annot_file==null ? null : new File(annot_file);
-			Annotation annot  = null;
+			
 			ZipFile anno = null;
 			if(gffFile!=null && (gffFile.getName().indexOf(".gff")>=0 || gffFile.getName().indexOf(".gtf")>=0)){
 					anno  = getAnnotfile(gffFile);
@@ -203,10 +247,11 @@ public class PrintResults extends CommandLine {
 					o.writeDepthH5(nxt, this,  totalDepth);
 			}*/
 		Outputs1 	outp = new Outputs1(resDir,  it.sources); 
+		it.setAnnotation(annot);
 		while(it.hasNext()){
 			CigarCluster cc = it.next();
 			Sequence genome = genomes==null ? null :genomes.get(m.get(cc.chrom));
-			cc.process1(outp, genome);
+			cc.process1(outp, genome, annot);
 			System.err.println(cc.chrom);
 		}
 		outp.close();

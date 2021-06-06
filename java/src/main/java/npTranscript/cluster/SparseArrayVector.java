@@ -24,6 +24,12 @@ static int zero_=0;
 	//	this.end = end;
 	}
 	private SortedMap<Integer, int[]> m = new TreeMap<Integer,int[]>();
+	
+	public void transferFrom(SparseArrayVector mapStart) {
+		m.putAll(mapStart.m);
+		this.valsum+=mapStart.valsum;
+	}
+	
 	private int valsum=0;
 	final int len;
 	final int[] zero;
@@ -127,6 +133,7 @@ static int zero_=0;
 	public double valsum() {
 	return valsum;
 	}
+	
 
 	
 }

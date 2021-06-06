@@ -38,7 +38,7 @@ public class Annotation{
 		 
 	//	List<Integer> breakSt =  new ArrayList<Integer>();
 		//List<Integer> breakEnd =  new ArrayList<Integer>();
-		  int seqlen;
+		//  int seqlen;
 
 		//Name,Type,Minimum,Maximum,Length,Direction,gene
 	//	5'UTR,5'UTR,1,265,265,forward,none
@@ -71,16 +71,16 @@ public class Annotation{
 				
 			
 		
-		public String nextDownstream(int rightBreak, int chrom_index, boolean forward){
-			if(rightBreak<0) return null;
+		public int nextDownstream(int rightBreak,  boolean forward){
+		
 			for(int i=0; i<start.size(); i++){
 				if(!enforceStrand || forward==this.strand.get(i)){
 					if(rightBreak -tolerance <= start.get(i) ){//&& rightBreak < end.get(i)){
-						return genes.get(i);
+						return i;
 					}
 				}
 			}
-			return "end"+(chrom_index>0 ? "."+chrom_index : "");//+ (enforceStrand ? (forward ? "+" : "-") : "");
+			return genes.size();//+chrom;//+(chrom_index>0 ? "."+chrom_index : "");//+ (enforceStrand ? (forward ? "+" : "-") : "");
 		}
 		/*public String convert(List<Integer> l, int chrom_index){
 			StringBuffer sb = new StringBuffer();
@@ -96,16 +96,16 @@ public class Annotation{
 			return sb.toString();
 		}*/
 		
-		public String nextUpstream(int leftBreak, int chrom_index, boolean forward){
-			if(leftBreak<0) return  "null";
+		public int nextUpstream(int leftBreak,  boolean forward){
+		//	if(leftBreak<0) return  "null";
 			for(int i=start.size()-1; i>=0 ;i--){
 				if(!enforceStrand || forward==this.strand.get(i)){
 				if(leftBreak+tolerance >= start.get(i)){// && leftBreak-tolerance<end.get(i)){
-					return genes.get(i);
+					return i;
 				}
 				}
 			}
-			return "st"+(chrom_index>0 ? "."+chrom_index : "");//+(enforceStrand ? (forward ? "+" : "-") : "");
+			return -1;//+chrom;//+(chrom_index>0 ? "."+chrom_index : "");//+(enforceStrand ? (forward ? "+" : "-") : "");
 		}
 	
     int updateLeft(int en, int refStart){
@@ -147,13 +147,8 @@ public class Annotation{
 	}
 	
 
-	public void updateChrom( String chrname,  int seqlen) {
-		if(this.chrom.equals(chrname)){
-			return;
-		}
-		this.seqlen = seqlen;
+	public void updateChrom( String chrname) {
 		this.chrom = chrname;
-		this.clear();
 	}
 	
 	public static Annotation getAnnotation(String annot_file,  PrintWriter annotation_pw, int source_count) throws ZipException, IOException{
@@ -267,9 +262,9 @@ public class Annotation{
 	public  double[] overlap;
 	public  int[] orf_len;
 	
-		public int seqlen() {
+	/*	public int seqlen() {
 			return seqlen;
-		}
+		}*/
 
 		public synchronized void adjust3UTR(int seqlen2) {
 			if(end.size()==0) return ;
@@ -295,15 +290,15 @@ public class Annotation{
 			else unspliced_count[source_index][i]+=1;
 			
 		}
-		public String getTypeNme(int start, int end, boolean forward) {
+		/*public String getTypeNme(int start, int end, boolean forward) {
 			return nmes[getTypeInd(start,end, forward)];
 			//return null;
-		}
-		public int getTypeInd(int start, int end, Boolean forward) {
+		}*/
+		/*public int getTypeInd(int start, int end, Boolean forward) {
 			if(start <=TranscriptUtils.startThresh) return end >= seqlen -TranscriptUtils.endThresh ? 0:1;
 			else return end >= seqlen -TranscriptUtils.endThresh ? 2:3;
 			//return null;
-		}
+		}*/
 
 		public static String[] nmes = new String[] {"5_3", "5_no3", "no5_3", "no5_no3"};
 		public  char getStrand(Iterator<Integer> l){
@@ -367,6 +362,35 @@ public class Annotation{
 			}else */
 			throw new RuntimeException ("need to re-implement");/// TODO Auto-generated method stub
 			
+		}
+
+		static List<String> empty_list = Arrays.asList(new String[0]);
+
+
+		public List<String> matchExons(List<Integer> br, String chrom, Boolean forward) {
+			List<Integer> l = new ArrayList<Integer>();
+			if(!this.chrom.equals(chrom)){
+				return empty_list;
+			}
+			l.add(this.nextUpstream(br.get(0) , forward));
+			for(int i=1;i<br.size()-1; i++){
+					if(i%2 ==0 ){//exon start
+						l.add(this.nextDownstream(br.get(i) , forward));
+					}else{ //exon end
+						l.add(this.nextUpstream(br.get(i) , forward));
+					}
+				}
+			l.add(this.nextDownstream(br.get(br.size()-1) , forward));
+
+			return getStr(l);
+		}
+
+
+
+		protected List<String> getStr(List<Integer> l) {
+			String[] res = new String[l.size()];
+			for(int i=0; i<res.length; i++)res[i] = l.get(i) <0 ? "start" : l.get(i)==genes.size() ?  "end":  this.genes.get(l.get(i));
+			return Arrays.asList(res);
 		}
 
 
