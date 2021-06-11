@@ -250,7 +250,9 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		it.setAnnotation(annot);
 		while(it.hasNext()){
 			CigarCluster cc = it.next();
-			Sequence genome = genomes==null ? null :genomes.get(m.get(cc.chrom));
+			Integer ii = m.get(cc.chrom);
+			
+			Sequence genome = genomes==null || ii==null ?  null :genomes.get(ii);
 			cc.process1(outp, genome, annot);
 			System.err.println(cc.chrom);
 		}
