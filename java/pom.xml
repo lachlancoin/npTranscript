@@ -37,6 +37,11 @@
 		    <artifactId>slf4j-simple</artifactId>
 		    <version>1.7.25</version>
 	</dependency>
+<dependency>
+		    <groupId>com.google.guava</groupId>
+		    <artifactId>guava</artifactId>
+		    <version>[30.0-jre,)</version>
+		</dependency>
 	<dependency>
 		    <groupId>com.github.samtools</groupId>
 		    <artifactId>htsjdk</artifactId>
@@ -54,8 +59,8 @@
 	</dependency>
 	 <dependency>
           	  <groupId>coin</groupId>
-          	  <artifactId>japsa</artifactId>
-           	 <version>1.9.4e</version>
+          	  <artifactId>japsacov</artifactId>
+           	 <version>1.9.5e.jar</version>
       	</dependency>
 	 <dependency>
           		  <groupId>ch.ethz.wiki-bsse</groupId>
