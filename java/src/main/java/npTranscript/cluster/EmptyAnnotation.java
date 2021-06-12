@@ -13,12 +13,12 @@ String chrom1;
 		// TODO Auto-generated constructor stub
 	}
 	@Override
-	public String nextDownstream(int rightBreak,  boolean forward){
-		return chrom+"_"+TranscriptUtils.round(rightBreak,CigarHash2.round);
+	public int nextDownstream(int rightBreak,  boolean forward){
+		return TranscriptUtils.round(rightBreak,CigarHash2.round);
 	}
 	@Override
-	public String  nextUpstream(int rightBreak, boolean forward){
-		return chrom+"_"+TranscriptUtils.round(rightBreak,CigarHash2.round);
+	public int  nextUpstream(int rightBreak, boolean forward){
+		return TranscriptUtils.round(rightBreak,CigarHash2.round);
 	}
 	public void adjust3UTR(int seqlen2) {
 		

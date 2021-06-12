@@ -75,7 +75,7 @@ public class PrintResults extends CommandLine {
 		Deployable annotation = getClass().getAnnotation(Deployable.class);
 		setUsage(annotation.scriptName() + " [options]");
 		setDesc(annotation.scriptDesc());
-		addString("h5file", null, "Input h5", true);
+		addString("h5file", null, "Input h5", false);
 		addString("annotation", null, "ORF annotation file or GFF file", false);
 		addString("optsFile", null, "Name of file with extra options", false);
 		addString("resdir", "./", "results directory");//"results"+System.currentTimeMillis()
@@ -203,7 +203,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		
 		
 		String annot_file = cmdLine.getStringVal("annotation");
-		String h5file = resDir+"/"+cmdLine.getStringVal("h5File");
+		String h5file = cmdLine.getStringVal("h5File");
 		ClusterIterator it = new ClusterIterator(h5file);
 		int len = it.sources.length;
 
@@ -254,7 +254,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			
 			Sequence genome = genomes==null || ii==null ?  null :genomes.get(ii);
 			cc.process1(outp, genome, annot);
-			System.err.println(cc.chrom);
+			//System.err.println(cc.chrom);
 		}
 		outp.close();
 		it.close();

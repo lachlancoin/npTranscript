@@ -1,8 +1,4 @@
 #!/bin/bash
-
-
-
-
 #SBATCH --job-name=npTr_comb
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -22,9 +18,9 @@ module load java
 
 ##script for running 
 ##tip - use symbolic link to put this in the directory with bam files
-#run as sbatch run_slurm_combined.sh todo.txt human combined --RNA=true
+#run as sbatch run_slurm_combined.sh human combined --RNA=true
 #  sbatch run_slurm_combined.sh human combined --RNA=false
-#NOTE: need to have an opts_host.txt in the run directory
+#NOTE: need to have an opts_run.txt in the run directory
 #to find bams for todo.txt
 #find /data/gpfs/projects/punim1068/host_analysis/direct_RNA_sequin_genome/Vero/ -name *bam > todo.txt
 export JSA_MEM=30000m
@@ -38,8 +34,7 @@ if [ ! $reference_virus ]; then
   export coord_file_virus="${npTranscript}/data/SARS-Cov2/VIC01/Coordinates.csv"
 fi
 
-todo=$1
-shift;
+
 species=$1
 shift;
 if [ ! $species ]; then 
@@ -59,12 +54,19 @@ elif [ $species == "monkey" ]; then
 elif [ $species == "human_only" ]; then
 	reference="./GRCh38_full_analysis_set_plus_decoy_hla.fa.gz"
 	coord_file="./Homo_sapiens.GRCh38.100.gtf.gz"
+elif [ $species == "SARSCov2" ]; then
+	referece="${npTranscript}/data/SARS-Cov2/wuhuan/wuhan_coronavirus.fasta.gz"
+elif [ $species == "U13369" ]; then
+	#reference="${npTranscript}/data/U13369/Human_ribosomal_DNA_complete_repeating_unit.fasta.gz"
+	reference="${npTranscript}/data/U13369/18S_28S.fa.gz"
+elif [ $species == "combined" ]; then
+	reference="${npTranscript}/data/U13369/combined.fa.gz"
 else 
 	echo "first option needs to be 'monkey'  or ' human' "
 	exit
 fi
-echo $reference
 
+echo $reference
 
 
 dat=$(date +%Y%m%d%H%M%S)
@@ -76,47 +78,45 @@ if [ ! $mode ];then
  mode="combined"
 fi
 
+
 ##SPECIFY LOCATION OF COMBINED AND VIRUS ONLY DB
-cov_chr=$(zcat ${reference_virus} | head -n 1 | cut -f 1 -d ' ' | sed 's/>//g')
-echo "coronavirus chr id ${cov_chr}" 
-#chroms_to_include="chrIS:${cov_chr}" 
-chroms_to_include="all" ## this includes all chromosomes 
-chroms_to_ignore="none"   ##
-resdir="results_${dat}"
-#opts="--bin=100 --breakThresh=100 --coronavirus=false --maxThreads=13 --extra_threshold=2000 --writePolyA=false --msaDepthThresh=1000 --doMSA=false --msa_source=RNA --useExons=true --span=protein_coding --includeStart=false --isoformDepthThresh=50 --chroms_to_ignore=${chroms_to_ignore} --chroms_to_include=${chroms_to_include}"
+#cov_chr=$(zcat ${reference_virus} | head -n 1 | cut -f 1 -d ' ' | sed 's/>//g')
+#echo "coronavirus chr id ${cov_chr}" 
 
-opts_host="opts_host.txt"
+
+opts_host="opts_run.txt"
 if [ ! -f $opts_host ]; then
-  opts_host="${npTranscript}/opts_host.txt"
+  echo "need to have a file opts_run.txt"
+  exit ;
 fi
 
-opts=$(grep -v '^#' ${opts_host})
-
-#for dRNA datasets
-#opts="${opts} --RNA=true"
-#opts2="--chromsToRemap=${cov_chr}  --mm2_memory=10g --writeIsoforms=true --writeGFF=true --recordDepthByPosition=false --coverageDepthThresh=100 --qualThresh=7 --trainStrand=true"
-#echo $opts
-if [ -f $todo ]; then
-	bamfiles=$(cat $todo | sed "s/[[:space:]]\+/\n/g" | grep ".bam$")
-else
-	tag=".bam"
-	bamfiles=$(find . -maxdepth 1  -size +0b | grep "${tag}$" )
+todo="todo.txt"
+if [ ! -f $todo ]; then
+  echo "need to have a file todo.txt which lists input files"
+  exit ;
 fi
-bamfiles1="--bamFile=$(echo $bamfiles | sed 's/^M//g' | sed 's/^ //g' | sed 's/ /:/g')"
-#bamfiles1=$(bash ${npTranscript}/scripts/getInputFiles.sh ${tag})
-
-bash ${npTranscript}/scripts/run.sh ${bamfiles1} --chromsToRemap=${cov_chr}  --reference=${reference} --annotation=${coord_file} --resdir=${resdir} ${opts}
-
-cd ${resdir}
-
-##following reassigns any leftover portions of original reads
-#bash ${npTranscript}/scripts/run_slurm_leftover.sh $species
 
 
-if [ $mode == "combined" ]; then
-	bash ${npTranscript}/scripts/run_slurm_virus_fastq.sh $species $@
-	
+
+bash ${npTranscript}/scripts/run.sh ${bamfiles1}  --reference=${reference} --resdir=${resdir} --optsFile=${opts_host}--todoFile=${todo}
+
+
+
+opts_annot="opts_annot.txt"
+
+if [ ! -f $opts_annot ]; then
+  echo "need to have a file opts_annot.txt for annotation step"
+  exit ;
 fi
+
+h5file=${resdir}"/0.isoforms.h5"
+
+if [ ! -f $h5file ]; then
+  echo "h5 file not created"
+  exit ;
+fi
+
+bash ${npTranscript}/scripts/run_annot.sh ${bamfiles1}  --reference=${reference} --annotation=${coord_file} --resdir=${resdir} --optsFile=${opts_annot} --h5file=${h5file}
 
 
 

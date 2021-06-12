@@ -37,6 +37,7 @@ package npTranscript.run;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
@@ -98,15 +99,15 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		setUsage(annotation.scriptName() + " [options]");
 		setDesc(annotation.scriptDesc());
 		addString("optsFile", null, "Name of file with extra options", false);
-
-		addString("bamFile", null, "Name of bam file", false);
-		addString("fastqFile", null, "Name of bam file", false);
+		addString("todo", null, "List of input files", false);
+		addString("inputFile", null, "Name of input file", false);
+		//addString("fastqFile", null, "Name of bam file", false);
 		addString("reference", null, "Name of reference genome", false);
 		addString("annotation", null, "ORF annotation file or GFF file", false);
 		addBoolean("useExons", true, "wehether to use exons");
 	//	addBoolean("baseBreakPointsOnFirst", false, "whether the break points should be preferentially based on the first bam");
-		addBoolean("sorted", true, "whether bamfile sorted in terms of position.");
-		addBoolean("sequential", false, "whether to iterate through one bam at a time (in sequence) or in parallel.");
+		addBoolean("sorted", false, "whether bamfile sorted in terms of position.");
+		addBoolean("sequential", true, "whether to iterate through one bam at a time (in sequence) or in parallel.");
 	
 		addBoolean("enforceStrand", false, "whether to enforce strandedness");
 		addString("readList", "", "List of reads", false);
@@ -194,7 +195,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
  public static int maxReads = Integer.MAX_VALUE;
  public static String pool_sep="";
  public static boolean limit_to_read_list = true;
-	public static boolean sequential = false;
+	public static boolean sequential = true;
 	public static boolean[] RNA;
 	public static String mm2_index;
  public static void run(CommandLine cmdLine, String[] bamFiles, String resDir, String chrs, String chrsToIgnore,  boolean fastq, String reference) throws IOException{
@@ -367,24 +368,19 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 public static boolean allowSuppAlignments = true;; // this has to be true for allowing supp alignments
 
  static double tme0;
- public static String[] readOpts(CommandLine cmdLine, String[] args1, String optsFile){
+ public static String[] readOpts(CommandLine cmdLine, String[] args1, String  opts_file) throws IOException{
 	 String[] args = cmdLine.stdParseLine(args1);
-		String opts_file  = cmdLine.getStringVal(optsFile);
-		if(opts_file!=null){
-	 try{
-			Map<String, String> keyval = new HashMap<String, String>();
-			for(int i=0; i<args1.length; i++){
-				String[] st2 = args1[i].split("=");
-				if(st2.length<2) throw new RuntimeException("wrong format, needs to be ke=val "+args1[i]);
-				keyval.put(st2[0], st2[1]);
-			}
-			BufferedReader br = new BufferedReader(new FileReader(opts_file));
+	 Map<String, String> keyval = new HashMap<String, String>();
+		String[] optsFiles  = cmdLine.getStringVal(opts_file).split(":");
+
+		for(int jj =0; jj<optsFiles.length; jj++){
+			BufferedReader br = new BufferedReader(new FileReader(optsFiles[jj]));
 			String st = "";
 			while((st=br.readLine())!=null){
-				if(st.startsWith("#") || st.length()==0) continue;
+				if(st.trim().startsWith("#") || st.length()==0) continue;
 				//String[]str = st.split("=");
-				String st1 = st.split("#")[0];
-				String[] st2 = st1.trim().split("\\s+");
+				String st1 = st.trim().split("#")[0].trim();
+				String[] st2 = st1.split("\\s+");
 				for(int k=0; k<st2.length; k++){
 					String[] st3 = st2[k].split("=");
 					if(st3.length!=2) {
@@ -395,27 +391,30 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 					}
 				}
 			}
-			args = new String[keyval.size()];
-			Iterator<Entry<String, String>> it = keyval.entrySet().iterator();
-			for(int i=0; it.hasNext(); i++){
-				Entry<String, String> ent = it.next();
-				args[i] = ent.getKey()+"="+ent.getValue();
-			}
 			br.close();
-		}catch(Exception exc){
-			exc.printStackTrace();
+			
 		}
-		}else{
-			args = args1;
+	 // command line parameters last to override
+	 for(int i=0; i<args1.length; i++){
+			String[] st2 = args1[i].split("=");
+			if(st2.length<2) throw new RuntimeException("wrong format, needs to be ke=val "+args1[i]);
+			keyval.put(st2[0], st2[1]);
 		}
+	 args = new String[keyval.size()];
+		Iterator<Entry<String, String>> it = keyval.entrySet().iterator();
+		for(int i=0; it.hasNext(); i++){
+			Entry<String, String> ent = it.next();
+			args[i] = ent.getKey()+"="+ent.getValue();
+		}
+		
 	 return cmdLine.stdParseLine(args);
  }
 	public static void main(String[] args1) throws IOException, InterruptedException {
 		tme0 = System.currentTimeMillis();
 		CommandLine cmdLine = new ViralTranscriptAnalysisCmd2();
 		String[] args2 = ViralTranscriptAnalysisCmd2.readOpts(cmdLine, args1,"optsFile");
-		String bamFile = cmdLine.getStringVal("bamFile");
-		String fastqFile = cmdLine.getStringVal("fastqFile");
+		
+		//String fastqFile = cmdLine.getStringVal("fastqFile");
 		
 		
 		//Outputs.writeBed  = cmdLine.getBooleanVal("writeBed");
@@ -428,15 +427,7 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 		String reference = cmdLine.getStringVal("reference");
 		File refFile = reference==null ? null : new File(reference);
 	//	if(!refFile.exists()) throw new RuntimeException("ref file does not exist");
-		if(fastqFile!=null){
-			try{
-				//make a minimap index
-				boolean saveSeqs = false;
-			mm2_index = SequenceUtils.minimapIndex(refFile,  false, saveSeqs);
-			}catch(Exception exc){
-				exc.printStackTrace();
-			}
-		}
+		
 		
 		String resdir = cmdLine.getStringVal("resdir");
 		
@@ -449,35 +440,39 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 		File resDir = new File(resdir);
 		if(!resDir.exists())resDir.mkdir();
 		printParams(resDir, args1);
-		String[] bamFiles_ = null;
-		boolean fastq= true;
-		String inputFile;
-		if(bamFile!=null){
-			bamFiles_=bamFile.split(":");
-			fastq = false;
-			inputFile = bamFile;
-			sorted= true;
+		String inputFile = cmdLine.getStringVal("inputFile");
+		String todo = cmdLine.getStringVal("todo");
+		String [] inputFiles_;
+		if(todo==null){
+			inputFiles_ =inputFile.split(":");
 		}else{
-			
-			bamFiles_=fastqFile.replace(":/", "|/").split(":");
-			for(int k=0; k<bamFiles_.length; k++){
-				bamFiles_[k] = bamFiles_[k].replace("|/",":/");
-			}
-			fastq = true;
-			inputFile = fastqFile;
-			sorted = false;
-		}
-//		delayComit = !sorted; // we can delay committing if not sorted according to position
-		final boolean fastq_ = fastq;
-		if(inputFile.equals("all") || inputFile.equals(".")){
-			bamFiles_ = (new File("./")).list(new FilenameFilter(){
-				@Override
-				public boolean accept(File dir, String name) {
-					return !fastq_ && name.endsWith(".bam") || (fastq_ && (name.endsWith(".fq.gz") || name.endsWith(".fastq.gz")  || name.endsWith(".fastq") || name.endsWith(".fq")));
+			BufferedReader br = new BufferedReader(new FileReader(todo));
+			String st = "";
+			List<String> ifs = new ArrayList<String>();
+			while((st=br.readLine())!=null){
+				if(st.length()>0 && !st.trim().startsWith("#")){
+					ifs.add(st.trim());
 				}
-				
-			});
+			}
+			inputFiles_ = ifs.toArray(new String[0]);
+			br.close();
 		}
+			boolean bam = inputFiles_[0].endsWith(".bam") || inputFiles_[0].endsWith("sam") ;
+			boolean fastq = !bam;
+			if(fastq){
+				try{
+					//make a minimap index
+					boolean saveSeqs = true;
+				mm2_index = SequenceUtils.minimapIndex(refFile,  false, saveSeqs);
+				}catch(Exception exc){
+					exc.printStackTrace();
+				}
+			}
+		//String inputFile;
+		
+//		delayComit = !sorted; // we can delay committing if not sorted according to position
+		//final boolean fastq_ = fastq;
+		
 		/*String annotToRem = cmdLine.getStringVal("annotToRemoveFromGFF");
 		if(annotToRem!=null){
 				inner: for(int j=0; j<bamFiles_.length; j++){
@@ -487,7 +482,7 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 					}
 				}
 		}*/
-		run(cmdLine, bamFiles_, resdir,   chroms, chroms_ignore, fastq, reference);
+		run(cmdLine, inputFiles_, resdir,   chroms, chroms_ignore, fastq, reference);
 		System.err.println("shutting down executors");
 		
 		IdentityProfileHolder.shutDownExecutor();
