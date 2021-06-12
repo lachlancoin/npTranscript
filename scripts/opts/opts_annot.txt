@@ -1,0 +1,9 @@
+--resdir=results_fusion
+--annotation=/home/lachlan/github/npTranscript/data/SARS-Cov2/VIC01/Coordinates.csv
+--reference=/home/lachlan/github/npTranscript/data/SARS-Cov2/VIC01/wuhan_coronavirus_australia.fasta.gz
+#--GFF_features=gene_name:description:transcript_id:gene_biotype:gene_id 
+--writeGFF=true
+--maxTranscriptsPerGeneInGFF=1000
+--gffThresh=10
+--firstIsTranscriptome=false
+

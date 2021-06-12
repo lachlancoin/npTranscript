@@ -27,7 +27,7 @@ export JSA_MEM=30000m
 
 if [ ! $npTranscript ] ; then
 #export	npTranscript=${HOME}/github/npTranscript
-export npTranscript=/data/gpfs/projects/punim1068/npTranscript
+export npTranscript=/data/gpfs/projects/punim1068/npTranscript_streaming
 fi 
 if [ ! $reference_virus ]; then
   export reference_virus="${npTranscript}/data/SARS-Cov2/VIC01/wuhan_coronavirus_australia.fasta.gz"
@@ -55,7 +55,8 @@ elif [ $species == "human_only" ]; then
 	reference="./GRCh38_full_analysis_set_plus_decoy_hla.fa.gz"
 	coord_file="./Homo_sapiens.GRCh38.100.gtf.gz"
 elif [ $species == "SARSCov2" ]; then
-	referece="${npTranscript}/data/SARS-Cov2/wuhuan/wuhan_coronavirus.fasta.gz"
+	reference="${npTranscript}/data/SARS-Cov2/wuhan/wuhan_coronavirus.fasta.gz"
+	coord_file="${npTranscript}/data/SARS-Cov2/wuhuan/Coordinates.csv"
 elif [ $species == "U13369" ]; then
 	#reference="${npTranscript}/data/U13369/Human_ribosomal_DNA_complete_repeating_unit.fasta.gz"
 	reference="${npTranscript}/data/U13369/18S_28S.fa.gz"
@@ -96,9 +97,10 @@ if [ ! -f $todo ]; then
   exit ;
 fi
 
+dat=$(date +%Y%m%d%H%M%S)
+resdir="res_${species}_${dat}"
 
-
-bash ${npTranscript}/scripts/run.sh ${bamfiles1}  --reference=${reference} --resdir=${resdir} --optsFile=${opts_host}--todoFile=${todo}
+bash ${npTranscript}/scripts/run.sh   --reference=${reference} --resdir=${resdir} --optsFile=${opts_host} --todo=${todo}
 
 
 
@@ -116,7 +118,13 @@ if [ ! -f $h5file ]; then
   exit ;
 fi
 
-bash ${npTranscript}/scripts/run_annot.sh ${bamfiles1}  --reference=${reference} --annotation=${coord_file} --resdir=${resdir} --optsFile=${opts_annot} --h5file=${h5file}
+if [ ! $coord_file ]; then
+  echo "no coordinate file"
+  exit ;
+fi
+
+
+bash ${npTranscript}/scripts/run_annot.sh  --reference=${reference} --annotation=${coord_file} --resdir=${resdir} --optsFile=${opts_annot} --h5file=${h5file}
 
 
 
