@@ -60,7 +60,7 @@
 	 <dependency>
           	  <groupId>coin</groupId>
           	  <artifactId>japsacov</artifactId>
-           	 <version>1.9.5e.jar</version>
+           	 <version>1.9.5e</version>
       	</dependency>
 	 <dependency>
           		  <groupId>ch.ethz.wiki-bsse</groupId>
