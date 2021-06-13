@@ -16,7 +16,7 @@
 --span=protein_coding
 --doMSA=false
 --msa_source=cDNA 
---maxThreads=1
+--maxThreads=4
 --writeIsoforms=true
 --recordDepthByPosition=false
 --coverageDepthThresh=100
@@ -31,8 +31,8 @@
 
 --mm2_splicing=un   ## this is for virus 
 #--mm2_splicing=uf   ## this is for host 
---mm2_path=/home/lachlan/github/minimap2/minimap2
-
+#--mm2_path=/home/lachlan/github/minimap2/minimap2
+--mm2_path=minimap2
 
 #--readList=readlist3.txt
 

@@ -3,15 +3,16 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --mem=31800 # mb
+#SBATCH --mem=8000 # mb
 #SBATCH --time=100:00:00
 #SBATCH --output=corona1.stdout
 #SBATCH --error=corona1.stderr
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=8
 #SBATCH --partition=physical,snowy
 
 
 ## Load required modules
+module load gcc/8.3.0
 module load samtools/1.9
 module load minimap2/2.17
 module load java
@@ -23,16 +24,12 @@ module load java
 #NOTE: need to have an opts_run.txt in the run directory
 #to find bams for todo.txt
 #find /data/gpfs/projects/punim1068/host_analysis/direct_RNA_sequin_genome/Vero/ -name *bam > todo.txt
-export JSA_MEM=30000m
+export JSA_MEM=7800m
 
 if [ ! $npTranscript ] ; then
 #export	npTranscript=${HOME}/github/npTranscript
 export npTranscript=/data/gpfs/projects/punim1068/npTranscript_streaming
 fi 
-if [ ! $reference_virus ]; then
-  export reference_virus="${npTranscript}/data/SARS-Cov2/VIC01/wuhan_coronavirus_australia.fasta.gz"
-  export coord_file_virus="${npTranscript}/data/SARS-Cov2/VIC01/Coordinates.csv"
-fi
 
 
 species=$1
@@ -43,7 +40,7 @@ if [ ! $species ]; then
 fi
 
 db_path=/data/gpfs/projects/punim1068/db
-
+mm2_splicing="uf"  # for host
 	
 if [ $species == "human" ]; then
 	reference="${db_path}/merged/sequin_genome/VIC_virus_human_sequin_genome_ensembl_pri_merged.fasta"
@@ -55,9 +52,10 @@ elif [ $species == "human_only" ]; then
 	reference="./GRCh38_full_analysis_set_plus_decoy_hla.fa.gz"
 	coord_file="./Homo_sapiens.GRCh38.100.gtf.gz"
 elif [ $species == "SARSCov2" ]; then
+	mm2_splicing="un"
 	reference="${npTranscript}/data/SARS-Cov2/wuhan/wuhan_coronavirus.fasta.gz"
-	coord_file="${npTranscript}/data/SARS-Cov2/wuhuan/Coordinates.csv"
-elif [ $species == "U13369" ]; then
+	coord_file="${npTranscript}/data/SARS-Cov2/wuhan/Coordinates.csv"
+elif [ $species == "rRNA" ]; then
 	#reference="${npTranscript}/data/U13369/Human_ribosomal_DNA_complete_repeating_unit.fasta.gz"
 	reference="${npTranscript}/data/U13369/18S_28S.fa.gz"
 elif [ $species == "combined" ]; then
@@ -71,8 +69,6 @@ echo $reference
 
 
 dat=$(date +%Y%m%d%H%M%S)
-mm2_path="/sw/minimap2/current/minimap2"
-mm2_path="minimap2"
 mode=$1
 shift
 if [ ! $mode ];then
@@ -100,7 +96,7 @@ fi
 dat=$(date +%Y%m%d%H%M%S)
 resdir="res_${species}_${dat}"
 
-bash ${npTranscript}/scripts/run.sh   --reference=${reference} --resdir=${resdir} --optsFile=${opts_host} --todo=${todo}
+bash ${npTranscript}/scripts/run.sh   --reference=${reference} --resdir=${resdir} --optsFile=${opts_host} --todo=${todo} --mm2_splicing=${mm2_splicing}
 
 
 
