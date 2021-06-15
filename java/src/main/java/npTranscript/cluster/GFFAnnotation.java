@@ -1,6 +1,7 @@
 package npTranscript.cluster;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -20,9 +21,11 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 
 import japsa.seq.Sequence;
+import japsa.seq.ZipGFF;
 
 public class GFFAnnotation extends Annotation{
 
@@ -379,15 +382,45 @@ public class GFFAnnotation extends Annotation{
 		if(target[2].length()==0) target[2] = target[0];
 	}
 	
+	
+	private static ZipFile getAnnotfile(File gffFile) throws ZipException, IOException {
+		ZipFile anno = null;
+		boolean writeDirect = true;
+		
+		if(gffFile!=null && (gffFile.getName().indexOf(".gff")>=0 || gffFile.getName().indexOf(".gtf")>=0)){
+			if(gffFile.getName().endsWith(".zip")){
+				anno = new ZipFile(gffFile);
+				System.err.println(anno.getName());
+			}
+			else {
+				String out_nme = gffFile.getName();
+				int ind = out_nme.lastIndexOf('.');
+				out_nme = out_nme.substring(0, ind);
+				File outzip = new File(gffFile.getParentFile(),out_nme+".zip");
+				if(outzip.exists()){
+					System.err.println("reading existing gff zip file "+outzip.getAbsolutePath());
+					anno = new ZipFile(outzip);
+				}
+				else{
+					System.err.println("making gff.zip file");
+					ZipGFF gffin =  new ZipGFF( gffFile, outzip,writeDirect);
+					gffin.run();
+					anno = new ZipFile(outzip);
+				}
+			}
+		}
+		return anno;
+	}
+	
 	List<String> transcripts = new ArrayList<String>(); // whether the exon is linked to previous one in a transcript
 	public static boolean enforceKnownLinkedExons = false;
 	ZipFile zf;
 	public PrintWriter pw;
 	boolean gtf;
 	//chr1    HAVANA  exon    13453   13670   .       +       .       ID
-	public GFFAnnotation(ZipFile zf ,PrintWriter pw1, boolean gtf) throws IOException{
+	public GFFAnnotation(File gffFile ,PrintWriter pw1, boolean gtf) throws IOException{
 		//super(chrom, seqlen);
-		this.zf = zf;
+		this.zf =getAnnotfile(gffFile);
 		this.pw = pw1;
 		this.gtf = gtf;
 	}

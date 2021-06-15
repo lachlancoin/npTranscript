@@ -182,8 +182,7 @@ public class Annotation{
 		
 		Annotation annot  = null;
 		if(gffFile!=null && (gffFile.getName().indexOf(".gff")>=0 || gffFile.getName().indexOf(".gtf")>=0)){
-			//String chrn = refname;
-				annot = new GFFAnnotation(anno,annotation_pw, gffFile.getName().indexOf(".gff")<0);
+				annot = new GFFAnnotation(gffFile,annotation_pw, gffFile.getName().indexOf(".gff")<0);
 				
 		}else{
 			

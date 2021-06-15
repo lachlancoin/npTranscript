@@ -216,15 +216,15 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			PrintWriter annotation_pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(annotSummary, false))));
 			File gffFile=annot_file==null ? null : new File(annot_file);
 			
-			ZipFile anno = null;
+			//ZipFile anno = null;
 			if(gffFile!=null && (gffFile.getName().indexOf(".gff")>=0 || gffFile.getName().indexOf(".gtf")>=0)){
-					anno  = getAnnotfile(gffFile);
-					annot = new GFFAnnotation(anno, annotation_pw, gffFile.getName().indexOf(".gff")<0);
+					
+					annot = new GFFAnnotation(gffFile, annotation_pw, gffFile.getName().indexOf(".gff")<0);
 			}else{
 				annot = 
 					new Annotation(new File(annot_file),  annotation_pw, len);
 			}
-			if(anno!=null) anno.close();
+		//	if(anno!=null) anno.close();
 			if(annotation_pw!=null) annotation_pw.close();
 		}
 		//String refFile = cmdLine.getStringVal("reference");
@@ -259,32 +259,5 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		outp.close();
 		it.close();
 	}
-	private static ZipFile getAnnotfile(File gffFile) throws ZipException, IOException {
-		ZipFile anno = null;
-		boolean writeDirect = true;
-		
-		if(gffFile!=null && (gffFile.getName().indexOf(".gff")>=0 || gffFile.getName().indexOf(".gtf")>=0)){
-			if(gffFile.getName().endsWith(".zip")){
-				anno = new ZipFile(gffFile);
-				System.err.println(anno.getName());
-			}
-			else {
-				String out_nme = gffFile.getName();
-				int ind = out_nme.lastIndexOf('.');
-				out_nme = out_nme.substring(0, ind);
-				File outzip = new File(gffFile.getParentFile(),out_nme+".zip");
-				if(outzip.exists()){
-					System.err.println("reading existing gff zip file "+outzip.getAbsolutePath());
-					anno = new ZipFile(outzip);
-				}
-				else{
-					System.err.println("making gff.zip file");
-					ZipGFF gffin =  new ZipGFF( gffFile, outzip,writeDirect);
-					gffin.run();
-					anno = new ZipFile(outzip);
-				}
-			}
-		}
-		return anno;
-	}
+
 }
