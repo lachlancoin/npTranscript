@@ -18,6 +18,7 @@ import htsjdk.samtools.SAMRecord;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.tools.seq.SequenceUtils;
+import npTranscript.run.ViralChimericReadsAnalysisCmd;
 
 public class IdentityProfileHolder {
 	
@@ -293,18 +294,36 @@ static Comparator comp_q = new SamComparator(true);
 					StringBuffer chrom = new StringBuffer();
 					StringBuffer strand = new StringBuffer();//sam1.get(0).getReadNegativeStrandFlag() ? '-': '+';
 					StringBuffer q_str = new StringBuffer();
+					StringBuffer q_str1 = new StringBuffer();
+					String chr = null;
+					boolean fusion = false;
+					
 					for(int i=0; i<sam1.size(); i++){
+						
+						SAMRecord record = sam1.get(i);
 						strand.append(sam1.get(i).getReadNegativeStrandFlag() ? '-': '+');
 						q_str.append(sam1.get(i).getMappingQuality());
+						//byte[] q = record.getBaseQualities();
+					//	System.err.println(q.length+" "+record.getReadLength());
+						
+						int qstart = record.getReadPositionAtReferencePosition(record.getAlignmentStart());
+						int qend = record.getReadPositionAtReferencePosition(record.getAlignmentEnd());
+						//System.err.println("qstart-end "+qstart+" "+qend);
+						q_str1.append(ViralChimericReadsAnalysisCmd.median(sam1.get(i).getBaseQualities(), qstart, qend-qstart));
 						//if(strand1!=strand) strand = 'm';
-						chrom.append(sam1.get(i).getReferenceName());
+					 	chrom.append(sam1.get(i).getReferenceName());
+					 	if(i==0){
+							chr = record.getReferenceName();
+						}else if(!record.getReferenceName().equals(chr)){
+							fusion = true;
+						}
 						if(i<sam1.size()-1){
 							chrom.append(",");
-							q_str.append(",");
+							q_str.append(",");q_str1.append(",");
 						}
 					}
 //					System.err.println(sam1.size());
-					 profile.setName(rn, chrom.toString(),strand.toString(), q_str.toString(), source_index, sam1.size()>1);
+					 profile.setName(rn, chrom.toString(),strand.toString(), q_str.toString(), q_str1.toString(),source_index, fusion);
 				//	if(profile.coRefPositions.breaks.size()>0 && ! supp) throw new RuntimeException("this is not clear");
 				//	if(supp && profile.suppl!=null && profile.suppl.size()>0) throw new RuntimeException("supps not empty");
 					

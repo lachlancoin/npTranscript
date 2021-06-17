@@ -22,17 +22,17 @@ import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 
 public class IdentityProfile1 {
-	public static boolean checkPolyA = false;
+	public static final boolean checkPolyA = true;
 //	public static double fusion_overlap_thresh = 0.5;
 	public static String[] nmes = new String[] {"5_3", "5_no3", "no5_3", "no5_no3"};
 	public String nextDownstream(int rightBreak, int chrom_index, Boolean forward){
-		return chrom_+"/"+TranscriptUtils.round(rightBreak,CigarHash2.round);
+		return ""+TranscriptUtils.round(rightBreak,CigarHash2.round);
 	}
 	public String  nextUpstream(int rightBreak, Boolean forward){
 	//	secondKey.append(this.chrom_);		secondKey.append("/");
 	//	secondKey.append(this.strand);secondKey.append("/");
 		
-		return chrom_+"/"+strand+"/"+TranscriptUtils.round(rightBreak,CigarHash2.round);
+		return ""+TranscriptUtils.round(rightBreak,CigarHash2.round);
 	}
 	public void adjust3UTR(int seqlen2) {
 		
@@ -116,7 +116,7 @@ public class IdentityProfile1 {
 		
 	}
 	public String strand;
-	public void setName(String readName, String chrom_, String strand, String q_value, int source_index, boolean fusion) {
+	public void setName(String readName, String chrom_, String strand, String q_value,String q_value_base, int source_index, boolean fusion) {
 		// TODO Auto-generated method stub
 		this.id = readName;
 		this.fusion = fusion;
@@ -124,6 +124,7 @@ public class IdentityProfile1 {
 		//else if(chrom_index!=this.chrom_index) fusion = true;
 this.strand = strand;
 this.q_value_str = q_value;
+this.base_q_str = q_value_base;
 this.updateSourceIndex(source_index);
 		this.readName = readName;
 		this.chrom_ = chrom_;// fusion ? this.chrom_+";"+chrom_ : chrom_;
@@ -159,7 +160,7 @@ static char delim_start ='$';
 	
 	//** this adds coRefPositions into the clusters
 	 public static String header = 
-"readID\tsource\tchrom\tstartPos\tendPos\tstrand\terrorRatio\tid\tbreaks\tbreaks1\tqval\tpolyA";
+"readID\tsource\tchrom\tstartPos\tendPos\tstrand\terrorRatio\tid\tbreaks\tbreaks1\tqval\tbaseQ\tpolyA";
 
 	public void commit(Sequence readSeq){
 		int[] res = new int[2];
@@ -167,11 +168,10 @@ static char delim_start ='$';
 		
 		if(fusion  && checkPolyA){
 		//	if (this.coRefPositions.forward) {
-				for(int j=0; j<coRefPositions.start_positions.size(); j++){
+		 		for(int j=1; j<coRefPositions.start_positions.size(); j++){
 					int br = coRefPositions1.breaks.get(coRefPositions.start_positions.get(j));
-				
-				this.coRefPositions.start_positions.get(0);
-				  boolean hasPoly = getPolyA(readSeq, polyA, Math.max(0, br-50), Math.min(readSeq.length(), br+50), res);
+			//	this.coRefPositions.start_positions.get(0);
+				  boolean hasPoly = getPolyA(readSeq, polyA, Math.max(0, br-30), Math.min(readSeq.length(), br+30), res);
 				  if(hasPoly){
 					st.append(readSeq.subSequence(res[0], res[1]));
 					st.append("_");
@@ -191,7 +191,7 @@ static char delim_start ='$';
 		String str = id+"\t"+source_index+"\t"
 		+chrom_+"\t"
 		+startPos+"\t"+endPos+"\t"+strand+"\t"
-		+coRefPositions.getError(source_index)+"\t"+id_+"\t"+breakSt+"\t"+breakSt1+"\t"+q_value_str.trim()+"\t"+st.toString();
+		+coRefPositions.getError(source_index)+"\t"+id_+"\t"+breakSt+"\t"+breakSt1+"\t"+q_value_str.trim()+"\t"+this.base_q_str.trim()+"\t"+st.toString();
 	//	if(trainStrand){f
 		//	str = str+"\t"+readSeq.subSequence(0, 10)+"\t"+readSeq.subSequence(len1-10, len1)
 //				+"\t"+toString(phredQ,0,10)+"\t"+toString(phredQ,len1-10,len1)
@@ -200,9 +200,11 @@ static char delim_start ='$';
 		parent.o.printRead(str);
 		
 	}
-	boolean hasLeaderBreak;		String breakSt; String breakSt1; String secondKeySt;boolean includeInConsensus = true;
+	boolean hasLeaderBreak_;		String breakSt; String breakSt1; String secondKeySt;boolean includeInConsensus = true;
 	byte[] phredQ; String baseQ; String type_nme; String span_str; int span;  String q_value_str; String id;
-
+	String base_q_str;
+	
+	
 	/*Note:  align5prime will be null if not coronavirus */
 	public String processRefPositions(  String id, boolean cluster_reads, 
 			 int src_index , Sequence readSeq, String baseQ, 
@@ -219,6 +221,7 @@ static char delim_start ='$';
 		this.coRefPositions.strand = strand; 
 		this.id = id; 
 		CigarHash2 breaks = this.coRefPositions.breaks;
+		List<Integer> startPositions = this.coRefPositions.start_positions;
 		startPos = breaks.get(0);
 		endPos= breaks.get(breaks.size()-1);
 		//startPos = sam.getAlignmentStart();//+1; // transfer to one based
@@ -266,15 +269,22 @@ static char delim_start ='$';
 		//String roundStartP = annotByBreakPosition ? TranscriptUtils.round(startPos, CigarHash2.round)+"" : 	"";
 		StringBuffer secondKey =new StringBuffer();
 		
-		 hasLeaderBreak = TranscriptUtils.coronavirus? (breaks.size()>1 &&  annot.isLeader(breaks.get(1))) : false;
+	//	 hasLeaderBreak = TranscriptUtils.coronavirus? (breaks.size()>1 &&  annot.isLeader(breaks.get(1))) : false;
 		
 		
 		if(true) {//annot instanceof EmptyAnnotation){
-			if(forward!=null){
-				if(forward) secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), forward));
-				else secondKey.append(annot.nextUpstream(breaks.get(0),forward));
-			}else{
-				secondKey.append(annot.nextUpstream(breaks.get(breaks.size()-1), forward));
+			secondKey.append(chrom_+"/"+strand+"/");
+			for(int jjk =0; jjk<this.strand.length(); jjk++){
+				if(jjk>0) secondKey.append(";");
+				int s1 = startPositions.get(jjk);
+				int e1 = jjk < startPositions.size()-1 ? startPositions.get(jjk+1) : breaks.size();
+				if(forward!=null){
+					if(strand.charAt(jjk)=='+') secondKey.append(TranscriptUtils.round(breaks.get(e1-1), CigarHash2.round1));
+					else secondKey.append(TranscriptUtils.round(breaks.get(s1),CigarHash2.round1));
+				}else{
+					secondKey.append(TranscriptUtils.round(breaks.get(e1-1), CigarHash2.round1));
+				}
+				
 			}
 		}
 		
@@ -536,7 +546,7 @@ static char delim_start ='$';
 		Sequence r1 = readSeq.subSequence(st, end);
 		if(true){
 		SWGAlignment polyAlign =  SWGAlignment.align(r1, polyA);
-		if(polyAlign.getIdentity() > 0.85 * polyAlign.getLength()  && polyAlign.getLength()>15){ // at least 15 A wih
+		if(polyAlign.getIdentity() > 0.85 * polyAlign.getLength()  && polyAlign.getLength()>10){ // at least 15 A wih
 			res[0] = polyAlign.getStart1()+st;
 			res[1]  = res[0] + polyAlign.getLength() - polyAlign.getGaps1();
 			haspolyA = true;

@@ -130,7 +130,11 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		addString("pattern", null, "Pattern of read name, used for filtering");
 		addString("span", "protein_coding", "Filtering span.  Use all not to filter.");
 		addInt("qual", 0, "Minimum quality required");
-		addInt("bin", 1, "Bin size for numerical hashing");
+		addInt("bin0", 1, "Bin size for numerical hashing");
+		addInt("bin1",100, "Bin size for hashing of the end");
+		addDouble("overlap_thresh",0.33,"max percentage overlap between supp alignments considered");
+		addInt("overlap_max",20,"max bp overlap between supp alignments considered");
+
 		addString("numExonsMSA", "none", "number of exons For  MSA");
 		addInt("max_seqs_per_cluster",100000,"max sequences in MSA files");
 		addInt("breakThresh", 1000, "Thresh for break points to match clusters.  If bigger than genome size then no break points");
@@ -148,7 +152,9 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		addInt("startThresh", 100, "Threshold for having 5'");
 		addInt("endThresh", 100, "Threshold for having 3'");
 		addInt("maxThreads", 8, "max threads for processing");
+		addBoolean("calcBreaks", false, "whether to calculate breakpoints");
 		addInt("extra_threshold", 200, "Threshold saving umatched 3'or 5'parts of reads");
+		addInt("min_first_last_exon",0, "minimum first or last exon size");
 		//addDouble("overlapThresh", 0.95, "Threshold for overlapping clusters");
 	//	addBoolean("coexpression", false, "whether to calc coexperssion matrices (large memory for small bin size)");
 	//	addBoolean("overwrite", false, "whether to overwrite existing results files");
@@ -202,6 +208,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		int qual = cmdLine.getIntVal("qual");
 		int bin = cmdLine.getIntVal("bin");
 		CigarCluster.singleGFF = cmdLine.getBooleanVal("singleGFF");
+		
 		int breakThresh = cmdLine.getIntVal("breakThresh");
 		String pattern = cmdLine.getStringVal("pattern");
 		String[] readList = cmdLine.getStringVal("readList").split(":");
@@ -216,6 +223,9 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		
 		
 		Outputs.writeH5 = cmdLine.getBooleanVal("writeH5");
+		CigarHash2.round = cmdLine.getIntVal("bin0");
+		CigarHash2.round1 = cmdLine.getIntVal("bin1");
+
 		Annotation.enforceStrand = cmdLine.getBooleanVal("enforceStrand");
 		IdentityProfile1.trainStrand = cmdLine.getBooleanVal("trainStrand");
 		GFFAnnotation.enforceKnownLinkedExons = cmdLine.getBooleanVal("enforceKnownLinkedExons");
@@ -304,51 +314,22 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		String chromsToRemap = cmdLine.getStringVal("chromsToRemap");
 		
 		//Outputs.MSA_at_cluster = false;
-		boolean calcBreaks=false;// = cmdLine.getBooleanVal("calcBreaks");// whether to calculate data for the break point heatmap, true for SARS_COV2
-		boolean filterBy5_3 = false;// should be true for SARS_COV2
+		Outputs.calcBreaks=cmdLine.getBooleanVal("calcBreaks");// whether to calculate data for the break point heatmap, true for SARS_COV2
+	//	boolean filterBy5_3 = false;// should be true for SARS_COV2
 		boolean annotByBreakPosition = false;  // should be true for SARS_COV2
 		//Outputs.writePolyA = cmdLine.getBooleanVal("writePolyA");
 		CigarCluster.recordDepthByPosition = cmdLine.getBooleanVal("recordDepthByPosition");
 		CigarCluster.recordStartEnd = cmdLine.getBooleanVal("recordDepthByPosition");
-
+		IdentityProfileHolder.overlap_max = cmdLine.getIntVal("overlap_max");
+		IdentityProfileHolder.overlap_thresh = cmdLine.getDoubleVal("overlap_thresh");
+		IdentityProfile1.min_first_last_exon_length = cmdLine.getIntVal("min_first_last_exon");
 		if(coronavirus){
-		//	
-		//	CigarCluster.recordDepthByPosition = true;
-			IdentityProfile1.min_first_last_exon_length = 0;
 			System.err.println("running in coronavirus mode");
-			calcBreaks  = true; 
-			filterBy5_3 = true;
-		//	Outputs.writeGFF=true;
-			Outputs.calcBreaks=true;
-		//	Outputs.MSA_at_cluster = true;
-			TranscriptUtils.checkAlign = true;
-			TranscriptUtils.coronavirus = true;
-			//IdentityProfile1.extra_threshold1 =50;
-			annotByBreakPosition = true;
-			TranscriptUtils.writeAnnotP = true;
-			
-		//	CigarHash2.subclusterBasedOnStEnd = false;
 			SequenceUtils.mm2_splicing= "-"+cmdLine.getStringVal("mm2_splicing","un");
 		//sequential = true;
 		}else{
-			//sequential = false;
-		//	TranscriptUtils.reAlignExtra = false;
-		//	TranscriptUtils.findPolyA = false;
-		//Outputs.writeGFF = false;
-			IdentityProfile1.min_first_last_exon_length = 10;
-			Outputs.calcBreaks=false;
-			
-			TranscriptUtils.coronavirus = false;
-			//IdentityProfile1.extra_threshold1 = 1000000;
-			//Outputs.writeUnSplicedFastq = false;
-			TranscriptUtils.checkAlign = false;
-			TranscriptUtils.writeAnnotP = false;
-			System.err.println("running in host mode");
-			//CigarHash2.subclusterBasedOnStEnd = false;
-			calcBreaks = false;
+		//	TranscriptUtils.coronavirus = false;
 			SequenceUtils.mm2_splicing= "-"+cmdLine.getStringVal("mm2_splicing","uf");
-
-
 		}
 	//	SequenceUtils.mm2Preset=fnull;//"map-ont";
 		sequential = cmdLine.getBooleanVal("sequential");
@@ -361,7 +342,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		
 			errorAnalysis(bamFiles, RNA,reference, readList,
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  
-				calcBreaks, filterBy5_3, annotByBreakPosition,  chrs, chrsToIgnore,  isoformDepthThresh, coverageDepthThresh, probInclude, fastq, 
+				Outputs.calcBreaks, annotByBreakPosition,  chrs, chrsToIgnore,  isoformDepthThresh, coverageDepthThresh, probInclude, fastq, 
 				chromsToRemap);
 	}
  public static boolean sorted = true;
@@ -502,7 +483,7 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 	static void errorAnalysis(String[] bamFiles_,boolean[] RNA, String refFile,  String[] readList,    String resdir, 
 			String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads, 
-			boolean calcBreaks , boolean filterBy5_3, boolean annotByBreakPosition, String chrToInclude, String chrToIgnore, 
+			boolean calcBreaks1 ,  boolean annotByBreakPosition, String chrToInclude, String chrToIgnore, 
 			int[] writeIsoformDepthThresh, int writeCoverageDepthThresh, double probInclude, boolean fastq, String chromsToRemap) throws IOException {
 		boolean cluster_reads = true;
 		CigarHash2.round = round;
@@ -656,7 +637,7 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 			
 		//	boolean calcBreaks1 = calcBreaks;// && break_thresh < seqlen && chr!=null;
 			IdentityProfileHolder profile =  	
-					new IdentityProfileHolder(genomes, null, outp,  in_nmes, calcBreaks);//, annot);
+					new IdentityProfileHolder(genomes, null, outp,  in_nmes, calcBreaks1);//, annot);
 			//boolean updateProfile = true;
 			
 			

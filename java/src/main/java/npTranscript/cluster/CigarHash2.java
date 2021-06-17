@@ -75,6 +75,7 @@ public class CigarHash2 extends ArrayList<Integer> {
 	
 	
 	public static int round = 100;
+	public static int round1=500;
 	//static int[] breaks_in = new int[2];
 	//static int[] breaks_out = new int[2];
 //	public static boolean cluster_by_annotation = true;

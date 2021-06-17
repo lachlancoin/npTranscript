@@ -223,7 +223,7 @@ public class CigarClusters {
 		
 	};
 	
-	public void getConsensus(  
+	/*public void getConsensus(  
 			Outputs o
 			) throws IOException{
 		
@@ -238,7 +238,7 @@ public class CigarClusters {
 					o.writeDepthH5(nxt.breaks_hash.secondKey, nxt.map);
 			}
 			
-	}
+	}*/
 
 	
 

@@ -9,7 +9,7 @@ import japsa.seq.Sequence;
 
 public class TranscriptUtils {
 	
-	public static boolean coronavirus = true;
+	//public static boolean coronavirus = true;
 	static int round(int pos, int round) {
 		int res = (int) Math.floor((double) (pos) / (double) round);
 		return res;
@@ -66,7 +66,7 @@ public class TranscriptUtils {
 //	static double round2 = 100;
 	
 	static String[] nmes = "5_3:5_no3:no5_3:no5_no3".split(":");
-	public static boolean checkAlign = true;
+//	public static boolean checkAlign = true;
 	public  static boolean checkNegStrand = false;
 	
 	
@@ -155,7 +155,7 @@ public class TranscriptUtils {
 
 	
 
-	public static boolean writeAnnotP = true;
+	//public static boolean writeAnnotP = true;
 
 
 
