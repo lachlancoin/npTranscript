@@ -479,6 +479,19 @@ if(is.null(levels)){
   ratio1 = ratio1[ratio1$ORF %in% orfs_include,,drop=F]
  ratio1
 }
+
+.reduceDepth<-function(tpm_df,max=10){
+  lev = unique(tpm_df$type)
+  if(length(lev)<=max) return(tpm_df)
+  m = rep(NA, length(lev))
+  for(k in 1:length(lev)){
+    m[k] = max(tpm_df[tpm_df$type==lev[k],]$mean)
+  }
+  o = order(m, decreasing=T)
+  levs1 = lev[o[1:min(max, length(m))]]
+  tpm_df[tpm_df$type %in% levs1,]
+}
+
 #  ggp= NULL
 .plotAnnotFile<-function(ratio1, levels=NULL,barchart=F,showEB = F,facet = NULL, showSecondAxis=F,coeff=1,diff=0, y_text="Ratio", size=20,textsize=20, linesize=1.5){
    if(!barchart){

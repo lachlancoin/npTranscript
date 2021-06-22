@@ -558,18 +558,14 @@ depthPlot= function(input, selected_transcripts, regex_list, plot_type, reuse=F)
           }else if(length(toplot)>input$maxtrans){
             ##only show top number if not merging
             ## following gets exactly the IDS shown for the transcript plot
-            print(" HEEEEEEEEEEEEEEEEEEEEEEEEERE")
-            toplot1 = unique(session$userData$results$data$ID)
-            print(toplot1)
-            if(!is.null(toplot1)){
-              toplot=toplot1
-            }else{
-             isoInfo=session$userData$isoInfo
-              inds_k = sort(match(toplot,isoInfo$orfs$ORFs))
-          #  print(inds_k)
-         #   print(isoInfo$orfs$ORFs[inds_k][1:input$maxtrans])
-              toplot = isoInfo$orfs$ORFs[inds_k][1:input$maxtrans]
-            }
+           # print(paste(" HEEEEEEEEEEEEEEEEEEEEEEEEERE", input$maxtrans))
+          #  print(session$userData$results$data)
+          #  toplot = unique(session$userData$results$data$ID)
+          #   isoInfo=session$userData$isoInfo
+          #    inds_k = sort(match(toplot,isoInfo$orfs$ORFs))
+          ##  print(inds_k)
+           # print(isoInfo$orfs$ORFs[inds_k][1:input$maxtrans])
+            #  toplot = isoInfo$orfs$ORFs[inds_k][1:input$maxtrans]
           }
           molecules=input$molecules
           cells=input$cells
@@ -632,7 +628,9 @@ depthPlot= function(input, selected_transcripts, regex_list, plot_type, reuse=F)
                     ci = ci, depth_thresh = depth_thresh,toreplace=toreplace,toreplace1 = toreplace1, toreplace2 = toreplace2,
                     showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers
                     )
-            # print(head(tpm_df))
+           tpm_df =  .reduceDepth(tpm_df,max=input$maxtrans)
+         # if(TRUE) return (tpm_df)
+          #  print(head(tpm_df))
           if(!is.null(tpm_df)){
           session$userData$dataDepth[[which(names(session$userData$dataDepth)==plot_type)]] = tpm_df
           }
