@@ -557,7 +557,7 @@ depthPlot= function(input, selected_transcripts, regex_list, plot_type, reuse=F)
           }else if(length(toplot)>input$maxtrans){
             ##only show top number if not merging
             isoInfo=session$userData$isoInfo
-            inds_k = sort(match(toplot,isoInfo$orfs$ORFs))
+            inds_k = match(toplot,isoInfo$orfs$ORFs)
           #  print(inds_k)
          #   print(isoInfo$orfs$ORFs[inds_k][1:input$maxtrans])
             toplot = isoInfo$orfs$ORFs[inds_k][1:input$maxtrans]
