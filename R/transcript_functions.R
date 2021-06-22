@@ -481,15 +481,15 @@ if(is.null(levels)){
 }
 
 .reduceDepth<-function(tpm_df,max=10){
-  lev = unique(tpm_df$type)
-  if(length(lev)<=max) return(tpm_df)
+  lev = unique(tpm_df$clusterID)
+ # if(length(lev)<=max) return(tpm_df)
   m = rep(NA, length(lev))
   for(k in 1:length(lev)){
-    m[k] = max(tpm_df[tpm_df$type==lev[k],]$mean)
+    m[k] = max(tpm_df[tpm_df$clusterID==lev[k],]$count)
   }
   o = order(m, decreasing=T)
   levs1 = lev[o[1:min(max, length(m))]]
-  tpm_df[tpm_df$type %in% levs1,]
+  tpm_df[tpm_df$clusterID %in% levs1,,drop=F]
 }
 
 #  ggp= NULL
