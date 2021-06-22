@@ -628,7 +628,7 @@ depthPlot= function(input, selected_transcripts, regex_list, plot_type, reuse=F)
                     ci = ci, depth_thresh = depth_thresh,toreplace=toreplace,toreplace1 = toreplace1, toreplace2 = toreplace2,
                     showWaterfall=showWaterfall,waterfallKmer=waterfallKmer,waterfallOffset=waterfallOffset, top10=maxKmers
                     )
-           tpm_df =  .reduceDepth(tpm_df,max=input$maxtrans)
+        
          # if(TRUE) return (tpm_df)
           #  print(head(tpm_df))
           if(!is.null(tpm_df)){
@@ -636,6 +636,14 @@ depthPlot= function(input, selected_transcripts, regex_list, plot_type, reuse=F)
           }
               }
             if(!is.null(tpm_df)){
+              #print(head(tpm_df))
+              #print(unique(tpm_df$clusterID))
+              
+              if( length(unique(tpm_df$clusterID))>input$maxtrans){
+              #  print(paste("before", length(unique(tpm_df$clusterID)) ))
+                tpm_df =  .reduceDepth(tpm_df,max=input$maxtrans)
+               # print(paste("after", length(unique(tpm_df$clusterID)) ))
+              }
          ggp =plot_depth(tpm_df,total_reads,toplot,zoom=zoom, seq_df=seq_df, downsample = downsample, span = span, mergeGroups=mergeGroups,molecules=molecules, combinedID=combinedID, cells=cells, times = times,logy=logy, sumAll = sumAll,
                      showORFs = showORFs, motifpos=motifpos,peptides=peptides,xlim =xlim, t=t,path=plot_type,
                       alpha=alpha,plotCorr=plotCorr,linesize=linesize, reverseOrder=reverseOrder,
