@@ -83,7 +83,7 @@ readDir <- function(inputdir, update=T, debug=F, filter =TRUE) {
       session$userData$toreplace=toreplace
       isoInfo = .getIsoInfo(datafile, h5file,toreplace)
       total_reads = isoInfo$total_reads
-	  shinyjs::enable("add_btn")
+	   if(!debug) shinyjs::enable("add_btn")
       #  #   toreplace1=names(isoInfo$total_reads)
       #   grep("SRR",toreplace1)
       #   names(toreplace) = unlist( lapply(toreplace,.fixName))
@@ -435,8 +435,9 @@ transcriptPlot<-function(input, selected_transcripts, regex_list){
       }
       
     }
-	print(list(data = subs, totals = countsHostVirus1))
+	#print(list(data = subs, totals = countsHostVirus1))
     session$userData$results = list(data=subs, totals=countsHostVirus1)
+    
     yname='TPM'
     if(!p_data$showTPM){
           yname="Counts"
@@ -556,11 +557,19 @@ depthPlot= function(input, selected_transcripts, regex_list, plot_type, reuse=F)
             mergeGroups = .getGroups(toplot,group_by)
           }else if(length(toplot)>input$maxtrans){
             ##only show top number if not merging
-            isoInfo=session$userData$isoInfo
-            inds_k = match(toplot,isoInfo$orfs$ORFs)
+            ## following gets exactly the IDS shown for the transcript plot
+            print(" HEEEEEEEEEEEEEEEEEEEEEEEEERE")
+            toplot1 = unique(session$userData$results$data$ID)
+            print(toplot1)
+            if(!is.null(toplot1)){
+              toplot=toplot1
+            }else{
+             isoInfo=session$userData$isoInfo
+              inds_k = sort(match(toplot,isoInfo$orfs$ORFs))
           #  print(inds_k)
          #   print(isoInfo$orfs$ORFs[inds_k][1:input$maxtrans])
-            toplot = isoInfo$orfs$ORFs[inds_k][1:input$maxtrans]
+              toplot = isoInfo$orfs$ORFs[inds_k][1:input$maxtrans]
+            }
           }
           molecules=input$molecules
           cells=input$cells
@@ -924,7 +933,7 @@ output$downloadDEdata <- downloadHandler(filename = function() {'DE_data.xlsx'},
     infectivityPlot(session$input)
    # transcriptPlot(session$input, selected_transcripts = c(session$input$toplot7, session$input$toplot8), regex_list())
  #   session$input$selected_transcripts = c("^leader_leader,M_3UTR$","^leader_leader,N_3UTR$")
-    transcriptPlot(session$input)
+    transcriptPlot(session$input, selected_transcripts=c(), regex_list = list(regex1="5_3", regex2=c(), regex_join="AND"))
   #  depthPlot(session$input, "depth")
   
     depthPlot(session$input, selected_transcripts = c(session$input$toplot7, session$input$toplot8), regex_list = list(regex1 = '', regex2='', to_join=''), "depth")
