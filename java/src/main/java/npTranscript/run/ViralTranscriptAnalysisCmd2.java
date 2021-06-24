@@ -172,7 +172,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addBoolean("coronavirus", true, "whether to run in coronavirus mode (necessary to do breakpoint analysis, but takes more memory)");
 		addBoolean("writeGFF", false, "whether to output gff ");
 		addBoolean("writeIsoforms", false, "whether to write isoforms");
-
+addBoolean("calcBreaks",false,"whether to calc break points")
 		addString("mm2_path", "/sw/minimap2/current/minimap2",  "minimap2 path", false);
 		addString("mm2Preset", "splice",  "preset for minimap2", false);
 	//	addBoolean("writeBed", false, "whether to write bed",false);
@@ -311,7 +311,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		String chromsToRemap = cmdLine.getStringVal("chromsToRemap");
 		
 		//Outputs.MSA_at_cluster = false;
-		boolean calcBreaks=true;// = cmdLine.getBooleanVal("calcBreaks");// whether to calculate data for the break point heatmap, true for SARS_COV2
+		Outputs.calcBreaks= cmdLine.getBooleanVal("calcBreaks");// whether to calculate data for the break point heatmap, true for SARS_COV2
 		boolean filterBy5_3 = false;// should be true for SARS_COV2
 		boolean annotByBreakPosition = false;  // should be true for SARS_COV2
 		Outputs.writePolyA = cmdLine.getBooleanVal("writePolyA");
@@ -325,7 +325,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 			calcBreaks  = true; 
 			filterBy5_3 = true;
 		//	Outputs.writeGFF=true;
-			Outputs.calcBreaks=true;
+	//		Outputs.calcBreaks=true;
 		//	Outputs.MSA_at_cluster = true;
 			TranscriptUtils.checkAlign = true;
 			TranscriptUtils.coronavirus = true;
@@ -340,7 +340,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		//	TranscriptUtils.reAlignExtra = false;
 		//	TranscriptUtils.findPolyA = false;
 		//Outputs.writeGFF = false;
-			Outputs.calcBreaks=true;
+			//Outputs.calcBreaks=true;
 			sorted = true;
 			TranscriptUtils.coronavirus = false;
 			IdentityProfile1.extra_threshold1 = 1000000;
