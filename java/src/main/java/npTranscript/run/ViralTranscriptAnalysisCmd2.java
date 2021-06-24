@@ -172,7 +172,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		addBoolean("coronavirus", true, "whether to run in coronavirus mode (necessary to do breakpoint analysis, but takes more memory)");
 		addBoolean("writeGFF", false, "whether to output gff ");
 		addBoolean("writeIsoforms", false, "whether to write isoforms");
-addBoolean("calcBreaks",false,"whether to calc break points")
+addBoolean("calcBreaks",false,"whether to calc break points");
 		addString("mm2_path", "/sw/minimap2/current/minimap2",  "minimap2 path", false);
 		addString("mm2Preset", "splice",  "preset for minimap2", false);
 	//	addBoolean("writeBed", false, "whether to write bed",false);
@@ -317,7 +317,7 @@ addBoolean("calcBreaks",false,"whether to calc break points")
 		Outputs.writePolyA = cmdLine.getBooleanVal("writePolyA");
 		CigarCluster.recordDepthByPosition = cmdLine.getBooleanVal("recordDepthByPosition");
 		CigarCluster.recordStartEnd = cmdLine.getBooleanVal("recordDepthByPosition");
-
+ boolean calcBreaks=Outputs.calcBreaks;
 		if(coronavirus){
 		//	
 		//	CigarCluster.recordDepthByPosition = true;
