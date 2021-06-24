@@ -927,14 +927,27 @@ output$downloadDEdata <- downloadHandler(filename = function() {'DE_data.xlsx'},
 
 ##THIS IS FOR DEBUGGING
   if(FALSE){
+    source( "transcript_functions.R")
+    source("shiny-DE.R")
+    basedir="../data"
+    toreplace1 = c("ORF1ab,S_ORF1ab",    "leader,S_ORF1ab",    "ORF1ab,end_3UTR")
+    toreplace2= c("ORF1ab,ORF1ab_ORF1ab","leader,ORF1ab_ORF1ab","ORF1ab,end_end")
+    decodeFile = paste(basedir,"decode.txt",sep='/')
+    reorder = FALSE
+    update = TRUE
+    debug = FALSE
+    counter = list()
+    counter$n=0
     inputdir = "SARS-Cov2/VIC01" #
     inputdir="229E_new"
+    inputdir="SARS-Cov2/combined"
     session=readDir(inputdir,update=F,debug=T)
    # session$input$options2
    # session$input$group_by="type"
     session$input$toplot7="leader_leader,M_3UTR"
     session$input$toplot8="leader_leader,N_3UTR"
     session$input$options3 = c("showErrors",grep("mergeCounts" ,session$input$options3,v=T,inv=T))
+    session$input$orfs="E,N,M,S,ORF7a"
    # session$input$group_by=
     infectivityPlot(session$input)
    # transcriptPlot(session$input, selected_transcripts = c(session$input$toplot7, session$input$toplot8), regex_list())

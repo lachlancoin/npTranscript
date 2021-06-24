@@ -2772,13 +2772,19 @@ run_depth<-function(h5file, total_reads=NULL,  toplot=c("leader_leader,N_end", "
   if(path!="depth") calcErrors = FALSE
   
   header =.getHeaderH5(h5file,toreplace)
+  print("replace")
+  print(toreplace)
+  print(h5file)
   if(path=="depth"){
     dinds  = 2*(2:(length(header))-2)+2
   }else{
     dinds = 2:(length(header))
   }
   type_nme = header[-1]
+ # print("hhhhhhhhh")
+#  print(type_nme)
   types_=data.frame(t(data.frame(strsplit(type_nme,"_"))))
+ # print(types_)
   names(types_) = c("molecules","cell","time")
   inds1 =  which(types_$molecules %in% molecules & types_$cell %in% cells & types_$time %in% times)
   types1_ = types_[inds1,,drop=F]
