@@ -79,13 +79,37 @@ public class IdentityProfile1 {
 	public static double qual_thresh = 20.0D;
 	public static int break_thresh = 1000;
 	
-	public static Sequence polyA;// , polyT;
+	public static String[] seqs = new String[] {
+			"AAAAAAAAAAAAAAAAAAAA",
+//			 1st adapter 		 RTA 
+			 //Top: 5' - 3'
+			 "GGCTTCTTCTTGCTCTTAGGTAGTAGGTTC",
+		//	 Bottom:  5' - 3'
+			 "GAGGCGAGCGGTCAATTTTCCTAAGAGCAAGAAGAAGCCTTTTTTTTTT",//- 3' 
+
+//			 2nd adapter 			 RMX 			 Top: 
+
+			 //5' - 
+			 "TGATGATGAGGGATAGACGATGGTTGTTTCTGTTGGTGCTGATATTGCTTTTTTTTTTTTTATGATGCAAGATACGCAC", //- 3' 
+
+			 //Bottom: 
+//			 5' - 3'
+			 "GAGGCGAGCGGTCAATTTGCAATATCAGCACCAACAGAAACAACCATCGTCTATCCCTCATCATCAGAACCTACTA" 
+			 //- 3' 
+
+	};
+	
+	public static Sequence[] polyAs;// , polyT;
 	static {
-		char[] As = new char[20];
-		Arrays.fill(As, 'A');
+	//	char[] As = new char[20];
+		//Arrays.fill(As, 'A');
 		//char[] Ts = new char[20];
 		//Arrays.fill(As, 'T');
-		polyA= new Sequence(Alphabet.DNA(), As, "polyA");
+		
+		polyAs=  new Sequence[seqs.length];
+		for(int i=0; i<polyAs.length; i++){
+			polyAs[i] = new Sequence(Alphabet.DNA(), seqs[i], "adaptor."+i);
+		}
 		//polyT= new Sequence(Alphabet.DNA(), Ts, "polyT");
 	}
 	//public  static boolean tryComplementOnExtra = false;
@@ -163,23 +187,32 @@ static char delim_start ='$';
 "readID\tsource\tchrom\tstartPos\tendPos\tstrand\terrorRatio\tid\tbreaks\tbreaks1\tqval\tbaseQ\tpolyA";
 
 	public void commit(Sequence readSeq){
-		int[] res = new int[2];
-		StringBuffer st = new StringBuffer("_");
-		
+		//int[] res = new int[2];
+		String[] res1 = new String[2];
+		StringBuffer st = new StringBuffer();
+		boolean hasPoly = false;
 		if(fusion  && checkPolyA){
 		//	if (this.coRefPositions.forward) {
-		 		for(int j=1; j<coRefPositions.start_positions.size(); j++){
+			for(int k=0; k<polyAs.length; k++){
+				int len1 = coRefPositions.start_positions.size();
+		 		for(int j=1; j<len1; j++){
 					int br = coRefPositions1.breaks.get(coRefPositions.start_positions.get(j));
 			//	this.coRefPositions.start_positions.get(0);
-				  boolean hasPoly = getPolyA(readSeq, polyA, Math.max(0, br-30), Math.min(readSeq.length(), br+30), res);
-				  if(hasPoly){
-					st.append(readSeq.subSequence(res[0], res[1]));
-					st.append("_");
-				  }
+				  hasPoly = hasPoly || getPolyA(readSeq, polyAs[k], Math.max(0, br-30), Math.min(readSeq.length(), br+30),  res1);
+				  
+				  st.append((hasPoly ? "T:": "")+res1[0]+","+res1[1]+(j<len1-1 ? ";": ""));
+				//  st.append(b)
+				 // if(hasPoly){
+				//	st.append(readSeq.subSequence(res[0], res[1]));
+				//	st.append("_");
+				 // }
 				}
-			//}
+		 		if(k<polyAs.length-1) st.append("|");
+			}
+		}else{
+			st.append(".");
 		}
-		
+		//if(!hasPoly)st.
 		
 		String strand = this.coRefPositions.strand;
 	//	int start_read = this.readSt; int end_read = this.readEn;int readLength = end_read-start_read;
@@ -191,7 +224,7 @@ static char delim_start ='$';
 		String str = id+"\t"+source_index+"\t"
 		+chrom_+"\t"
 		+startPos+"\t"+endPos+"\t"+strand+"\t"
-		+coRefPositions.getError(source_index)+"\t"+id_+"\t"+breakSt+"\t"+breakSt1+"\t"+q_value_str.trim()+"\t"+this.base_q_str.trim()+"\t"+st.toString();
+		+coRefPositions.getError(source_index)+"\t"+id_+"\t"+breakSt+"\t"+breakSt1+"\t"+q_value_str.trim()+"\t"+this.base_q_str.trim()+"\t"+(hasPoly ? st.toString() : ".");
 	//	if(trainStrand){f
 		//	str = str+"\t"+readSeq.subSequence(0, 10)+"\t"+readSeq.subSequence(len1-10, len1)
 //				+"\t"+toString(phredQ,0,10)+"\t"+toString(phredQ,len1-10,len1)
@@ -540,19 +573,27 @@ static char delim_start ='$';
 			throw new RuntimeException("!!");
 		}
 	}
-
-	static boolean getPolyA(Sequence readSeq, Sequence polyA, int st, int end, int[] res){
+//res1
+	static boolean getPolyA(Sequence readSeq, Sequence polyA, int st, int end, String[] res1){
 		boolean haspolyA = false;
 		Sequence r1 = readSeq.subSequence(st, end);
-		if(true){
+	//	if(true){
 		SWGAlignment polyAlign =  SWGAlignment.align(r1, polyA);
-		if(polyAlign.getIdentity() > 0.85 * polyAlign.getLength()  && polyAlign.getLength()>10){ // at least 15 A wih
-			res[0] = polyAlign.getStart1()+st;
-			res[1]  = res[0] + polyAlign.getLength() - polyAlign.getGaps1();
+		
+		
+		if(polyAlign.getIdentity() > 0.85 * polyAlign.getLength()  && polyAlign.getLength()>Math.max(10, 0.8 * polyA.length())){ // at least 15 A wih
+		//	res[0] = polyAlign.getStart1()+st;
+			res1[0] = String.format("%5.3g",100*(double)polyAlign.getIdentity()/(double) polyAlign.getLength()).trim();
+			res1[1] = polyAlign.getLength()+"";
+		//	res[1]  = res[0] + polyAlign.getLength() - polyAlign.getGaps1();
 			haspolyA = true;
+			Sequence str = r1.subSequence(polyAlign.getStart1(),polyAlign.getStart1()+polyAlign.getLength()-polyAlign.getGaps1());
+			System.err.println("found polyA "+str);
+			System.err.println("compared to  "+polyA);
+		}else{
+			res1[0] = ".";
+			res1[1] = ".";
 		}
-		}
-		if(haspolyA)		System.err.println("found polyA "+r1);
 		return haspolyA;
 	}
 	

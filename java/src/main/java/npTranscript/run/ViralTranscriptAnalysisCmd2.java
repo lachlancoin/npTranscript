@@ -37,10 +37,8 @@ package npTranscript.run;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -204,7 +202,9 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 	public static boolean sequential = true;
 	public static boolean[] RNA;
 	public static String mm2_index;
- public static void run(CommandLine cmdLine, String[] bamFiles, String resDir, String chrs, String chrsToIgnore,  boolean fastq, String reference) throws IOException{
+ public static void run(CommandLine cmdLine, String[] bamFiles,
+		 String[] barcode_files,
+		 String resDir, String chrs, String chrsToIgnore,  boolean fastq, String reference) throws IOException{
 		int qual = cmdLine.getIntVal("qual");
 		int bin = cmdLine.getIntVal("bin");
 		CigarCluster.singleGFF = cmdLine.getBooleanVal("singleGFF");
@@ -340,7 +340,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		
 		
 		
-			errorAnalysis(bamFiles, RNA,reference, readList,
+			errorAnalysis(bamFiles,barcode_files,  RNA,reference, readList,
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  
 				Outputs.calcBreaks, annotByBreakPosition,  chrs, chrsToIgnore,  isoformDepthThresh, coverageDepthThresh, probInclude, fastq, 
 				chromsToRemap);
@@ -422,20 +422,32 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 		if(!resDir.exists())resDir.mkdir();
 		printParams(resDir, args1);
 		String inputFile = cmdLine.getStringVal("inputFile");
+		String barcodeFile = cmdLine.getStringVal("inputFile");
+
 		String todo = cmdLine.getStringVal("todo");
 		String [] inputFiles_;
+		String[] barcode_files;
 		if(todo==null){
 			inputFiles_ =inputFile.split(":");
+			barcode_files =barcodeFile.split(":");
 		}else{
 			BufferedReader br = new BufferedReader(new FileReader(todo));
 			String st = "";
 			List<String> ifs = new ArrayList<String>();
+			List<String> ifs1 = new ArrayList<String>();
+
 			while((st=br.readLine())!=null){
 				if(st.length()>0 && !st.trim().startsWith("#")){
-					ifs.add(st.trim());
+					String[] str = st.trim().split("\t");
+					ifs.add(str[0]);
+					if(str.length>1){
+						ifs1.add(str[1]);
+					}
 				}
 			}
 			inputFiles_ = ifs.toArray(new String[0]);
+			barcode_files = ifs1.toArray(new String[0]);
+
 			br.close();
 		}
 			boolean bam = inputFiles_[0].endsWith(".bam") || inputFiles_[0].endsWith("sam") ;
@@ -463,7 +475,7 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 					}
 				}
 		}*/
-		run(cmdLine, inputFiles_, resdir,   chroms, chroms_ignore, fastq, reference);
+		run(cmdLine, inputFiles_, barcode_files, resdir,   chroms, chroms_ignore, fastq, reference);
 		System.err.println("shutting down executors");
 		
 		IdentityProfileHolder.shutDownExecutor();
@@ -475,12 +487,14 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 //public static boolean combineOutput = false;
 	public static double fail_thresh = 7.0;
 	public static double fail_thresh1 = 14.0;
-	
+	//public static String barcode_file="barcodes.txt";
 	
 	/**
 	 * Error analysis of a bam file. Assume it has been sorted
 	 */
-	static void errorAnalysis(String[] bamFiles_,boolean[] RNA, String refFile,  String[] readList,    String resdir, 
+	static void errorAnalysis(String[] bamFiles_,
+			String[] barcode_files,
+			boolean[] RNA, String refFile,  String[] readList,    String resdir, 
 			String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads, 
 			boolean calcBreaks1 ,  boolean annotByBreakPosition, String chrToInclude, String chrToIgnore, 
@@ -488,6 +502,10 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 		boolean cluster_reads = true;
 		CigarHash2.round = round;
 		Annotation.tolerance = round;
+		
+		//File barcode_file_ = new File(barcode_file);
+		Barcodes barcodes = null;
+		if(barcode_files!=null && barcode_files.length>0) barcodes=new Barcodes(barcode_files);
 		
 		// Integer[] basesStart = new Integer[] {0,0,0,0};
 		// Integer[] basesEnd  = new Integer[] {0,0,0,0};
@@ -592,7 +610,10 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 		Iterator<SAMRecord> samIter=null;
 		if(!bamFiles_[0].endsWith(".bam")){
 			allNull = false;
-			samIter = SequenceUtils.getSAMIteratorFromFastq(bamFiles_, mm2_index, maxReads, readList==null ? null : reads.keySet(), fail_thresh, null);
+			samIter = 
+					SequenceUtils.getCombined(
+					SequenceUtils.getSAMIteratorFromFastq(bamFiles_, mm2_index, maxReads, readList==null ? null : reads.keySet(), fail_thresh, null),
+					sorted, sequential);
 		}else{
 		inner: for (int ii = 0; ii < len; ii++) {
 			SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
@@ -683,7 +704,10 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 				
 				if(sam==null) break outer;
 				int source_index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
-				String sa  = sam.getReadString();
+				
+				if(barcodes!=null){
+					barcodes.assign( sam,100,0);
+				}
 				boolean negFlag = sam.getReadNegativeStrandFlag();
 				boolean flip = false;
 				if(RNA[source_index]  ){
