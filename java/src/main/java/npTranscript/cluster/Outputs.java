@@ -35,6 +35,7 @@ import htsjdk.samtools.fastq.FastqWriter;
 import htsjdk.samtools.fastq.FastqWriterFactory;
 import japsa.seq.Sequence;
 import npTranscript.cluster.CigarCluster.Count;
+import npTranscript.run.Barcodes;
 import npTranscript.run.CompressDir;
 import npTranscript.run.SequenceOutputStream1;
 
@@ -209,7 +210,7 @@ public class Outputs{
 /*if(IdentityProfile1.trainStrand){
 	header = header+ "\tleft10bp\tright10bp\tqual_left10bp\tqual_right10bp\tcorrect_strand";
 }*/
-			 readClusters.println(IdentityProfile1.header); //\tbreakStart\tbreakEnd\tbreakStart2\tbreakEnd2\tstrand\tbreaks");
+			 readClusters.println(IdentityProfile1.header+"\t"+Barcodes.getHeader()); //\tbreakStart\tbreakEnd\tbreakStart2\tbreakEnd2\tstrand\tbreaks");
 		
 			
 				

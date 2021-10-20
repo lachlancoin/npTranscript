@@ -15,51 +15,78 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.zip.GZIPInputStream;
 
+import com.sun.jna.ptr.IntByReference;
+
 import edlib.EdlibAlignConfig;
 import edlib.EdlibAlignResult;
 import edlib.EdlibLibrary;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.SequenceUtil;
 import japsa.tools.seq.SequenceUtils;
+import npTranscript.cluster.TranscriptUtils;
 
 public class Barcodes {
 	
 	public static String barcode_tag = "BC";
+	public static String barcode_index_tag = "BI";
 	public  static String barcode_dist_tag="BD";
 	public  static String barcode_num_tag="BN";
 	public  static String barcode_left_tag="BL";
+	public  static String barcode_start_tag="CS";// note BS conflicts with another tag in SequenceUtiles
+	public  static String barcode_end_tag="BE";
+	public  static String barcode_forward_tag="BF";
+
+
+
 
 	
-	String sequence = null;;
+	//String sequence = null;;
 	
 
 	public static void main(String[] args){
 		try{
 			String inf = "./long_read_UK_72hpi_adult_barcodes.tsv.gz";
+			boolean forward = true;
+
 			Barcodes barc = new Barcodes(new String[] {inf});
 			String bc = "AAACCCAAGCGTTAGG";
 			String seq="ACGTTAATTCCGTTTTTTT";
 			String suff="AAAAAAAAAAAAAAAAAAAAAAAAAA";
-			barc.setSequence(seq+bc+suff);
+			String sequence = seq+bc+suff;
 			SortedSet<Integer> mins = new TreeSet<Integer>();
 			//mins.toArray(new Integer[0]);
-			int minv = barc.calcMatches(mins);
+			int minv = barc.calcMatches(mins, 0, new String[] {sequence}, forward);
 			int index=0;
-			System.err.println(minv + " "+barc.getAll(mins, index));
+			List<String>barcodes = new ArrayList<String>();
+			//List<Boolean > forward = new ArrayList<Boolean> ();
+			List<Integer> inds1 = new ArrayList<Integer>();
+			barc.getAll(mins, index, barcodes, inds1, forward);
+			System.err.println(minv + " "+barcodes+" "+forward+" "+inds1);
 		}catch(Exception exc){
 			exc.printStackTrace();
 		}
 	}
-	List<String> getAll(Collection<Integer>inds, int index){
-		List<String> res = new ArrayList<String>();
+	void getAll(Collection<Integer>inds, int index, List<String> res, List<Integer>inds1, boolean forward_barcode){
 		for(Iterator<Integer> it = inds.iterator(); it.hasNext();){
-			res.add(this.barcodes[index].get(it.next()));
+			int i = it.next();
+			String barcode=forward_barcode ? this.barcodes_forward[index].get(i): this.barcodes_reverse[index].get(i);
+		//	boolean positive = this.rev_compl ? ((i%2) ==0) : true;
+		//	if(!positive){
+		//		barcode = SequenceUtil.reverseComplement(barcode);
+		//	}
+			inds1.add(i);
+			//inds1.add(this.rev_compl ? Math.floorDiv(i,2) : i);
+			res.add(barcode);
+			//forward.add(positive);
 		}
-		return res;
 	}
- final List<String>[] barcodes ;
- public void setSequence(String sequence){
+ final List<String>[] barcodes_forward ;
+ final List<String>[] barcodes_reverse ;
+
+ 
+ /*public void setSequence(String sequence){
 	 this.sequence = sequence;
- }
+ }*/
  
 static  int MODE = EdlibLibrary.EdlibAlignMode.EDLIB_MODE_HW;
 static  int TASK = EdlibLibrary.EdlibAlignTask.EDLIB_TASK_LOC;
@@ -67,14 +94,21 @@ static int tolerance = 2;
 static int maxsize_tolerance=1;
 static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfig(-1, MODE, TASK, null, 0);
 			
- 
+/** assumes bc_len is constant */
+ final int bc_len;
  
  public Barcodes(String[] infiles ) throws IOException{
-	 barcodes = new List[infiles.length];
+	// this.rev_compl=incl_rev_compl;
+	 barcodes_forward = new List[infiles.length];
+	 barcodes_reverse= new List[infiles.length];
+
 	 for(int i=0; i<infiles.length; i++){
-		 barcodes[i] = new ArrayList<String>();
+		 if(infiles[i]!=null){
+		 barcodes_forward[i] = new ArrayList<String>();
+		 barcodes_reverse[i] = new ArrayList<String>();
+
 		 File in = new File(infiles[i]);
-		if(in.exists()){
+		 if(!in.exists()) throw new RuntimeException("does not exist "+in.getAbsolutePath());		if(in.exists()){
 		InputStream fis = new FileInputStream(in);
 		if(in.getName().endsWith(".gz")){
 			fis = new GZIPInputStream(fis);
@@ -82,25 +116,32 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 		BufferedReader br = new BufferedReader(new InputStreamReader(fis));
 		String st = "";
 		while((st = br.readLine())!=null){
-			barcodes[i].add(st.split("-")[0]);
+			String bc = st.split("-")[0];
+			barcodes_forward[i].add(bc);
+				barcodes_reverse[i].add(TranscriptUtils.revC(bc));
 		}
 		}
+		 }
 	 }
+	 bc_len = barcodes_forward[0].get(0).length();
 	}
-	public int calcMatches(Set<Integer> mins, int index){
+	public int calcMatches(Set<Integer> mins, int index, String[] sequence, boolean forward_barcodes){
 		//Set<Integer> mins = new TreeSet<Integer>();
 		int minv=Integer.MAX_VALUE;
-		List<String> barcodes_i = barcodes[index];
+		List<String> barcodes_i = forward_barcodes ? barcodes_forward[index] : barcodes_reverse[index];
 		int len = barcodes_i.size();
+		for(int j=0; j<sequence.length; j++){
 		for(int i=0;i<len; i++){
-			int dist_i = match(barcodes_i.get(i));
-			if(dist_i <minv){
-				mins.clear();
-				minv = dist_i;
-				mins.add(i);
-			}else if(dist_i ==minv){
-				mins.add(i);
-			}
+				int dist_i = match(barcodes_i.get(i), sequence[j]);
+				if(dist_i <minv){
+					mins.clear();
+					minv = dist_i;
+					mins.add(i);
+				}else if(dist_i ==minv){
+					mins.add(i);
+				}
+			
+		}
 		}
 		return minv;
 	}
@@ -109,61 +150,119 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 //		 EdlibAlignResult res=	EdlibLibrary.INSTANCE.edlibAlign(sequence, sequence.length(), bc, bc.length(), config);
 		 return res;
 	}
-	private int match(String bc) {
+	private int match(String bc, String sequence) {
+		if(sequence.length() < bc.length()) return Integer.MAX_VALUE;
 		// TODO Auto-generated method stub
 		 // StringByReference target = new StringByReference(bc);
 		 EdlibAlignResult res=	align(sequence, bc);
-		 int st = res.startLocations.getValue();
+		 IntByReference startLocations = res.startLocations;
+
+		/* if(res==null){
+			 System.err.println("h");
+		 }
+		 if(startLocations==null){
+		 System.err.println("h");
+		 }*/
+		 int st = startLocations.getValue();
 		 int end = res.endLocations.getValue();
 		 int len = end-st+1;
-		
-		 int dist=res.editDistance;
- if(len < bc.length()){
-	 int diff = bc.length()-len;
-			dist += diff ;
-		 }
-		/* System.err.println("start: "+st);
-		 System.err.println("end: "+ end);
-		 System.err.println("length:"+  len);
-		 System.err.println("dist:"+  dist);*/
+		 int dist=res.editDistance+ Math.max(0,bc_len-len);
 		return dist;
 	}
 	
-	
+	String polyA = "AAAAAAAAAAAA";
+	String polyT = "TTTTTTTTTTTT";
+			
 /** finds barcodes within len bp of end and start, excluding the last and first chop bp */
 	public void assign(SAMRecord sam,int len, int chop) {
+		boolean neg=sam.getReadNegativeStrandFlag();
+		
+		
+		
+		boolean forward_read = !neg; // whether read is forward
+		boolean forward_barcode = !forward_read;
+		
+
+		
 		int index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
-		List<String> barcodes_i = barcodes[index];
-		if(barcodes_i.size()>0){
-			int read_len = sam.getReadLength();
-			if(read_len<=2*len){
-				this.setSequence(sam.getReadString().substring(chop, read_len-chop));
+		List<String> barcodes_i = forward_barcode  ? barcodes_forward[index] : barcodes_reverse[index];
+		if(barcodes_i.size()==0) return;
+			String sa = sam.getReadString();
+			if(neg){
+			sa = SequenceUtil.reverseComplement(sa);
+			}
+			int read_len = sa.length();
+			
+			/// find polyA or polyT;
+			EdlibAlignResult resA=	align(sa, forward_read ? polyA : polyT);
+			 int distA=resA.editDistance+ Math.max(0,polyA.length()-len);
+			
+			int	 st_A = resA.startLocations.getValue();
+			int end_A = resA.endLocations.getValue();
+			String pAT = st_A+","+(read_len -end_A)+","+distA;
+			
+			{
+				// chop should be less then len
+				if(len < chop) throw new RuntimeException("!!");
+				String sequenceL = sa.substring(chop,Math.min(len,read_len));
+			//	System.err.println(read_len+" "+sequenceL);
+				//if(true) System.exit(0);;
+				//System.err.println(read_len+" "+chop);
+				String sequenceR = sa.substring(Math.max(0, read_len-len), read_len-chop);
+				String[] str = forward_read ?  new String[] {sequenceR}  :  new String[] {sequenceL};
+				int[] offset = forward_read ? new int[] {read_len-len} : new int[] {chop};
+				String[] desc = forward_read ? new String[] {"3'"} : new String[] {"5'"} ;
+
 				SortedSet<Integer> mins = new TreeSet<Integer>();
-				int minv = calcMatches(mins, index);
-				if(minv <=tolerance && mins.size()<=maxsize_tolerance){
-						sam.setAttribute(barcode_tag, mins.first());
-						sam.setAttribute(barcode_dist_tag, minv);
-						sam.setAttribute(barcode_num_tag, mins.size());
-				}
-			}else{
-				this.setSequence(sam.getReadString().substring(chop,len));
-				SortedSet<Integer> mins_l = new TreeSet<Integer>();
-				int minv_l = calcMatches(mins_l, index);
-				
-				this.setSequence(sam.getReadString().substring(read_len-len, read_len-chop));
-				SortedSet<Integer> mins_r = new TreeSet<Integer>();
-				int minv_r = calcMatches(mins_r, index);
-				int minv = Math.min(minv_l, minv_r);
-				SortedSet<Integer>  mins = minv_l < minv_r ? mins_l : mins_r;
-				boolean left_tag = minv_l < minv_r ? true: false;
-				if(minv <=tolerance && mins.size()<=maxsize_tolerance){
-					sam.setAttribute(barcode_tag, mins.first());
+				int minv = calcMatches(mins, index,str, forward_barcode );
+				if(mins.size()<=maxsize_tolerance){
+					List<String>barcodes1 = new ArrayList<String>();
+				//	List<Boolean > forward_l = new ArrayList<Boolean> (); // whether barcode is forward
+					List<Integer> inds1 = new ArrayList<Integer>();
+					getAll(mins, index, barcodes1, inds1, forward_barcode);
+				//	String left = "NA";
+					
+					sam.setAttribute(barcode_tag, barcodes1.toString());
+					sam.setAttribute(barcode_index_tag, inds1.toString());
 					sam.setAttribute(barcode_dist_tag, minv);
 					sam.setAttribute(barcode_num_tag, mins.size());
-					sam.setAttribute(barcode_left_tag, left_tag);
+					
+					 int st=0; int end=0;
+					if(barcodes1.size()==1 && minv <=tolerance){
+						String barc = barcodes1.get(0);
+						 int min_dist=Integer.MAX_VALUE;
+						 int min_ind=0;
+						
+						for(int j=0; j<str.length; j++){
+							EdlibAlignResult res=	align(str[j], barc);
+							 int dist=res.editDistance+ Math.max(0,bc_len-len);
+							 if(dist <min_dist){
+								 st = res.startLocations.getValue()+offset[j];
+								 end = res.endLocations.getValue()+offset[j];
+								 min_ind=j;
+								 min_dist = dist;
+							 }
+						}
+						//left=min_ind==0? "5'":"3'";
+						 sam.setAttribute(barcode_left_tag,desc[min_ind]);
+						 sam.setAttribute(barcode_start_tag, st);
+						 sam.setAttribute(barcode_end_tag, read_len-end);
+						 sam.setAttribute(barcode_forward_tag,forward_barcode ? "forward": "revC");
+					System.err.println((forward_read? "read+" : "read-")+" "+minv + " "+barcodes1+" "
+						 +(forward_barcode ? "forward_barcode": "rev_barcode")+" "+inds1+" "+desc[min_ind]+ " "+st+" "+(read_len-end)+(forward_read ? " polyA:" : " polyT:")+pAT);
+
+					}
+				}else{
+					System.err.println("not found "+minv+" "+mins.size());
 				}
 			}
-		}
 	}
+	public static String getHeader(){
+		return "barcode\tbarcode_index\tbarcode_dist\tbarcode_num\tbarcode_left\tbarcode_forward\tdist_from_start\tdist_from_end";
+	}
+public static String getInfo(SAMRecord sam) {
+	return sam.getAttribute(barcode_tag)+"\t"+sam.getAttribute(barcode_index_tag)+"\t"+sam.getAttribute(barcode_dist_tag)
+	+"\t"+sam.getAttribute(barcode_num_tag)+"\t"+sam.getAttribute(barcode_left_tag)+"\t"+sam.getAttribute(barcode_forward_tag)+"\t"+sam.getAttribute(barcode_start_tag)+"\t"+sam.getAttribute(barcode_end_tag);
+}
 	
 }

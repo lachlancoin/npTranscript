@@ -95,6 +95,13 @@ public class TranscriptUtils {
 	   return res;
 	}
 	
+	public static String revC(String bc) {
+		Sequence seq = new Sequence(Alphabet.DNA(), bc, "");
+		// TODO Auto-generated method stub
+		String res = revCompl(seq).toString();
+		return res;
+	}
+	
 	public static void reverseArray(byte[] intArray) {
 		 int size = intArray.length;
 	        int i, k;
@@ -198,6 +205,8 @@ public class TranscriptUtils {
 			sam.setReadNegativeStrandFlag(!sam.getReadNegativeStrandFlag());
 		}
 	}
+
+	
 	
 	
 

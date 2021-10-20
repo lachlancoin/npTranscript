@@ -87,7 +87,8 @@ import npTranscript.cluster.TranscriptUtils;
 
 @Deployable(scriptName = "npTranscript.run", scriptDesc = "Analysis of coronavirus sequence data")
 public class ViralTranscriptAnalysisCmd2 extends CommandLine {
-	
+	public static int barcode_extent = 100;
+	public static int barcode_ignore = 0;
 
 //	private static final Logger LOG = LoggerFactory.getLogger(HTSErrorAnalysisCmd.class);
 
@@ -128,6 +129,9 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		addString("pattern", null, "Pattern of read name, used for filtering");
 		addString("span", "protein_coding", "Filtering span.  Use all not to filter.");
 		addInt("qual", 0, "Minimum quality required");
+		addInt("barcode_extent", 200, "search for barcode in first Xbp");
+		addInt("barcode_ignore", 0, "search for barcode in first Ybp");
+		addString("barcode_list","barcode_list.txt", "list for decoding barcodes");
 		addInt("bin0", 1, "Bin size for numerical hashing");
 		addInt("bin1",100, "Bin size for hashing of the end");
 		addDouble("overlap_thresh",0.33,"max percentage overlap between supp alignments considered");
@@ -220,7 +224,10 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		 maxReads = cmdLine.getIntVal("maxReads");
 		//SequenceUtils.max_per_file = maxReads*4;
 		 ViralTranscriptAnalysisCmd2.supplementaryQ =cmdLine.getIntVal("supplementaryQ");
-		
+		 ViralTranscriptAnalysisCmd2.barcode_extent = cmdLine.getIntVal("barcode_extent");
+		 ViralTranscriptAnalysisCmd2.barcode_ignore = cmdLine.getIntVal("barcode_ignore");
+		 ViralTranscriptAnalysisCmd2.barcode_list = cmdLine.getStringVal("barcode_list");
+
 		
 		Outputs.writeH5 = cmdLine.getBooleanVal("writeH5");
 		CigarHash2.round = cmdLine.getIntVal("bin0");
@@ -400,7 +407,7 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 		
 		//Outputs.writeBed  = cmdLine.getBooleanVal("writeBed");
 		Outputs.writeIsoforms = cmdLine.getBooleanVal("writeIsoforms");
-
+barcode_list = cmdLine.getStringVal("barcode_list");
 		SequenceUtils.mm2_threads = cmdLine.getIntVal("mm2_threads");
 		SequenceUtils.mm2_mem = cmdLine.getStringVal("mm2_mem");
 		SequenceUtils.mm2_path = cmdLine.getStringVal("mm2_path");
@@ -422,35 +429,53 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 		if(!resDir.exists())resDir.mkdir();
 		printParams(resDir, args1);
 		String inputFile = cmdLine.getStringVal("inputFile");
-		String barcodeFile = cmdLine.getStringVal("inputFile");
 
 		String todo = cmdLine.getStringVal("todo");
 		String [] inputFiles_;
-		String[] barcode_files;
+		
 		if(todo==null){
 			inputFiles_ =inputFile.split(":");
-			barcode_files =barcodeFile.split(":");
+		//	barcode_files =barcodeFile.split(":");
 		}else{
 			BufferedReader br = new BufferedReader(new FileReader(todo));
 			String st = "";
 			List<String> ifs = new ArrayList<String>();
-			List<String> ifs1 = new ArrayList<String>();
+		//	List<String> ifs1 = new ArrayList<String>();
 
 			while((st=br.readLine())!=null){
 				if(st.length()>0 && !st.trim().startsWith("#")){
 					String[] str = st.trim().split("\t");
 					ifs.add(str[0]);
-					if(str.length>1){
-						ifs1.add(str[1]);
-					}
+					
 				}
 			}
 			inputFiles_ = ifs.toArray(new String[0]);
-			barcode_files = ifs1.toArray(new String[0]);
+		//	barcode_files = ifs1.toArray(new String[0]);
 
 			br.close();
 		}
 			boolean bam = inputFiles_[0].endsWith(".bam") || inputFiles_[0].endsWith("sam") ;
+			String[] barcode_files = new String[inputFiles_.length];
+			File barcode_file_ = new File(barcode_list);
+			if(barcode_file_.exists()){
+				BufferedReader br = new BufferedReader(new FileReader(barcode_file_));
+				String st = "";
+				List<String> ifs = new ArrayList<String>();
+				while((st=br.readLine())!=null){
+					if(st.length()>0 && !st.trim().startsWith("#")){
+						String[] str = st.trim().split("\t");
+						for(int i=0; i<inputFiles_.length; i++){
+							File fi = new File(inputFiles_[i]);
+							if(fi.getName().equals(str[0])){
+								barcode_files[i] = str[1];
+							}
+						}
+						
+					}
+				}
+			}
+			
+			
 			boolean fastq = !bam;
 			if(fastq){
 				try{
@@ -487,7 +512,7 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 //public static boolean combineOutput = false;
 	public static double fail_thresh = 7.0;
 	public static double fail_thresh1 = 14.0;
-	//public static String barcode_file="barcodes.txt";
+	public static String barcode_list=null;
 	
 	/**
 	 * Error analysis of a bam file. Assume it has been sorted
@@ -504,13 +529,14 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 		Annotation.tolerance = round;
 		
 		//File barcode_file_ = new File(barcode_file);
-		Barcodes barcodes = null;
-		if(barcode_files!=null && barcode_files.length>0) barcodes=new Barcodes(barcode_files);
+		Barcodes barcodes = null;// we need barcodes for all or none
+		if(barcode_files!=null && barcode_files.length==bamFiles_.length) barcodes=new Barcodes(barcode_files);
 		
 		// Integer[] basesStart = new Integer[] {0,0,0,0};
 		// Integer[] basesEnd  = new Integer[] {0,0,0,0};
 	//	 int leng = 10; int thresh_A = 4;int thresh_T = 5; // how many As or Ts required for determination of strand
 	//	 String chars_forward = "ACGT";
+		
 	//	 String chars_reverse = "TGCA";
 		 
 		// Integer[] counts = new Integer[] {0,0,0};
@@ -705,8 +731,12 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 				if(sam==null) break outer;
 				int source_index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
 				
-				if(barcodes!=null){
-					barcodes.assign( sam,100,0);
+				if(barcodes!=null && !sam.isSecondaryOrSupplementary()){
+					try{
+					barcodes.assign( sam,barcode_extent,barcode_ignore);
+					}catch(Exception exc){
+						exc.printStackTrace();
+					}
 				}
 				boolean negFlag = sam.getReadNegativeStrandFlag();
 				boolean flip = false;
