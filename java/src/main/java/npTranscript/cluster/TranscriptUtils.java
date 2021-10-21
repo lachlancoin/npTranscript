@@ -189,8 +189,11 @@ public class TranscriptUtils {
 		seq1[3] = seq1[3]+offset2;
 	}
 
-	 /* flips read and quality without chaning the flag */
-	public static void flip(SAMRecord sam, boolean switchFlag) {
+	 /* flips read and quality without chaning the flag
+	  * this is so that the read strand matches the flag
+	  *  */
+	public static void flip(SAMRecord sam) {
+	 boolean switchFlag = false;
 		if(true) throw new RuntimeException ("!!");
 		String sa = sam.getReadString();
 		byte[]phredQs = sam.getBaseQualities();

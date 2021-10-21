@@ -23,6 +23,7 @@ import edlib.EdlibLibrary;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.SequenceUtil;
 import japsa.tools.seq.SequenceUtils;
+import npTranscript.NW.PolyAT;
 import npTranscript.cluster.TranscriptUtils;
 
 public class Barcodes {
@@ -145,41 +146,33 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 		}
 		return minv;
 	}
-	private  EdlibAlignResult align(String sequence, String bc){
+	
+	private  static EdlibAlignResult align(String sequence, String bc){
 	 EdlibAlignResult res=		EdlibLibrary.INSTANCE.edlibAlign(bc, bc.length(), sequence, sequence.length(), config);
 //		 EdlibAlignResult res=	EdlibLibrary.INSTANCE.edlibAlign(sequence, sequence.length(), bc, bc.length(), config);
 		 return res;
 	}
 	private int match(String bc, String sequence) {
-		if(sequence.length() < bc.length()) return Integer.MAX_VALUE;
-		// TODO Auto-generated method stub
-		 // StringByReference target = new StringByReference(bc);
+		if(sequence.length() < bc_len) return Integer.MAX_VALUE;
 		 EdlibAlignResult res=	align(sequence, bc);
-		 IntByReference startLocations = res.startLocations;
-
-		/* if(res==null){
-			 System.err.println("h");
-		 }
-		 if(startLocations==null){
-		 System.err.println("h");
-		 }*/
-		 int st = startLocations.getValue();
-		 int end = res.endLocations.getValue();
-		 int len = end-st+1;
-		 int dist=res.editDistance+ Math.max(0,bc_len-len);
-		return dist;
+		 return res.editDistance+ Math.max(0,bc_len-(res.endLocations.getValue()-res.startLocations.getValue()+1));
 	}
 	
-	String polyA = "AAAAAAAAAAAA";
-	String polyT = "TTTTTTTTTTTT";
+	
 			
 /** finds barcodes within len bp of end and start, excluding the last and first chop bp */
 	public void assign(SAMRecord sam,int len, int chop) {
-		boolean neg=sam.getReadNegativeStrandFlag();
+		boolean neg_align=sam.getReadNegativeStrandFlag();
 		
 		
 		
-		boolean forward_read = !neg; // whether read is forward
+	boolean forward_align = !neg_align; // whether read is forward
+		
+		String read_strand_tag = (String) sam.getAttribute(PolyAT.read_strand_tag);
+		if(read_strand_tag==null){
+			return ;
+		}
+		boolean forward_read = read_strand_tag.charAt(0)=='+';
 		boolean forward_barcode = !forward_read;
 		
 
@@ -188,19 +181,11 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 		List<String> barcodes_i = forward_barcode  ? barcodes_forward[index] : barcodes_reverse[index];
 		if(barcodes_i.size()==0) return;
 			String sa = sam.getReadString();
-			if(neg){
-			sa = SequenceUtil.reverseComplement(sa);
+			if(neg_align){
+				// this converts read back to original orientation
+				sa = SequenceUtil.reverseComplement(sa);
 			}
 			int read_len = sa.length();
-			
-			/// find polyA or polyT;
-			EdlibAlignResult resA=	align(sa, forward_read ? polyA : polyT);
-			 int distA=resA.editDistance+ Math.max(0,polyA.length()-len);
-			
-			int	 st_A = resA.startLocations.getValue();
-			int end_A = resA.endLocations.getValue();
-			String pAT = st_A+","+(read_len -end_A)+","+distA;
-			
 			{
 				// chop should be less then len
 				if(len < chop) throw new RuntimeException("!!");
@@ -235,7 +220,7 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 						
 						for(int j=0; j<str.length; j++){
 							EdlibAlignResult res=	align(str[j], barc);
-							 int dist=res.editDistance+ Math.max(0,bc_len-len);
+							 int dist=res.editDistance+ Math.max(0,bc_len-(res.endLocations.getValue()-res.startLocations.getValue()+1));
 							 if(dist <min_dist){
 								 st = res.startLocations.getValue()+offset[j];
 								 end = res.endLocations.getValue()+offset[j];
@@ -248,7 +233,9 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 						 sam.setAttribute(barcode_start_tag, st);
 						 sam.setAttribute(barcode_end_tag, read_len-end);
 						 sam.setAttribute(barcode_forward_tag,forward_barcode ? "forward": "revC");
-					System.err.println((forward_read? "read+" : "read-")+" "+minv + " "+barcodes1+" "
+						Object pAT = sam.getAttribute(PolyAT.polyAT_tag);
+						
+					System.err.println((forward_align? "align+" : "align-")+" "+(forward_read? "read+" : "read-")+" "+minv + " "+barcodes1+" "
 						 +(forward_barcode ? "forward_barcode": "rev_barcode")+" "+inds1+" "+desc[min_ind]+ " "+st+" "+(read_len-end)+(forward_read ? " polyA:" : " polyT:")+pAT);
 
 					}

@@ -70,6 +70,7 @@ import japsa.tools.seq.SequenceUtils;
 import japsa.tools.seq.SequenceUtils.FilteredIterator;
 import japsa.util.CommandLine;
 import japsa.util.deploy.Deployable;
+import npTranscript.NW.PolyAT;
 import npTranscript.cluster.Annotation;
 import npTranscript.cluster.CigarCluster;
 import npTranscript.cluster.CigarHash;
@@ -530,7 +531,10 @@ barcode_list = cmdLine.getStringVal("barcode_list");
 		
 		//File barcode_file_ = new File(barcode_file);
 		Barcodes barcodes = null;// we need barcodes for all or none
-		if(barcode_files!=null && barcode_files.length==bamFiles_.length) barcodes=new Barcodes(barcode_files);
+		PolyAT pAT = new PolyAT();
+		if(barcode_files!=null && barcode_files.length==bamFiles_.length && barcode_files[0] !=null) {
+			barcodes=new Barcodes(barcode_files);
+		}
 		
 		// Integer[] basesStart = new Integer[] {0,0,0,0};
 		// Integer[] basesEnd  = new Integer[] {0,0,0,0};
@@ -731,27 +735,8 @@ barcode_list = cmdLine.getStringVal("barcode_list");
 				if(sam==null) break outer;
 				int source_index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
 				
-				if(barcodes!=null && !sam.isSecondaryOrSupplementary()){
-					try{
-					barcodes.assign( sam,barcode_extent,barcode_ignore);
-					}catch(Exception exc){
-						exc.printStackTrace();
-					}
-				}
-				boolean negFlag = sam.getReadNegativeStrandFlag();
-				boolean flip = false;
-				if(RNA[source_index]  ){
-					flip=false;
-				}
-				else if(Annotation.enforceStrand){
-					throw new RuntimeException("need to implement");
-				}
-				
-				if(flip){
-					System.err.println("flipping "+negFlag);
-					TranscriptUtils.flip(sam, true);
-					negFlag = sam.getReadNegativeStrandFlag();
-				}
+			
+			
 				
 				//String poolID = readSeq.get
 				
@@ -791,6 +776,37 @@ barcode_list = cmdLine.getStringVal("barcode_list");
 					continue;
 					}
 				}
+				if(!sam.isSecondaryOrSupplementary()){
+					Boolean forward_read=pAT.assign(sam);// this assigns tags indicating the orientation of the original read as + or -;
+					if(barcodes!=null){
+						try{
+						barcodes.assign( sam,barcode_extent,barcode_ignore);
+						}catch(Exception exc){
+							exc.printStackTrace();
+						}
+					}
+					if(Annotation.enforceStrand ){
+						if(forward_read==null){
+							// cannot determine strand
+							continue;
+						}
+						if(RNA[source_index] && !forward_read ){
+							System.err.println ("warning RNA should always be forward strand, found polyT .. excluding ");
+							continue;
+						}
+						if( !forward_read && !RNA[source_index]){
+							// just flip the flag
+							System.err.println("flipping neg read strand flag");
+							sam.setReadNegativeStrandFlag(!sam.getReadNegativeStrandFlag());
+							//	TranscriptUtils.flip(sam);//, true);
+						}
+					}
+					
+					
+					
+					
+				}
+				
 					if(sams.size()>0 && (!sam.getReadName().equals(previousRead) )){
 						try{
 						//	List<SAMRecord> l1 = new ArrayList<SAMRecord>();
