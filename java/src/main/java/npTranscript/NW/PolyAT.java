@@ -41,7 +41,7 @@ public class PolyAT {
 		char[] pT = new char[bc_len];
 		Arrays.fill(pT, 'T');
 		polyT = new String(pT);
-	}
+	} 
 	static int edit_thresh=2;
 	static int max_dist_to_end=100;
 	
