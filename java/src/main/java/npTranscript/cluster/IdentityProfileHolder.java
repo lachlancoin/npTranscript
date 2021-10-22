@@ -18,6 +18,7 @@ import htsjdk.samtools.SAMRecord;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.tools.seq.SequenceUtils;
+import npTranscript.NW.PolyAT;
 import npTranscript.run.ViralChimericReadsAnalysisCmd;
 
 public class IdentityProfileHolder {
@@ -148,18 +149,18 @@ static Comparator comp_q = new SamComparator(true);
 	public static double overlap_thresh = 0.33;
 	public static double overlap_max = 20;
 	
-	static void  groupSam(Iterator<SAMRecord> sams, List<SAMRecord> extracted){
-		//
-		
-		
-	
-		SAMRecord first = sams.next();;
+	static SAMRecord groupSam(Iterator<SAMRecord> sams, List<SAMRecord> extracted){
+		SAMRecord first = sams.next();
+		SAMRecord primary  = null;
+		if(!first.isSecondaryOrSupplementary()) primary = first;
+
 		int q1 = first.getMappingQuality();
 		sams.remove();
 		extracted.add(first);
 		int[] overl = new int[3];
 		while(sams.hasNext()){
 			SAMRecord sam = sams.next();
+			
 			int q2 = sam.getMappingQuality();
 			if(q2>q1) throw new RuntimeException("!!");
 			Arrays.fill(overl,0);
@@ -169,12 +170,17 @@ static Comparator comp_q = new SamComparator(true);
 			}
 		//	System.err.println(Arrays.asList(overl));
 			if(overl[2] < overlap_thresh *overl[1] && overl[2] < overlap_thresh*overl[0] && overl[2] < overlap_max){
+				if(!sam.isSecondaryOrSupplementary()){
+					primary=sam;
+				}
 				extracted.add(sam);
+				
 				sams.remove();
 			}
 		}
 		
 		Collections.sort(extracted , comp);
+		
 		if(false){
 		for(int i=0; i<extracted.size(); i++){
 			SAMRecord sr = extracted.get(i);
@@ -189,6 +195,8 @@ static Comparator comp_q = new SamComparator(true);
 		}
 	//	return extracted;
 		//return extracted;
+		//if(flipped!=null) return flipped.intValue()==0 ? fa
+		return primary;
 	}
 
 
@@ -289,7 +297,10 @@ static Comparator comp_q = new SamComparator(true);
 				int limit = 1;
 				for(int j=0; sam_1.size()>0 && j<limit; j++){
 					sam1.clear();
-					groupSam(sam_1.iterator(), sam1);
+					SAMRecord primary = groupSam(sam_1.iterator(), sam1);
+					Integer flipped =(Integer ) primary.getAttribute(PolyAT.flipped_tag);
+					boolean flip = flipped!=null && flipped.intValue()==0;
+					byte[] bq = primary.getBaseQualities();
 				//	System.err.println(sam1.size()+" "+sze);
 					StringBuffer chrom = new StringBuffer();
 					StringBuffer strand = new StringBuffer();//sam1.get(0).getReadNegativeStrandFlag() ? '-': '+';
@@ -298,32 +309,41 @@ static Comparator comp_q = new SamComparator(true);
 					String chr = null;
 					boolean fusion = false;
 					
-					for(int i=0; i<sam1.size(); i++){
-						
-						SAMRecord record = sam1.get(i);
-						strand.append(sam1.get(i).getReadNegativeStrandFlag() ? '-': '+');
-						q_str.append(sam1.get(i).getMappingQuality());
+					if(flip){
+						Collections.reverse(sam1);
+					}
+					
+					Iterator<SAMRecord> it = sam1.iterator();
+					while(it.hasNext()){
+						boolean first = chr==null;
+						SAMRecord record = it.next();
+						if(flip){
+							strand.append(record.getReadNegativeStrandFlag() ? '-': '+');
+						}else{
+							strand.append(record.getReadNegativeStrandFlag() ? '+': '-');
+						}
+						q_str.append(record.getMappingQuality());
 						//byte[] q = record.getBaseQualities();
 					//	System.err.println(q.length+" "+record.getReadLength());
 						
 						int qstart = record.getReadPositionAtReferencePosition(record.getAlignmentStart());
 						int qend = record.getReadPositionAtReferencePosition(record.getAlignmentEnd());
 						//System.err.println("qstart-end "+qstart+" "+qend);
-						q_str1.append(ViralChimericReadsAnalysisCmd.median(sam1.get(i).getBaseQualities(), qstart, qend-qstart));
+						q_str1.append(ViralChimericReadsAnalysisCmd.median(bq, qstart, qend-qstart));
 						//if(strand1!=strand) strand = 'm';
-					 	chrom.append(sam1.get(i).getReferenceName());
-					 	if(i==0){
+					 	chrom.append(record.getReferenceName());
+					 	if(first){
 							chr = record.getReferenceName();
-						}else if(!record.getReferenceName().equals(chr)){
+						}else{
 							fusion = true;
 						}
-						if(i<sam1.size()-1){
+						if(it.hasNext()){
 							chrom.append(",");
 							q_str.append(",");q_str1.append(",");
 						}
 					}
 //					System.err.println(sam1.size());
-					 profile.setName(rn, chrom.toString(),strand.toString(), q_str.toString(), q_str1.toString(),source_index, fusion);
+					 profile.setName(rn, chrom.toString(),strand.toString(), q_str.toString(), q_str1.toString(),source_index, fusion, flip);
 				//	if(profile.coRefPositions.breaks.size()>0 && ! supp) throw new RuntimeException("this is not clear");
 				//	if(supp && profile.suppl!=null && profile.suppl.size()>0) throw new RuntimeException("supps not empty");
 					

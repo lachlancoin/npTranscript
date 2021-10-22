@@ -1,5 +1,6 @@
 package npTranscript.NW;
 
+
 import java.io.PrintWriter;
 
 public class NeedlemanWunsch {  

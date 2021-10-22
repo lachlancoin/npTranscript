@@ -12,6 +12,7 @@ import htsjdk.samtools.SAMRecord;
 import japsa.bio.np.barcode.SWGAlignment;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
+import npTranscript.NW.PolyAT;
 import npTranscript.run.Barcodes;
 import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
@@ -99,7 +100,7 @@ public class IdentityProfile1 {
 
 	};
 	
-	public static Sequence[] polyAs;// , polyT;
+	/*public static Sequence[] polyAs;// , polyT;
 	static {
 	//	char[] As = new char[20];
 		//Arrays.fill(As, 'A');
@@ -111,7 +112,7 @@ public class IdentityProfile1 {
 			polyAs[i] = new Sequence(Alphabet.DNA(), seqs[i], "adaptor."+i);
 		}
 		//polyT= new Sequence(Alphabet.DNA(), Ts, "polyT");
-	}
+	}*/
 	//public  static boolean tryComplementOnExtra = false;
 	//public static boolean reAlignExtra = false;
 	
@@ -140,9 +141,11 @@ public class IdentityProfile1 {
 		
 	}
 	public String strand;
-	public void setName(String readName, String chrom_, String strand, String q_value,String q_value_base, int source_index, boolean fusion) {
+	public boolean flip=false;
+	public void setName(String readName, String chrom_, String strand, String q_value,String q_value_base, int source_index, boolean fusion, boolean flip) {
 		// TODO Auto-generated method stub
 		this.id = readName;
+		this.flip = flip;
 		this.fusion = fusion;
 	//	if(!supp) fusion = false;
 		//else if(chrom_index!=this.chrom_index) fusion = true;
@@ -184,55 +187,55 @@ static char delim_start ='$';
 	
 	//** this adds coRefPositions into the clusters
 	 public static String header = 
-"readID\tsource\tchrom\tstartPos\tendPos\tstrand\terrorRatio\tid\tbreaks\tbreaks1\tqval\tbaseQ\tpolyA";
-
+"readID\tsource\tchrom\tstartPos\tendPos\talign_strand\terrorRatio\tid\tbreaks\tbreaks1\tqval\tbaseQ\tpolyA_fusion_site";
+	// public static String polyA = "AAAAAAAAAAAAAA";
+	 //public static String polyT = "TTTTTTTTTTTTTT";
+	// public static int polyA_ed_dist = 1;
+	// public static int checkdist = 20;
 	public void commit(Sequence readSeq, SAMRecord sam){
 		//int[] res = new int[2];
 		if(sam.isSecondaryOrSupplementary()) throw new RuntimeException("need primary ");
 		String[] res1 = new String[2];
 		StringBuffer st = new StringBuffer();
-		boolean hasPoly = false;
-		if(fusion  && checkPolyA){
-		//	if (this.coRefPositions.forward) {
-			for(int k=0; k<polyAs.length; k++){
-				int len1 = coRefPositions.start_positions.size();
-		 		for(int j=1; j<len1; j++){
-					int br = coRefPositions1.breaks.get(coRefPositions.start_positions.get(j));
-			//	this.coRefPositions.start_positions.get(0);
-				  hasPoly = hasPoly || getPolyA(readSeq, polyAs[k], Math.max(0, br-30), Math.min(readSeq.length(), br+30),  res1);
-				  
-				  st.append((hasPoly ? "T:": "")+res1[0]+","+res1[1]+(j<len1-1 ? ";": ""));
-				//  st.append(b)
-				 // if(hasPoly){
-				//	st.append(readSeq.subSequence(res[0], res[1]));
-				//	st.append("_");
-				 // }
-				}
-		 		if(k<polyAs.length-1) st.append("|");
-			}
+		if(chrom_.contains(";") && !fusion ){
+			throw new RuntimeException("!!");
+		}
+		//boolean hasPoly = false;
+		if(fusion ){
+			String seq = sam.getReadString();
+			;//, polyA_ed_dist);
+			
+			
+					int len1 = coRefPositions.start_positions.size();
+			 		for(int j=1; j<len1; j++){
+						int br = coRefPositions1.breaks.get(coRefPositions.start_positions.get(j));
+								st.append(PolyAT.check(seq,br));
+								if(j<len1-1) st.append(",");
+						}
+			 		
 		}else{
 			st.append(".");
 		}
-		//if(!hasPoly)st.
 		
 		String strand = this.coRefPositions.strand;
 	//	int start_read = this.readSt; int end_read = this.readEn;int readLength = end_read-start_read;
 		// parent.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources,  this.chrom_,  clusterID, strand, this.readName); // this also clears current cluster
 	//	int len1 = readSeq.length();
-		
+		//Integer flipped = (Integer) sam.getAttribute(PolyAT.flipped_tag);
 		String id_ = parent.o.writeString(coRefPositions, source_index, chrom_);
 		parent.o.addDepthMap(id_, coRefPositions.map);
 		String str = id+"\t"+source_index+"\t"
 		+chrom_+"\t"
 		+startPos+"\t"+endPos+"\t"+strand+"\t"
-		+coRefPositions.getError(source_index)+"\t"+id_+"\t"+breakSt+"\t"+breakSt1+"\t"+q_value_str.trim()+"\t"+this.base_q_str.trim()+"\t"+(hasPoly ? st.toString() : ".");
+		+coRefPositions.getError(source_index)+"\t"+id_+"\t"+breakSt+"\t"+breakSt1+"\t"+q_value_str.trim()+"\t"+this.base_q_str.trim()+"\t"+(st.toString() );
 	//	if(trainStrand){f
 		//	str = str+"\t"+readSeq.subSequence(0, 10)+"\t"+readSeq.subSequence(len1-10, len1)
 //				+"\t"+toString(phredQ,0,10)+"\t"+toString(phredQ,len1-10,len1)
 	//			+"\t"+ViralChimericReadsAnalysisCmd.median(phredQ,0,10)+"\t"+ViralChimericReadsAnalysisCmd.median(phredQ,len1-10,10)+"\t"+annot.getStrand(coRefPositions.span.iterator());			
 		//}
-		String str1 = Barcodes.getInfo(sam);
-		parent.o.printRead(str+"\t"+str1);
+		String str1 = PolyAT.getInfo(sam);
+		String str2 = ViralTranscriptAnalysisCmd2.barcodes == null ? "": Barcodes.getInfo(sam);
+		parent.o.printRead(str+"\t"+str1+"\t"+str2);
 		
 	}
 	boolean hasLeaderBreak_;		String breakSt; String breakSt1; String secondKeySt;boolean includeInConsensus = true;
@@ -243,7 +246,7 @@ static char delim_start ='$';
 	/*Note:  align5prime will be null if not coronavirus */
 	public String processRefPositions(  String id, boolean cluster_reads, 
 			 int src_index , Sequence readSeq, String baseQ, 
-			byte[] phredQ
+			byte[] phredQ, boolean flip
 		//	int start_read, int end_read, char strand, 
 		//	Integer offset_3prime, 
 			//Integer polyAlen, 
@@ -576,28 +579,7 @@ static char delim_start ='$';
 		}
 	}
 //res1
-	static boolean getPolyA(Sequence readSeq, Sequence polyA, int st, int end, String[] res1){
-		boolean haspolyA = false;
-		Sequence r1 = readSeq.subSequence(st, end);
-	//	if(true){
-		SWGAlignment polyAlign =  SWGAlignment.align(r1, polyA);
-		
-		
-		if(polyAlign.getIdentity() > 0.85 * polyAlign.getLength()  && polyAlign.getLength()>Math.max(10, 0.8 * polyA.length())){ // at least 15 A wih
-		//	res[0] = polyAlign.getStart1()+st;
-			res1[0] = String.format("%5.3g",100*(double)polyAlign.getIdentity()/(double) polyAlign.getLength()).trim();
-			res1[1] = polyAlign.getLength()+"";
-		//	res[1]  = res[0] + polyAlign.getLength() - polyAlign.getGaps1();
-			haspolyA = true;
-			Sequence str = r1.subSequence(polyAlign.getStart1(),polyAlign.getStart1()+polyAlign.getLength()-polyAlign.getGaps1());
-			System.err.println("found polyA "+str);
-			System.err.println("compared to  "+polyA);
-		}else{
-			res1[0] = ".";
-			res1[1] = ".";
-		}
-		return haspolyA;
-	}
+	
 	
 	/**
 	 * Get the identity between a read sequence from a sam and a reference sequence
@@ -665,6 +647,8 @@ static char delim_start ='$';
 				this.processAlignmentBlocks(sam, coref, coRefPositions1);
 			}
 		}
+		Integer flipped = sams.get(primary_index).getIntegerAttribute(PolyAT.flipped_tag);
+		boolean flip = flipped!=null && flipped.intValue()==1;
 		try{
 			int maxl = 100;
 			int tol=5;
@@ -679,7 +663,7 @@ static char delim_start ='$';
 		
 			
 			String secondKey= profile.processRefPositions(  id, cluster_reads, 
-					 source_index, readSeq,baseQ, phredQs);
+					 source_index, readSeq,baseQ, phredQs, flip);
 			//if(!ViralTranscriptAnalysisCmd2.allowSuppAlignments){
 				profile.commit(readSeq, sams.get(primary_index));
 		//	}

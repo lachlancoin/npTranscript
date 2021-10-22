@@ -88,8 +88,13 @@ import npTranscript.cluster.TranscriptUtils;
 
 @Deployable(scriptName = "npTranscript.run", scriptDesc = "Analysis of coronavirus sequence data")
 public class ViralTranscriptAnalysisCmd2 extends CommandLine {
-	public static int barcode_extent = 100;
-	public static int barcode_ignore = 0;
+
+	public static boolean exclude_indeterminate_strand=true;
+	public static boolean exclude_polyT_strand=false;
+	public static boolean exclude_reads_without_barcode=false;
+	
+
+	
 
 //	private static final Logger LOG = LoggerFactory.getLogger(HTSErrorAnalysisCmd.class);
 
@@ -98,7 +103,25 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		Deployable annotation = getClass().getAnnotation(Deployable.class);
 		setUsage(annotation.scriptName() + " [options]");
 		setDesc(annotation.scriptDesc());
+		
+		
 		addString("optsFile", null, "Name of file with extra options", false);
+		addString("optsType", null, "Which column in opts file", false);
+		
+		addInt("barcode_extent", 200, "search for barcode in first Xbp");
+		addInt("barcode_ignore", 0, "search for barcode in first Ybp");
+		addString("barcode_list","barcode_list.txt", "list for decoding barcodes");
+		
+		
+		addInt("bc_len_AT",6,"Length of polyA or polyT tract to look for at ends");
+		addInt("edit_thresh_AT",1,"Max edit dist (inclusive for AT tracts");
+		addInt("max_dist_to_end_AT",20,"Max distance from end of reads to find AT");
+
+		addBoolean("exclude_indeterminate_strand", false,"whether to exclude if we cnat figure out strand for cDNA");
+		addBoolean("exclude_polyT_strand", false,"whether to exclude RNA if it has a polyT strand");
+		addBoolean("exclude_reads_without_barcode", false,"whether to exclude read if it does not have barcode");
+
+		
 		addString("todo", null, "List of input files", false);
 		addString("inputFile", null, "Name of input file", false);
 		//addString("fastqFile", null, "Name of bam file", false);
@@ -130,9 +153,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		addString("pattern", null, "Pattern of read name, used for filtering");
 		addString("span", "protein_coding", "Filtering span.  Use all not to filter.");
 		addInt("qual", 0, "Minimum quality required");
-		addInt("barcode_extent", 200, "search for barcode in first Xbp");
-		addInt("barcode_ignore", 0, "search for barcode in first Ybp");
-		addString("barcode_list","barcode_list.txt", "list for decoding barcodes");
+		
 		addInt("bin0", 1, "Bin size for numerical hashing");
 		addInt("bin1",100, "Bin size for hashing of the end");
 		addDouble("overlap_thresh",0.33,"max percentage overlap between supp alignments considered");
@@ -225,10 +246,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		 maxReads = cmdLine.getIntVal("maxReads");
 		//SequenceUtils.max_per_file = maxReads*4;
 		 ViralTranscriptAnalysisCmd2.supplementaryQ =cmdLine.getIntVal("supplementaryQ");
-		 ViralTranscriptAnalysisCmd2.barcode_extent = cmdLine.getIntVal("barcode_extent");
-		 ViralTranscriptAnalysisCmd2.barcode_ignore = cmdLine.getIntVal("barcode_ignore");
-		 ViralTranscriptAnalysisCmd2.barcode_list = cmdLine.getStringVal("barcode_list");
-
+		
 		
 		Outputs.writeH5 = cmdLine.getBooleanVal("writeH5");
 		CigarHash2.round = cmdLine.getIntVal("bin0");
@@ -244,7 +262,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 			if(RNAstr.length==1){
 				if(RNAstr[0].equals("name")) {
 					for(int i=0; i<bamFiles.length; i++){
-						RNA[i] = bamFiles[i].indexOf("RNA")>0;
+						RNA[i] = bamFiles[i].toLowerCase().indexOf("RNA")>0;
 					}
 				}
 				else Arrays.fill(RNA, Boolean.parseBoolean(RNAstr[0]) );
@@ -360,19 +378,39 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
  public static String[] readOpts(CommandLine cmdLine, String[] args1, String  opts_file) throws IOException{
 	 String[] args = cmdLine.stdParseLine(args1);
 	 Map<String, String> keyval = new HashMap<String, String>();
-		String[] optsFiles  = cmdLine.getStringVal(opts_file).split(":");
-
-		for(int jj =0; jj<optsFiles.length; jj++){
-			BufferedReader br = new BufferedReader(new FileReader(optsFiles[jj]));
+		String optsFiles  = cmdLine.getStringVal(opts_file);
+		String optsType = cmdLine.getStringVal("optsType");
+		{
+			BufferedReader br = new BufferedReader(new FileReader(optsFiles));
 			String st = "";
+			int column = 0;
 			while((st=br.readLine())!=null){
 				if(st.trim().startsWith("#") || st.length()==0) continue;
-				//String[]str = st.split("=");
 				String st1 = st.trim().split("#")[0].trim();
-				String[] st2 = st1.split("\\s+");
-				for(int k=0; k<st2.length; k++){
-					String[] st3 = st2[k].split("=");
+				String[] st2 = st1.split(";");
+				if(st1.contains("optsType")){
+					if(optsType!=null){
+						column = -1;
+						inner: for(int j=0; j<st2.length; j++){
+							String[] st3 = st2[j].trim().split("=");
+							if(st3[1].contains(optsType)){
+								System.err.println("using column "+j+" where specified");
+								column=j;
+								break inner;
+							}
+						}
+						if(column <0){
+							throw new RuntimeException("!! no column "+optsType);
+						}
+					}
+					continue;
+				}
+				{
+					int k  = column < st2.length ? column : 0; 
+					String[] st3 = st2[k].trim().split("=");
 					if(st3.length!=2) {
+						System.err.println(st1);
+						System.err.println(st2[k].trim());
 						throw new RuntimeException("wrong format, needs to be key=val "+st2[k]);
 					}
 					if(!keyval.containsKey(st3[0])) {
@@ -413,9 +451,25 @@ barcode_list = cmdLine.getStringVal("barcode_list");
 		SequenceUtils.mm2_mem = cmdLine.getStringVal("mm2_mem");
 		SequenceUtils.mm2_path = cmdLine.getStringVal("mm2_path");
 		SequenceUtils.mm2Preset = cmdLine.getStringVal("mm2Preset");
+		
+		 Barcodes.barcode_extent = cmdLine.getIntVal("barcode_extent");
+		 Barcodes.barcode_ignore = cmdLine.getIntVal("barcode_ignore");
+		 ViralTranscriptAnalysisCmd2.barcode_list = cmdLine.getStringVal("barcode_list");
+		 
+		 PolyAT.set_bc_len(cmdLine.getIntVal("bc_len_AT"));
+		 PolyAT.edit_thresh_AT = cmdLine.getIntVal("edit_thresh_AT");
+		 PolyAT.max_dist_to_end_AT = cmdLine.getIntVal("max_dist_to_end_AT");
+
+		ViralTranscriptAnalysisCmd2.exclude_indeterminate_strand= cmdLine.getBooleanVal("exclude_indeterminate_strand");
+		ViralTranscriptAnalysisCmd2.exclude_polyT_strand= cmdLine.getBooleanVal("exclude_polyT_strand");
+		ViralTranscriptAnalysisCmd2.exclude_reads_without_barcode= cmdLine.getBooleanVal("exclude_reads_without_barcode");
+
+		
 		String reference = cmdLine.getStringVal("reference");
 		File refFile = reference==null ? null : new File(reference);
 	//	if(!refFile.exists()) throw new RuntimeException("ref file does not exist");
+		
+		
 		
 		
 		String resdir = cmdLine.getStringVal("resdir");
@@ -515,6 +569,7 @@ barcode_list = cmdLine.getStringVal("barcode_list");
 	public static double fail_thresh1 = 14.0;
 	public static String barcode_list=null;
 	
+	public static Barcodes barcodes  = null;
 	/**
 	 * Error analysis of a bam file. Assume it has been sorted
 	 */
@@ -530,10 +585,11 @@ barcode_list = cmdLine.getStringVal("barcode_list");
 		Annotation.tolerance = round;
 		
 		//File barcode_file_ = new File(barcode_file);
-		Barcodes barcodes = null;// we need barcodes for all or none
+		barcodes= null;// we need barcodes for all or none
 		PolyAT pAT = new PolyAT();
 		if(barcode_files!=null && barcode_files.length==bamFiles_.length && barcode_files[0] !=null) {
 			barcodes=new Barcodes(barcode_files);
+			
 		}
 		
 		// Integer[] basesStart = new Integer[] {0,0,0,0};
@@ -780,25 +836,30 @@ barcode_list = cmdLine.getStringVal("barcode_list");
 					Boolean forward_read=pAT.assign(sam);// this assigns tags indicating the orientation of the original read as + or -;
 					if(barcodes!=null){
 						try{
-						barcodes.assign( sam,barcode_extent,barcode_ignore);
+						boolean hasbarcode = barcodes.assign( sam);
+						if( exclude_reads_without_barcode && !hasbarcode){
+							continue;
+						}
 						}catch(Exception exc){
 							exc.printStackTrace();
 						}
 					}
 					if(Annotation.enforceStrand ){
-						if(forward_read==null){
+						if(forward_read==null ){
 							// cannot determine strand
-							continue;
+							if( exclude_indeterminate_strand) continue;
 						}
-						if(RNA[source_index] && !forward_read ){
-							System.err.println ("warning RNA should always be forward strand, found polyT .. excluding ");
-							continue;
+						if(forward_read!=null && RNA[source_index] && !forward_read ){
+							if(exclude_polyT_strand) {
+									System.err.println ("warning RNA should always be forward strand, found polyT .. excluding ");
+
+								continue;
+							}
 						}
-						if( !forward_read && !RNA[source_index]){
-							// just flip the flag
-							System.err.println("flipping neg read strand flag");
-							sam.setReadNegativeStrandFlag(!sam.getReadNegativeStrandFlag());
-							//	TranscriptUtils.flip(sam);//, true);
+						if(forward_read!=null  &&  !forward_read && !RNA[source_index]){
+							sam.setAttribute(PolyAT.flipped_tag, 1);
+						}else{
+							sam.setAttribute(PolyAT.flipped_tag, 0);
 						}
 					}
 					
@@ -809,8 +870,6 @@ barcode_list = cmdLine.getStringVal("barcode_list");
 				
 					if(sams.size()>0 && (!sam.getReadName().equals(previousRead) )){
 						try{
-						//	List<SAMRecord> l1 = new ArrayList<SAMRecord>();
-							//l1.addAll(sams);
 							profile.identity1(new ArrayList<SAMRecord>(sams),  cluster_reads,     genomes);
 							sams.clear();
 						}catch(NumberFormatException exc){

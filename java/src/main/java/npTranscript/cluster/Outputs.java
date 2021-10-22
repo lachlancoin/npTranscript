@@ -34,10 +34,12 @@ import htsjdk.samtools.fastq.FastqRecord;
 import htsjdk.samtools.fastq.FastqWriter;
 import htsjdk.samtools.fastq.FastqWriterFactory;
 import japsa.seq.Sequence;
+import npTranscript.NW.PolyAT;
 import npTranscript.cluster.CigarCluster.Count;
 import npTranscript.run.Barcodes;
 import npTranscript.run.CompressDir;
 import npTranscript.run.SequenceOutputStream1;
+import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 public class Outputs{
 	
@@ -210,7 +212,9 @@ public class Outputs{
 /*if(IdentityProfile1.trainStrand){
 	header = header+ "\tleft10bp\tright10bp\tqual_left10bp\tqual_right10bp\tcorrect_strand";
 }*/
-			 readClusters.println(IdentityProfile1.header+"\t"+Barcodes.getHeader()); //\tbreakStart\tbreakEnd\tbreakStart2\tbreakEnd2\tstrand\tbreaks");
+			 String str1 = 	 ViralTranscriptAnalysisCmd2.barcodes == null ? "": Barcodes.getHeader();
+;
+			 readClusters.println(IdentityProfile1.header+"\t"+PolyAT.getHeader()+"\t"+str1); //\tbreakStart\tbreakEnd\tbreakStart2\tbreakEnd2\tstrand\tbreaks");
 		
 			
 				

@@ -27,7 +27,7 @@ import npTranscript.NW.PolyAT;
 import npTranscript.cluster.TranscriptUtils;
 
 public class Barcodes {
-	
+public static boolean verbose=false;	
 	public static String barcode_tag = "BC";
 	public static String barcode_index_tag = "BI";
 	public  static String barcode_dist_tag="BD";
@@ -91,12 +91,15 @@ public class Barcodes {
  
 static  int MODE = EdlibLibrary.EdlibAlignMode.EDLIB_MODE_HW;
 static  int TASK = EdlibLibrary.EdlibAlignTask.EDLIB_TASK_LOC;
-static int tolerance = 2;
-static int maxsize_tolerance=1;
+public static int tolerance_barcode = 2;
+public static int maxsize_tolerance_barcode=1;
+public static int barcode_extent=150;
+public static int barcode_ignore=0;
+
+public final int bc_len_barcode;
+
 static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfig(-1, MODE, TASK, null, 0);
 			
-/** assumes bc_len is constant */
- final int bc_len;
  
  public Barcodes(String[] infiles ) throws IOException{
 	// this.rev_compl=incl_rev_compl;
@@ -124,7 +127,7 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 		}
 		 }
 	 }
-	 bc_len = barcodes_forward[0].get(0).length();
+	 bc_len_barcode = barcodes_forward[0].get(0).length();
 	}
 	public int calcMatches(Set<Integer> mins, int index, String[] sequence, boolean forward_barcodes){
 		//Set<Integer> mins = new TreeSet<Integer>();
@@ -153,15 +156,15 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 		 return res;
 	}
 	private int match(String bc, String sequence) {
-		if(sequence.length() < bc_len) return Integer.MAX_VALUE;
+		if(sequence.length() < bc_len_barcode) return Integer.MAX_VALUE;
 		 EdlibAlignResult res=	align(sequence, bc);
-		 return res.editDistance+ Math.max(0,bc_len-(res.endLocations.getValue()-res.startLocations.getValue()+1));
+		 return res.editDistance+ Math.max(0,bc_len_barcode-(res.endLocations.getValue()-res.startLocations.getValue()+1));
 	}
 	
 	
 			
 /** finds barcodes within len bp of end and start, excluding the last and first chop bp */
-	public void assign(SAMRecord sam,int len, int chop) {
+	public boolean assign(SAMRecord sam) {
 		boolean neg_align=sam.getReadNegativeStrandFlag();
 		
 		
@@ -170,7 +173,7 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 		
 		String read_strand_tag = (String) sam.getAttribute(PolyAT.read_strand_tag);
 		if(read_strand_tag==null){
-			return ;
+			return false ;
 		}
 		boolean forward_read = read_strand_tag.charAt(0)=='+';
 		boolean forward_barcode = !forward_read;
@@ -179,48 +182,47 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 		
 		int index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
 		List<String> barcodes_i = forward_barcode  ? barcodes_forward[index] : barcodes_reverse[index];
-		if(barcodes_i.size()==0) return;
+		if(barcodes_i.size()==0) return false;
 			String sa = sam.getReadString();
 			if(neg_align){
 				// this converts read back to original orientation
 				sa = SequenceUtil.reverseComplement(sa);
 			}
 			int read_len = sa.length();
-			{
 				// chop should be less then len
-				if(len < chop) throw new RuntimeException("!!");
-				String sequenceL = sa.substring(chop,Math.min(len,read_len));
+				if(barcode_extent < barcode_ignore) throw new RuntimeException("!!");
+				String sequenceL = sa.substring(barcode_ignore,Math.min(barcode_extent,read_len));
 			//	System.err.println(read_len+" "+sequenceL);
 				//if(true) System.exit(0);;
 				//System.err.println(read_len+" "+chop);
-				String sequenceR = sa.substring(Math.max(0, read_len-len), read_len-chop);
+				String sequenceR = sa.substring(Math.max(0, read_len-barcode_extent), read_len-barcode_ignore);
 				String[] str = forward_read ?  new String[] {sequenceR}  :  new String[] {sequenceL};
-				int[] offset = forward_read ? new int[] {read_len-len} : new int[] {chop};
+				int[] offset = forward_read ? new int[] {read_len-barcode_extent} : new int[] {barcode_ignore};
 				String[] desc = forward_read ? new String[] {"3'"} : new String[] {"5'"} ;
 
 				SortedSet<Integer> mins = new TreeSet<Integer>();
 				int minv = calcMatches(mins, index,str, forward_barcode );
-				if(mins.size()<=maxsize_tolerance){
+				if(mins.size()<=maxsize_tolerance_barcode){
 					List<String>barcodes1 = new ArrayList<String>();
 				//	List<Boolean > forward_l = new ArrayList<Boolean> (); // whether barcode is forward
 					List<Integer> inds1 = new ArrayList<Integer>();
 					getAll(mins, index, barcodes1, inds1, forward_barcode);
 				//	String left = "NA";
 					
-					sam.setAttribute(barcode_tag, barcodes1.toString());
-					sam.setAttribute(barcode_index_tag, inds1.toString());
+					sam.setAttribute(barcode_tag, mins.size()==1 ? barcodes1.get(0) : barcodes1.toString());
+					sam.setAttribute(barcode_index_tag, mins.size()==1 ? inds1.get(0) :  inds1.toString());
 					sam.setAttribute(barcode_dist_tag, minv);
-					sam.setAttribute(barcode_num_tag, mins.size());
+					//sam.setAttribute(barcode_num_tag, mins.size());
 					
 					 int st=0; int end=0;
-					if(barcodes1.size()==1 && minv <=tolerance){
+					if(barcodes1.size()==1 && minv <=tolerance_barcode){
 						String barc = barcodes1.get(0);
 						 int min_dist=Integer.MAX_VALUE;
 						 int min_ind=0;
 						
 						for(int j=0; j<str.length; j++){
 							EdlibAlignResult res=	align(str[j], barc);
-							 int dist=res.editDistance+ Math.max(0,bc_len-(res.endLocations.getValue()-res.startLocations.getValue()+1));
+							 int dist=res.editDistance+ Math.max(0,bc_len_barcode-(res.endLocations.getValue()-res.startLocations.getValue()+1));
 							 if(dist <min_dist){
 								 st = res.startLocations.getValue()+offset[j];
 								 end = res.endLocations.getValue()+offset[j];
@@ -235,21 +237,22 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 						 sam.setAttribute(barcode_forward_tag,forward_barcode ? "forward": "revC");
 						Object pAT = sam.getAttribute(PolyAT.polyAT_tag);
 						
-					System.err.println((forward_align? "align+" : "align-")+" "+(forward_read? "read+" : "read-")+" "+minv + " "+barcodes1+" "
+				if(verbose)	System.err.println((forward_align? "align+" : "align-")+" "+(forward_read? "read+" : "read-")+" "+minv + " "+barcodes1+" "
 						 +(forward_barcode ? "forward_barcode": "rev_barcode")+" "+inds1+" "+desc[min_ind]+ " "+st+" "+(read_len-end)+(forward_read ? " polyA:" : " polyT:")+pAT);
-
+						return true;
 					}
 				}else{
-					System.err.println("not found "+minv+" "+mins.size());
+					if( verbose) System.err.println("not found "+minv+" "+mins.size());
 				}
-			}
+				return false;
 	}
 	public static String getHeader(){
-		return "barcode\tbarcode_index\tbarcode_dist\tbarcode_num\tbarcode_left\tbarcode_forward\tdist_from_start\tdist_from_end";
+		return "barcode,barcode_index,barcode_dist,barcode_left,barcode_forward,dist_from_start,dist_from_end";
 	}
 public static String getInfo(SAMRecord sam) {
-	return sam.getAttribute(barcode_tag)+"\t"+sam.getAttribute(barcode_index_tag)+"\t"+sam.getAttribute(barcode_dist_tag)
-	+"\t"+sam.getAttribute(barcode_num_tag)+"\t"+sam.getAttribute(barcode_left_tag)+"\t"+sam.getAttribute(barcode_forward_tag)+"\t"+sam.getAttribute(barcode_start_tag)+"\t"+sam.getAttribute(barcode_end_tag);
+	return sam.getAttribute(barcode_tag)+","+sam.getAttribute(barcode_index_tag)+","+sam.getAttribute(barcode_dist_tag)
+	//+","+sam.getAttribute(barcode_num_tag)
+	+","+sam.getAttribute(barcode_left_tag)+","+sam.getAttribute(barcode_forward_tag)+","+sam.getAttribute(barcode_start_tag)+","+sam.getAttribute(barcode_end_tag);
 }
 	
 }

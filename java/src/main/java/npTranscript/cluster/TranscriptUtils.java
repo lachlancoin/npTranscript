@@ -194,7 +194,7 @@ public class TranscriptUtils {
 	  *  */
 	public static void flip(SAMRecord sam) {
 	 boolean switchFlag = false;
-		if(true) throw new RuntimeException ("!!");
+	//	if(true) throw new RuntimeException ("!!");
 		String sa = sam.getReadString();
 		byte[]phredQs = sam.getBaseQualities();
 		byte[] bases = sam.getReadBases();
