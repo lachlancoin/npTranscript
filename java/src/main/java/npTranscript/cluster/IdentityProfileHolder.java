@@ -137,7 +137,11 @@ static class SamComparator implements Comparator<SAMRecord>{
 
 	@Override
 	public int compare(SAMRecord o1, SAMRecord o2) {
-		if(quality) return -1*Integer.compare(o1.getMappingQuality(), o2.getMappingQuality());
+		if(quality) {
+			int i1 = Boolean.compare(o1.isSecondaryOrSupplementary(), o2.isSecondaryOrSupplementary());
+			if(i1!=0) return i1;
+			else return -1*Integer.compare(o1.getMappingQuality(), o2.getMappingQuality());
+		}
 		else return  Integer.compare(o1.getAlignmentBlocks().get(0).getReadStart(),
 			o2.getAlignmentBlocks().get(0).getReadStart());
 	}
@@ -288,16 +292,23 @@ static Comparator comp_q = new SamComparator(true);
 		//		System.err.println("HHH,"+chrom_+","+sam.getAlignmentStart()+ ","+sam.getAlignmentEnd()+","+sam.getReadName()+","
 			//+sam.getReadLength());
 				Collections.sort(sam_1 , comp_q);
-
+				if(sam_1.get(0).isSecondaryOrSupplementary()) {
+					throw new RuntimeException("first should be primary");
+				}
 				int source_index = (Integer) sam_1.get(0).getAttribute(SequenceUtils.src_tag);
 				String rn= sam_1.get(0).getReadName();
 				final IdentityProfile1 profile = get();
 				int sze = sam_1.size();
 				List<SAMRecord>sam1 = new ArrayList<SAMRecord>();
+				
 				int limit = 1;
-				for(int j=0; sam_1.size()>0 && j<limit; j++){
+				inner: for(int j=0; sam_1.size()>0 && j<limit; j++){
 					sam1.clear();
 					SAMRecord primary = groupSam(sam_1.iterator(), sam1);
+					if(primary==null){
+						System.err.println("warning not primary "+j);
+						continue inner;
+					}
 					Integer flipped =(Integer ) primary.getAttribute(PolyAT.flipped_tag);
 					boolean flip = flipped!=null && flipped.intValue()==0;
 					byte[] bq = primary.getBaseQualities();
