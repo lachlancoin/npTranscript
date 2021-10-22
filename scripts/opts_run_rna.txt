@@ -1,0 +1,46 @@
+--optsType=RNA		;		--optsType=cDNA  ;	 --optsType=sc_cDNA
+#--reference=~/github/npTranscript/data/U13369/combined.fa.gz 
+--reference=/home/lachlan/github/npTranscript/data/U13369/combined.fa.gz  ### for fusion
+ #--maxReads=1000
+--sequential=true 
+--sorted=false
+--bin0=100
+--bin1=500
+--breakThresh=100
+--coronavirus=false
+#--extra_threshold=50 
+#--span=protein_coding
+--doMSA=false
+--msa_source=cDNA 
+--maxThreads=4
+--writeIsoforms=true
+--recordDepthByPosition=false
+--coverageDepthThresh=100
+--writeH5=true
+--qual=10
+--fail_thresh=0
+--supplementaryQ=1   ### if this is set to 1000 then essentially supplementary are not allowed.  This controls if fusions are reported
+
+--RNA=name ; 	 --RNA=name ; 	--RNA=false ## if there is RNA or rna in the file name it will assume RNA
+--includeStart=false
+--enforceStrand=true
+
+--mm2_splicing=un 	; --mm2_splicing=un   ; --mm2_splicing=un	##this is for virus 
+#--mm2_splicing=uf   ## this is for host and fusion ? 
+#--mm2_path=/home/lachlan/github/minimap2/minimap2
+--mm2_path=minimap2
+
+#--readList=reads_to_include.txt
+
+#barcodes
+--exclude_reads_without_barcode=false
+--barcode_extent=100  ## extent of start end read for barcode
+--barcode_ignore=0  ## how much to ignore for barcode
+--barcode_list=barcode_list.txt  ## mapping from fastq or bam to barcodes
+
+##polyA
+--bc_len_AT=8 		; --bc_len_AT=8       ; --bc_len_AT=8 
+--edit_thresh_AT=1 	; --edit_thresh_AT=1  ; --edit_thresh_AT=1 
+--max_dist_to_end_AT=50 ; --max_dist_to_end_AT=50  ; --max_dist_to_end_AT=100   ## need longer for sc_cDNA
+--exclude_indeterminate_strand=true
+--exclude_polyT_strand=false
