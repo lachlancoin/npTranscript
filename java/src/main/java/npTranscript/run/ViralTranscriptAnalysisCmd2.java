@@ -60,6 +60,7 @@ import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
@@ -436,8 +437,15 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 		
 	 return cmdLine.stdParseLine(args);
  }
-	public static void main(String[] args1) throws IOException, InterruptedException {
+	public static void main(String[] args0) throws IOException, InterruptedException {
 		tme0 = System.currentTimeMillis();
+		boolean stdin = false;
+		String[] args1 = args0;
+		if(args0[args0.length-1].equals("-")){
+			stdin = true;
+			args1 = new String[args0.length-1];
+			System.arraycopy(args0, 0, args1, 0, args1.length);
+		}
 		CommandLine cmdLine = new ViralTranscriptAnalysisCmd2();
 		String[] args2 = ViralTranscriptAnalysisCmd2.readOpts(cmdLine, args1,"optsFile");
 		
@@ -487,16 +495,16 @@ barcode_list = cmdLine.getStringVal("barcode_list");
 
 		String todo = cmdLine.getStringVal("todo");
 		String [] inputFiles_;
-		
-		if(todo==null){
+		if(stdin){
+			inputFiles_ = new String[] {"-"};
+		}
+		else if(todo==null){
 			inputFiles_ =inputFile.split(":");
 		//	barcode_files =barcodeFile.split(":");
 		}else{
 			BufferedReader br = new BufferedReader(new FileReader(todo));
 			String st = "";
 			List<String> ifs = new ArrayList<String>();
-		//	List<String> ifs1 = new ArrayList<String>();
-
 			while((st=br.readLine())!=null){
 				if(st.length()>0 && !st.trim().startsWith("#")){
 					String[] str = st.trim().split("\t");
@@ -509,10 +517,13 @@ barcode_list = cmdLine.getStringVal("barcode_list");
 
 			br.close();
 		}
-			boolean bam = inputFiles_[0].endsWith(".bam") || inputFiles_[0].endsWith("sam") ;
+			boolean bam = inputFiles_[0].equals("-") ||  inputFiles_[0].endsWith(".bam") || inputFiles_[0].endsWith("sam") ;
 			String[] barcode_files = new String[inputFiles_.length];
 			File barcode_file_ = new File(barcode_list);
 			if(barcode_file_.exists()){
+				if(inputFiles_[0].equals("-")){
+					barcode_files[0] = barcode_list;
+				}else{
 				BufferedReader br = new BufferedReader(new FileReader(barcode_file_));
 				String st = "";
 				List<String> ifs = new ArrayList<String>();
@@ -528,6 +539,7 @@ barcode_list = cmdLine.getStringVal("barcode_list");
 						
 					}
 				}
+				}
 			}
 			
 			
@@ -541,20 +553,6 @@ barcode_list = cmdLine.getStringVal("barcode_list");
 					exc.printStackTrace();
 				}
 			}
-		//String inputFile;
-		
-//		delayComit = !sorted; // we can delay committing if not sorted according to position
-		//final boolean fastq_ = fastq;
-		
-		/*String annotToRem = cmdLine.getStringVal("annotToRemoveFromGFF");
-		if(annotToRem!=null){
-				inner: for(int j=0; j<bamFiles_.length; j++){
-					if(bamFiles_[j].indexOf(annotToRem)>=0){
-						CigarCluster.annotationToRemoveFromGFF=j;
-						break inner;
-					}
-				}
-		}*/
 		run(cmdLine, inputFiles_, barcode_files, resdir,   chroms, chroms_ignore, fastq, reference);
 		System.err.println("shutting down executors");
 		
@@ -589,7 +587,6 @@ barcode_list = cmdLine.getStringVal("barcode_list");
 		PolyAT pAT = new PolyAT();
 		if(barcode_files!=null && barcode_files.length==bamFiles_.length && barcode_files[0] !=null) {
 			barcodes=new Barcodes(barcode_files);
-			
 		}
 		
 		// Integer[] basesStart = new Integer[] {0,0,0,0};
@@ -682,8 +679,12 @@ barcode_list = cmdLine.getStringVal("barcode_list");
 		
 		for (int ii = 0; ii < len; ii++) {
 			String bamFile = bamFiles_[ii];
-			File bam = new File( bamFile);
-			in_nmes[ii] = bam.getName().split("\\.")[0];
+			if(bamFile!="-"){
+				File bam = new File( bamFile);
+				in_nmes[ii] = bam.getName().split("\\.")[0];
+			}else{
+				in_nmes[ii] = "stdin";
+			}
 		}
 			
 		
@@ -694,7 +695,7 @@ barcode_list = cmdLine.getStringVal("barcode_list");
 		boolean allNull = true;
 		
 		Iterator<SAMRecord> samIter=null;
-		if(!bamFiles_[0].endsWith(".bam")){
+		if(bamFiles_[0].endsWith(".fastq") || bamFiles_[0].endsWith(".fq")){
 			allNull = false;
 			samIter = 
 					SequenceUtils.getCombined(
@@ -703,7 +704,13 @@ barcode_list = cmdLine.getStringVal("barcode_list");
 		}else{
 		inner: for (int ii = 0; ii < len; ii++) {
 			SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
+		//	SamReaderFactory.makeDefault().op
+			if(bamFiles_[ii].equals("-")){
+				samReaders[ii] = SamReaderFactory.makeDefault().open(SamInputResource.of(System.in));
+			}else{
+
 				samReaders[ii] = SamReaderFactory.makeDefault().open(new File(bamFiles_[ii]));
+			}
 				samIters[ii] = samReaders[ii].iterator();
 			}
 			allNull = false;
