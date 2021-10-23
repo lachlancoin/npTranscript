@@ -12,11 +12,11 @@
 #--span=protein_coding
 --doMSA=false
 --msa_source=cDNA 
---maxThreads=4
+--maxThreads=1
 --writeIsoforms=true
 --recordDepthByPosition=false
 --coverageDepthThresh=100
---writeH5=true
+--writeH5=false
 --qual=10
 --fail_thresh=0
 --supplementaryQ=1   ### if this is set to 1000 then essentially supplementary are not allowed.  This controls if fusions are reported

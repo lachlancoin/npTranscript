@@ -162,11 +162,12 @@ static Comparator comp_q = new SamComparator(true);
 		sams.remove();
 		extracted.add(first);
 		int[] overl = new int[3];
-		while(sams.hasNext()){
+		
+		for(int i=0; sams.hasNext(); i++){
 			SAMRecord sam = sams.next();
 			
-			int q2 = sam.getMappingQuality();
-			if(q2>q1) throw new RuntimeException("!!");
+		//	int q2 = sam.getMappingQuality();
+		//	if(q2>q1 && i>1) throw new RuntimeException("!!");
 			Arrays.fill(overl,0);
 		//	List<AlignmentBlock> l2 = sam.getAlignmentBlocks();
 			for(int j=0; j<extracted.size(); j++){

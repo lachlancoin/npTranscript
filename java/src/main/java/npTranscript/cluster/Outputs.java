@@ -599,28 +599,15 @@ public class Outputs{
 		
 		/** writes the isoform information */
 		public synchronized String writeString(CigarCluster cc, int source_index, String chrom){//, CigarClusters cigarClusters) {
-			//String chrom = cc.chrom;
 			String id_1 = cc.breaks_hash.secondKey;
-		//	int num_sources = cigarClusters.num_sources;
-			//Map<CigarHash2, Count> all_breaks=cc.all_breaks;
 			CigarHash2 key = cc.breaks;
 			CigarHash2 key2 = cc.cloneBreaks();
 			List<Integer> startp = cc.start_positions;
-			//Iterator<Entry<CigarHash2, Count>> it = all_breaks.entrySet().iterator();
-			//while( it.hasNext()){
-				//Entry<CigarHash2,Count> ch = it.next();
-				//CigarHash2 key = ch.getKey();
 				String id_2 = key2.toString(startp);
-				//Count cnt = ch.getValue();
-				//List<Integer> br = cnt.getBreaks();
-				
-				
-				//double[] cnt.true_breaks;
-				//cnt.
 				String id_ = id_1+"/"+id_2;
 				String id = "transcripts/"+id_;
-				//int existing_cols=0;
 				HDFObj obji;
+				if(altT!=null){
 				if(altT.exists(id)){
 				//	m = new HashMap<String, HDFObj>();
 					 obji =  new HDFObj(altT.readString(id));
@@ -635,7 +622,7 @@ public class Outputs{
 					obji = new HDFObj( key, source_index, new_max_cols, CigarCluster.Count.divisor); // need to worry about cols? 
 				}
 				altT.writeString(id,obji.toString());
-			//}
+			}
 				return id_;
 		}
 		
