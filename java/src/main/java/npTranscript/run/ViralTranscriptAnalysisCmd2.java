@@ -112,7 +112,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		addInt("barcode_extent", 200, "search for barcode in first Xbp");
 		addInt("barcode_ignore", 0, "search for barcode in first Ybp");
 		addString("barcode_list",null, "list for decoding barcodes (used if more than one bamfile when streaming from fastq");
-		addString("barcode",null, "barcode file");
+		addString("barcode_file",null, "barcode file");
 		
 		
 		addInt("bc_len_AT",6,"Length of polyA or polyT tract to look for at ends");
@@ -456,7 +456,7 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 		//Outputs.writeBed  = cmdLine.getBooleanVal("writeBed");
 		Outputs.writeIsoforms = cmdLine.getBooleanVal("writeIsoforms");
 barcode_list = cmdLine.getStringVal("barcode_list");
-barcode = cmdLine.getStringVal("barcode");
+barcode_file = cmdLine.getStringVal("barcode");
 		SequenceUtils.mm2_threads = cmdLine.getIntVal("mm2_threads");
 		SequenceUtils.mm2_mem = cmdLine.getStringVal("mm2_mem");
 		SequenceUtils.mm2_path = cmdLine.getStringVal("mm2_path");
@@ -521,8 +521,8 @@ barcode = cmdLine.getStringVal("barcode");
 		}
 			boolean bam = inputFiles_[0].equals("-") ||  inputFiles_[0].endsWith(".bam") || inputFiles_[0].endsWith("sam") ;
 			String[] barcode_files = new String[inputFiles_.length];
-			if(barcode!=null){
-				barcode_files = barcode.split(":");
+			if(barcode_file!=null){
+				barcode_files = barcode_file.split(":");
 				File fi = new File(barcode_files[0]);
 				if(!fi.exists()) {
 					throw new RuntimeException(" barcoe file does not exist "+fi.getAbsolutePath());
@@ -579,7 +579,7 @@ barcode = cmdLine.getStringVal("barcode");
 	public static double fail_thresh = 7.0;
 	public static double fail_thresh1 = 14.0;
 	public static String barcode_list=null;
-	public static String barcode=null;
+	public static String barcode_file=null;
 	public static Barcodes barcodes  = null;
 	/**
 	 * Error analysis of a bam file. Assume it has been sorted
