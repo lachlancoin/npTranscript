@@ -31,7 +31,7 @@ public static boolean verbose=false;
 	public static String barcode_forward_tag = "BF";
 	public static String barcode_reverse_tag = "BR";
 
-//	public static String barcode_index_tag = "BI";
+	public static String barcode_confidence_tag = "BI";
 	//public  static String barcode_dist_tag="BD";
 //	public  static String barcode_num_tag="BN";
 //	public  static String barcode_left_tag="BL";
@@ -254,10 +254,10 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 	}
 	public static String getHeader(){
 		return "barcode+"+ //barcode_index,barcode_dist,barcode_left,barcode_forward,dist_from_start,dist_from_end"
-				"\t"+"barcode-";//,barcode_index,barcode_dist,barcode_left,barcode_forward,dist_from_start,dist_from_end";
+				"\t"+"barcode-"+"\tconfidence";//,barcode_index,barcode_dist,barcode_left,barcode_forward,dist_from_start,dist_from_end";
 	}
 public static String getInfo(SAMRecord sam) {
-	return (String) sam.getAttribute(barcode_forward_tag)+"\t"+sam.getAttribute(barcode_reverse_tag);
+	return (String) sam.getAttribute(barcode_forward_tag)+"\t"+sam.getAttribute(barcode_reverse_tag)+"\t"+sam.getAttribute(barcode_confidence_tag);
 			
 }
 	

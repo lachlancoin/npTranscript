@@ -885,18 +885,26 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 						if( exclude_reads_without_barcode && Math.min(for_min, back_min)> Barcodes.tolerance_barcode){
 							continue;
 						}
-						if(forward_read==null){
-							// use the barcode to assign the read strand
-							if(for_min < Barcodes.tolerance_barcode && for_min < back_min){
-									forward_read = true;
-								}
-							if(back_min < Barcodes.tolerance_barcode && for_min > back_min){
-								forward_read = false;
-							}
-							if(forward_read!=null){
-								sam.setAttribute(PolyAT.read_strand_tag, forward_read ? "+" : "-");
-							}
+						Boolean forward_read1 = null;
+						if(for_min < Barcodes.tolerance_barcode && for_min < back_min){
+							forward_read1 = true;
 						}
+						if(back_min < Barcodes.tolerance_barcode && for_min > back_min){
+							forward_read1 = false;
+						}
+						if(forward_read==null && forward_read1!=null){
+								sam.setAttribute(PolyAT.read_strand_tag, forward_read1 ? "+" : "-");
+						}
+						if(forward_read!=null && forward_read1!=null){
+							if(forward_read.equals(forward_read1)){
+								sam.setAttribute(Barcodes.barcode_confidence_tag, "high");
+							}else{
+								sam.setAttribute(Barcodes.barcode_confidence_tag, "low");
+							}
+						}else{
+							sam.setAttribute(Barcodes.barcode_confidence_tag, "NA");
+						}
+						
 						}catch(Exception exc){
 							exc.printStackTrace();
 						}
