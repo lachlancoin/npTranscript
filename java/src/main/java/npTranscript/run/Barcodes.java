@@ -28,14 +28,16 @@ import npTranscript.cluster.TranscriptUtils;
 
 public class Barcodes {
 public static boolean verbose=false;	
-	public static String barcode_tag = "BC";
-	public static String barcode_index_tag = "BI";
-	public  static String barcode_dist_tag="BD";
-	public  static String barcode_num_tag="BN";
-	public  static String barcode_left_tag="BL";
-	public  static String barcode_start_tag="CS";// note BS conflicts with another tag in SequenceUtiles
-	public  static String barcode_end_tag="BE";
-	public  static String barcode_forward_tag="BF";
+	public static String barcode_forward_tag = "BF";
+	public static String barcode_reverse_tag = "BR";
+
+//	public static String barcode_index_tag = "BI";
+	//public  static String barcode_dist_tag="BD";
+//	public  static String barcode_num_tag="BN";
+//	public  static String barcode_left_tag="BL";
+//	public  static String barcode_start_tag="CS";// note BS conflicts with another tag in SequenceUtiles
+//	public  static String barcode_end_tag="BE";
+//	public  static String barcode_forward_tag="BF";
 
 
 
@@ -152,42 +154,41 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 	
 	private  static EdlibAlignResult align(String sequence, String bc){
 	 EdlibAlignResult res=		EdlibLibrary.INSTANCE.edlibAlign(bc, bc.length(), sequence, sequence.length(), config);
+	 
 //		 EdlibAlignResult res=	EdlibLibrary.INSTANCE.edlibAlign(sequence, sequence.length(), bc, bc.length(), config);
 		 return res;
 	}
 	private int match(String bc, String sequence) {
 		if(sequence.length() < bc_len_barcode) return Integer.MAX_VALUE;
 		 EdlibAlignResult res=	align(sequence, bc);
-		 return res.editDistance+ Math.max(0,bc_len_barcode-(res.endLocations.getValue()-res.startLocations.getValue()+1));
+		int out = res.editDistance+ Math.max(0,bc_len_barcode-(res.endLocations.getValue()-res.startLocations.getValue()+1));
+		res.clear();
+		return out;
 	}
 	
 	
 			
-/** finds barcodes within len bp of end and start, excluding the last and first chop bp */
-	public boolean assign(SAMRecord sam) {
+/** finds barcodes within len bp of end and start, excluding the last and first chop bp 
+ * 
+ * 
+ * */
+	public int assign(SAMRecord sam, String sa, boolean forward_read) {
 		boolean neg_align=sam.getReadNegativeStrandFlag();
+    	boolean forward_align = !neg_align; // whether read is forward, we need this so we know if we have to rev compl to get original orientation
 		
-		
-		
-	boolean forward_align = !neg_align; // whether read is forward
-		
-		String read_strand_tag = (String) sam.getAttribute(PolyAT.read_strand_tag);
+		/*String read_strand_tag = (String) sam.getAttribute(PolyAT.read_strand_tag);
 		if(read_strand_tag==null){
 			return false ;
 		}
-		boolean forward_read = read_strand_tag.charAt(0)=='+';
+		boolean forward_read = read_strand_tag.charAt(0)=='+';*/
 		boolean forward_barcode = !forward_read;
 		
 
 		
 		int index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
 		List<String> barcodes_i = forward_barcode  ? barcodes_forward[index] : barcodes_reverse[index];
-		if(barcodes_i.size()==0) return false;
-			String sa = sam.getReadString();
-			if(neg_align){
-				// this converts read back to original orientation
-				sa = SequenceUtil.reverseComplement(sa);
-			}
+		if(barcodes_i.size()==0) return this.bc_len_barcode;
+			
 			int read_len = sa.length();
 				// chop should be less then len
 				if(barcode_extent < barcode_ignore) throw new RuntimeException("!!");
@@ -209,13 +210,15 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 					getAll(mins, index, barcodes1, inds1, forward_barcode);
 				//	String left = "NA";
 					
-					sam.setAttribute(barcode_tag, mins.size()==1 ? barcodes1.get(0) : barcodes1.toString());
-					sam.setAttribute(barcode_index_tag, mins.size()==1 ? inds1.get(0) :  inds1.toString());
-					sam.setAttribute(barcode_dist_tag, minv);
 					//sam.setAttribute(barcode_num_tag, mins.size());
 					
 					 int st=0; int end=0;
 					if(barcodes1.size()==1 && minv <=tolerance_barcode){
+						StringBuffer sb = new StringBuffer();
+						
+						sb.append(mins.size()==1 ? barcodes1.get(0) : barcodes1.toString());sb.append(",");
+						sb.append( mins.size()==1 ? inds1.get(0) :  inds1.toString());sb.append(",");
+						sb.append(minv);sb.append(",");
 						String barc = barcodes1.get(0);
 						 int min_dist=Integer.MAX_VALUE;
 						 int min_ind=0;
@@ -229,30 +232,33 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 								 min_ind=j;
 								 min_dist = dist;
 							 }
+							 res.clear();
 						}
 						//left=min_ind==0? "5'":"3'";
-						 sam.setAttribute(barcode_left_tag,desc[min_ind]);
-						 sam.setAttribute(barcode_start_tag, st);
-						 sam.setAttribute(barcode_end_tag, read_len-end);
-						 sam.setAttribute(barcode_forward_tag,forward_barcode ? "forward": "revC");
-						Object pAT = sam.getAttribute(PolyAT.polyAT_tag);
+						 sb.append(desc[min_ind]);sb.append(",");
+						 sb.append(st);sb.append(",");
+						sb.append(read_len-end);sb.append(",");
+						sb.append(forward_barcode ? "forward": "revC");
+						//Object pAT = sam.getAttribute(PolyAT.polyAT_tag);
 						
-				if(verbose)	System.err.println((forward_align? "align+" : "align-")+" "+(forward_read? "read+" : "read-")+" "+minv + " "+barcodes1+" "
-						 +(forward_barcode ? "forward_barcode": "rev_barcode")+" "+inds1+" "+desc[min_ind]+ " "+st+" "+(read_len-end)+(forward_read ? " polyA:" : " polyT:")+pAT);
-						return true;
+				//if(verbose)	System.err.println((forward_align? "align+" : "align-")+" "+(forward_read? "read+" : "read-")+" "+minv + " "+barcodes1+" "
+					//	 +(forward_barcode ? "forward_barcode": "rev_barcode")+" "+inds1+" "+desc[min_ind]+ " "+st+" "+(read_len-end)+(forward_read ? " polyA:" : " polyT:")+pAT);
+						
+						sam.setAttribute(forward_read ? Barcodes.barcode_forward_tag : Barcodes.barcode_reverse_tag, sb.toString());
+						return minv;
 					}
 				}else{
 					if( verbose) System.err.println("not found "+minv+" "+mins.size());
 				}
-				return false;
+				return minv;
 	}
 	public static String getHeader(){
-		return "barcode,barcode_index,barcode_dist,barcode_left,barcode_forward,dist_from_start,dist_from_end";
+		return "barcode+"+ //barcode_index,barcode_dist,barcode_left,barcode_forward,dist_from_start,dist_from_end"
+				"\t"+"barcode-";//,barcode_index,barcode_dist,barcode_left,barcode_forward,dist_from_start,dist_from_end";
 	}
 public static String getInfo(SAMRecord sam) {
-	return sam.getAttribute(barcode_tag)+","+sam.getAttribute(barcode_index_tag)+","+sam.getAttribute(barcode_dist_tag)
-	//+","+sam.getAttribute(barcode_num_tag)
-	+","+sam.getAttribute(barcode_left_tag)+","+sam.getAttribute(barcode_forward_tag)+","+sam.getAttribute(barcode_start_tag)+","+sam.getAttribute(barcode_end_tag);
+	return (String) sam.getAttribute(barcode_forward_tag)+"\t"+sam.getAttribute(barcode_reverse_tag);
+			
 }
 	
 }

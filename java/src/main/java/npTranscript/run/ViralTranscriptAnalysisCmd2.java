@@ -64,6 +64,7 @@ import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.util.SequenceUtil;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
@@ -709,7 +710,8 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 		boolean allNull = true;
 		
 		Iterator<SAMRecord> samIter=null;
-		if(bamFiles_[0].endsWith(".fastq") || bamFiles_[0].endsWith(".fq")){
+		if(bamFiles_[0].endsWith(".fastq") || bamFiles_[0].endsWith(".fastq.gz") || 
+				bamFiles_[0].endsWith(".fq.gz")){
 			allNull = false;
 			samIter = 
 					SequenceUtils.getCombined(
@@ -854,12 +856,39 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 					}
 				}
 				if(!sam.isSecondaryOrSupplementary()){
-					Boolean forward_read=pAT.assign(sam);// this assigns tags indicating the orientation of the original read as + or -;
+					String sa = sam.getReadString();
+					boolean align_reverse = sam.getReadNegativeStrandFlag();
+					if(align_reverse){  
+						// this converts read back to original orientation
+						sa = SequenceUtil.reverseComplement(sa);
+					}
+					int forward_read_AT =PolyAT.assign(sam, sa, true);
+					int backward_read_AT =PolyAT.assign(sam, sa, false);// this assigns tags indicating the orientation of the original read as + or -;
+					Boolean forward_read=null;
+					if(forward_read_AT < backward_read_AT && forward_read_AT < PolyAT.edit_thresh_AT){
+						forward_read=true;
+					}
+					if(forward_read_AT > backward_read_AT && backward_read_AT < PolyAT.edit_thresh_AT){
+						forward_read=false;
+					}
+					if(forward_read!=null) sam.setAttribute(PolyAT.read_strand_tag, forward_read ? "+" : "-");
 					if(barcodes!=null){
 						try{
-						boolean hasbarcode = barcodes.assign( sam);
-						if( exclude_reads_without_barcode && !hasbarcode){
+							
+						int for_min =  barcodes.assign( sam,sa, true);
+						int back_min = barcodes.assign( sam,sa, false);
+						if( exclude_reads_without_barcode && Math.min(for_min, back_min)> Barcodes.tolerance_barcode){
 							continue;
+						}
+						if(forward_read==null){
+							// use the barcode to assign the read strand
+							if(for_min < Barcodes.tolerance_barcode && for_min < back_min){
+									forward_read = true;
+								}
+							if(back_min < Barcodes.tolerance_barcode && for_min > back_min){
+								forward_read = false;
+							}
+							if(forward_read!=null)	sam.setAttribute(PolyAT.read_strand_tag, forward_read ? "+" : "-");
 						}
 						}catch(Exception exc){
 							exc.printStackTrace();
@@ -877,10 +906,9 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 								continue;
 							}
 						}
-						if(forward_read!=null  &&  !forward_read && !RNA[source_index]){
-							sam.setAttribute(PolyAT.flipped_tag, 1);
-						}else{
-							sam.setAttribute(PolyAT.flipped_tag, 0);
+						if(forward_read!=null  &&   !RNA[source_index]){
+							boolean forward_align = !align_reverse;
+							sam.setAttribute(PolyAT.flipped_tag, forward_read.booleanValue()!= forward_align ? 0 : 1);
 						}
 					}
 					
