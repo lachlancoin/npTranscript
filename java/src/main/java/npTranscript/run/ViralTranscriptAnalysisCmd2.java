@@ -111,7 +111,8 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		
 		addInt("barcode_extent", 200, "search for barcode in first Xbp");
 		addInt("barcode_ignore", 0, "search for barcode in first Ybp");
-		addString("barcode_list","barcode_list.txt", "list for decoding barcodes");
+		addString("barcode_list",null, "list for decoding barcodes (used if more than one bamfile when streaming from fastq");
+		addString("barcode",null, "barcode file");
 		
 		
 		addInt("bc_len_AT",6,"Length of polyA or polyT tract to look for at ends");
@@ -455,6 +456,7 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 		//Outputs.writeBed  = cmdLine.getBooleanVal("writeBed");
 		Outputs.writeIsoforms = cmdLine.getBooleanVal("writeIsoforms");
 barcode_list = cmdLine.getStringVal("barcode_list");
+barcode = cmdLine.getStringVal("barcode");
 		SequenceUtils.mm2_threads = cmdLine.getIntVal("mm2_threads");
 		SequenceUtils.mm2_mem = cmdLine.getStringVal("mm2_mem");
 		SequenceUtils.mm2_path = cmdLine.getStringVal("mm2_path");
@@ -462,7 +464,7 @@ barcode_list = cmdLine.getStringVal("barcode_list");
 		
 		 Barcodes.barcode_extent = cmdLine.getIntVal("barcode_extent");
 		 Barcodes.barcode_ignore = cmdLine.getIntVal("barcode_ignore");
-		 ViralTranscriptAnalysisCmd2.barcode_list = cmdLine.getStringVal("barcode_list");
+		// ViralTranscriptAnalysisCmd2.barcode_list = cmdLine.getStringVal("barcode_list");
 		 
 		 PolyAT.set_bc_len(cmdLine.getIntVal("bc_len_AT"));
 		 PolyAT.edit_thresh_AT = cmdLine.getIntVal("edit_thresh_AT");
@@ -519,6 +521,16 @@ barcode_list = cmdLine.getStringVal("barcode_list");
 		}
 			boolean bam = inputFiles_[0].equals("-") ||  inputFiles_[0].endsWith(".bam") || inputFiles_[0].endsWith("sam") ;
 			String[] barcode_files = new String[inputFiles_.length];
+			if(barcode!=null){
+				barcode_files = barcode.split(":");
+				File fi = new File(barcode_files[0]);
+				if(!fi.exists()) {
+					throw new RuntimeException(" barcoe file does not exist "+fi.getAbsolutePath());
+				}
+				if(barcode_files.length!=inputFiles_.length){
+					throw new RuntimeException(" wrong lenght of barcodes");
+				}
+			}else if(barcode_list!=null){
 			File barcode_file_ = new File(barcode_list);
 			if(barcode_file_.exists()){
 				if(inputFiles_[0].equals("-")){
@@ -540,6 +552,7 @@ barcode_list = cmdLine.getStringVal("barcode_list");
 					}
 				}
 				}
+			}
 			}
 			
 			
@@ -566,7 +579,7 @@ barcode_list = cmdLine.getStringVal("barcode_list");
 	public static double fail_thresh = 7.0;
 	public static double fail_thresh1 = 14.0;
 	public static String barcode_list=null;
-	
+	public static String barcode=null;
 	public static Barcodes barcodes  = null;
 	/**
 	 * Error analysis of a bam file. Assume it has been sorted
@@ -586,6 +599,7 @@ barcode_list = cmdLine.getStringVal("barcode_list");
 		barcodes= null;// we need barcodes for all or none
 		PolyAT pAT = new PolyAT();
 		if(barcode_files!=null && barcode_files.length==bamFiles_.length && barcode_files[0] !=null) {
+			System.err.println("using barcodes"+Arrays.asList(barcode_files));
 			barcodes=new Barcodes(barcode_files);
 		}
 		
