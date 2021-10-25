@@ -456,7 +456,7 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 		//Outputs.writeBed  = cmdLine.getBooleanVal("writeBed");
 		Outputs.writeIsoforms = cmdLine.getBooleanVal("writeIsoforms");
 barcode_list = cmdLine.getStringVal("barcode_list");
-barcode_file = cmdLine.getStringVal("barcode");
+barcode_file = cmdLine.getStringVal("barcode_file");
 		SequenceUtils.mm2_threads = cmdLine.getIntVal("mm2_threads");
 		SequenceUtils.mm2_mem = cmdLine.getStringVal("mm2_mem");
 		SequenceUtils.mm2_path = cmdLine.getStringVal("mm2_path");
@@ -525,7 +525,7 @@ barcode_file = cmdLine.getStringVal("barcode");
 				barcode_files = barcode_file.split(":");
 				File fi = new File(barcode_files[0]);
 				if(!fi.exists()) {
-					throw new RuntimeException(" barcoe file does not exist "+fi.getAbsolutePath());
+					throw new RuntimeException(" barcode file does not exist "+fi.getAbsolutePath());
 				}
 				if(barcode_files.length!=inputFiles_.length){
 					throw new RuntimeException(" wrong lenght of barcodes");
