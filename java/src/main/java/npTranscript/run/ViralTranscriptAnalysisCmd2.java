@@ -785,6 +785,9 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 			List<SAMRecord> sams = new ArrayList<SAMRecord>();
 			String prev_readnme = "";
 			outer: for ( ij=0; samIter.hasNext() ;ij++ ) {
+				
+				if(ij%1000 ==0) System.err.println("free mem "+((double) Runtime.getRuntime().freeMemory())/1e6+ "mb "+ij);
+				
 				final SAMRecord sam=samIter.next();
 			    if(sam==null){
 			    	break outer;
@@ -871,7 +874,9 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 					if(forward_read_AT > backward_read_AT && backward_read_AT < PolyAT.edit_thresh_AT){
 						forward_read=false;
 					}
-					if(forward_read!=null) sam.setAttribute(PolyAT.read_strand_tag, forward_read ? "+" : "-");
+					if(forward_read!=null){
+						sam.setAttribute(PolyAT.read_strand_tag, forward_read ? "+" : "-");
+					}
 					if(barcodes!=null){
 						try{
 							
@@ -888,7 +893,9 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 							if(back_min < Barcodes.tolerance_barcode && for_min > back_min){
 								forward_read = false;
 							}
-							if(forward_read!=null)	sam.setAttribute(PolyAT.read_strand_tag, forward_read ? "+" : "-");
+							if(forward_read!=null){
+								sam.setAttribute(PolyAT.read_strand_tag, forward_read ? "+" : "-");
+							}
 						}
 						}catch(Exception exc){
 							exc.printStackTrace();
@@ -907,8 +914,9 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 							}
 						}
 						if(forward_read!=null  &&   !RNA[source_index]){
-							boolean forward_align = !align_reverse;
-							sam.setAttribute(PolyAT.flipped_tag, forward_read.booleanValue()!= forward_align ? 0 : 1);
+							// flip if the original read is not forward
+							int flip  = forward_read.booleanValue() ? 0 : 1;
+							sam.setAttribute(PolyAT.flipped_tag, flip);
 						}
 					}
 					

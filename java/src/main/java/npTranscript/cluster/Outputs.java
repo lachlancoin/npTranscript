@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -202,8 +203,11 @@ public class Outputs{
 		
 		//	this.right=  new SequenceOutputStream((new FileOutputStream(new File(resDir,genome_index+".right" ))));
 			 reads_file = new File(resDir,genome_index+ "readToCluster.txt.gz");
+			 OutputStream os = new FileOutputStream(reads_file);
+			 boolean gzip = true;
+			 if(gzip) os = new GZIPOutputStream(os);
 			 readClusters = new PrintWriter(
-					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(reads_file))));
+					new OutputStreamWriter(os));
 			
 //			 readID  clusterId       subID   source  length  start_read      end_read   
 			 //type_nme        chrom   startPos        endPos  breakStart      breakEnd        errorRatio
@@ -310,7 +314,7 @@ public class Outputs{
 		}*/
 		
 		public synchronized void printRead(String string) {
-			this.readClusters.println(string);
+			this.readClusters.println(string); this.readClusters.flush();
 			
 		}
 		

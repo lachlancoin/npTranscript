@@ -36,7 +36,14 @@ public class PolyAT {
 		return "read_strand\tflipped\tA,st,end,dist\tT,st,end,dist";//+pAT_desc;
 	}
 public static String getInfo(SAMRecord sam) {
-	return sam.getAttribute(read_strand_tag)+"\t"+sam.getAttribute(flipped_tag)+"\t"+sam.getAttribute(polyAT_forward_tag)+"\t"+sam.getAttribute(polyAT_reverse_tag);
+	Integer flip  = (Integer)sam.getAttribute(flipped_tag);
+	String flipped;
+	if(flip!=null){
+		flipped = flip.intValue()==0 ? "unchanged": "flipped";
+	}else{
+		flipped = "null";
+	}
+	return sam.getAttribute(read_strand_tag)+"\t"+flipped+"\t"+sam.getAttribute(polyAT_forward_tag)+"\t"+sam.getAttribute(polyAT_reverse_tag);
 }
 	//
 	
