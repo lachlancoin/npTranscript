@@ -95,7 +95,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 	public static boolean exclude_polyT_strand=false;
 	public static boolean exclude_reads_without_barcode=false;
 	
-
+public static int readsToSkip=0;
 	
 
 //	private static final Logger LOG = LoggerFactory.getLogger(HTSErrorAnalysisCmd.class);
@@ -147,7 +147,9 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		addBoolean("trainStrand", false,"whether to produce training data for strand correction");
 		addBoolean("recordDepthByPosition", false, "whether to store position specific depth (high memory");
 	//	addString("annotToRemoveFromGFF",null, "annotation to remove from GFF , BED and ref files");
-		addInt("maxReads", Integer.MAX_VALUE, "ORF annotation file");
+		addInt("maxReads", Integer.MAX_VALUE, "max no of reads");
+		addInt("readsToSkip",0, "no_reads_to_skip");
+		//addBoolean("")
 		addDouble("probInclude", 1.0, "probability of including each read");
 		addInt("minClusterEntries",10,"threshold for consensus");
 	//	addBoolean("tryComplementOnExtra", false, "look for negative strand matches on left over seqs");
@@ -184,7 +186,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		addInt("min_first_last_exon",0, "minimum first or last exon size");
 		//addDouble("overlapThresh", 0.95, "Threshold for overlapping clusters");
 	//	addBoolean("coexpression", false, "whether to calc coexperssion matrices (large memory for small bin size)");
-	//	addBoolean("overwrite", false, "whether to overwrite existing results files");
+	addBoolean("overwrite", true, "whether to overwrite existing results files");
 		addBoolean("keepAlignment", false, "whether to keep alignment for MSA");
 	//	addBoolean("attempt5rescue", false, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
 	//	addBoolean("attempt3rescue", false, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
@@ -237,6 +239,9 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 		int qual = cmdLine.getIntVal("qual");
 		int bin = cmdLine.getIntVal("bin");
 		CigarCluster.singleGFF = cmdLine.getBooleanVal("singleGFF");
+		
+		readsToSkip = cmdLine.getIntVal("readsToSkip");
+		Outputs.overwrite  = cmdLine.getBooleanVal("overwrite");
 		
 		int breakThresh = cmdLine.getIntVal("breakThresh");
 		String pattern = cmdLine.getStringVal("pattern");
@@ -715,7 +720,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 			allNull = false;
 			samIter = 
 					SequenceUtils.getCombined(
-					SequenceUtils.getSAMIteratorFromFastq(bamFiles_, mm2_index, maxReads, readList==null ? null : reads.keySet(), fail_thresh, null),
+					SequenceUtils.getSAMIteratorFromFastq(bamFiles_, mm2_index, readsToSkip, maxReads, readList==null ? null : reads.keySet(), fail_thresh, null),
 					sorted, sequential);
 		}else{
 		inner: for (int ii = 0; ii < len; ii++) {
@@ -734,7 +739,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 		 samIter= 
 				new FilteredIterator(
 				SequenceUtils.getCombined(samIters, sorted, sequential)
-				, readList==null ? null :reads.keySet(), max_reads, fail_thresh, false);
+				, readList==null ? null :reads.keySet(),readsToSkip,  max_reads, fail_thresh, false);
 		}
 		//Map<String, int[]> chromsToInclude = getChromsToInclude(genomes, chrToInclude, chrToIgnore);
 		
@@ -786,7 +791,15 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 			String prev_readnme = "";
 			outer: for ( ij=0; samIter.hasNext() ;ij++ ) {
 				
-				if(ij%1000 ==0) System.err.println("free mem "+((double) Runtime.getRuntime().freeMemory())/1e6+ "mb "+ij);
+				if(ij%1000 ==0){
+				//	Debug.getMemoryInfo();
+					long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+
+
+				    long freeMemory = Runtime.getRuntime().maxMemory() - usedMemory;
+					System.err.println("used mem "+((double) usedMemory)/1e6+ "mb "+ij);
+					System.err.println("free mem "+((double) freeMemory)/1e6+ "mb "+ij);
+				}
 				
 				final SAMRecord sam=samIter.next();
 			    if(sam==null){
@@ -923,7 +936,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 						}
 						if(forward_read!=null  &&   !RNA[source_index]){
 							// flip if the original read is not forward
-							int flip  = forward_read.booleanValue() ? 0 : 1;
+							int flip  = forward_read.booleanValue()!= align_reverse ? 1 : 0;
 							sam.setAttribute(PolyAT.flipped_tag, flip);
 						}
 					}

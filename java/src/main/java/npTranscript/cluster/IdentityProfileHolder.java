@@ -250,7 +250,7 @@ static Comparator comp_q = new SamComparator(true);
 	
 		
 	
-		
+	
 
 	/*SortedMap<Integer, Integer> currentStart = new TreeMap<Integer, Integer>();
 	private synchronized void removeStart(int startPos){
@@ -310,8 +310,10 @@ static Comparator comp_q = new SamComparator(true);
 						System.err.println("warning not primary "+j);
 						continue inner;
 					}
-					Integer flipped =(Integer ) primary.getAttribute(PolyAT.flipped_tag);
-					boolean flip = flipped!=null && flipped.intValue()==0;
+					//boolean flip = TranscriptUtils.isFlipped(primary);
+					String read_strand = (String) primary.getAttribute(PolyAT.read_strand_tag);
+					
+					
 					byte[] bq = primary.getBaseQualities();
 				//	System.err.println(sam1.size()+" "+sze);
 					StringBuffer chrom = new StringBuffer();
@@ -321,18 +323,22 @@ static Comparator comp_q = new SamComparator(true);
 					String chr = null;
 					boolean fusion = false;
 					
-					if(flip){
-						Collections.reverse(sam1);
-					}
+				//	if(flip){
+				//		Collections.reverse(sam1);
+				//	}
 					
 					Iterator<SAMRecord> it = sam1.iterator();
 					while(it.hasNext()){
 						boolean first = chr==null;
 						SAMRecord record = it.next();
-						if(flip){
-							strand.append(record.getReadNegativeStrandFlag() ? '-': '+');
+						if(read_strand==null){
+							strand.append("NA");
 						}else{
-							strand.append(record.getReadNegativeStrandFlag() ? '+': '-');
+							if(read_strand.charAt(0)=='+'){
+								strand.append(record.getReadNegativeStrandFlag() ? '-': '+');
+							}else{
+								strand.append(record.getReadNegativeStrandFlag() ? '+': '-');
+							}
 						}
 						q_str.append(record.getMappingQuality());
 						//byte[] q = record.getBaseQualities();
@@ -355,7 +361,7 @@ static Comparator comp_q = new SamComparator(true);
 						}
 					}
 //					System.err.println(sam1.size());
-					 profile.setName(rn, chrom.toString(),strand.toString(), q_str.toString(), q_str1.toString(),source_index, fusion, flip);
+					 profile.setName(rn, chrom.toString(),strand.toString(), q_str.toString(), q_str1.toString(),source_index, fusion);
 				//	if(profile.coRefPositions.breaks.size()>0 && ! supp) throw new RuntimeException("this is not clear");
 				//	if(supp && profile.suppl!=null && profile.suppl.size()>0) throw new RuntimeException("supps not empty");
 					
@@ -367,6 +373,8 @@ static Comparator comp_q = new SamComparator(true);
 				}
 				replace(profile);
 			}
+
+			
 		};
 		if(executor==null) run.run();
 		else executor.execute(run);

@@ -50,6 +50,9 @@ public class Outputs{
 	{
 		factory.setUseAsyncIo(true);
 	}
+	
+	public static boolean overwrite = true;
+
 	public static final SAMFileWriterFactory factB = new SAMFileWriterFactory();
 	//public static int gffThreshGene = 10;
 	
@@ -203,7 +206,7 @@ public class Outputs{
 		
 		//	this.right=  new SequenceOutputStream((new FileOutputStream(new File(resDir,genome_index+".right" ))));
 			 reads_file = new File(resDir,genome_index+ "readToCluster.txt.gz");
-			 OutputStream os = new FileOutputStream(reads_file);
+			 OutputStream os = new FileOutputStream(reads_file, !overwrite);
 			 boolean gzip = true;
 			 if(gzip) os = new GZIPOutputStream(os);
 			 readClusters = new PrintWriter(
@@ -229,7 +232,7 @@ public class Outputs{
 			}
 			this.col_inds = new int[this.type_nmes.length];
 			if(Outputs.writeH5){
-				outfile10.delete(); // remove existing h5 (temporary)
+				if(overwrite) outfile10.delete(); // remove existing h5 (temporary)
 				altT = HDF5Factory.open(outfile10);
 			}
 			if(Outputs.calcBreaks && Outputs.writeH5){
@@ -252,7 +255,7 @@ public class Outputs{
 				str.add(type_nmes[j]);
 			}
 			if(cluster_depth && writeH5){
-				outfile2.delete();
+				if(overwrite) outfile2.delete();
 			clusterW = 	 HDF5Factory.open(outfile2);
 			col_inds_depth =new int[num_sources];
 			writeStringArray(clusterW, "header", str.toArray(new String[0]),col_inds_depth,1);
@@ -323,7 +326,7 @@ public class Outputs{
 				File outfile1_ =  new File(resDir,chrom+".breakpoints."+type_nmes[i]+"."+j +".txt.gz") ;
 //						new File(resDir,chrom+".breakpoints."+type_nmes[i]+"."+i +".txt.gz");
 				PrintWriter pw = new PrintWriter(
-					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outfile1_))));
+					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outfile1_, !overwrite))));
 			
 			return pw;
 		}

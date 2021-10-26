@@ -5,6 +5,7 @@ import htsjdk.samtools.util.SequenceUtil;
 import japsa.bio.np.barcode.SWGAlignment;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
+import npTranscript.NW.PolyAT;
 
 
 public class TranscriptUtils {
@@ -95,6 +96,17 @@ public class TranscriptUtils {
 	   return res;
 	}
 	
+	
+	public static  boolean isFlipped(SAMRecord primary) {
+		Integer flipped =(Integer ) primary.getAttribute(PolyAT.flipped_tag);
+		boolean flip = flipped!=null && flipped.intValue()==1;
+		return flip;
+	}
+	/*public static boolean isFlipped(SAMRecord primary) {
+		Integer flipped =(Integer ) primary.getAttribute(PolyAT.flipped_tag);
+		boolean flip = flipped!=null && flipped.intValue()==1;
+		return flip;
+	}*/
 	public static String revC(String bc) {
 		Sequence seq = new Sequence(Alphabet.DNA(), bc, "");
 		// TODO Auto-generated method stub

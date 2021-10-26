@@ -141,11 +141,11 @@ public class IdentityProfile1 {
 		
 	}
 	public String strand;
-	public boolean flip=false;
-	public void setName(String readName, String chrom_, String strand, String q_value,String q_value_base, int source_index, boolean fusion, boolean flip) {
+	//public boolean flip=false;
+	public void setName(String readName, String chrom_, String strand, String q_value,String q_value_base, int source_index, boolean fusion) {
 		// TODO Auto-generated method stub
 		this.id = readName;
-		this.flip = flip;
+	//	this.flip = flip;
 		this.fusion = fusion;
 	//	if(!supp) fusion = false;
 		//else if(chrom_index!=this.chrom_index) fusion = true;
@@ -246,7 +246,7 @@ static char delim_start ='$';
 	/*Note:  align5prime will be null if not coronavirus */
 	public String processRefPositions(  String id, boolean cluster_reads, 
 			 int src_index , Sequence readSeq, String baseQ, 
-			byte[] phredQ, boolean flip
+			byte[] phredQ
 		//	int start_read, int end_read, char strand, 
 		//	Integer offset_3prime, 
 			//Integer polyAlen, 
@@ -316,6 +316,13 @@ static char delim_start ='$';
 				if(jjk>0) secondKey.append(";");
 				int s1 = startPositions.get(jjk);
 				int e1 = jjk < startPositions.size()-1 ? startPositions.get(jjk+1) : breaks.size();
+				/*if(flip){
+					int s2 = s1;
+					int e2 = e1;
+					s1 = e2;
+					e1 = s2;
+				}*/
+				///prob could rethink this
 				if(forward!=null){
 					if(strand.charAt(jjk)=='+') secondKey.append(TranscriptUtils.round(breaks.get(e1-1), CigarHash2.round1));
 					else secondKey.append(TranscriptUtils.round(breaks.get(s1),CigarHash2.round1));
@@ -647,8 +654,9 @@ static char delim_start ='$';
 				this.processAlignmentBlocks(sam, coref, coRefPositions1);
 			}
 		}
-		Integer flipped = sams.get(primary_index).getIntegerAttribute(PolyAT.flipped_tag);
-		boolean flip = flipped!=null && flipped.intValue()==1;
+	//	Integer flipped = .getIntegerAttribute(PolyAT.flipped_tag);
+	//	boolean flip = flipped!=null && flipped.intValue()==1;
+		boolean flip1 = TranscriptUtils.isFlipped(sams.get(primary_index));
 		try{
 			int maxl = 100;
 			int tol=5;
@@ -663,7 +671,7 @@ static char delim_start ='$';
 		
 			
 			String secondKey= profile.processRefPositions(  id, cluster_reads, 
-					 source_index, readSeq,baseQ, phredQs, flip);
+					 source_index, readSeq,baseQ, phredQs);
 			//if(!ViralTranscriptAnalysisCmd2.allowSuppAlignments){
 				profile.commit(readSeq, sams.get(primary_index));
 		//	}
