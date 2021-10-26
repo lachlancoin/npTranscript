@@ -94,7 +94,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 	public static boolean exclude_indeterminate_strand=true;
 	public static boolean exclude_polyT_strand=false;
 	public static boolean exclude_reads_without_barcode=false;
-	
+	public static boolean verbose=false;
 public static int readsToSkip=0;
 	
 
@@ -108,6 +108,8 @@ public static int readsToSkip=0;
 		
 		
 		addString("optsFile", null, "Name of file with extra options", false);
+		addBoolean("verbose", false, "verbose output", false);
+
 		addString("optsType", null, "Which column in opts file", false);
 		
 		addInt("barcode_extent", 200, "search for barcode in first Xbp");
@@ -239,7 +241,7 @@ public static int readsToSkip=0;
 		int qual = cmdLine.getIntVal("qual");
 		int bin = cmdLine.getIntVal("bin");
 		CigarCluster.singleGFF = cmdLine.getBooleanVal("singleGFF");
-		
+		verbose=cmdLine.getBooleanVal("verbose");
 		readsToSkip = cmdLine.getIntVal("readsToSkip");
 		Outputs.overwrite  = cmdLine.getBooleanVal("overwrite");
 		
@@ -802,6 +804,9 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 				}
 				
 				final SAMRecord sam=samIter.next();
+				if(verbose){
+					System.err.println(sam.getReadName());
+				}
 			    if(sam==null){
 			    	break outer;
 			    }

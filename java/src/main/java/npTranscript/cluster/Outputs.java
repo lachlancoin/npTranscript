@@ -206,7 +206,14 @@ public class Outputs{
 		
 		//	this.right=  new SequenceOutputStream((new FileOutputStream(new File(resDir,genome_index+".right" ))));
 			 reads_file = new File(resDir,genome_index+ "readToCluster.txt.gz");
-			 OutputStream os = new FileOutputStream(reads_file, !overwrite);
+			 if(!overwrite){
+				 int j=0;
+				 while(reads_file.exists()){
+					 reads_file = new File(resDir,genome_index+ "readToCluster."+j+".txt.gz");
+					 j++;
+				 }
+			 }
+			 OutputStream os = new FileOutputStream(reads_file);
 			 boolean gzip = true;
 			 if(gzip) os = new GZIPOutputStream(os);
 			 readClusters = new PrintWriter(
