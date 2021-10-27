@@ -43,7 +43,7 @@ import npTranscript.run.SequenceOutputStream1;
 import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 public class Outputs{
-	
+	public static String readsOutputFile="0.readToCluster.txt.gz";
 	//public static  ExecutorService executor ;
 	
 	public static final FastqWriterFactory factory = new FastqWriterFactory();
@@ -205,11 +205,11 @@ public class Outputs{
 			 }
 		
 		//	this.right=  new SequenceOutputStream((new FileOutputStream(new File(resDir,genome_index+".right" ))));
-			 reads_file = new File(resDir,genome_index+ "readToCluster.txt.gz");
+			 reads_file = new File(resDir,Outputs.readsOutputFile);
 			 if(!overwrite){
 				 int j=0;
 				 while(reads_file.exists()){
-					 reads_file = new File(resDir,genome_index+ "readToCluster."+j+".txt.gz");
+					 reads_file = new File(resDir,Outputs.readsOutputFile);
 					 j++;
 				 }
 			 }

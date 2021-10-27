@@ -106,7 +106,8 @@ public static int readsToSkip=0;
 		setUsage(annotation.scriptName() + " [options]");
 		setDesc(annotation.scriptDesc());
 		
-		
+		addString("readsOutputFile", "0.readToCluster.txt.gz", "Name of file for output", false);
+
 		addString("optsFile", null, "Name of file with extra options", false);
 		addBoolean("verbose", false, "verbose output", false);
 
@@ -244,7 +245,7 @@ public static int readsToSkip=0;
 		verbose=cmdLine.getBooleanVal("verbose");
 		readsToSkip = cmdLine.getIntVal("readsToSkip");
 		Outputs.overwrite  = cmdLine.getBooleanVal("overwrite");
-		
+		Outputs.readsOutputFile = cmdLine.getStringVal("readsOutputFile");
 		int breakThresh = cmdLine.getIntVal("breakThresh");
 		String pattern = cmdLine.getStringVal("pattern");
 		String[] readList = cmdLine.getStringVal("readList").split(":");
