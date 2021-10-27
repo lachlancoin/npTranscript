@@ -106,7 +106,7 @@ public static int readsToSkip=0;
 		setUsage(annotation.scriptName() + " [options]");
 		setDesc(annotation.scriptDesc());
 		
-		addString("readsOutputFile", "0.readToCluster.txt.gz", "Name of file for output", false);
+		addString("readsOutputFile", null, "Name of file for output", false);
 
 		addString("optsFile", null, "Name of file with extra options", false);
 		addBoolean("verbose", false, "verbose output", false);
