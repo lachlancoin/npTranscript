@@ -8,6 +8,7 @@ import japsa.seq.Sequence;
 import npTranscript.NW.PolyAT;
 
 
+
 public class TranscriptUtils {
 	
 	//public static boolean coronavirus = true;

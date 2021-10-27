@@ -804,12 +804,13 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 				}
 				
 				final SAMRecord sam=samIter.next();
-				if(verbose){
-					System.err.println(sam.getReadName());
-				}
+				
 			    if(sam==null){
 			    	break outer;
 			    }
+			    if(verbose){
+					System.err.println(sam.getReadName());
+				}
 				if (sam.getReadUnmappedFlag()) {
 					numNotAligned++;
 					continue;

@@ -13,6 +13,7 @@ import java.util.zip.GZIPInputStream;
 
 import edlib.EdlibAlignConfig;
 import edlib.EdlibAlignResult;
+import edlib.EdlibAlignResult.ByValue;
 import edlib.EdlibLibrary;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.SequenceUtil;
@@ -84,16 +85,19 @@ public static String getInfo(SAMRecord sam) {
 		int offset = Math.max(0, pos-dist);
 		String sequence = sequence_.substring(offset, Math.min(sequence_.length(), pos+dist));
 		//String sequence = sam.getReadString();
-		EdlibAlignResult resT_l=		EdlibLibrary.INSTANCE.edlibAlign(polyT, polyT.length(), sequence, sequence.length(), config);
+		EdlibAlignResult.ByValue resT_l=		EdlibLibrary.INSTANCE.edlibAlign(polyT, polyT.length(), sequence, sequence.length(), config);
 		int distT_l=	editDist(resT_l);
-		EdlibAlignResult resA_r=		EdlibLibrary.INSTANCE.edlibAlign(polyA,polyA.length(), sequence, sequence.length(), config);
+		EdlibAlignResult.ByValue resA_r=		EdlibLibrary.INSTANCE.edlibAlign(polyA,polyA.length(), sequence, sequence.length(), config);
 		int distA_r=	editDist(resA_r);
 		int mind = Math.min(distA_r, distT_l);
-		EdlibAlignResult res = distA_r < distT_l ? resA_r : resT_l;
+		EdlibAlignResult.ByValue res = distA_r < distT_l ? resA_r : resT_l;
 		String type = distA_r < distT_l ? "A" : "T";
 		String str =  pos+","+(offset+res.startLocations.getValue())+","+polyA.length()+","+type+","+mind;
-		resA_r.clear();
-		resT_l.clear();
+		clear(resA_r); clear(resT_l);
+		/*resA_r.clear();
+		resT_l.clear();*/
+		//EdlibLibrary.INSTANCE.edlibFreeAlignResult(resT_l);
+	//	resA_r.endLocations.getPointer().cl
 		return str;
 		//return distA_r+","+distT_l;
 /*		if(mind<=edit_thresh_AT){
@@ -104,6 +108,11 @@ public static String getInfo(SAMRecord sam) {
 	}
 	
 	
+	 static void clear(ByValue resA_r) {
+		EdlibLibrary.INSTANCE.edlibFreeAlignResult(resA_r);
+		resA_r.clear();
+		
+	}
 	/** 
 	 * if we find polyA that means its forward_read
 	 * if we find polyT that means its reverse_read
@@ -119,7 +128,7 @@ public static String getInfo(SAMRecord sam) {
 		int offset = forward ? Math.max(0, read_len-len) : 0;
 		String sequence_  = sequence.substring(offset, Math.min(read_len, offset+len));
 		String barc = forward ? polyA : polyT;
-		EdlibAlignResult resA_r=		EdlibLibrary.INSTANCE.edlibAlign(barc,bc_len_AT, sequence_, sequence_.length(), config);
+		EdlibAlignResult.ByValue resA_r=		EdlibLibrary.INSTANCE.edlibAlign(barc,bc_len_AT, sequence_, sequence_.length(), config);
 		int distA_r=	editDist(resA_r);
 		int	 st_A = resA_r.startLocations.getValue()+offset;
 		int end_A = read_len -(resA_r.endLocations.getValue()+offset);
@@ -138,8 +147,7 @@ public static String getInfo(SAMRecord sam) {
 			int st = res.startLocations.getValue(); int end = read_len - res.endLocations.getValue();
 			System.err.println(distA+","+distT+","+st+","+end);
 		}*/
-		resA_r.clear();
-
+		clear(resA_r);
 		return distA_r;
 		
 		

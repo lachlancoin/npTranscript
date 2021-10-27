@@ -20,6 +20,7 @@ import com.sun.jna.ptr.IntByReference;
 import edlib.EdlibAlignConfig;
 import edlib.EdlibAlignResult;
 import edlib.EdlibLibrary;
+import edlib.EdlibAlignResult.ByValue;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.SequenceUtil;
 import japsa.tools.seq.SequenceUtils;
@@ -152,19 +153,25 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 		return minv;
 	}
 	
-	private  static EdlibAlignResult align(String sequence, String bc){
-	 EdlibAlignResult res=		EdlibLibrary.INSTANCE.edlibAlign(bc, bc.length(), sequence, sequence.length(), config);
+	private  static EdlibAlignResult.ByValue align(String sequence, String bc){
+	 EdlibAlignResult.ByValue res=		EdlibLibrary.INSTANCE.edlibAlign(bc, bc.length(), sequence, sequence.length(), config);
 	 
 //		 EdlibAlignResult res=	EdlibLibrary.INSTANCE.edlibAlign(sequence, sequence.length(), bc, bc.length(), config);
 		 return res;
 	}
 	private int match(String bc, String sequence) {
 		if(sequence.length() < bc_len_barcode) return Integer.MAX_VALUE;
-		 EdlibAlignResult res=	align(sequence, bc);
+		 EdlibAlignResult.ByValue res=	align(sequence, bc);
 		int out = res.editDistance+ Math.max(0,bc_len_barcode-(res.endLocations.getValue()-res.startLocations.getValue()+1));
-		res.clear();
+		clear(res);
 		return out;
 	}
+	
+	 static void clear(ByValue resA_r) {
+			EdlibLibrary.INSTANCE.edlibFreeAlignResult(resA_r);
+			resA_r.clear();
+			
+		}
 	
 	
 			
@@ -224,7 +231,7 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 						 int min_ind=0;
 						
 						for(int j=0; j<str.length; j++){
-							EdlibAlignResult res=	align(str[j], barc);
+							EdlibAlignResult.ByValue res=	align(str[j], barc);
 							 int dist=res.editDistance+ Math.max(0,bc_len_barcode-(res.endLocations.getValue()-res.startLocations.getValue()+1));
 							 if(dist <min_dist){
 								 st = res.startLocations.getValue()+offset[j];
@@ -232,7 +239,8 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 								 min_ind=j;
 								 min_dist = dist;
 							 }
-							 res.clear();
+							 clear(res);
+//							 res.clear();
 						}
 						//left=min_ind==0? "5'":"3'";
 						 sb.append(desc[min_ind]);sb.append(",");
