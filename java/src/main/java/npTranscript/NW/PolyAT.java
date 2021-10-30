@@ -34,7 +34,7 @@ public class PolyAT {
 
 //	static String pAT_desc = "";
 	public static String getHeader(){
-		return "read_strand\tflipped\tA,st,end,dist\tT,st,end,dist";//+pAT_desc;
+		return "read_strand\tflipped\tdistA\tstA,endA\tdistT\tstT,endT";//+pAT_desc;
 	}
 public static String getInfo(SAMRecord sam) {
 	Integer flip  = (Integer)sam.getAttribute(flipped_tag);
@@ -132,7 +132,7 @@ public static String getInfo(SAMRecord sam) {
 		int distA_r=	editDist(resA_r);
 		int	 st_A = resA_r.startLocations.getValue()+offset;
 		int end_A = read_len -(resA_r.endLocations.getValue()+offset);
-		String  pAT = (forward?"A," : "T,")+st_A+","+(end_A)+","+distA_r;
+		String  pAT = distA_r+"\t"+st_A+","+(end_A);
 		sam.setAttribute(forward ? PolyAT.polyAT_forward_tag: PolyAT.polyAT_reverse_tag, pAT);
 	
 		/*if(verbose && false){

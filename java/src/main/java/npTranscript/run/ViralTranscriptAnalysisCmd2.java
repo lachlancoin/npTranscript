@@ -813,6 +813,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 					System.err.println(sam.getReadName());
 				}
 				if (sam.getReadUnmappedFlag()) {
+					outp.writeUnmapped(sam.getReadName());
 					numNotAligned++;
 					continue;
 				}

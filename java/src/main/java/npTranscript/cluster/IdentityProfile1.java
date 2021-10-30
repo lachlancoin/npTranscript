@@ -187,13 +187,14 @@ static char delim_start ='$';
 	
 	//** this adds coRefPositions into the clusters
 	 public static String header = 
-"readID\tsource\tchrom\tstartPos\tendPos\talign_strand\terrorRatio\tid\tbreaks\tbreaks1\tqval\tbaseQ\tpolyA_fusion_site";
+"readID\tsource\tchrom\tstartPos\tendPos\talign_strand\terrorRatio\tid\tbreaks_ref\tbreaks_read\tread_len\tqval\tbaseQ\tpolyA_fusion_site";
 	// public static String polyA = "AAAAAAAAAAAAAA";
 	 //public static String polyT = "TTTTTTTTTTTTTT";
 	// public static int polyA_ed_dist = 1;
 	// public static int checkdist = 20;
 	public void commit(Sequence readSeq, SAMRecord sam){
 		//int[] res = new int[2];
+		int read_len = readSeq.length();
 		if(sam.isSecondaryOrSupplementary()) throw new RuntimeException("need primary ");
 		String[] res1 = new String[2];
 		StringBuffer st = new StringBuffer();
@@ -227,7 +228,7 @@ static char delim_start ='$';
 		String str = id+"\t"+source_index+"\t"
 		+chrom_+"\t"
 		+startPos+"\t"+endPos+"\t"+strand+"\t"
-		+coRefPositions.getError(source_index)+"\t"+id_+"\t"+breakSt+"\t"+breakSt1+"\t"+q_value_str.trim()+"\t"+this.base_q_str.trim()+"\t"+(st.toString() );
+		+coRefPositions.getError(source_index)+"\t"+id_+"\t"+breakSt+"\t"+breakSt1+"\t"+read_len+"\t"+q_value_str.trim()+"\t"+this.base_q_str.trim()+"\t"+(st.toString() );
 	//	if(trainStrand){f
 		//	str = str+"\t"+readSeq.subSequence(0, 10)+"\t"+readSeq.subSequence(len1-10, len1)
 //				+"\t"+toString(phredQ,0,10)+"\t"+toString(phredQ,len1-10,len1)

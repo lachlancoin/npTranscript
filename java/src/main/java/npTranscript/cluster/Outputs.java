@@ -133,7 +133,8 @@ public class Outputs{
 	
 	//	final int seqlen;
 		public  PrintWriter readClusters;//, plusMinus;
-	
+		public  PrintWriter unmapped;//, plusMinus;
+
 		 IHDF5SimpleWriter clusterW = null;
 		 IHDF5Writer altT = null;
 		 IHDF5Writer breakPW = null;
@@ -157,6 +158,7 @@ public class Outputs{
 				Outputs.waitOnThreads(h5writer, 100);
 			}
 			readClusters.close();
+			unmapped.close();
 			if(clusterW!=null){
 				writeAllDepths();
 				clusterW.close();
@@ -218,6 +220,13 @@ public class Outputs{
 			 if(reads_file.getName().endsWith(".gz")) os = new GZIPOutputStream(os);
 			 readClusters = new PrintWriter(
 					new OutputStreamWriter(os));
+			 
+			 OutputStream os1 = new FileOutputStream(reads_file+".unmapped.gz");
+				// boolean gzip = true;
+				os1 = new GZIPOutputStream(os1);
+				 unmapped = new PrintWriter(
+						new OutputStreamWriter(os1));
+			 
 			
 //			 readID  clusterId       subID   source  length  start_read      end_read   
 			 //type_nme        chrom   startPos        endPos  breakStart      breakEnd        errorRatio
@@ -698,6 +707,17 @@ public class Outputs{
 		    		}
 		    	}
 		    	}
+			
+		}
+
+
+
+
+
+
+
+		public  void writeUnmapped(String readName) {
+			unmapped.println(readName);
 			
 		}
 
