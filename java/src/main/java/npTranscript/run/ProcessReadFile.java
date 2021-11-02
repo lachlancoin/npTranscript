@@ -85,7 +85,7 @@ public class ProcessReadFile extends CommandLine {
 		//altT.writeStringArray("/barcodes", barcodes.toArray(new String[0]));//.subList(0, len1).toArray(new String[0]));
 
 		InputStream inp =input_file==null ? System.in : new FileInputStream(input_file);
-		if(input_file.endsWith(".gz")) inp = new GZIPInputStream(inp);
+		if(input_file!=null && input_file.endsWith(".gz")) inp = new GZIPInputStream(inp);
 		int remainder = Integer.MAX_VALUE;
 		Transcripts tr = new Transcripts();
 
