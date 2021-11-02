@@ -163,7 +163,7 @@ class ProcessReads{
 				remainder--;
 				indices_size[barc_ind]++;
 			}*/
-			this.leftover.println(line[id_index]+"\t"+line[bc_str_index]+"\t"+line[conf_index]);
+			this.leftover.println(line[id_index]+"\t"+line[bc_str_index]+(conf_index<0 ? "": "\t"+line[conf_index]));
 			this.readsInRemainderFile++;
 			this.barc_remainder.add(line[bc_str_index]);
 		}
