@@ -3,7 +3,6 @@ package npTranscript.run;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -11,12 +10,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
 import ch.systemsx.cisd.hdf5.IHDF5Writer;
@@ -93,9 +94,13 @@ public class ProcessReadFile extends CommandLine {
 		if(input_file!=null && input_file.endsWith(".gz")) inp = new GZIPInputStream(inp);
 		int remainder = Integer.MAX_VALUE;
 		String transcripts_file =cmdLine.getStringVal("ref_transcripts");
-		PrintWriter transcripts_pw = new PrintWriter(new FileWriter(outFile+".transcripts.txt"));
+		String transcripts_out_file = outFile+".transcripts.txt.gz";
+		String transcripts_out_file1 = outFile+".transcripts.mod.txt.gz";
 
-		Transcripts tr = new Transcripts(transcripts_pw, transcripts_file);
+		PrintWriter transcripts_pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(transcripts_out_file))));
+		boolean addCounts = true;
+		
+		Transcripts tr = new Transcripts(transcripts_pw, transcripts_file, addCounts);
 		for(int index=0; remainder>0;index++){
 			int  ncols = (int) Math.floor(maxcells/num_barcodes.doubleValue());
 			System.err.println("reads remaining "+remainder);
@@ -109,6 +114,12 @@ public class ProcessReadFile extends CommandLine {
 					new ProcessReads(tr, ncols,num_barcodes, 	truncate, inp,rem,  index);
 			pr.run();
 			pr.finalise(altT, reorder, reorder);
+			if(index==0){
+				transcripts_pw.close();
+				if(addCounts){
+					tr.appendCounts(new File(transcripts_out_file), new File(transcripts_out_file1), 100);
+				}
+			}
 			inp.close();
 			rem.close();
 			remainder=pr.getRemainder();
@@ -122,7 +133,6 @@ public class ProcessReadFile extends CommandLine {
 			
 			
 		}
-		transcripts_pw.close();
 	//	altT.writeStringArray("/transcripts", tr.getArray()); //need to consider the offset
 		
 		altT.close();
@@ -132,13 +142,37 @@ public class ProcessReadFile extends CommandLine {
 	// keeps a uniform list of transcripts
 	public static class Transcripts{
 		//final boolean saveReadID;
-		public Transcripts(){
-			
+		public Transcripts(boolean addCounts){
+			this.addcount = addCounts;
+			if(addCounts) counts = new ArrayList<Integer>();
+
 		}
-		
-		public Transcripts(PrintWriter pw, String input) {
+		/** check freq is how often to check to make sure it matches */
+		public void appendCounts(File inF, File outF, int check_freq ) throws IOException {
+			BufferedReader in = new BufferedReader(new InputStreamReader(new GZIPInputStream((new FileInputStream(inF)))));
+			PrintWriter out = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outF))));
+			if(!addcount) throw new RuntimeException("!!");
+			String str = "";
+			for(int i=0; (str = in.readLine())!=null; i++){
+				if(check_freq>0 && i%check_freq==0){
+					String[] st = str.split("\t");
+					if(!st[0].equals(this.cluster_ids.get(i))) throw new RuntimeException("!! not a match");
+				}
+				out.println(str+"\t"+this.counts.get(i));
+			//	String[] st = str.split("\t");
+				
+			}
+			counts.clear();
+			this.addcount = false;
+			in.close();
+			out.close();
+		}
+
+		public Transcripts(PrintWriter pw, String input, boolean addCounts) {
 			//this.saveReadID = saveReadID;
 			this.pw = pw;
+			this.addcount = addCounts;
+			if(addCounts) counts = new ArrayList<Integer>();
 			if(input!=null){
 				try{
 					File inputF = new File(input);
@@ -149,6 +183,7 @@ public class ProcessReadFile extends CommandLine {
 					String[] st = str.split("\t");
 					cluster_id_map.put(st[0], i);
 					this.cluster_ids.add(st[0]);
+					if(addcount)this.counts.add(0);
 					pw.println(str);
 				}
 				br.close();
@@ -161,19 +196,27 @@ public class ProcessReadFile extends CommandLine {
 		
 		PrintWriter pw = null;
 		private List<String>cluster_ids = new ArrayList<String>();
+		private List<Integer> counts = null;//new ArrayList<Integer>();
+		
 		private Map<String, Integer> cluster_id_map = new HashMap<String, Integer>();
 		public Integer get(String transcript){
 			return this.cluster_id_map.get(transcript);
 		}
+		
+		 boolean addcount;
 		//assumes is absent
 		public Integer getNext(String transcript, String readID, boolean add){
 			Integer trans_ind = cluster_ids.size();
 			if(add){
 				cluster_id_map.put(transcript,  trans_ind);
 				this.cluster_ids.add(transcript);
+				if(addcount) this.counts.add(0);
 			
 			}
 			return trans_ind;
+		}
+		public void increment(int trans_ind){
+			if(addcount)counts.set(trans_ind, counts.get(trans_ind)+1);
 		}
 		public Integer getAndAdd(String transcript, String readID) {
 			Integer trans_ind = this.cluster_id_map.get(transcript);
@@ -185,11 +228,13 @@ public class ProcessReadFile extends CommandLine {
 					pw.println();
 				}
 			}
+			
 			return trans_ind;
 		}
 		public void add(String transcript, Integer trans_ind){
 			cluster_id_map.put(transcript,  trans_ind);
 			this.cluster_ids.add(transcript);
+			if(addcount) this.counts.add(0);
 		}
 		public String[] getArray() {
 			return cluster_ids.toArray(new String[0]);

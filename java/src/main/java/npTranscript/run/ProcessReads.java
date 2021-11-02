@@ -78,8 +78,9 @@ class ProcessReads{
 	BufferedReader br;
 	ProcessReads(Transcripts tr, int ncols,int n_barcodes,  boolean truncate, InputStream inp, OutputStream rem, int index) throws IOException{
 		this.truncate  =truncate;
+		firstPass = (index==0);
 		this.tr = tr;
-		this.barc = new Transcripts();
+		this.barc = new Transcripts(false);
 		this.barc_remainder = new HashSet<String>();
 
 		this.rem = rem;
@@ -126,11 +127,16 @@ class ProcessReads{
 	
 	 int max_col=0;
 	
+	 boolean firstPass = false;
+	 
 	public void  process(String str){
 		String[] line = str.split("\t");
 		String transcript = line[id_index];
 		if(truncate) transcript = transcript.substring(0,transcript.lastIndexOf("/"));	
 		Integer trans_ind = this.tr.getAndAdd(transcript, read_id_index<0  ? null: line[read_id_index]);
+		if(firstPass){
+			this.tr.increment(trans_ind);
+		}
 		
 		if(line[bc_str_index].equals("null")){
 		//	System.err.println(line[bc_index]+" "+line[this.bc_str_index]); //NA null
@@ -226,6 +232,49 @@ class ProcessReads{
 		}
 		
 	}
+	
+	static int[][] resizeColsAndRows(int[][] read_count, int len1, int ncol1){
+		int[][]read_count1 = new int[len1][ncol1];
+		for(int i=0; i<len1;i++){
+			System.arraycopy(read_count[i], 0, read_count1[i], 0, ncol1);
+		}
+		return read_count1;
+	}
+	static int[][] resizeRows(int[][] read_count, int len1){
+		int[][]read_count1 = new int[len1][];
+		System.arraycopy(read_count, 0, read_count1, 0, len1);
+		return read_count1;
+	}
+	static int[] resizeRows(int[] read_count, int len1){
+		int[]read_count1 = new int[len1];
+		System.arraycopy(read_count, 0, read_count1, 0, len1);
+		return read_count1;
+	}
+	private static  int[][] reorderRows(int[][] read_count, int[] indices) {
+		int len2 = indices.length;
+		int[][] counts2 = new int[len2][];
+		for(int i=0; i<len2; i++){
+			counts2[i] = read_count[indices[i]];
+		}
+		return counts2;
+	}
+	private static  String[] reorderRows(String[] read_count, int[] indices) {
+		int len2 = indices.length;
+		String[] counts2 = new String[len2];
+		for(int i=0; i<len2; i++){
+			counts2[i] = read_count[indices[i]];
+		}
+		return counts2;
+	}
+	private static int[] reorderRows(int[] read_count, int[] indices) {
+		int len2 = indices.length;
+		int[] counts2 = new int[len2];
+		for(int i=0; i<len2; i++){
+			counts2[i] = read_count[indices[i]];
+		}
+		return counts2;
+	}
+	
 	public void finalise(IHDF5Writer altT, boolean reorder_col, boolean reorder_row) throws IOException{
 		//leftover.close();
 		int barc_len = this.indices_size.length;
@@ -233,70 +282,51 @@ class ProcessReads{
 		while(this.indices_size[len1-1]==0){
 			len1 = len1-1;
 		}
-	
-		int[] barcode_usage1=  barcode_usage;
-		
 		String[] barc_array = this.barc.getArray(0,len1);
-		
-		int[][] read_count1, indices1;
-		
 		if(max_col<this.ncols-1){
+			//make col_size smaller to fit data also fit to max cols
 			int ncol1 = max_col+1;
 			System.err.println("less transcript cols than expected "+ncol1+" vs "+this.ncols);
-			read_count1 = new int[len1][ncol1];
-			indices1 = new int[len1][ncol1];
-			for(int i=0; i<len1;i++){
-				System.arraycopy(read_count[i], 0, read_count1[i], 0, ncol1);
-				System.arraycopy(indices[i], 0, indices1[i], 0, ncol1);
-
-			}
+			read_count = resizeColsAndRows(read_count, len1, ncol1);
+			indices = resizeColsAndRows(indices, len1, ncol1);
 		//	System.err.println("h");
 		}else if(len1 < this.nrows){
+			//make row size smaller to fit data
 			System.err.println("less rows than expected "+len1+" vs "+this.nrows);
-			read_count1 = new int[len1][];
-			indices1 = new int[len1][];
-			barcode_usage1 = new int[len1];
-			System.arraycopy(read_count, 0, read_count1, 0, len1);
-			System.arraycopy(indices, 0, indices1, 0, len1);
-			System.arraycopy(barcode_usage, 0, barcode_usage1,0, len1);
-		}else{
-			read_count1 = this.read_count;
-			indices1 = this.indices;
-		}
-		if(reorder_row){
-			IntIntC  obj = new IntIntC(barcode_usage1.length);
-			obj.fill(barcode_usage);
-			obj.sort();
-			int len2 = indices1.length;
-			int[][] indices2 = new int[len2][];
-			int[][] counts2 = new int[len2][];
-			String[] barc_array1 = new String[barc_array.length];
 
-			for(int i=0; i<len2; i++){
-				int index = obj.obj[i].index;
-				indices2[i] = indices1[index];
-				counts2[i] = read_count1[index];
-				barc_array1[i] = barc_array[index];
-			}
-			barc_array = barc_array1;
-			indices1 = indices2;
-			read_count1 = counts2;
-			
-		}
-		if(reorder_col){
-			IntIntC  obj = new IntIntC(read_count1[0].length);
-			for(int i=0; i<read_count1.length; i++){
-				obj.fill(read_count1[i], indices1[i]);
-				obj.sort();
-			}
-		//	System.err.println("h");
+			read_count = resizeRows(read_count, len1);
+			indices = resizeRows(indices,len1);
+			//indices_size  = resizeRows(indices_size, len1);
+			barcode_usage =resizeRows(barcode_usage,len1);
 		}
 		
-		altT.writeIntMatrix(prefix+"/counts", read_count1);
-		altT.writeIntMatrix(prefix+"/indices", indices1);
+		
+		if(reorder_row){
+			IntIntC  obj = new IntIntC(barcode_usage.length);
+			obj.fill(barcode_usage);
+			obj.sort(); // this sounds the barcode_usage, so we dont resort it
+			read_count = reorderRows(read_count, obj.indices);
+			indices = reorderRows(indices, obj.indices);
+			barc_array = reorderRows(barc_array, obj.indices);
+			//barcode_usage = reorderRows(barcode_usage, obj.indices); /// dont resort
+		}
+		if(reorder_col){
+			IntIntC  obj = new IntIntC(read_count[0].length);
+			for(int i=0; i<read_count.length; i++){
+				obj.fill(read_count[i], indices[i]);
+				obj.sort();
+			}
+		}
+		
+		altT.writeIntMatrix(prefix+"/counts", read_count);
+		altT.writeIntMatrix(prefix+"/indices", indices);
+		altT.writeIntArray(prefix+"/barcode_usage", barcode_usage);
 		altT.writeStringArray(prefix+"/barcodes", barc_array);
 		//altT.close();
 	}
+
+
+	
 
 	
 	
