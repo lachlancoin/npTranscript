@@ -3,20 +3,18 @@ package npTranscript.run;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
 import ch.systemsx.cisd.hdf5.IHDF5Writer;
@@ -26,9 +24,8 @@ import japsa.util.deploy.Deployable;
 @Deployable(scriptName = "npTranscript.run", scriptDesc = "Analysis of coronavirus sequence data")
 public class ProcessReadFile extends CommandLine {
 
-	public static String barcode_file=null;
-	public static String leftOverFile = null;
-public static String prefix="";
+	//public static String barcode_file=null;
+	//public static String leftOverFile = null;
 //	private static final Logger LOG = LoggerFactory.getLogger(HTSErrorAnalysisCmd.class);
 
 	public ProcessReadFile() {
@@ -37,221 +34,133 @@ public static String prefix="";
 		setUsage(annotation.scriptName() + " [options]");
 		setDesc(annotation.scriptDesc());
 		addBoolean("overwrite", false, "whether to delete and start from scratch");
+		addBoolean("reorder", true, "whether to re-order barcodes and transcripts");
+
 		addString("barcode_file", null, "Name of barcode file", false);
-		addString("prefix", "0", "Name of prefix", false);
 		addString("inputFile", null, "Name of input file", false);
-		addString("leftOverFile",null,"Name of file for leftover, or stdout");
-		this.addInt("ncols", 100, "Max number of transcripts",false);
+		addString("outputFile", "out.h5", "Name of output file", false);
+		this.addDouble("maxcells", 1e6, "Max number of cells per block",false); 
+		this.addInt("num_barcodes", 2000, "Max number of barcodes",false);
 
 	}
  static 	long tme0;
-	public static void main(String[] args0) throws IOException, InterruptedException {
-		tme0 = System.currentTimeMillis();
-		boolean stdin = false;
-		String[] args1 = args0;
-		if(args0[args0.length-1].equals("-")){
-			stdin = true;
-			args1 = new String[args0.length-1];
-			System.arraycopy(args0, 0, args1, 0, args1.length);
-		}
-		CommandLine cmdLine = new ProcessReadFile();
-		String[] args = cmdLine.stdParseLine(args1);
-		String barcode_files=cmdLine.getStringVal("barcode_file");
-		String input_file = cmdLine.getStringVal("inputFile");
-		prefix = cmdLine.getStringVal("prefix");
-		leftOverFile = cmdLine.getStringVal("leftOverFile");
-		List<String> barcodes = new ArrayList<String>();
-		{
+ 
+ 
+ 
+ public static int countBarcode(String barcode_files) throws IOException{
+	 int num_barcodes=0;
 			InputStream is = new FileInputStream(barcode_files);
 			if(barcode_files.endsWith(".gz")) is = new GZIPInputStream(is);
 			BufferedReader br = new BufferedReader(new InputStreamReader(is));
 			String st = "";
 			while((st = br.readLine())!=null){
-				barcodes.add(st.split("-")[0]);
+				num_barcodes++;
 			}
 			br.close();
-		}
-			System.err.println("using barcodes"+Arrays.asList(barcode_files));
-		Integer ncols = cmdLine.getIntVal("ncols");
-	
+			return num_barcodes;
+ }
+ 
+	public static void main(String[] args1) throws IOException, InterruptedException {
+		tme0 = System.currentTimeMillis();
+		CommandLine cmdLine = new ProcessReadFile();
+		String[] args = cmdLine.stdParseLine(args1);
+		//String barcode_files=cmdLine.getStringVal("barcode_file");
+		String input_file = cmdLine.getStringVal("inputFile");
+		//prefix = cmdLine.getStringVal("prefix");
+		//leftOverFile = cmdLine.getStringVal("leftOverFile");
+		Integer num_barcodes=cmdLine.getIntVal("num_barcodes");
+		//if(barcode_files!=null) num_barcodes = countBarcode(barcode_files);
+	//	List<String> barcodes = new ArrayList<String>();
+		boolean reorder = cmdLine.getBooleanVal("reorder");
+	//		System.err.println("using barcodes"+Arrays.asList(barcode_files));
+		Double maxcells = cmdLine.getDoubleVal("maxcells");
 		
-
-		InputStream inp =new FileInputStream(input_file);
-		if(input_file.endsWith(".gz")) inp = new GZIPInputStream(inp);
-		OutputStream leftover = leftOverFile==null ? System.out : new FileOutputStream(leftOverFile);
-		if(leftOverFile!=null && leftOverFile.endsWith(".gz")) leftover = new GZIPOutputStream(leftover);
+	//	int max_reads =Integer.MAX_VALUE;
+		
+		File outFile = new File(cmdLine.getStringVal("outputFile"));
 		boolean truncate = false;
-		
-		BufferedReader br = new BufferedReader(new InputStreamReader(inp));
-		String head = br.readLine();
-		ProcessReads pr = 
-				new ProcessReads( ncols, barcodes, 	leftover, truncate, head);
-		String str = "";
-		int max_reads =Integer.MAX_VALUE;
-		try{
-		inner: for(int i=0; i<max_reads &&((str = br.readLine())!=null); i++){
-		
-			int remainder = pr.process(str);
-			if(remainder<=0){
-				System.err.println("is full");
-				break inner;
-			}
-			
-		}
-		}catch(Exception exc){
-			exc.printStackTrace();
-		}
-	
 		boolean overwrite=cmdLine.getBooleanVal("overwrite");
-		File outFile = new File("out.h5");
-
 		if(overwrite) outFile.delete();
 		IHDF5Writer altT = HDF5Factory.open(outFile);
-		altT.writeStringArray("/barcodes", barcodes.toArray(new String[0]));//.subList(0, len1).toArray(new String[0]));
-		pr.finalise(altT, prefix);
-		altT.close();
-		br.close();
-		leftover.close();
-	}
-	
+		//altT.writeStringArray("/barcodes", barcodes.toArray(new String[0]));//.subList(0, len1).toArray(new String[0]));
 
-	
-static class ProcessReads{
-	int[][] read_count; // [barcode][transcript_index]
-	int[][] indices;  // [barcode][transcript_index]
-	int[] indices_size;
-	
-	Map<Integer, Integer>[] forward;
-//	Map<Integer, Integer>[] maps; //maps each transcript index to its col position.
+		InputStream inp =input_file==null ? System.in : new FileInputStream(input_file);
+		if(input_file.endsWith(".gz")) inp = new GZIPInputStream(inp);
+		int remainder = Integer.MAX_VALUE;
+		Transcripts tr = new Transcripts();
 
-	List<String>cluster_ids = new ArrayList<String>();
-	Map<String, Integer> cluster_id_map = new HashMap<String, Integer>();
-	
-	List<Integer>barcode_ids = new ArrayList<Integer>();
-	Map<Integer, Integer> barcode_id_map = new HashMap<Integer, Integer>();
-	
-
-	//Barcodes bc;
-	PrintWriter leftover;
-	final int id_index;
-	final int bc_index;
-	final int bc_str_index;
-	final int conf_index;
-	
-	final int ncols; //number of transcripts
-	final int nrows; //number of barcodes
-	
-	int remainder;
-final 	List<String> barcodes;
-	
-	ProcessReads(int ncols,List<String> barcodes, OutputStream leftover, boolean truncate, String head) throws IOException{
-		this.truncate  =truncate;
-		this.barcodes = barcodes;
-		this.nrows = barcodes.size();
-		 this.ncols = ncols;
-		remainder = nrows;
-		this.read_count = new int[nrows][ncols];
-		this.indices = new int[nrows][ncols];
-		this.indices_size = new int[nrows];
-		Arrays.fill(indices_size, 0);
-		this.forward = new Map[nrows];
-		/*this.maps = new Map[nrows];*/
-		for(int i=0; i<nrows; i++){
-			forward[i] = new HashMap<Integer, Integer>();
-			Arrays.fill(indices[i], -1);
-		}
-		this.leftover = new PrintWriter(new OutputStreamWriter(leftover));
-		
-		
-		this.leftover.println(head);
-		List<String >header = Arrays.asList( head.split("\t"));
-		this.id_index = header.indexOf("id");
-		this.bc_index = header.indexOf("barcode_index");
-		this.bc_str_index = header.indexOf("barcode");
-		this.conf_index = header.indexOf("confidence");
-	}
-	
-//	boolean check = true;
-	
-	
-	final boolean truncate;
-	
-	public int  process(String str){
-		String[] line = str.split("\t");
-		String transcript = line[id_index];
-		if(truncate) transcript = transcript.substring(0,transcript.lastIndexOf("/"));	
-		Integer trans_ind = this.cluster_id_map.get(transcript);
-		if(trans_ind==null){
-			cluster_id_map.put(transcript,  trans_ind=this.cluster_ids.size());
-			this.cluster_ids.add(transcript);
-		}
-		if(line[bc_index].equals("NA")){
-			return remainder;
-		}
-		Integer  barcode = Integer.parseInt(line[bc_index]);
-		Integer barc_ind = this.barcode_id_map.get(barcode);
-		if(barc_ind==null){
-			barcode_id_map.put(barcode, barc_ind = this.barcode_ids.size());
-			this.barcode_ids.add(barcode);
-		}
-		
-		if(this.indices_size[barc_ind]<ncols){
-		
-			Integer col_index = this.forward[barc_ind].get(trans_ind);
-			if(col_index==null){
-				col_index = this.indices_size[barc_ind];
-				this.forward[barc_ind].put(trans_ind,  col_index);
-				this.indices[barc_ind][col_index] = trans_ind;
-				this.indices_size[barc_ind]++;
+		for(int index=0; remainder>0;index++){
+			int  ncols = (int) Math.floor(maxcells/num_barcodes.doubleValue());
+			System.err.println("reads remaining "+remainder);
+			if(remainder < ncols) ncols = remainder; // worst case if each read is different cluster
+			double cells = ncols *num_barcodes;
+			System.err.println("ncols "+ncols+" by  "+num_barcodes+" "+String.format("%5.3g", cells));
+			File remainderFile = new File("tmp.leftover."+System.currentTimeMillis()+"."+Math.random());
+			remainderFile.deleteOnExit();
+			OutputStream rem = new FileOutputStream(remainderFile);
+			ProcessReads pr = 
+					new ProcessReads(tr, ncols,num_barcodes, 	truncate, inp,rem,  index);
+			pr.run();
+			pr.finalise(altT, reorder, reorder);
+			inp.close();
+			rem.close();
+			remainder=pr.getRemainder();
+			if(remainder>0){
+			inp =new FileInputStream(remainderFile);
+			}else{
+				inp=null;
 			}
-			this.read_count[barc_ind][col_index]++;
-		}else{
-			if(indices_size[barc_ind]==ncols){
-				remainder--;
-				indices_size[barc_ind]++;
-			}
-		//	System.err.println(barc_ind+" is leftover");
-			this.leftover.println(str);
+			num_barcodes = Math.min(num_barcodes, pr.remainingBarcodes());
+			System.err.println(num_barcodes+" barcodes_remaining");
+			
 			
 		}
-		return remainder;
-//		this.cluster_ids.in
+		altT.writeStringArray("/transcripts", tr.getArray()); //need to consider the offset
+		
+		altT.close();
+		
 	}
 	
-	public void finalise(IHDF5Writer altT, String prefix) throws IOException{
-		leftover.close();
-		int barc_len = this.barcode_ids.size();
-
-		int len1 = barc_len;
-		while(this.indices_size[len1-1]==0){
-			len1 = len1-1;
+	// keeps a uniform list of transcripts
+	public static class Transcripts{
+		private List<String>cluster_ids = new ArrayList<String>();
+		private Map<String, Integer> cluster_id_map = new HashMap<String, Integer>();
+		public Integer get(String transcript){
+			return this.cluster_id_map.get(transcript);
 		}
-		
-
-		
-		
-		int[] barcode_ids_ = new int[len1];
-		for(int i=0; i<len1; i++){
-			barcode_ids_[i] = this.barcode_ids.get(i);
+		//assumes is absqent
+		public Integer getNext(String transcript, boolean add){
+			Integer trans_ind = cluster_ids.size();
+			if(add){
+			cluster_id_map.put(transcript,  trans_ind);
+			this.cluster_ids.add(transcript);
+			}
+			return trans_ind;
 		}
-		altT.writeIntArray(prefix+"/barcode_indices", barcode_ids_);
-		altT.writeStringArray(prefix+"/transcripts", this.cluster_ids.toArray(new String[0]));
-		int[][] read_count1, indices1;
-		if(len1 < this.nrows){
-			read_count1 = new int[len1][];
-			indices1 = new int[len1][];
-			System.arraycopy(read_count, 0, read_count1, 0, len1);
-			System.arraycopy(indices, 0, indices1, 0, len1);
-		}else{
-			read_count1 = this.read_count;
-			indices1 = this.indices;
+		public Integer getAndAdd(String transcript) {
+			Integer trans_ind = this.cluster_id_map.get(transcript);
+			if(trans_ind==null){
+				trans_ind = getNext(transcript, true);
+			}
+			return trans_ind;
 		}
-		altT.writeIntMatrix(prefix+"/counts", read_count1);
-		altT.writeIntMatrix(prefix+"/indices", indices1);
-		//altT.close();
+		public void add(String transcript, Integer trans_ind){
+			cluster_id_map.put(transcript,  trans_ind);
+			this.cluster_ids.add(transcript);
+		}
+		public String[] getArray() {
+			return cluster_ids.toArray(new String[0]);
+		}
+		public String[] getArray(int offset, int len1) {
+			String[] res = new String[len1];
+			for(int i=0; i<len1; i++){
+				res[i] = this.cluster_ids.get(i+offset);
+			}
+			return res;
+		}
 	}
 	
-}
+	
 	
 	
 	
