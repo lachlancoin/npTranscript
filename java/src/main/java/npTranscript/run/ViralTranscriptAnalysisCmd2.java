@@ -285,6 +285,7 @@ public static int readsToSkip=0;
 		}else{
 			Arrays.fill(RNA, false);
 		}
+		System.err.println(Arrays.asList(RNA));
 	//	if(IdentityProfile1.trainStrand &&
 	//	Outputs.executor=  
 	//			cmdLine.getIntVal("max_threadsIO")==1 ? 
@@ -899,6 +900,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 						sa = SequenceUtil.reverseComplement(sa);
 					}
 					Boolean forward_read=null;
+					System.err.println("RNA "+RNA[source_index]);
 					if(RNA[source_index]){
 						forward_read = true;
 					}else{
@@ -912,11 +914,13 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 							forward_read=false;
 						}
 					}
+//					System.err.println("RNA "+RNA[source_index]);
 						if(forward_read!=null){
 							sam.setAttribute(PolyAT.read_strand_tag, forward_read ? "+" : "-");
 						}
 					
 					if(barcodes!=null){
+						if(RNA[source_index]) throw new RuntimeException("not currently supporting RNA barcodes (but probably could)");
 						try{
 							
 						int for_min =  barcodes.assign( sam,sa, true);
