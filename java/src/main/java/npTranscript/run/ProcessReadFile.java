@@ -3,14 +3,14 @@ package npTranscript.run;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -88,7 +88,8 @@ public class ProcessReadFile extends CommandLine {
 		if(input_file!=null && input_file.endsWith(".gz")) inp = new GZIPInputStream(inp);
 		int remainder = Integer.MAX_VALUE;
 		Transcripts tr = new Transcripts();
-
+		PrintWriter transcripts_file = new PrintWriter(new FileWriter(outFile+".transcripts.txt"));
+		tr.pw = transcripts_file;
 		for(int index=0; remainder>0;index++){
 			int  ncols = (int) Math.floor(maxcells/num_barcodes.doubleValue());
 			System.err.println("reads remaining "+remainder);
@@ -115,7 +116,8 @@ public class ProcessReadFile extends CommandLine {
 			
 			
 		}
-		altT.writeStringArray("/transcripts", tr.getArray()); //need to consider the offset
+		transcripts_file.close();
+	//	altT.writeStringArray("/transcripts", tr.getArray()); //need to consider the offset
 		
 		altT.close();
 		
@@ -123,6 +125,7 @@ public class ProcessReadFile extends CommandLine {
 	
 	// keeps a uniform list of transcripts
 	public static class Transcripts{
+		PrintWriter pw = null;
 		private List<String>cluster_ids = new ArrayList<String>();
 		private Map<String, Integer> cluster_id_map = new HashMap<String, Integer>();
 		public Integer get(String transcript){
@@ -141,6 +144,9 @@ public class ProcessReadFile extends CommandLine {
 			Integer trans_ind = this.cluster_id_map.get(transcript);
 			if(trans_ind==null){
 				trans_ind = getNext(transcript, true);
+				if(pw!=null){
+					pw.println(transcript);
+				}
 			}
 			return trans_ind;
 		}

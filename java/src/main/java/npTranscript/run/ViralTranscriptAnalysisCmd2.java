@@ -60,6 +60,7 @@ import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecord.SAMTagAndValue;
 import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
@@ -273,7 +274,7 @@ public static int readsToSkip=0;
 			if(RNAstr.length==1){
 				if(RNAstr[0].equals("name")) {
 					for(int i=0; i<bamFiles.length; i++){
-						RNA[i] = bamFiles[i].toLowerCase().indexOf("RNA")>0;
+						RNA[i] = bamFiles[i].toLowerCase().indexOf("rna")>0;
 					}
 				}
 				else Arrays.fill(RNA, Boolean.parseBoolean(RNAstr[0]) );
@@ -818,6 +819,14 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 					continue;
 				}
 				
+			//	Object obj = sam.getAttribute("rl");
+				
+			//	List<SAMTagAndValue> l = sam.getAttributes();
+			//	for(int i=0; i<l.size(); i++){
+			//		System.err.println(l.get(i).tag+" "+l.get(i).value);
+			//	}
+			//	Object val = sam.getAttributes().get(0).value;
+			//	Object tag = sam.getAttributes().get(0).tag;
 				byte[] b = sam.getBaseQualities();
 				double q1 = 500;
 				if(b.length>0){
@@ -886,18 +895,24 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 						// this converts read back to original orientation
 						sa = SequenceUtil.reverseComplement(sa);
 					}
-					int forward_read_AT =PolyAT.assign(sam, sa, true);
-					int backward_read_AT =PolyAT.assign(sam, sa, false);// this assigns tags indicating the orientation of the original read as + or -;
 					Boolean forward_read=null;
-					if(forward_read_AT < backward_read_AT && forward_read_AT < PolyAT.edit_thresh_AT){
-						forward_read=true;
+					if(RNA[source_index]){
+						forward_read = true;
+					}else{
+						int forward_read_AT =PolyAT.assign(sam, sa, true);
+						int backward_read_AT =PolyAT.assign(sam, sa, false);// this assigns tags indicating the orientation of the original read as + or -;
+					
+						if(forward_read_AT < backward_read_AT && forward_read_AT < PolyAT.edit_thresh_AT){
+							forward_read=true;
+						}
+						if(forward_read_AT > backward_read_AT && backward_read_AT < PolyAT.edit_thresh_AT){
+							forward_read=false;
+						}
 					}
-					if(forward_read_AT > backward_read_AT && backward_read_AT < PolyAT.edit_thresh_AT){
-						forward_read=false;
-					}
-					if(forward_read!=null){
-						sam.setAttribute(PolyAT.read_strand_tag, forward_read ? "+" : "-");
-					}
+						if(forward_read!=null){
+							sam.setAttribute(PolyAT.read_strand_tag, forward_read ? "+" : "-");
+						}
+					
 					if(barcodes!=null){
 						try{
 							

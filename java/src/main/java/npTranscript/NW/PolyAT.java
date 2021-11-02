@@ -117,7 +117,7 @@ public static String getInfo(SAMRecord sam) {
 	 * if we find polyA that means its forward_read
 	 * if we find polyT that means its reverse_read
 	 * does not modify sam record
-	 * returns if this read strand is positive (ie if it has a polyA 
+	 * returns polyA edit distance
 	 * forward means we assume it has polyA
 	 * */
 	public static int assign(SAMRecord sam, String sequence, boolean forward) {
