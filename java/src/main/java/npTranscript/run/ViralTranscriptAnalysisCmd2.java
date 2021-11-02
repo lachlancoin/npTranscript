@@ -797,6 +797,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 			Set<String> skipped = new HashSet<String>();
 			List<SAMRecord> sams = new ArrayList<SAMRecord>();
 			String prev_readnme = "";
+			System.err.println("RNA "+Arrays.asList(RNA));
 			outer: for ( ij=0; samIter.hasNext() ;ij++ ) {
 				
 				if(ij%1000 ==0){
@@ -900,7 +901,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 						sa = SequenceUtil.reverseComplement(sa);
 					}
 					Boolean forward_read=null;
-					System.err.println("RNA "+RNA[source_index]);
+					
 					if(RNA[source_index]){
 						forward_read = true;
 					}else{
