@@ -269,6 +269,8 @@ public static int readsToSkip=0;
 		GFFAnnotation.enforceKnownLinkedExons = cmdLine.getBooleanVal("enforceKnownLinkedExons");
 		if(IdentityProfile1.trainStrand && Annotation.enforceStrand) throw new RuntimeException("cant enforce and train");
 		String[] RNAstr = 		cmdLine.getStringVal("RNA").split(":");
+		System.err.println("RNA_str");
+		System.err.println(Arrays.asList(RNAstr));
 		RNA = new boolean[bamFiles.length];
 		if(RNAstr!=null){
 			if(RNAstr.length==1){
@@ -392,6 +394,7 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 	 Map<String, String> keyval = new HashMap<String, String>();
 		String optsFiles  = cmdLine.getStringVal(opts_file);
 		String optsType = cmdLine.getStringVal("optsType");
+		System.err.println("optsType "+optsType);
 		{
 			BufferedReader br = new BufferedReader(new FileReader(optsFiles));
 			String st = "";
