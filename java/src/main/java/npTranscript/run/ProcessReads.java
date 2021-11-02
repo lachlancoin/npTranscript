@@ -41,8 +41,9 @@ class ProcessReads{
 	//Barcodes bc;
 	PrintWriter leftover;
 	final int id_index;
+	final int read_id_index;
 //	final int bc_index;
-	final int bc_str_index;
+	 int bc_str_index;
 	final int conf_index;
 	
 	final int ncols; //number of transcripts
@@ -108,10 +109,12 @@ class ProcessReads{
 	
 		List<String >header = Arrays.asList( head.split("\t"));
 		this.id_index = header.indexOf("id");
+		this.read_id_index =  header.indexOf("readID") ;
 		//this.bc_index = header.indexOf("barcode_index");
 		this.bc_str_index = header.indexOf("barcode");
+		if(bc_str_index<0) bc_str_index = header.indexOf("source");
 		this.conf_index = header.indexOf("confidence");
-		this.leftover.println(header.get(id_index)+"\t"+header.get(bc_str_index)+"\t"+header.get(conf_index));
+		this.leftover.println(header.get(id_index)+"\t"+header.get(bc_str_index) + (conf_index<0 ? "": "\t"+header.get(conf_index)));
 
 		//rem.
 	}
@@ -127,7 +130,7 @@ class ProcessReads{
 		String[] line = str.split("\t");
 		String transcript = line[id_index];
 		if(truncate) transcript = transcript.substring(0,transcript.lastIndexOf("/"));	
-		Integer trans_ind = this.tr.getAndAdd(transcript);
+		Integer trans_ind = this.tr.getAndAdd(transcript, read_id_index<0  ? null: line[read_id_index]);
 		
 		if(line[bc_str_index].equals("null")){
 		//	System.err.println(line[bc_index]+" "+line[this.bc_str_index]); //NA null
@@ -139,7 +142,7 @@ class ProcessReads{
 		boolean wasNull=false;
 		if(barc_ind==null){
 			wasNull = true;
-			barc_ind = this.barc.getNext(line[bc_str_index], false);
+			barc_ind = this.barc.getNext(line[bc_str_index], null, false);
 		}
 		if(barc_ind<indices_size.length && this.indices_size[barc_ind]<ncols){
 			if(wasNull) this.barc.add(line[bc_str_index], barc_ind); //only add if we using it
