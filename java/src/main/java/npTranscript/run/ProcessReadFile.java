@@ -105,7 +105,13 @@ public class ProcessReadFile extends CommandLine {
 		overwrite=cmdLine.getBooleanVal("overwrite");
 		suffix = cmdLine.getStringVal("suffix");
 		
-		String  outFile = cmdLine.getStringVal("outputFile");		
+		String  outFile = cmdLine.getStringVal("outputFile");	
+		if(truncate){
+			outFile=outFile+"_trunc";
+		}
+		if(!incl_strand){
+			outFile = outFile+"_nostrand";
+		}
 		System.err.println("doing reference");
 		File transcripts_file =  run(refDir, outFile,  null,1); //only one barcode for ref
 		 System.err.println("doing main class");
