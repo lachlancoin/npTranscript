@@ -65,6 +65,7 @@ class ProcessReads{
 		try{
 		String str = "";
 		 for(int i=0; ((str = br.readLine())!=null); i++){
+			// if(str.startsWith("readID")) continue;
 			process(str);
 		}
 		//br.close();
@@ -132,6 +133,7 @@ class ProcessReads{
 	 boolean firstPass = false;
 	 
 	public void  process(String str){
+		
 		String[] line = str.split("\t");
 		String transcript = line[id_index];
 		if(ProcessReadFile.truncate) transcript = transcript.substring(0,transcript.lastIndexOf("/"));	

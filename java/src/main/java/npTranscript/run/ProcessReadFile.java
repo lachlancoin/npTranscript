@@ -135,7 +135,13 @@ public class ProcessReadFile extends CommandLine {
 				InputStream inp =  null;
 				try{
 				inp = new FileInputStream(new File(dir, file[i]));
+				
 				if(file[i].endsWith(".gz")) inp = new GZIPInputStream(inp);
+				if(i>0){ 
+					// this clears the header line because 10 is eol;
+					while(inp.read()!=10){}
+					
+				}
 				}catch(IOException exc){
 					exc.printStackTrace();
 				}
@@ -253,7 +259,7 @@ public class ProcessReadFile extends CommandLine {
 					cluster_id_map.put(st[0], i);
 					this.cluster_ids.add(st[0]);
 					if(addcount)this.counts.add(0);
-					pw.println(str);
+					pw.println(addcount ? str.substring(0, str.lastIndexOf("\t")) : str);
 				}
 				br.close();
 					}
