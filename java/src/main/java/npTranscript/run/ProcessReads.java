@@ -125,7 +125,7 @@ class ProcessReads{
 
 	//	inds = new int[] {read_id_index, chrom_index, start_index, end_index};
 		//this.bc_index = header.indexOf("barcode_index");
-		this.bc_str_index = header.indexOf("barcode");
+		this.bc_str_index = header.indexOf("barcode_index");
 		if(bc_str_index<0) bc_str_index = header.indexOf("source");
 		this.conf_index = header.indexOf("confidence");
 		this.bc_type_index = header.indexOf("barcode_type");
@@ -165,13 +165,13 @@ class ProcessReads{
 				return;
 			}
 		}
-		if(line[bc_str_index].equals("null")){
+		if(line[bc_str_index].equals("NA")){
 		//	System.err.println(line[bc_index]+" "+line[this.bc_str_index]); //NA null
 			return;// remainder;
 		}
 		total_reads++;
 		String barcode_;
-		if(bc_type_index>=0){
+		if(bc_type_index>=0 && false){//using barcode index now
 			if(line[bc_type_index].endsWith("revC")){
 				barcode_ = SequenceUtil.reverseComplement(line[bc_str_index]);
 			}else{
@@ -347,7 +347,11 @@ class ProcessReads{
 		while(this.indices_size[len1-1]==0){
 			len1 = len1-1;
 		}
-		String[] barc_array = this.barc.getArray(0,len1);
+		String[] barc_array_ = this.barc.getArray(0,len1);
+		int[] barc_array = new int[barc_array_.length];
+		for(int i=0; i<barc_array.length; i++){
+			barc_array[i] = Integer.parseInt(barc_array_[i]);
+		}
 		if(max_col<this.ncols-1){
 			//make col_size smaller to fit data also fit to max cols
 			int ncol1 = max_col+1;
@@ -386,7 +390,7 @@ class ProcessReads{
 		altT.writeIntMatrix(prefix+"/counts", read_count);
 		altT.writeIntMatrix(prefix+"/indices", indices);
 		altT.writeIntArray(prefix+"/barcode_usage", barcode_usage);
-		altT.writeStringArray(prefix+"/barcodes", barc_array);
+		altT.writeIntArray(prefix+"/barcodes", barc_array);
 		//altT.close();
 	}
 
