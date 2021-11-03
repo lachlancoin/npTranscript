@@ -128,10 +128,7 @@ class ProcessReads{
 		this.bc_type_index = header.indexOf("barcode_type");
 		this.strand_index = header.indexOf("align_strand");
 		this.polyA_index = header.indexOf("polyA_fusion_site");
-
-		this.leftover.print(header.get(id_index)+"\t"+header.get(bc_str_index));
-		if(bc_type_index>=0)leftover.print("\t"+header.get(bc_type_index)+"\t" +header.get(conf_index));
-		this.leftover.println();
+		this.leftover.println(head);
 		//rem.
 	}
 	
@@ -209,7 +206,7 @@ class ProcessReads{
 				remainder--;
 				indices_size[barc_ind]++;
 			}*/
-			this.leftover.println(line[id_index]+"\t"+line[bc_str_index]+(conf_index<0 ? "": "\t"+line[bc_type_index] +"\t"+line[conf_index]));
+			this.leftover.println(line);//line[id_index]+"\t"+line[bc_str_index]+(conf_index<0 ? "": "\t"+line[bc_type_index] +"\t"+line[conf_index]));
 			this.readsInRemainderFile++;
 			this.barc_remainder.add(line[bc_str_index]);
 		}
