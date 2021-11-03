@@ -39,8 +39,8 @@ public class ProcessReadFile extends CommandLine {
 		setUsage(annotation.scriptName() + " [options]");
 		setDesc(annotation.scriptDesc());
 		addBoolean("overwrite", true, "whether to delete and start from scratch");
-		addBoolean("include_strand", true, "whether to remove strand from barcode");
-		addBoolean("truncate", true, "whether to only include locus and not isoform information ");
+	//	addBoolean("include_strand", true, "whether to remove strand from barcode");
+		addString("type", "truncated", "chrom;nostrand;truncated;nostrand_trunc");
 
 
 		addBoolean("reorder", true, "whether to re-order barcodes and transcripts");
@@ -75,11 +75,13 @@ public class ProcessReadFile extends CommandLine {
  }
 	 static boolean truncate;
 	 static boolean incl_strand;
+	 static boolean chrom_only;
 	 static boolean overwrite;
 	 static double maxcells;
 	 //static int num_barcodes;
 	 static boolean reorder;
 	 static String suffix;
+	 static boolean deleteTmpFiles =true;
 	 
 	 static  FilenameFilter filter = new FilenameFilter(){
 
@@ -100,18 +102,35 @@ public class ProcessReadFile extends CommandLine {
 		int num_barcodes=cmdLine.getIntVal("num_barcodes");
 		 reorder = cmdLine.getBooleanVal("reorder");
 		 maxcells = cmdLine.getDoubleVal("maxcells");
-		truncate = cmdLine.getBooleanVal("truncate");
-		incl_strand = cmdLine.getBooleanVal("include_strand");
+		String[] types = cmdLine.getStringVal("type").split(":");
+//	"chrom;nostrand;truncated;nostrand_trunc;all")
+		for(int k=0; k<types.length; k++){
+			System.err.println("type "+types[k]);
+			String type = types[k];
+				incl_strand=true;
+				truncate = false;
+				chrom_only = false;
+			if(type.equals("chrom")){
+				chrom_only=true;
+			}else if(type.equals("nostrand_trunc")){
+				incl_strand=false;
+				chrom_only = false;
+				truncate=true;
+			}else if(type.equals("no_strand")){
+				incl_strand=false;
+				truncate = false;
+				chrom_only = false;
+			}else if(type.equals("all")){
+				incl_strand=true;
+				truncate=false;
+				chrom_only = false;
+			}
+		//incl_strand = cmdLine.getBooleanVal("include_strand");
 		overwrite=cmdLine.getBooleanVal("overwrite");
 		suffix = cmdLine.getStringVal("suffix");
 		
-		String  outFile = cmdLine.getStringVal("outputFile");	
-		if(truncate){
-			outFile=outFile+"_trunc";
-		}
-		if(!incl_strand){
-			outFile = outFile+"_nostrand";
-		}
+		String  outFile = type+"_"+cmdLine.getStringVal("outputFile");	
+	
 		System.err.println("doing reference");
 		File transcripts_file =  run(refDir, outFile,  null,1); //only one barcode for ref
 		 System.err.println("doing main class");
@@ -119,6 +138,7 @@ public class ProcessReadFile extends CommandLine {
 			 System.err.println("running "+i);
 			 run(new File(inpDirs[i]),  outFile, transcripts_file, num_barcodes);
 		 }
+		}//for type
 	}
 	
 	static InputStream getInputStream(File dir, final String[] file){
@@ -180,7 +200,7 @@ public class ProcessReadFile extends CommandLine {
 			double cells = ncols *num_barcodes1;
 			System.err.println("ncols "+ncols+" by  "+num_barcodes1+" "+String.format("%5.3g", cells));
 			File remainderFile = new File("tmp.leftover."+System.currentTimeMillis()+"."+Math.random());
-			remainderFile.deleteOnExit();
+			if(deleteTmpFiles) remainderFile.deleteOnExit();
 			OutputStream rem = new FileOutputStream(remainderFile);
 			ProcessReads pr = 
 					new ProcessReads(tr, ncols,num_barcodes1, 	inp,rem,  index);
@@ -190,7 +210,7 @@ public class ProcessReadFile extends CommandLine {
 				transcripts_pw.close();
 				if(addCounts){
 					tr.appendCounts(transcripts_out_file, transcripts_out_file1, 100);
-					transcripts_out_file.delete();
+					if(deleteTmpFiles) transcripts_out_file.delete();
 				}
 			}
 			inp.close();
@@ -203,7 +223,7 @@ public class ProcessReadFile extends CommandLine {
 			}
 			num_barcodes1 = Math.min(num_barcodes1, pr.remainingBarcodes());
 			System.err.println(num_barcodes1+" barcodes_remaining");
-			 System.err.println("reads remaining "+remainder+ " of total "+tr.cluster_ids.size());
+			 System.err.println("reads remaining "+remainder+ " of total "+pr.total_reads);
 			
 		}
 	//	altT.writeStringArray("/transcripts", tr.getArray()); //need to consider the offset

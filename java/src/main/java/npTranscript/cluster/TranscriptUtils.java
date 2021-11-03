@@ -109,10 +109,11 @@ public class TranscriptUtils {
 		return flip;
 	}*/
 	public static String revC(String bc) {
-		Sequence seq = new Sequence(Alphabet.DNA(), bc, "");
+		return SequenceUtil.reverseComplement(bc);
+		/*Sequence seq = new Sequence(Alphabet.DNA(), bc, "");
 		// TODO Auto-generated method stub
 		String res = revCompl(seq).toString();
-		return res;
+		return res;*/
 	}
 	
 	public static void reverseArray(byte[] intArray) {

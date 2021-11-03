@@ -15,6 +15,8 @@ import java.util.Map;
 import java.util.Set;
 
 import ch.systemsx.cisd.hdf5.IHDF5Writer;
+import htsjdk.samtools.util.SequenceUtil;
+import npTranscript.cluster.TranscriptUtils;
 import npTranscript.run.ProcessReadFile.Transcripts;
 
 
@@ -44,6 +46,7 @@ class ProcessReads{
 	final int read_id_index, chrom_index, start_index, end_index, breaks_index;
 //	final int bc_index;
 	 int bc_str_index;
+	 final int bc_type_index;
 	final int conf_index;
 	
 	final int ncols; //number of transcripts
@@ -121,8 +124,10 @@ class ProcessReads{
 		this.bc_str_index = header.indexOf("barcode");
 		if(bc_str_index<0) bc_str_index = header.indexOf("source");
 		this.conf_index = header.indexOf("confidence");
-		this.leftover.println(header.get(id_index)+"\t"+header.get(bc_str_index) + (conf_index<0 ? "": "\t"+header.get(conf_index)));
-		
+		this.bc_type_index = header.indexOf("barcode_type");
+		this.leftover.print(header.get(id_index)+"\t"+header.get(bc_str_index));
+		if(bc_type_index>=0)leftover.print("\t"+header.get(bc_type_index)+"\t" +header.get(conf_index));
+		this.leftover.println();
 		//rem.
 	}
 	
@@ -138,19 +143,39 @@ class ProcessReads{
 		
 		String[] line = str.split("\t");
 		String transcript = line[id_index];
-		if(ProcessReadFile.truncate) transcript = transcript.substring(0,transcript.lastIndexOf("/"));	
-		if(!ProcessReadFile.incl_strand) transcript = transcript.replaceAll("/[+\\-]", "");
+		if(ProcessReadFile.chrom_only) transcript = transcript.substring(0,transcript.indexOf("/"));
+		else{
+			if(ProcessReadFile.truncate) transcript = transcript.substring(0,transcript.lastIndexOf("/"));	
+			if(!ProcessReadFile.incl_strand) transcript = transcript.replaceAll("/[+\\-]", "");
+		}
 		Integer trans_ind = this.tr.getAndAdd(transcript,line, read_id_index, chrom_index, start_index, end_index, breaks_index);
 				
 		if(firstPass){
 			this.tr.increment(trans_ind);
 		}
-		
+		if(conf_index>=0){
+			if(!line[conf_index].equals("high")){
+				return;
+			}
+		}
 		if(line[bc_str_index].equals("null")){
 		//	System.err.println(line[bc_index]+" "+line[this.bc_str_index]); //NA null
 			return;// remainder;
 		}
-		Integer  barc_ind = this.barc.get(line[bc_str_index]);
+		total_reads++;
+		String barcode_;
+		if(bc_type_index>=0){
+			if(line[bc_type_index].endsWith("revC")){
+				barcode_ = SequenceUtil.reverseComplement(line[bc_str_index]);
+			}else{
+				barcode_ = line[bc_str_index];
+			}
+		}else{
+			barcode_ = line[bc_str_index];
+
+		}
+		
+		Integer  barc_ind = this.barc.get(barcode_);
 		
 		
 		boolean wasNull=false;
@@ -177,7 +202,7 @@ class ProcessReads{
 				remainder--;
 				indices_size[barc_ind]++;
 			}*/
-			this.leftover.println(line[id_index]+"\t"+line[bc_str_index]+(conf_index<0 ? "": "\t"+line[conf_index]));
+			this.leftover.println(line[id_index]+"\t"+line[bc_str_index]+(conf_index<0 ? "": "\t"+line[bc_type_index] +"\t"+line[conf_index]));
 			this.readsInRemainderFile++;
 			this.barc_remainder.add(line[bc_str_index]);
 		}
@@ -185,6 +210,7 @@ class ProcessReads{
 //		this.cluster_ids.in
 	}
 	final int prefix;
+	public int total_reads=0;
 	
 	public int remainingBarcodes(){
 		return barc_remainder.size();

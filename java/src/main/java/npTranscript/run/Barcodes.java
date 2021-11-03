@@ -125,7 +125,8 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 		while((st = br.readLine())!=null){
 			String bc = st.split("-")[0];
 			barcodes_forward[i].add(bc);
-				barcodes_reverse[i].add(TranscriptUtils.revC(bc));
+				barcodes_reverse[i].add(SequenceUtil.reverseComplement(bc));
+//						TranscriptUtils.revC(bc));
 		}
 		}
 		 }
