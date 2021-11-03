@@ -41,7 +41,7 @@ class ProcessReads{
 	//Barcodes bc;
 	PrintWriter leftover;
 	final int id_index;
-	final int read_id_index, chrom_index, start_index, end_index;
+	final int read_id_index, chrom_index, start_index, end_index, breaks_index;
 //	final int bc_index;
 	 int bc_str_index;
 	final int conf_index;
@@ -114,13 +114,15 @@ class ProcessReads{
 		this.chrom_index =  header.indexOf("chrom") ;
 		this.start_index=  header.indexOf("startPos") ;
 		this.end_index =  header.indexOf("endPos") ;
+		this.breaks_index =  header.indexOf("breaks_ref") ;
 
+	//	inds = new int[] {read_id_index, chrom_index, start_index, end_index};
 		//this.bc_index = header.indexOf("barcode_index");
 		this.bc_str_index = header.indexOf("barcode");
 		if(bc_str_index<0) bc_str_index = header.indexOf("source");
 		this.conf_index = header.indexOf("confidence");
 		this.leftover.println(header.get(id_index)+"\t"+header.get(bc_str_index) + (conf_index<0 ? "": "\t"+header.get(conf_index)));
-
+		
 		//rem.
 	}
 	
@@ -131,14 +133,14 @@ class ProcessReads{
 	 int max_col=0;
 	
 	 boolean firstPass = false;
-	 
+	// final int[] inds;
 	public void  process(String str){
 		
 		String[] line = str.split("\t");
 		String transcript = line[id_index];
 		if(ProcessReadFile.truncate) transcript = transcript.substring(0,transcript.lastIndexOf("/"));	
 		if(!ProcessReadFile.incl_strand) transcript = transcript.replaceAll("/[+\\-]", "");
-		Integer trans_ind = this.tr.getAndAdd(transcript,line, read_id_index, chrom_index, start_index, end_index);
+		Integer trans_ind = this.tr.getAndAdd(transcript,line, read_id_index, chrom_index, start_index, end_index, breaks_index);
 				
 		if(firstPass){
 			this.tr.increment(trans_ind);

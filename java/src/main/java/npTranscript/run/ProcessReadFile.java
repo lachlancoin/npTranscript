@@ -294,7 +294,7 @@ public class ProcessReadFile extends CommandLine {
 			if(addcount)counts.set(trans_ind, counts.get(trans_ind)+1);
 		}
 		public Integer getAndAdd(String transcript, String[] line,
-				int read_id_index, int chrom_index, int start_index, int end_index
+				int read_id_index, int chrom_index, int start_index, int end_index, int breaks_index
 				) {
 
 			
@@ -304,7 +304,7 @@ public class ProcessReadFile extends CommandLine {
 				if(pw!=null){
 					pw.println(transcript+"\t"+
 							line[read_id_index]+"\t"+
-							line[chrom_index]+"\t"+ line[start_index]+"\t"+line[end_index]
+							line[chrom_index]+"\t"+ line[start_index]+"\t"+line[end_index]+"\t"+line[breaks_index]
 							);
 				}
 			}
