@@ -5,14 +5,16 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.io.SequenceInputStream;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,16 +38,23 @@ public class ProcessReadFile extends CommandLine {
 		Deployable annotation = getClass().getAnnotation(Deployable.class);
 		setUsage(annotation.scriptName() + " [options]");
 		setDesc(annotation.scriptDesc());
-		addBoolean("overwrite", false, "whether to delete and start from scratch");
+		addBoolean("overwrite", true, "whether to delete and start from scratch");
+		addBoolean("include_strand", true, "whether to remove strand from barcode");
+		addBoolean("truncate", true, "whether to only include locus and not isoform information ");
+
+
 		addBoolean("reorder", true, "whether to re-order barcodes and transcripts");
 	//	addBoolean("saveReadID", true, "whether to save the readID of first read in each cluster");
 
 		addString("barcode_file", null, "Name of barcode file", false);
-		addString("inputFile", null, "Name of input file", false);
+		addString("inputFileDir", null, "Name of input file", true);
 		addString("outputFile", "out.h5", "Name of output file", false);
-		addString("ref_transcripts", null, "Annotated list of transcripts to use", false);
-		this.addDouble("maxcells", 1e6, "Max number of cells per block",false); 
-		this.addInt("num_barcodes", 2000, "Max number of barcodes",false);
+		addString("refFileDir", null, "reference input", true);
+		
+		addString("suffix", ".reads.txt.gz", "suffix of input files", false);
+		
+		this.addDouble("maxcells", 4e6, "Max number of cells per block",false); 
+		this.addInt("num_barcodes", 4000, "Max number of barcodes",false);
 
 	}
  static 	long tme0;
@@ -64,60 +73,112 @@ public class ProcessReadFile extends CommandLine {
 			br.close();
 			return num_barcodes;
  }
- 
+	 static boolean truncate;
+	 static boolean incl_strand;
+	 static boolean overwrite;
+	 static double maxcells;
+	 //static int num_barcodes;
+	 static boolean reorder;
+	 static String suffix;
+	 
+	 static  FilenameFilter filter = new FilenameFilter(){
+
+			@Override
+			public boolean accept(File dir, String name) {
+				return name.endsWith(suffix);
+			}
+			 
+	 };
 	public static void main(String[] args1) throws IOException, InterruptedException {
 		tme0 = System.currentTimeMillis();
 		CommandLine cmdLine = new ProcessReadFile();
 		String[] args = cmdLine.stdParseLine(args1);
-		//String barcode_files=cmdLine.getStringVal("barcode_file");
-		String input_file = cmdLine.getStringVal("inputFile");
-		//prefix = cmdLine.getStringVal("prefix");
-		//leftOverFile = cmdLine.getStringVal("leftOverFile");
-		Integer num_barcodes=cmdLine.getIntVal("num_barcodes");
-		//if(barcode_files!=null) num_barcodes = countBarcode(barcode_files);
-	//	List<String> barcodes = new ArrayList<String>();
-		boolean reorder = cmdLine.getBooleanVal("reorder");
-	//	boolean saveReadID = cmdLine.getBooleanVal("saveReadID");
-	//		System.err.println("using barcodes"+Arrays.asList(barcode_files));
-		Double maxcells = cmdLine.getDoubleVal("maxcells");
+		String[] inpDirs =  cmdLine.getStringVal("inputFileDir").split(":");
 		
-	//	int max_reads =Integer.MAX_VALUE;
+		File refDir = new File( cmdLine.getStringVal("refFileDir"));
+
+		int num_barcodes=cmdLine.getIntVal("num_barcodes");
+		 reorder = cmdLine.getBooleanVal("reorder");
+		 maxcells = cmdLine.getDoubleVal("maxcells");
+		truncate = cmdLine.getBooleanVal("truncate");
+		incl_strand = cmdLine.getBooleanVal("include_strand");
+		overwrite=cmdLine.getBooleanVal("overwrite");
+		suffix = cmdLine.getStringVal("suffix");
 		
-		File outFile = new File(cmdLine.getStringVal("outputFile"));
-		boolean truncate = false;
-		boolean overwrite=cmdLine.getBooleanVal("overwrite");
+		String  outFile = cmdLine.getStringVal("outputFile");		
+		System.err.println("doing reference");
+		File transcripts_file =  run(refDir, outFile,  null,1); //only one barcode for ref
+		 System.err.println("doing main class");
+		 for(int i=0 ; i<inpDirs.length; i++){
+			 System.err.println("running "+i);
+			 run(new File(inpDirs[i]),  outFile, transcripts_file, num_barcodes);
+		 }
+	}
+	
+	static InputStream getInputStream(File dir, final String[] file){
+		if(file==null) return System.in;
+		Enumeration<InputStream> en = new Enumeration<InputStream>(){
+			int i=0;
+			@Override
+			public boolean hasMoreElements() {
+				return i < file.length;
+			}
+
+			@Override
+			public InputStream nextElement() {
+				InputStream inp =  null;
+				try{
+				inp = new FileInputStream(new File(dir, file[i]));
+				if(file[i].endsWith(".gz")) inp = new GZIPInputStream(inp);
+				}catch(IOException exc){
+					exc.printStackTrace();
+				}
+				// TODO Auto-generated method stub
+				i++;
+				
+				return inp;
+			}
+			
+		};
+		return new SequenceInputStream(en);
+	}
+	
+	public static File  run(File inpDir, String outFileName, File transcripts_file, int num_barcodes1) throws IOException{
+		File outFile = new File(inpDir, outFileName);
 		if(overwrite) outFile.delete();
+		String[] input_file = inpDir.list(filter);
 		IHDF5Writer altT = HDF5Factory.open(outFile);
 		//altT.writeStringArray("/barcodes", barcodes.toArray(new String[0]));//.subList(0, len1).toArray(new String[0]));
 
-		InputStream inp =input_file==null ? System.in : new FileInputStream(input_file);
-		if(input_file!=null && input_file.endsWith(".gz")) inp = new GZIPInputStream(inp);
+		InputStream inp = getInputStream(inpDir, input_file);
 		int remainder = Integer.MAX_VALUE;
-		String transcripts_file =cmdLine.getStringVal("ref_transcripts");
-		String transcripts_out_file = outFile+".transcripts.txt.gz";
-		String transcripts_out_file1 = outFile+".transcripts.mod.txt.gz";
+		
+		File transcripts_out_file =new File( outFile.getAbsolutePath()+".transcripts.txt.gz");
+		
+		File transcripts_out_file1 = new File(outFile.getAbsolutePath()+".transcripts.mod.txt.gz");
 
 		PrintWriter transcripts_pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(transcripts_out_file))));
 		boolean addCounts = true;
 		
 		Transcripts tr = new Transcripts(transcripts_pw, transcripts_file, addCounts);
 		for(int index=0; remainder>0;index++){
-			int  ncols = (int) Math.floor(maxcells/num_barcodes.doubleValue());
-			System.err.println("reads remaining "+remainder);
+			int  ncols = (int) Math.floor(maxcells/(double)num_barcodes1);
+			
 			if(remainder < ncols) ncols = remainder; // worst case if each read is different cluster
-			double cells = ncols *num_barcodes;
-			System.err.println("ncols "+ncols+" by  "+num_barcodes+" "+String.format("%5.3g", cells));
+			double cells = ncols *num_barcodes1;
+			System.err.println("ncols "+ncols+" by  "+num_barcodes1+" "+String.format("%5.3g", cells));
 			File remainderFile = new File("tmp.leftover."+System.currentTimeMillis()+"."+Math.random());
 			remainderFile.deleteOnExit();
 			OutputStream rem = new FileOutputStream(remainderFile);
 			ProcessReads pr = 
-					new ProcessReads(tr, ncols,num_barcodes, 	truncate, inp,rem,  index);
+					new ProcessReads(tr, ncols,num_barcodes1, 	inp,rem,  index);
 			pr.run();
 			pr.finalise(altT, reorder, reorder);
 			if(index==0){
 				transcripts_pw.close();
 				if(addCounts){
-					tr.appendCounts(new File(transcripts_out_file), new File(transcripts_out_file1), 100);
+					tr.appendCounts(transcripts_out_file, transcripts_out_file1, 100);
+					transcripts_out_file.delete();
 				}
 			}
 			inp.close();
@@ -128,15 +189,15 @@ public class ProcessReadFile extends CommandLine {
 			}else{
 				inp=null;
 			}
-			num_barcodes = Math.min(num_barcodes, pr.remainingBarcodes());
-			System.err.println(num_barcodes+" barcodes_remaining");
-			
+			num_barcodes1 = Math.min(num_barcodes1, pr.remainingBarcodes());
+			System.err.println(num_barcodes1+" barcodes_remaining");
+			 System.err.println("reads remaining "+remainder+ " of total "+tr.cluster_ids.size());
 			
 		}
 	//	altT.writeStringArray("/transcripts", tr.getArray()); //need to consider the offset
 		
 		altT.close();
-		
+		return addCounts ? transcripts_out_file1: transcripts_out_file;
 	}
 	
 	// keeps a uniform list of transcripts
@@ -168,16 +229,18 @@ public class ProcessReadFile extends CommandLine {
 			out.close();
 		}
 
-		public Transcripts(PrintWriter pw, String input, boolean addCounts) {
+		public Transcripts(PrintWriter pw, File inputF, boolean addCounts) {
 			//this.saveReadID = saveReadID;
 			this.pw = pw;
 			this.addcount = addCounts;
 			if(addCounts) counts = new ArrayList<Integer>();
-			if(input!=null){
+			if(inputF!=null){
 				try{
-					File inputF = new File(input);
+				//	File inputF = new File(input);
 					if(inputF.exists()){
-				BufferedReader br = new BufferedReader(new FileReader(inputF));
+						InputStream is = new FileInputStream(inputF);
+						if(inputF.getName().endsWith(".gz" )) is = new GZIPInputStream(is);
+				BufferedReader br = new BufferedReader(new InputStreamReader(is));
 				String str = "";
 				for(int i=0; (str=br.readLine())!=null; i++){
 					String[] st = str.split("\t");
@@ -205,7 +268,7 @@ public class ProcessReadFile extends CommandLine {
 		
 		 boolean addcount;
 		//assumes is absent
-		public Integer getNext(String transcript, String readID, boolean add){
+		public Integer getNext(String transcript,  boolean add){
 			Integer trans_ind = cluster_ids.size();
 			if(add){
 				cluster_id_map.put(transcript,  trans_ind);
@@ -218,14 +281,19 @@ public class ProcessReadFile extends CommandLine {
 		public void increment(int trans_ind){
 			if(addcount)counts.set(trans_ind, counts.get(trans_ind)+1);
 		}
-		public Integer getAndAdd(String transcript, String readID) {
+		public Integer getAndAdd(String transcript, String[] line,
+				int read_id_index, int chrom_index, int start_index, int end_index
+				) {
+
+			
 			Integer trans_ind = this.cluster_id_map.get(transcript);
 			if(trans_ind==null){
-				trans_ind = getNext(transcript, readID, true);
+				trans_ind = getNext(transcript,  true);
 				if(pw!=null){
-					pw.print(transcript);
-					pw.print("\t"+ readID);
-					pw.println();
+					pw.println(transcript+"\t"+
+							line[read_id_index]+"\t"+
+							line[chrom_index]+"\t"+ line[start_index]+"\t"+line[end_index]
+							);
 				}
 			}
 			

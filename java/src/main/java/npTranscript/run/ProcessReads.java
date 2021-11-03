@@ -41,7 +41,7 @@ class ProcessReads{
 	//Barcodes bc;
 	PrintWriter leftover;
 	final int id_index;
-	final int read_id_index;
+	final int read_id_index, chrom_index, start_index, end_index;
 //	final int bc_index;
 	 int bc_str_index;
 	final int conf_index;
@@ -76,8 +76,7 @@ class ProcessReads{
 		
 	}
 	BufferedReader br;
-	ProcessReads(Transcripts tr, int ncols,int n_barcodes,  boolean truncate, InputStream inp, OutputStream rem, int index) throws IOException{
-		this.truncate  =truncate;
+	ProcessReads(Transcripts tr, int ncols,int n_barcodes,   InputStream inp, OutputStream rem, int index) throws IOException{
 		firstPass = (index==0);
 		this.tr = tr;
 		this.barc = new Transcripts(false);
@@ -111,6 +110,10 @@ class ProcessReads{
 		List<String >header = Arrays.asList( head.split("\t"));
 		this.id_index = header.indexOf("id");
 		this.read_id_index =  header.indexOf("readID") ;
+		this.chrom_index =  header.indexOf("chrom") ;
+		this.start_index=  header.indexOf("startPos") ;
+		this.end_index =  header.indexOf("endPos") ;
+
 		//this.bc_index = header.indexOf("barcode_index");
 		this.bc_str_index = header.indexOf("barcode");
 		if(bc_str_index<0) bc_str_index = header.indexOf("source");
@@ -123,7 +126,6 @@ class ProcessReads{
 //	boolean check = true;
 	
 	
-	final boolean truncate;
 	
 	 int max_col=0;
 	
@@ -132,8 +134,10 @@ class ProcessReads{
 	public void  process(String str){
 		String[] line = str.split("\t");
 		String transcript = line[id_index];
-		if(truncate) transcript = transcript.substring(0,transcript.lastIndexOf("/"));	
-		Integer trans_ind = this.tr.getAndAdd(transcript, read_id_index<0  ? null: line[read_id_index]);
+		if(ProcessReadFile.truncate) transcript = transcript.substring(0,transcript.lastIndexOf("/"));	
+		if(!ProcessReadFile.incl_strand) transcript = transcript.replaceAll("/[+\\-]", "");
+		Integer trans_ind = this.tr.getAndAdd(transcript,line, read_id_index, chrom_index, start_index, end_index);
+				
 		if(firstPass){
 			this.tr.increment(trans_ind);
 		}
@@ -148,7 +152,7 @@ class ProcessReads{
 		boolean wasNull=false;
 		if(barc_ind==null){
 			wasNull = true;
-			barc_ind = this.barc.getNext(line[bc_str_index], null, false);
+			barc_ind = this.barc.getNext(line[bc_str_index],  false);
 		}
 		if(barc_ind<indices_size.length && this.indices_size[barc_ind]<ncols){
 			if(wasNull) this.barc.add(line[bc_str_index], barc_ind); //only add if we using it
@@ -289,14 +293,14 @@ class ProcessReads{
 			System.err.println("less transcript cols than expected "+ncol1+" vs "+this.ncols);
 			read_count = resizeColsAndRows(read_count, len1, ncol1);
 			indices = resizeColsAndRows(indices, len1, ncol1);
+			if(len1<nrows){
+				barcode_usage =resizeRows(barcode_usage,len1);
+			}
 		//	System.err.println("h");
 		}else if(len1 < this.nrows){
-			//make row size smaller to fit data
 			System.err.println("less rows than expected "+len1+" vs "+this.nrows);
-
 			read_count = resizeRows(read_count, len1);
 			indices = resizeRows(indices,len1);
-			//indices_size  = resizeRows(indices_size, len1);
 			barcode_usage =resizeRows(barcode_usage,len1);
 		}
 		
