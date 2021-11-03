@@ -40,7 +40,7 @@ public class ProcessReadFile extends CommandLine {
 		setDesc(annotation.scriptDesc());
 		addBoolean("overwrite", true, "whether to delete and start from scratch");
 	//	addBoolean("include_strand", true, "whether to remove strand from barcode");
-		addString("type", "truncated", "chrom;nostrand;truncated;nostrand_trunc");
+		addString("type", "truncated", "chrom;nostrand;truncated;nostrand_trunc;spliced;all");
 
 
 		addBoolean("reorder", true, "whether to re-order barcodes and transcripts");
@@ -76,6 +76,7 @@ public class ProcessReadFile extends CommandLine {
 	 static boolean truncate;
 	 static boolean incl_strand;
 	 static boolean chrom_only;
+	 static boolean spliced;
 	 static boolean overwrite;
 	 static double maxcells;
 	 //static int num_barcodes;
@@ -110,8 +111,11 @@ public class ProcessReadFile extends CommandLine {
 				incl_strand=true;
 				truncate = false;
 				chrom_only = false;
+				spliced=false;
 			if(type.equals("chrom")){
 				chrom_only=true;
+			}else if(type.equals("spliced")){
+				spliced=true;
 			}else if(type.equals("nostrand_trunc")){
 				incl_strand=false;
 				chrom_only = false;

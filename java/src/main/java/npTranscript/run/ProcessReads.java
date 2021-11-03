@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -43,7 +44,7 @@ class ProcessReads{
 	//Barcodes bc;
 	PrintWriter leftover;
 	final int id_index;
-	final int read_id_index, chrom_index, start_index, end_index, breaks_index;
+	final int read_id_index, chrom_index, start_index, end_index, breaks_index, strand_index, polyA_index;
 //	final int bc_index;
 	 int bc_str_index;
 	 final int bc_type_index;
@@ -125,6 +126,9 @@ class ProcessReads{
 		if(bc_str_index<0) bc_str_index = header.indexOf("source");
 		this.conf_index = header.indexOf("confidence");
 		this.bc_type_index = header.indexOf("barcode_type");
+		this.strand_index = header.indexOf("align_strand");
+		this.polyA_index = header.indexOf("polyA_fusion_site");
+
 		this.leftover.print(header.get(id_index)+"\t"+header.get(bc_str_index));
 		if(bc_type_index>=0)leftover.print("\t"+header.get(bc_type_index)+"\t" +header.get(conf_index));
 		this.leftover.println();
@@ -143,8 +147,11 @@ class ProcessReads{
 		
 		String[] line = str.split("\t");
 		String transcript = line[id_index];
-		if(ProcessReadFile.chrom_only) transcript = transcript.substring(0,transcript.indexOf("/"));
-		else{
+		if(ProcessReadFile.chrom_only){
+			transcript = transcript.substring(0,transcript.indexOf("/"));
+		}else if(ProcessReadFile.spliced){
+			transcript = getSpliced(line[chrom_index], line[start_index], line[end_index],line[ breaks_index], line[strand_index], line[polyA_index]);
+		}else{
 			if(ProcessReadFile.truncate) transcript = transcript.substring(0,transcript.lastIndexOf("/"));	
 			if(!ProcessReadFile.incl_strand) transcript = transcript.replaceAll("/[+\\-]", "");
 		}
@@ -208,6 +215,30 @@ class ProcessReads{
 		}
 		//return remainder;
 //		this.cluster_ids.in
+	}
+	private String getSpliced( String chrom, String start, String end, String breaks, String strand, String polyA) {
+		StringBuffer sb = new StringBuffer();
+		if(breaks.indexOf(';')>0){
+			List<String> chroms = Arrays.asList(chrom.split(","));
+		//	List<String> breaks1 = Arrays.asList(breaks.split(";"));
+			Collections.sort(chroms); 
+			String edit = polyA.split(",")[4];
+			sb.append("fusion/"+chroms.get(0)+","+chroms.get(1)+"/"+edit);
+		}else{
+			int st = Integer.parseInt(start);
+			//int en = Integer.parseInt(end);
+			if(chrom.startsWith("NC_")){
+				sb.append("Virus/");
+				String[] br = breaks.split(",");
+				sb.append(br.length+"/");
+				sb.append(st < 100 ? "L" : "nonL");
+				sb.append("/"+strand);
+			}else{
+				sb.append("Host/"+chrom+"/"+strand);
+			}
+		}
+		return sb.toString();
+		
 	}
 	final int prefix;
 	public int total_reads=0;
