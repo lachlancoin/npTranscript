@@ -153,11 +153,14 @@ public class ProcessReadFile extends CommandLine {
 			public boolean hasMoreElements() {
 				return i < file.length;
 			}
-
+			InputStream current=null;
+			
 			@Override
 			public InputStream nextElement() {
 				InputStream inp =  null;
 				try{
+					if(current!=null) current.close();
+
 				inp = new FileInputStream(new File(dir, file[i]));
 				
 				if(file[i].endsWith(".gz")) inp = new GZIPInputStream(inp);
@@ -171,7 +174,7 @@ public class ProcessReadFile extends CommandLine {
 				}
 				// TODO Auto-generated method stub
 				i++;
-				
+				current=inp;
 				return inp;
 			}
 			
@@ -209,7 +212,10 @@ public class ProcessReadFile extends CommandLine {
 			ProcessReads pr = 
 					new ProcessReads(tr, ncols,num_barcodes1, 	inp,rem,  index);
 			pr.run();
+			rem.close();
+			inp.close();
 			pr.finalise(altT, reorder, reorder);
+			
 			if(index==0){
 				transcripts_pw.close();
 				if(addCounts){
@@ -217,8 +223,7 @@ public class ProcessReadFile extends CommandLine {
 					if(deleteTmpFiles) transcripts_out_file.delete();
 				}
 			}
-			inp.close();
-			rem.close();
+			
 			remainder=pr.getRemainder();
 			if(remainder>0){
 			inp =new FileInputStream(remainderFile);

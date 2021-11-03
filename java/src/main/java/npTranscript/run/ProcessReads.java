@@ -114,6 +114,9 @@ class ProcessReads{
 	
 		List<String >header = Arrays.asList( head.split("\t"));
 		this.id_index = header.indexOf("id");
+		if(id_index<0){
+			throw new RuntimeException ("!!");
+		}
 		this.read_id_index =  header.indexOf("readID") ;
 		this.chrom_index =  header.indexOf("chrom") ;
 		this.start_index=  header.indexOf("startPos") ;
@@ -141,7 +144,7 @@ class ProcessReads{
 	 boolean firstPass = false;
 	// final int[] inds;
 	public void  process(String str){
-		
+		//System.err.println(str);
 		String[] line = str.split("\t");
 		String transcript = line[id_index];
 		if(ProcessReadFile.chrom_only){
@@ -206,7 +209,7 @@ class ProcessReads{
 				remainder--;
 				indices_size[barc_ind]++;
 			}*/
-			this.leftover.println(line);//line[id_index]+"\t"+line[bc_str_index]+(conf_index<0 ? "": "\t"+line[bc_type_index] +"\t"+line[conf_index]));
+			this.leftover.println(str);//line[id_index]+"\t"+line[bc_str_index]+(conf_index<0 ? "": "\t"+line[bc_type_index] +"\t"+line[conf_index]));
 			this.readsInRemainderFile++;
 			this.barc_remainder.add(line[bc_str_index]);
 		}
