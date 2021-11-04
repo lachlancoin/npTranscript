@@ -53,7 +53,7 @@ public static String umi_tag = "UM";
 			String inf = "./long_read_UK_72hpi_adult_barcodes.tsv.gz";
 			boolean forward = true;
 
-			Barcodes barc = new Barcodes(new String[] {inf});
+			Barcodes barc = new Barcodes(inf);
 			String bc = "AAACCCAAGCGTTAGG";
 			String seq="ACGTTAATTCCGTTTTTTT";
 			String suff="AAAAAAAAAAAAAAAAAAAAAAAAAA";
@@ -65,16 +65,17 @@ public static String umi_tag = "UM";
 			List<String>barcodes = new ArrayList<String>();
 			//List<Boolean > forward = new ArrayList<Boolean> ();
 			List<Integer> inds1 = new ArrayList<Integer>();
-			barc.getAll(mins, index, barcodes, inds1, forward);
+			barc.getAll(mins,  barcodes, inds1, forward);
 			System.err.println(minv + " "+barcodes+" "+forward+" "+inds1);
 		}catch(Exception exc){
 			exc.printStackTrace();
 		}
 	}
-	void getAll(Collection<Integer>inds, int index, List<String> res, List<Integer>inds1, boolean forward_barcode){
+	void getAll(Collection<Integer>inds, List<String> res, List<Integer>inds1, boolean forward_barcode){
 		for(Iterator<Integer> it = inds.iterator(); it.hasNext();){
 			int i = it.next();
-			String barcode=forward_barcode ? this.barcodes_forward[index].get(i): this.barcodes_reverse[index].get(i);
+			String barcode=this.barcodes_forward.get(i);//+"/"+this.barcodes_reverse.get(i);;
+//					forward_barcode ? this.barcodes_forward[index].get(i): 
 		//	boolean positive = this.rev_compl ? ((i%2) ==0) : true;
 		//	if(!positive){
 		//		barcode = SequenceUtil.reverseComplement(barcode);
@@ -85,8 +86,8 @@ public static String umi_tag = "UM";
 			//forward.add(positive);
 		}
 	}
- final List<String>[] barcodes_forward ;
- final List<String>[] barcodes_reverse ;
+ final List<String> barcodes_forward ;
+ final List<String> barcodes_reverse ;
 
  
  /*public void setSequence(String sequence){
@@ -105,17 +106,17 @@ public final int bc_len_barcode;
 static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfig(-1, MODE, TASK, null, 0);
 			
  
- public Barcodes(String[] infiles ) throws IOException{
+ public Barcodes(String infiles ) throws IOException{
 	// this.rev_compl=incl_rev_compl;
-	 barcodes_forward = new List[infiles.length];
-	 barcodes_reverse= new List[infiles.length];
+	// barcodes_forward = new List[infiles.length];
+	// barcodes_reverse= new List[infiles.length];
 
-	 for(int i=0; i<infiles.length; i++){
-		 if(infiles[i]!=null){
-		 barcodes_forward[i] = new ArrayList<String>();
-		 barcodes_reverse[i] = new ArrayList<String>();
+	// for(int i=0; i<infiles.length; i++){
+		// if(infiles[i]!=null){
+		 barcodes_forward = new ArrayList<String>();
+		 barcodes_reverse = new ArrayList<String>();
 
-		 File in = new File(infiles[i]);
+		 File in = new File(infiles);
 		 if(!in.exists()) throw new RuntimeException("does not exist "+in.getAbsolutePath());		if(in.exists()){
 		InputStream fis = new FileInputStream(in);
 		if(in.getName().endsWith(".gz")){
@@ -125,19 +126,19 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 		String st = "";
 		while((st = br.readLine())!=null){
 			String bc = st.split("-")[0];
-			barcodes_forward[i].add(bc);
-				barcodes_reverse[i].add(SequenceUtil.reverseComplement(bc));
+			barcodes_forward.add(bc);
+				barcodes_reverse.add(SequenceUtil.reverseComplement(bc));
 //						TranscriptUtils.revC(bc));
 		}
 		}
-		 }
-	 }
-	 bc_len_barcode = barcodes_forward[0].get(0).length();
+		 //}
+	// }
+	 bc_len_barcode = barcodes_forward.get(0).length();
 	}
 	public int calcMatches(Set<Integer> mins, int index, String sequence, boolean forward_barcodes){
 		//Set<Integer> mins = new TreeSet<Integer>();
 		int minv=Integer.MAX_VALUE;
-		List<String> barcodes_i = forward_barcodes ? barcodes_forward[index] : barcodes_reverse[index];
+		List<String> barcodes_i = forward_barcodes ? barcodes_forward : barcodes_reverse;
 		int len = barcodes_i.size();
 		//for(int j=0; j<sequence.length; j++){
 		for(int i=0;i<len; i++){
@@ -198,7 +199,7 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 
 		
 		int index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
-		List<String> barcodes_i = forward_barcode  ? barcodes_forward[index] : barcodes_reverse[index];
+		List<String> barcodes_i = forward_barcode  ? barcodes_forward : barcodes_reverse;
 		if(barcodes_i.size()==0) return this.bc_len_barcode;
 			
 			int read_len = sa.length();
@@ -219,7 +220,7 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 					List<String>barcodes1 = new ArrayList<String>();
 				//	List<Boolean > forward_l = new ArrayList<Boolean> (); // whether barcode is forward
 					List<Integer> inds1 = new ArrayList<Integer>();
-					getAll(mins, index, barcodes1, inds1, forward_barcode);
+					getAll(mins,  barcodes1, inds1, forward_barcode);
 				//	String left = "NA";
 					
 					//sam.setAttribute(barcode_num_tag, mins.size());

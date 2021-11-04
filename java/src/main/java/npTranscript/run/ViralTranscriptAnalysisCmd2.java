@@ -604,7 +604,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 	public static double fail_thresh1 = 14.0;
 	public static String barcode_list=null;
 	public static String barcode_file=null;
-	public static Barcodes barcodes  = null;
+	public static Barcodes[] barcodes  = null;
 	/**
 	 * Error analysis of a bam file. Assume it has been sorted
 	 */
@@ -624,7 +624,10 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 		PolyAT pAT = new PolyAT();
 		if(barcode_files!=null && barcode_files.length==bamFiles_.length && barcode_files[0] !=null) {
 			System.err.println("using barcodes"+Arrays.asList(barcode_files));
-			barcodes=new Barcodes(barcode_files);
+			barcodes = new Barcodes[barcode_files.length];
+			for(int i= 0;i<barcodes.length; i++){
+			barcodes[i]=new Barcodes(barcode_files[i]);
+			}
 		}
 		
 		// Integer[] basesStart = new Integer[] {0,0,0,0};
@@ -939,8 +942,8 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 						if(RNA[source_index]) throw new RuntimeException("not currently supporting RNA barcodes (but probably could)");
 						try{
 							
-						int for_min =  barcodes.assign( sam,sa, true, start_end_for);
-						int back_min = barcodes.assign( sam,sa, false, start_end_rev);
+						int for_min =  barcodes[source_index].assign( sam,sa, true, start_end_for);
+						int back_min = barcodes[source_index].assign( sam,sa, false, start_end_rev);
 						if( exclude_reads_without_barcode && Math.min(for_min, back_min)> Barcodes.tolerance_barcode){
 							continue;
 						}
@@ -973,7 +976,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 									String umi;
 									if(forward_read){
 										int read_len = sa.length();
-										umi = SequenceUtil.reverseComplement(sa.substring(read_len - startpA, read_len - startB));
+										umi = SequenceUtil.reverseComplement(sa.substring(read_len - startpA+1, read_len - startB+1));
 									}else{
 										umi =  sa.substring(startB, startpA);
 									}

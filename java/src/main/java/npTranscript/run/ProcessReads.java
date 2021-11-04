@@ -16,9 +16,7 @@ import java.util.Map;
 import java.util.Set;
 
 import ch.systemsx.cisd.hdf5.IHDF5Writer;
-import htsjdk.samtools.util.SequenceUtil;
-import npTranscript.cluster.TranscriptUtils;
-import npTranscript.run.ProcessReadFile.Transcripts;
+import npTranscript.run.TranscriptsMap.SuperUmi;
 
 
 
@@ -34,8 +32,8 @@ class ProcessReads{
 	Map<Integer, Integer>[] forward;
 //	Map<Integer, Integer>[] maps; //maps each transcript index to its col position.
 
-	final Transcripts tr;
-	final Transcripts barc;
+	final TranscriptsMap tr;
+	final TranscriptsMap barc;
 	//final 	List<String> barcodes;
 
 	final Set<String> barc_remainder;
@@ -47,6 +45,7 @@ class ProcessReads{
 	final int read_id_index, chrom_index, start_index, end_index, breaks_index, strand_index, polyA_index;
 //	final int bc_index;
 	 int bc_str_index;
+	 final int umi_index;
 	 final int bc_type_index;
 	final int conf_index;
 	
@@ -81,10 +80,10 @@ class ProcessReads{
 		
 	}
 	BufferedReader br;
-	ProcessReads(Transcripts tr, int ncols,int n_barcodes,   InputStream inp, OutputStream rem, int index) throws IOException{
+	ProcessReads(TranscriptsMap tr, int ncols,int n_barcodes,   InputStream inp, OutputStream rem, int index) throws IOException{
 		firstPass = (index==0);
 		this.tr = tr;
-		this.barc = new Transcripts(false);
+		this.barc = new TranscriptsMap(false);
 		this.barc_remainder = new HashSet<String>();
 
 		this.rem = rem;
@@ -122,10 +121,10 @@ class ProcessReads{
 		this.start_index=  header.indexOf("startPos") ;
 		this.end_index =  header.indexOf("endPos") ;
 		this.breaks_index =  header.indexOf("breaks_ref") ;
-
+		this.umi_index = header.indexOf("UMI");
 	//	inds = new int[] {read_id_index, chrom_index, start_index, end_index};
 		//this.bc_index = header.indexOf("barcode_index");
-		this.bc_str_index = header.indexOf("barcode_index");
+		this.bc_str_index = header.indexOf("barcode");//_index");
 		if(bc_str_index<0) bc_str_index = header.indexOf("source");
 		this.conf_index = header.indexOf("confidence");
 		this.bc_type_index = header.indexOf("barcode_type");
@@ -170,28 +169,30 @@ class ProcessReads{
 			return;// remainder;
 		}
 		total_reads++;
-		String barcode_;
-		if(bc_type_index>=0 && false){//using barcode index now
+		String barcode_= line[bc_str_index];
+	/*	if(bc_type_index>=0 && false){//using barcode index now
 			if(line[bc_type_index].endsWith("revC")){
 				barcode_ = SequenceUtil.reverseComplement(line[bc_str_index]);
 			}else{
 				barcode_ = line[bc_str_index];
 			}
 		}else{
-			barcode_ = line[bc_str_index];
+			barcode_ 
 
-		}
+		}*/
 		
-		Integer  barc_ind = this.barc.get(barcode_);
+		Comparable umi = umi_index>=0 ? new SuperUmi(barcode_, line[umi_index]) : barcode_;
+		
+		Integer  barc_ind = this.barc.get( umi);
 		
 		
 		boolean wasNull=false;
 		if(barc_ind==null){
 			wasNull = true;
-			barc_ind = this.barc.getNext(line[bc_str_index],  false);
+			barc_ind = this.barc.getNext(umi, false);
 		}
 		if(barc_ind<indices_size.length && this.indices_size[barc_ind]<ncols){
-			if(wasNull) this.barc.add(line[bc_str_index], barc_ind); //only add if we using it
+			if(wasNull) this.barc.add(umi, barc_ind); //only add if we using it
 			Integer col_index = this.forward[barc_ind].get(trans_ind);
 			if(col_index==null){
 				col_index = this.indices_size[barc_ind];
@@ -348,9 +349,9 @@ class ProcessReads{
 			len1 = len1-1;
 		}
 		String[] barc_array_ = this.barc.getArray(0,len1);
-		int[] barc_array = new int[barc_array_.length];
+		String[] barc_array = new String[barc_array_.length];
 		for(int i=0; i<barc_array.length; i++){
-			barc_array[i] = Integer.parseInt(barc_array_[i]);
+			barc_array[i] = (barc_array_[i].toString());
 		}
 		if(max_col<this.ncols-1){
 			//make col_size smaller to fit data also fit to max cols
@@ -390,7 +391,7 @@ class ProcessReads{
 		altT.writeIntMatrix(prefix+"/counts", read_count);
 		altT.writeIntMatrix(prefix+"/indices", indices);
 		altT.writeIntArray(prefix+"/barcode_usage", barcode_usage);
-		altT.writeIntArray(prefix+"/barcodes", barc_array);
+		altT.writeStringArray(prefix+"/barcodes", barc_array);
 		//altT.close();
 	}
 

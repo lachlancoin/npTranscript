@@ -13,11 +13,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.SequenceInputStream;
-import java.util.ArrayList;
 import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -49,7 +45,7 @@ public class ProcessReadFile extends CommandLine {
 		addString("barcode_file", null, "Name of barcode file", false);
 		addString("inputFileDir", null, "Name of input file", true);
 		addString("outputFile", "out.h5", "Name of output file", false);
-		addString("refFileDir", null, "reference input", true);
+		addString("refFileDir", null, "reference input", false);
 		
 		addString("suffix", ".reads.txt.gz", "suffix of input files", false);
 		
@@ -98,7 +94,7 @@ public class ProcessReadFile extends CommandLine {
 		String[] args = cmdLine.stdParseLine(args1);
 		String[] inpDirs =  cmdLine.getStringVal("inputFileDir").split(":");
 		
-		File refDir = new File( cmdLine.getStringVal("refFileDir"));
+		String refDir =  cmdLine.getStringVal("refFileDir");
 
 		int num_barcodes=cmdLine.getIntVal("num_barcodes");
 		 reorder = cmdLine.getBooleanVal("reorder");
@@ -134,9 +130,11 @@ public class ProcessReadFile extends CommandLine {
 		suffix = cmdLine.getStringVal("suffix");
 		
 		String  outFile = type+"_"+cmdLine.getStringVal("outputFile");	
-	
+		File transcripts_file = null;
+	if(refDir!=null){
 		System.err.println("doing reference");
-		File transcripts_file =  run(refDir, outFile,  null,1); //only one barcode for ref
+		transcripts_file =  run(new File(refDir), outFile,  null,1); //only one barcode for ref
+	}
 		 System.err.println("doing main class");
 		 for(int i=0 ; i<inpDirs.length; i++){
 			 System.err.println("running "+i);
@@ -199,7 +197,7 @@ public class ProcessReadFile extends CommandLine {
 		PrintWriter transcripts_pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(transcripts_out_file))));
 		boolean addCounts = true;
 		
-		Transcripts tr = new Transcripts(transcripts_pw, transcripts_file, addCounts);
+		TranscriptsMap tr = new TranscriptsMap(transcripts_pw, transcripts_file, addCounts);
 		for(int index=0; remainder>0;index++){
 			int  ncols = (int) Math.floor(maxcells/(double)num_barcodes1);
 			
@@ -239,122 +237,6 @@ public class ProcessReadFile extends CommandLine {
 		
 		altT.close();
 		return addCounts ? transcripts_out_file1: transcripts_out_file;
-	}
-	
-	// keeps a uniform list of transcripts
-	public static class Transcripts{
-		//final boolean saveReadID;
-		public Transcripts(boolean addCounts){
-			this.addcount = addCounts;
-			if(addCounts) counts = new ArrayList<Integer>();
-
-		}
-		/** check freq is how often to check to make sure it matches */
-		public void appendCounts(File inF, File outF, int check_freq ) throws IOException {
-			BufferedReader in = new BufferedReader(new InputStreamReader(new GZIPInputStream((new FileInputStream(inF)))));
-			PrintWriter out = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outF))));
-			if(!addcount) throw new RuntimeException("!!");
-			String str = "";
-			for(int i=0; (str = in.readLine())!=null; i++){
-				if(check_freq>0 && i%check_freq==0){
-					String[] st = str.split("\t");
-					if(!st[0].equals(this.cluster_ids.get(i))) throw new RuntimeException("!! not a match");
-				}
-				out.println(str+"\t"+this.counts.get(i));
-			//	String[] st = str.split("\t");
-				
-			}
-			counts.clear();
-			this.addcount = false;
-			in.close();
-			out.close();
-		}
-
-		public Transcripts(PrintWriter pw, File inputF, boolean addCounts) {
-			//this.saveReadID = saveReadID;
-			this.pw = pw;
-			this.addcount = addCounts;
-			if(addCounts) counts = new ArrayList<Integer>();
-			if(inputF!=null){
-				try{
-				//	File inputF = new File(input);
-					if(inputF.exists()){
-						InputStream is = new FileInputStream(inputF);
-						if(inputF.getName().endsWith(".gz" )) is = new GZIPInputStream(is);
-				BufferedReader br = new BufferedReader(new InputStreamReader(is));
-				String str = "";
-				for(int i=0; (str=br.readLine())!=null; i++){
-					String[] st = str.split("\t");
-					cluster_id_map.put(st[0], i);
-					this.cluster_ids.add(st[0]);
-					if(addcount)this.counts.add(0);
-					pw.println(addcount ? str.substring(0, str.lastIndexOf("\t")) : str);
-				}
-				br.close();
-					}
-				}catch(IOException exc){
-					exc.printStackTrace();
-				}
-			}
-		}
-		
-		PrintWriter pw = null;
-		private List<String>cluster_ids = new ArrayList<String>();
-		private List<Integer> counts = null;//new ArrayList<Integer>();
-		
-		private Map<String, Integer> cluster_id_map = new HashMap<String, Integer>();
-		public Integer get(String transcript){
-			return this.cluster_id_map.get(transcript);
-		}
-		
-		 boolean addcount;
-		//assumes is absent
-		public Integer getNext(String transcript,  boolean add){
-			Integer trans_ind = cluster_ids.size();
-			if(add){
-				cluster_id_map.put(transcript,  trans_ind);
-				this.cluster_ids.add(transcript);
-				if(addcount) this.counts.add(0);
-			
-			}
-			return trans_ind;
-		}
-		public void increment(int trans_ind){
-			if(addcount)counts.set(trans_ind, counts.get(trans_ind)+1);
-		}
-		public Integer getAndAdd(String transcript, String[] line,
-				int read_id_index, int chrom_index, int start_index, int end_index, int breaks_index
-				) {
-
-			
-			Integer trans_ind = this.cluster_id_map.get(transcript);
-			if(trans_ind==null){
-				trans_ind = getNext(transcript,  true);
-				if(pw!=null){
-					pw.println(transcript+"\t"+
-							line[read_id_index]+"\t"+
-							line[chrom_index]+"\t"+ line[start_index]+"\t"+line[end_index]+"\t"+line[breaks_index]
-							);
-				}
-			}
-			
-			return trans_ind;
-		}
-		public void add(String transcript, Integer trans_ind){
-			cluster_id_map.put(transcript,  trans_ind);
-			this.cluster_ids.add(transcript);
-			if(addcount) this.counts.add(0);
-		}
-		public String[] getArray() {
-			return cluster_ids.toArray(new String[0]);
-		}
-		public String[] getArray(int offset, int len1) {
-			String[] res = new String[len1];
-			for(int i=0; i<len1; i++){
-				res[i] = this.cluster_ids.get(i+offset);
-			}
-			return res;
-		}
 	}
 	
 	
