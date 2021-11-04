@@ -96,6 +96,11 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 	public static boolean exclude_polyT_strand=false;
 	public static boolean exclude_reads_without_barcode=false;
 	public static boolean verbose=false;
+	
+	public static boolean reverseForward = true;
+	public static int max_umi = 100; // including umi + barcode.  This should be bit bigger for getting polyT length , i.e. if reverseForward=false
+	public static int min_umi = 15;// including umi + barcode
+	
 public static int readsToSkip=0;
 	
 
@@ -113,7 +118,9 @@ public static int readsToSkip=0;
 		addBoolean("verbose", false, "verbose output", false);
 
 		addString("optsType", null, "Which column in opts file", false);
-		
+		addInt("max_umi",150,"Maximum size of UMI + barcode and possibly polyT minus bc_len_AT if reverse forward is true");
+		addInt("min_umi",15,"Minimum size of UMI + barcode");
+		addBoolean("reverseForward", false, "For finding polyA tail whether to reverse the polyT before edlib step.  If false will include some polyT ");
 		addInt("barcode_extent", 200, "search for barcode in first Xbp");
 		addInt("barcode_ignore", 0, "search for barcode in first Ybp");
 		addString("barcode_list",null, "list for decoding barcodes (used if more than one bamfile when streaming from fastq");
@@ -258,6 +265,9 @@ public static int readsToSkip=0;
 		 maxReads = cmdLine.getIntVal("maxReads");
 		//SequenceUtils.max_per_file = maxReads*4;
 		 ViralTranscriptAnalysisCmd2.supplementaryQ =cmdLine.getIntVal("supplementaryQ");
+		reverseForward = cmdLine.getBooleanVal("reverseForward");
+		max_umi = cmdLine.getIntVal("max_umi");
+		min_umi = cmdLine.getIntVal("min_umi");
 		
 		
 		Outputs.writeH5 = cmdLine.getBooleanVal("writeH5");
@@ -798,6 +808,10 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 			List<SAMRecord> sams = new ArrayList<SAMRecord>();
 			String prev_readnme = "";
 			System.err.println("RNA "+Arrays.asList(RNA));
+			int[] start_end_for = new int[2];
+			int[] start_end_rev = new int[2];
+			int[] start_for_pA = new int[2];
+			int[] start_rev_pA = new int[2];
 			outer: for ( ij=0; samIter.hasNext() ;ij++ ) {
 				
 				if(ij%1000 ==0){
@@ -905,8 +919,9 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 					if(RNA[source_index]){
 						forward_read = true;
 					}else{
-						int forward_read_AT =PolyAT.assign(sam, sa, true);
-						int backward_read_AT =PolyAT.assign(sam, sa, false);// this assigns tags indicating the orientation of the original read as + or -;
+					//	boolean reverseForward = true;//true; // true gives longer UMI with polyA in it.  This could possibly be  a short cut to estimating polyA
+						int forward_read_AT =PolyAT.assign(sam, sa, true, reverseForward, start_for_pA);
+						int backward_read_AT =PolyAT.assign(sam, sa, false,reverseForward, start_rev_pA);// this assigns tags indicating the orientation of the original read as + or -;
 					
 						if(forward_read_AT < backward_read_AT && forward_read_AT < PolyAT.edit_thresh_AT){
 							forward_read=true;
@@ -924,8 +939,8 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 						if(RNA[source_index]) throw new RuntimeException("not currently supporting RNA barcodes (but probably could)");
 						try{
 							
-						int for_min =  barcodes.assign( sam,sa, true);
-						int back_min = barcodes.assign( sam,sa, false);
+						int for_min =  barcodes.assign( sam,sa, true, start_end_for);
+						int back_min = barcodes.assign( sam,sa, false, start_end_rev);
 						if( exclude_reads_without_barcode && Math.min(for_min, back_min)> Barcodes.tolerance_barcode){
 							continue;
 						}
@@ -941,6 +956,32 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 						}
 						if(forward_read!=null && forward_read1!=null){
 							if(forward_read.equals(forward_read1)){
+								int startpA;
+								int startB;
+								if(forward_read){ //reverse barcode at 3'end
+									 startB =start_end_for[1];
+									 startpA = start_for_pA[1];
+								}else{
+									 startB =start_end_rev[0];
+									 startpA = start_rev_pA[0];
+									
+								}
+								int diff = startpA-startB ;
+							
+//								System.err.println(forward_read+" "+startB+" "+startpA+" "+diff);
+								if(diff< max_umi && diff>min_umi){
+									String umi;
+									if(forward_read){
+										int read_len = sa.length();
+										umi = SequenceUtil.reverseComplement(sa.substring(read_len - startpA, read_len - startB));
+									}else{
+										umi =  sa.substring(startB, startpA);
+									}
+								//	System.err.println(forward_read+" "+startB+" "+startpA+" "+diff+" "+umi);
+
+									sam.setAttribute(Barcodes.umi_tag, umi);
+								}
+								
 								sam.setAttribute(Barcodes.barcode_confidence_tag, "high");
 							}else{
 								sam.setAttribute(Barcodes.barcode_confidence_tag, "low");

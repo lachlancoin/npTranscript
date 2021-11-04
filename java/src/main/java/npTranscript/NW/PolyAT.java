@@ -119,22 +119,55 @@ public static String getInfo(SAMRecord sam) {
 	 * does not modify sam record
 	 * returns polyA edit distance
 	 * forward means we assume it has polyA
+	 * reverse forward is default so as not to in
 	 * */
-	public static int assign(SAMRecord sam, String sequence, boolean forward) {
+	public static int assign(SAMRecord sam, String sequence, boolean forward, boolean reverse_forward, int[] start_end) {
 		int read_len = sequence.length();
+		
 		
 		int len = max_dist_to_end_AT;
 		if(read_len < len) return bc_len_AT;
 		int offset = forward ? Math.max(0, read_len-len) : 0;
-		String sequence_  = sequence.substring(offset, Math.min(read_len, offset+len));
-		String barc = forward ? polyA : polyT;
+		
+		
+		String sequence_1  = sequence.substring(offset, Math.min(read_len, offset+len));
+		String sequence_ ;
+		if(reverse_forward){
+			sequence_ = forward ?  SequenceUtil.reverseComplement(sequence_1) : sequence_1; // 
+		}else{ // reverscomplement the not forward strand
+			sequence_ = !forward ?  SequenceUtil.reverseComplement(sequence_1) : sequence_1; // 
+
+		}
+		
+		String barc =reverse_forward ?  polyT : polyA; //forward ? polyA : polyT;
 		EdlibAlignResult.ByValue resA_r=		EdlibLibrary.INSTANCE.edlibAlign(barc,bc_len_AT, sequence_, sequence_.length(), config);
 		int distA_r=	editDist(resA_r);
-		int	 st_A = resA_r.startLocations.getValue()+offset;
-		int end_A = read_len -(resA_r.endLocations.getValue()+offset);
+//		int	 st_A = resA_r.startLocations.getValue()+offset;
+//		int end_A = read_len -(resA_r.endLocations.getValue()+offset);
+		int st_A, end_A;
+		if(reverse_forward){
+			if(forward){ // rev complemented end of sequence
+				end_A = resA_r.startLocations.getValue();
+				st_A =  read_len  - resA_r.endLocations.getValue();
+			}else{
+				st_A = resA_r.startLocations.getValue();
+				end_A = read_len  - resA_r.endLocations.getValue();
+			}
+		}else{
+			int offset1 = Math.max(0, read_len-len);
+			if(forward){  // this is normal
+				end_A = read_len -(resA_r.endLocations.getValue()+offset1);
+				st_A =  resA_r.startLocations.getValue()+offset1;
+			}else{ // rev complemented the start of the sequence
+				st_A = read_len -(resA_r.endLocations.getValue()+offset1);
+				end_A =  resA_r.startLocations.getValue()+offset1;
+			}
+		}
+		
 		String  pAT = distA_r+"\t"+st_A+","+(end_A);
 		sam.setAttribute(forward ? PolyAT.polyAT_forward_tag: PolyAT.polyAT_reverse_tag, pAT);
-	
+		start_end[0] = st_A;
+		start_end[1] = end_A;
 		/*if(verbose && false){
 //			System.err.println();
 			System.err.println("no polyA or polyT "+distA_r);

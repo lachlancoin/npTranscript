@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -31,7 +32,7 @@ public class Barcodes {
 public static boolean verbose=false;	
 	public static String barcode_forward_tag = "BF";
 	public static String barcode_reverse_tag = "BR";
-
+public static String umi_tag = "UM";
 	public static String barcode_confidence_tag = "BI";
 	//public  static String barcode_dist_tag="BD";
 //	public  static String barcode_num_tag="BN";
@@ -178,10 +179,12 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 			
 /** finds barcodes within len bp of end and start, excluding the last and first chop bp 
  * 
- * assumes forward _read == reverse barcode at 3'end  and reverse_read == forward barcode at 5'end
+ * assumes forward _read == reverse barcode at 3'end +polyA   and reverse_read == forward barcode at 5'end + polyT
  * sa is the original read uncorrected by minimap2
+
  * */
-	public int assign(SAMRecord sam, String sa, boolean forward_read) {
+	public int assign(SAMRecord sam, String sa, boolean forward_read, int[] startend) {
+		Arrays.fill(startend, -1);
 	//	boolean neg_align=sam.getReadNegativeStrandFlag();
     //	boolean forward_align = !neg_align; // whether read is forward, we need this so we know if we have to rev compl to get original orientation
 		
@@ -246,7 +249,10 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 					//	}
 						//left=min_ind==0? "5'":"3'";
 						 //sb.append(desc[min_ind]);sb.append(",");
-						 sb.append(st);sb.append(",");sb.append(read_len-end);sb.append("\t");
+							 int en = read_len-end;
+						 sb.append(st);sb.append(",");sb.append(en);sb.append("\t");
+						 startend[0] = st;
+						 startend[1] = en;
 						//sb.append(forward_barcode ? "forward": "revC");
 						//Object pAT = sam.getAttribute(PolyAT.polyAT_tag);
 						
@@ -263,7 +269,7 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 				return minv;
 	}
 	public static String getHeader(){
-		return "barcode\tbarcode_index\tbarcode_dist\tbarcode_pos\tbarcode_type\tconfidence";
+		return "barcode\tbarcode_index\tbarcode_dist\tbarcode_pos\tbarcode_type\tconfidence\tUMI";
 	}
 	static String no_res = "null\tNA\tNA\tnull\tnone";
 	static String both_res = "null\tNA\tNA\tnull\tboth";
@@ -272,6 +278,7 @@ public static String getInfo(SAMRecord sam) {
 	String rev = (String) sam.getAttribute(barcode_reverse_tag);
 	String comb = no_res;
 	String conf = (String) sam.getAttribute(barcode_confidence_tag);;
+	String umi = (String) sam.getAttribute(umi_tag);;
 	if(forward==null && rev==null){
 		
 	   comb = no_res;	
@@ -294,7 +301,7 @@ public static String getInfo(SAMRecord sam) {
 	}else if(rev!=null){
 		comb = rev;
 	}
-	return comb +"\t"+conf;
+	return comb +"\t"+conf+"\t"+umi;
 			
 }
 	
