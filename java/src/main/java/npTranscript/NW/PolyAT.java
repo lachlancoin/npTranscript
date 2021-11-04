@@ -26,6 +26,8 @@ public class PolyAT {
 	public static int edit_thresh_AT=1; // how many mismatches
 	public static int max_dist_to_end_AT=20;  //how far from ends to search  150 for cDNA 100 for dRNA
 	
+	public static int dist_to_ignore_AT = 0;
+	
 	public static String polyAT_forward_tag = "AA";
 	public static String polyAT_reverse_tag = "TT";
 
@@ -127,10 +129,14 @@ public static String getInfo(SAMRecord sam) {
 		
 		int len = max_dist_to_end_AT;
 		if(read_len < len) return bc_len_AT;
-		int offset = forward ? Math.max(0, read_len-len) : 0;
+		int offset = forward ? Math.max(0, read_len-len) : dist_to_ignore_AT;
 		
-		
-		String sequence_1  = sequence.substring(offset, Math.min(read_len, offset+len));
+		//String str1 = 
+		//		forward_barcode ? sa.substring(barcode_ignore,Math.min(barcode_extent,read_len)) : sa.substring(Math.max(0, read_len-barcode_extent), read_len-barcode_ignore);
+		//int offset = forward_barcode ?  barcode_ignore : read_len-barcode_extent;
+	
+		String sequence_1  = 
+				forward ? sequence.substring(offset, read_len-dist_to_ignore_AT) : sequence.substring(dist_to_ignore_AT, Math.min(len, read_len)) ;
 		String sequence_ ;
 		if(reverse_forward){
 			sequence_ = forward ?  SequenceUtil.reverseComplement(sequence_1) : sequence_1; // 
@@ -147,11 +153,11 @@ public static String getInfo(SAMRecord sam) {
 		int st_A, end_A;
 		if(reverse_forward){
 			if(forward){ // rev complemented end of sequence
-				end_A = resA_r.startLocations.getValue();
-				st_A =  read_len  - resA_r.endLocations.getValue();
+				end_A = resA_r.startLocations.getValue()+dist_to_ignore_AT;
+				st_A =  read_len  - (resA_r.endLocations.getValue()+dist_to_ignore_AT);
 			}else{
-				st_A = resA_r.startLocations.getValue();
-				end_A = read_len  - resA_r.endLocations.getValue();
+				st_A = resA_r.startLocations.getValue()+dist_to_ignore_AT;
+				end_A = read_len  - (resA_r.endLocations.getValue()+dist_to_ignore_AT);
 			}
 		}else{
 			int offset1 = Math.max(0, read_len-len);

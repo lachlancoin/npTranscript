@@ -15,11 +15,14 @@ import java.util.concurrent.ThreadPoolExecutor;
 
 import htsjdk.samtools.AlignmentBlock;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.SequenceUtil;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.tools.seq.SequenceUtils;
 import npTranscript.NW.PolyAT;
+import npTranscript.run.Barcodes;
 import npTranscript.run.ViralChimericReadsAnalysisCmd;
+import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 public class IdentityProfileHolder {
 	
@@ -28,7 +31,7 @@ public class IdentityProfileHolder {
 		if(executor instanceof ThreadPoolExecutor){
 	    	while(((ThreadPoolExecutor)executor).getActiveCount()>0){
 	    		try{
-		    	System.err.println("IdentityProfileHolder: awaiting completion "+((ThreadPoolExecutor)executor).getActiveCount());
+		    	//System.err.println("IdentityProfileHolder: awaiting completion "+((ThreadPoolExecutor)executor).getActiveCount());
 		    	//Thread.currentThread();
 				Thread.sleep(sleep);
 	    		}catch(InterruptedException exc){
@@ -266,9 +269,15 @@ static Comparator comp_q = new SamComparator(true);
 	final Integer[] readCounts = new Integer[] {0,0,0};
 	static Alphabet alph = Alphabet.DNA();
 	public void identity1(List<SAMRecord>sam_1,
-			 boolean cluster_reads,     List<Sequence> genome
+			 boolean cluster_reads,     List<Sequence> genome, final int primaryIndex
 			) {
-		
+		if(primaryIndex<0) {
+			System.err.println("no primary index");
+			return;
+		}
+		if(primaryIndex>0){
+			throw new RuntimeException("expected at zero");
+		}
 		//List<SAMRecord>sam_1 = new ArrayList<SAMRecord>();
 		//sam_1.addAll(Arrays.asList(sam));
 		if(sam_1.size()==0){
@@ -284,10 +293,17 @@ static Comparator comp_q = new SamComparator(true);
 	//	}
 		//Boolean backwardStrand =null;
 		
+		
+		
 		Runnable run = new Runnable(){
 			public void run(){
 				if(sam_1.size()==0) throw new RuntimeException("!!");
-
+				boolean include = process(sam_1.get(primaryIndex));
+				if(!include){
+				
+					return ;
+				}
+				
 				Sequence readSeq = new Sequence(alph, sam_1.get(0).getReadString(), sam_1.get(0).getReadName());
 
 		//		System.err.println("HHH,"+chrom_+","+sam.getAlignmentStart()+ ","+sam.getAlignmentEnd()+","+sam.getReadName()+","
@@ -388,6 +404,142 @@ static Comparator comp_q = new SamComparator(true);
 			executor.shutdown();
 		}
 		
+	}
+	
+
+
+	private static boolean process(SAMRecord sam) {
+		boolean reverseForward = ViralTranscriptAnalysisCmd2.reverseForward;
+		int source_index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
+
+		boolean RNA = ViralTranscriptAnalysisCmd2.RNA[source_index];
+		if(sam.isSecondaryOrSupplementary()){
+			throw new RuntimeException();
+		}
+		int[] start_end_for = new int[2];
+		int[] start_end_rev = new int[2];
+		int[] start_for_pA = new int[2];
+		int[] start_rev_pA = new int[2];
+		
+		
+			String sa = sam.getReadString();
+			boolean align_reverse = sam.getReadNegativeStrandFlag();
+			if(align_reverse){  
+				// this converts read back to original orientation
+				sa = SequenceUtil.reverseComplement(sa);
+			}
+			Boolean forward_read=null;
+			
+			if(RNA){
+				forward_read = true;
+			}else{
+			//	boolean reverseForward = true;//true; // true gives longer UMI with polyA in it.  This could possibly be  a short cut to estimating polyA
+				int forward_read_AT =PolyAT.assign(sam, sa, true, reverseForward, start_for_pA);
+				int backward_read_AT =PolyAT.assign(sam, sa, false,reverseForward, start_rev_pA);// this assigns tags indicating the orientation of the original read as + or -;
+			
+				if(forward_read_AT < backward_read_AT && forward_read_AT < PolyAT.edit_thresh_AT){
+					forward_read=true;
+				}
+				if(forward_read_AT > backward_read_AT && backward_read_AT < PolyAT.edit_thresh_AT){
+					forward_read=false;
+				}
+			}
+//			System.err.println("RNA "+RNA[source_index]);
+				if(forward_read!=null){
+					sam.setAttribute(PolyAT.read_strand_tag, forward_read ? "+" : "-");
+				}
+			
+			if(ViralTranscriptAnalysisCmd2.barcodes!=null){
+				if(forward_read==null) return false;
+				
+				if(RNA) throw new RuntimeException("not currently supporting RNA barcodes (but probably could)");
+				try{
+					int for_min;
+				if(forward_read){
+					for_min = ViralTranscriptAnalysisCmd2. barcodes[source_index].assign( sam,sa, true, start_end_for);
+				}else{
+					for_min = ViralTranscriptAnalysisCmd2.barcodes[source_index].assign( sam,sa, false, start_end_rev);
+				}
+				if( ViralTranscriptAnalysisCmd2.exclude_reads_without_barcode && for_min> Barcodes.tolerance_barcode){
+					return false;
+				}
+				/*
+				Boolean forward_read1 = null;
+				if(for_min < Barcodes.tolerance_barcode && for_min < back_min){
+					forward_read1 = true;
+				}
+				if(back_min < Barcodes.tolerance_barcode && for_min > back_min){
+					forward_read1 = false;
+				}*/
+			//	if(forward_read==null && forward_read1!=null){
+						sam.setAttribute(PolyAT.read_strand_tag, forward_read ? "+" : "-");
+				//}
+				//if(forward_read!=null && forward_read1!=null){
+					if(for_min <= Barcodes.tolerance_barcode) { //forward_read.equals(forward_read1)){
+						int startpA;
+						int startB;
+						if(forward_read){ //reverse barcode at 3'end
+							 startB =start_end_for[1];
+							 startpA = start_for_pA[1];
+						}else{
+							 startB =start_end_rev[0];
+							 startpA = start_rev_pA[0];
+							
+						}
+						int diff = startpA-startB ;
+					
+//						System.err.println(forward_read+" "+startB+" "+startpA+" "+diff);
+						if(diff< ViralTranscriptAnalysisCmd2.max_umi && diff>ViralTranscriptAnalysisCmd2.min_umi){
+							String umi;
+							if(forward_read){
+								
+								String barcode = (String)sam.getAttribute(Barcodes.barcode_forward_tag);
+								//System.err.println(barcode);
+								int read_len = sa.length();
+								umi = SequenceUtil.reverseComplement(sa.substring(read_len - startpA, read_len - startB));
+								//String umi1 = SequenceUtil.reverseComplement(sa.substring(read_len - startpA, read_len - startB+1));
+							//	System.err.println(umi);
+								//System.err.println(umi1);
+							//	System.err.println("");
+							}else{
+								umi =  sa.substring(startB, startpA);
+							}
+						//	System.err.println(forward_read+" "+startB+" "+startpA+" "+diff+" "+umi);
+
+							sam.setAttribute(Barcodes.umi_tag, umi);
+						}
+						
+						sam.setAttribute(Barcodes.barcode_confidence_tag, "high");
+					}else{
+						sam.setAttribute(Barcodes.barcode_confidence_tag, "low");
+					}
+			//	}else{
+				//	sam.setAttribute(Barcodes.barcode_confidence_tag, "NA");
+			//	}
+				
+				}catch(Exception exc){
+					exc.printStackTrace();
+				}
+			}
+			if(Annotation.enforceStrand ){
+				if(forward_read==null ){
+					// cannot determine strand
+					if( ViralTranscriptAnalysisCmd2.exclude_indeterminate_strand) return false;
+				}
+				if(forward_read!=null && RNA && !forward_read ){
+					if(ViralTranscriptAnalysisCmd2.exclude_polyT_strand) {
+							System.err.println ("warning RNA should always be forward strand, found polyT .. excluding ");
+
+						return false;
+					}
+				}
+				if(forward_read!=null  &&   !RNA){
+					// flip if the original read is not forward
+					int flip  = forward_read.booleanValue()!= align_reverse ? 1 : 0;
+					sam.setAttribute(PolyAT.flipped_tag, flip);
+				}
+			}
+			return true;
 	}
 
 	

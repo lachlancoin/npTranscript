@@ -130,6 +130,8 @@ public static int readsToSkip=0;
 		addInt("bc_len_AT",6,"Length of polyA or polyT tract to look for at ends");
 		addInt("edit_thresh_AT",1,"Max edit dist (inclusive for AT tracts");
 		addInt("max_dist_to_end_AT",20,"Max distance from end of reads to find AT");
+		addInt("dist_to_ignore_AT",0,"Distance to ignore for polyA at ends of read");
+
 
 		addBoolean("exclude_indeterminate_strand", false,"whether to exclude if we cnat figure out strand for cDNA");
 		addBoolean("exclude_polyT_strand", false,"whether to exclude RNA if it has a polyT strand");
@@ -391,7 +393,7 @@ public static int readsToSkip=0;
 		
 		
 		
-			errorAnalysis(bamFiles,barcode_files,  RNA,reference, readList,
+			errorAnalysis(bamFiles,barcode_files,  reference, readList,
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  
 				Outputs.calcBreaks, annotByBreakPosition,  chrs, chrsToIgnore,  isoformDepthThresh, coverageDepthThresh, probInclude, fastq, 
 				chromsToRemap);
@@ -493,6 +495,8 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 		 PolyAT.set_bc_len(cmdLine.getIntVal("bc_len_AT"));
 		 PolyAT.edit_thresh_AT = cmdLine.getIntVal("edit_thresh_AT");
 		 PolyAT.max_dist_to_end_AT = cmdLine.getIntVal("max_dist_to_end_AT");
+		 PolyAT.dist_to_ignore_AT = cmdLine.getIntVal("dist_to_ignore_AT");
+
 
 		ViralTranscriptAnalysisCmd2.exclude_indeterminate_strand= cmdLine.getBooleanVal("exclude_indeterminate_strand");
 		ViralTranscriptAnalysisCmd2.exclude_polyT_strand= cmdLine.getBooleanVal("exclude_polyT_strand");
@@ -610,7 +614,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 	 */
 	static void errorAnalysis(String[] bamFiles_,
 			String[] barcode_files,
-			boolean[] RNA, String refFile,  String[] readList,    String resdir, 
+			 String refFile,  String[] readList,    String resdir, 
 			String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads, 
 			boolean calcBreaks1 ,  boolean annotByBreakPosition, String chrToInclude, String chrToIgnore, 
@@ -802,19 +806,17 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 			int numNotAligned = 0;
 			int numSecondary =0;
 			
-			float time0 = System.currentTimeMillis();//- tme0)/1000.0
+			long time0 = System.currentTimeMillis();//- tme0)/1000.0
 			int cnt0=0;
 			int ij=0;
 			String previousRead = "";
 			int previousRefIndex=-1;
 			Set<String> skipped = new HashSet<String>();
 			List<SAMRecord> sams = new ArrayList<SAMRecord>();
+			int primaryIndex=-1;
 			String prev_readnme = "";
 			System.err.println("RNA "+Arrays.asList(RNA));
-			int[] start_end_for = new int[2];
-			int[] start_end_rev = new int[2];
-			int[] start_for_pA = new int[2];
-			int[] start_rev_pA = new int[2];
+		
 			outer: for ( ij=0; samIter.hasNext() ;ij++ ) {
 				
 				if(ij%1000 ==0){
@@ -825,6 +827,9 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 				    long freeMemory = Runtime.getRuntime().maxMemory() - usedMemory;
 					System.err.println("used mem "+((double) usedMemory)/1e6+ "mb "+ij);
 					System.err.println("free mem "+((double) freeMemory)/1e6+ "mb "+ij);
+					
+					
+					
 				}
 				
 				final SAMRecord sam=samIter.next();
@@ -867,7 +872,6 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 			//	
 				
 				if(sam==null) break outer;
-				int source_index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
 				
 			
 			
@@ -910,127 +914,24 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 					continue;
 					}
 				}
-				if(!sam.isSecondaryOrSupplementary()){
-					String sa = sam.getReadString();
-					boolean align_reverse = sam.getReadNegativeStrandFlag();
-					if(align_reverse){  
-						// this converts read back to original orientation
-						sa = SequenceUtil.reverseComplement(sa);
-					}
-					Boolean forward_read=null;
-					
-					if(RNA[source_index]){
-						forward_read = true;
-					}else{
-					//	boolean reverseForward = true;//true; // true gives longer UMI with polyA in it.  This could possibly be  a short cut to estimating polyA
-						int forward_read_AT =PolyAT.assign(sam, sa, true, reverseForward, start_for_pA);
-						int backward_read_AT =PolyAT.assign(sam, sa, false,reverseForward, start_rev_pA);// this assigns tags indicating the orientation of the original read as + or -;
-					
-						if(forward_read_AT < backward_read_AT && forward_read_AT < PolyAT.edit_thresh_AT){
-							forward_read=true;
-						}
-						if(forward_read_AT > backward_read_AT && backward_read_AT < PolyAT.edit_thresh_AT){
-							forward_read=false;
-						}
-					}
-//					System.err.println("RNA "+RNA[source_index]);
-						if(forward_read!=null){
-							sam.setAttribute(PolyAT.read_strand_tag, forward_read ? "+" : "-");
-						}
-					
-					if(barcodes!=null){
-						if(RNA[source_index]) throw new RuntimeException("not currently supporting RNA barcodes (but probably could)");
-						try{
-							
-						int for_min =  barcodes[source_index].assign( sam,sa, true, start_end_for);
-						int back_min = barcodes[source_index].assign( sam,sa, false, start_end_rev);
-						if( exclude_reads_without_barcode && Math.min(for_min, back_min)> Barcodes.tolerance_barcode){
-							continue;
-						}
-						Boolean forward_read1 = null;
-						if(for_min < Barcodes.tolerance_barcode && for_min < back_min){
-							forward_read1 = true;
-						}
-						if(back_min < Barcodes.tolerance_barcode && for_min > back_min){
-							forward_read1 = false;
-						}
-						if(forward_read==null && forward_read1!=null){
-								sam.setAttribute(PolyAT.read_strand_tag, forward_read1 ? "+" : "-");
-						}
-						if(forward_read!=null && forward_read1!=null){
-							if(forward_read.equals(forward_read1)){
-								int startpA;
-								int startB;
-								if(forward_read){ //reverse barcode at 3'end
-									 startB =start_end_for[1];
-									 startpA = start_for_pA[1];
-								}else{
-									 startB =start_end_rev[0];
-									 startpA = start_rev_pA[0];
-									
-								}
-								int diff = startpA-startB ;
-							
-//								System.err.println(forward_read+" "+startB+" "+startpA+" "+diff);
-								if(diff< max_umi && diff>min_umi){
-									String umi;
-									if(forward_read){
-										int read_len = sa.length();
-										umi = SequenceUtil.reverseComplement(sa.substring(read_len - startpA+1, read_len - startB+1));
-									}else{
-										umi =  sa.substring(startB, startpA);
-									}
-								//	System.err.println(forward_read+" "+startB+" "+startpA+" "+diff+" "+umi);
-
-									sam.setAttribute(Barcodes.umi_tag, umi);
-								}
-								
-								sam.setAttribute(Barcodes.barcode_confidence_tag, "high");
-							}else{
-								sam.setAttribute(Barcodes.barcode_confidence_tag, "low");
-							}
-						}else{
-							sam.setAttribute(Barcodes.barcode_confidence_tag, "NA");
-						}
-						
-						}catch(Exception exc){
-							exc.printStackTrace();
-						}
-					}
-					if(Annotation.enforceStrand ){
-						if(forward_read==null ){
-							// cannot determine strand
-							if( exclude_indeterminate_strand) continue;
-						}
-						if(forward_read!=null && RNA[source_index] && !forward_read ){
-							if(exclude_polyT_strand) {
-									System.err.println ("warning RNA should always be forward strand, found polyT .. excluding ");
-
-								continue;
-							}
-						}
-						if(forward_read!=null  &&   !RNA[source_index]){
-							// flip if the original read is not forward
-							int flip  = forward_read.booleanValue()!= align_reverse ? 1 : 0;
-							sam.setAttribute(PolyAT.flipped_tag, flip);
-						}
-					}
-					
-					
-					
-					
-				}
+				int source_index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
+				
 				
 					if(sams.size()>0 && (!sam.getReadName().equals(previousRead) )){
 						try{
-							profile.identity1(new ArrayList<SAMRecord>(sams),  cluster_reads,     genomes);
+							
+							profile.identity1(new ArrayList<SAMRecord>(sams),  cluster_reads,     genomes, primaryIndex);
 							sams.clear();
+							primaryIndex=-1;
 						}catch(NumberFormatException exc){
 						
 							exc.printStackTrace();
 						}
 					}
-					
+					if(!sam.isSecondaryOrSupplementary()){
+						primaryIndex = sams.size();
+						
+					}
 					sams.add(sam);
 
 					previousRead = sam.getReadName();
@@ -1039,18 +940,13 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 			if(sams.size()>0){
 				try{
 					
-					profile.identity1(new ArrayList<SAMRecord>(sams),  cluster_reads,     genomes);
+					profile.identity1(new ArrayList<SAMRecord>(sams),  cluster_reads,     genomes, primaryIndex);
 					sams.clear();
 				}catch(NumberFormatException exc){
 					exc.printStackTrace();
 				}
 			}
-			{
-				double timeperread = (double) ( System.currentTimeMillis() - time0)/(double) (ij-cnt0);
-				System.err.println(timeperread+" milliseconds per read at "+ij);
-				time0 = System.currentTimeMillis();
-				//cnt0= ij;
-			}
+			
 			
 			for(int ii=0; ii<samReaders.length; ii++){
 			if(samReaders[ii] !=null) samReaders[ii].close();
@@ -1059,7 +955,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 		
 		
 			if(profile!=null){
-				IdentityProfileHolder.waitOnThreads(100);
+				IdentityProfileHolder.waitOnThreads(300);
 				//profile.printBreakPoints(currentIndex);
 				//profile.getConsensus();
 				/*if(TranscriptUtils.writeAnnotP) {
@@ -1075,10 +971,17 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 			}*/
 			
 				
-				
+			{
+				long delta =  System.currentTimeMillis() -  time0;
+				double timeperread =  ((double)delta)/ ((double)ij);
+				System.err.println(timeperread+" milliseconds per read at "+ij);
+				//time0 = System.currentTimeMillis();
+				//cnt0= ij;
+			}	
 	//if(anno!=null) anno.close();
 	//	if(annotation_pw!=null) annotation_pw.close();
 	}
+
 	
 }
  
