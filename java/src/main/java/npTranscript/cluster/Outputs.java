@@ -228,7 +228,7 @@ public class Outputs{
 			 readClusters = new PrintWriter(
 					new OutputStreamWriter(os));
 			 
-			 OutputStream os1 = new FileOutputStream(reads_file+".unmapped.gz");
+			 OutputStream os1 = new FileOutputStream(reads_file+".unmapped.gz", !overwrite);
 				// boolean gzip = true;
 				os1 = new GZIPOutputStream(os1);
 				 unmapped = new PrintWriter(
@@ -327,6 +327,7 @@ if(last_id==null){
 			String path = reads_file.getAbsolutePath();
 			reads_file.delete();
 			Files.move(Paths.get(newF.getAbsolutePath()), Paths.get(path));
+			System.out.println("last usable is  "+last);
 			return last;
 			
 		}
