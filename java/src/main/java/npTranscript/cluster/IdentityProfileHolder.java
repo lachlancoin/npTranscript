@@ -442,10 +442,10 @@ static Comparator comp_q = new SamComparator(true);
 				int forward_read_AT =PolyAT.assign(sam, sa, true, reverseForward, start_for_pA);
 				int backward_read_AT =PolyAT.assign(sam, sa, false,reverseForward, start_rev_pA);// this assigns tags indicating the orientation of the original read as + or -;
 			
-				if(forward_read_AT < backward_read_AT && forward_read_AT < PolyAT.edit_thresh_AT){
+				if(forward_read_AT < backward_read_AT && forward_read_AT <= PolyAT.edit_thresh_AT){
 					forward_read=true;
 				}
-				if(forward_read_AT > backward_read_AT && backward_read_AT < PolyAT.edit_thresh_AT){
+				if(forward_read_AT > backward_read_AT && backward_read_AT <= PolyAT.edit_thresh_AT){
 					forward_read=false;
 				}
 			}

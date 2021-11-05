@@ -1,7 +1,8 @@
---optsType=RNA		;		--optsType=cDNA  ;	 --optsType=sc_cDNA
+--optsType=RNA		;		--optsType=cDNA  ;	 --optsType=sc_cDNA ;	 --optsType=sc_cDNA_Illumina
 #--reference=~/github/npTranscript/data/U13369/combined.fa.gz 
 --reference=/home/lachlan/github/npTranscript/data/U13369/combined.fa.gz  ### for fusion
  #--maxReads=1000
+--overwrite=false
 --sequential=true 
 --sorted=false
 --bin0=100
@@ -18,6 +19,7 @@
 --coverageDepthThresh=100
 --writeH5=false
 --qual=10
+--illumina=false ; --illumina=false ; --illumina=false ; --illumina=true
 --fail_thresh=0
 --supplementaryQ=1   ### if this is set to 1000 then essentially supplementary are not allowed.  This controls if fusions are reported
 
@@ -34,13 +36,14 @@
 
 #barcodes
 --exclude_reads_without_barcode=false
---barcode_extent=100  ## extent of start end read for barcode
---barcode_ignore=0  ## how much to ignore for barcode
+--barcode_extent=100; --barcode_extent=100 ; --barcode_extent=100 ; --barcode_extent=100   ## extent of start end read for barcode
+--barcode_ignore=12 ; --barcode_ignore=12 ; --barcode_ignore=12 ; --barcode_ignore=0  ## how much to ignore for barcode
 --barcode_list=barcode_list.txt  ## mapping from fastq or bam to barcodes
-
+--tolerance_barcode=1 ; --tolerance_barcode=1 ;  --tolerance_barcode=1 ;  --tolerance_barcode=0 
 ##polyA
---bc_len_AT=8 		; --bc_len_AT=8       ; --bc_len_AT=8 
---edit_thresh_AT=1 	; --edit_thresh_AT=1  ; --edit_thresh_AT=1 
---max_dist_to_end_AT=50 ; --max_dist_to_end_AT=50  ; --max_dist_to_end_AT=100   ## need longer for sc_cDNA
+--bc_len_AT=8 		; --bc_len_AT=8       ; --bc_len_AT=8 ;   --bc_len_AT=8 
+--edit_thresh_AT=1 	; --edit_thresh_AT=1  ; --edit_thresh_AT=1  ; --edit_thresh_AT=0
+--max_dist_to_end_AT=50 ; --max_dist_to_end_AT=50  ; --max_dist_to_end_AT=100 ;  --max_dist_to_end_AT=100   ## need longer for sc_cDNA
+--dist_to_ignore_AT=0 ; --dist_to_ignore_AT=0 ; --dist_to_ignore_AT=50 ;  --dist_to_ignore_AT=0
 --exclude_indeterminate_strand=true
 --exclude_polyT_strand=false

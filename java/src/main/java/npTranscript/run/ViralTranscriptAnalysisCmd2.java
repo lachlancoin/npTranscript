@@ -120,6 +120,7 @@ public static int readsToSkip=0;
 		addString("optsType", null, "Which column in opts file", false);
 		addInt("max_umi",150,"Maximum size of UMI + barcode and possibly polyT minus bc_len_AT if reverse forward is true");
 		addInt("min_umi",15,"Minimum size of UMI + barcode");
+		addInt("tolerance_barcode",1,"Maximum edit dist to barcode");
 		addBoolean("reverseForward", false, "For finding polyA tail whether to reverse the polyT before edlib step.  If false will include some polyT ");
 		addInt("barcode_extent", 200, "search for barcode in first Xbp");
 		addInt("barcode_ignore", 0, "search for barcode in first Ybp");
@@ -251,6 +252,7 @@ addBoolean("illumina", false, "use illumina libary");
 		 String resDir, String chrs, String chrsToIgnore,  boolean fastq, String reference) throws IOException{
 		int qual = cmdLine.getIntVal("qual");
 		int bin = cmdLine.getIntVal("bin");
+		
 		CigarCluster.singleGFF = cmdLine.getBooleanVal("singleGFF");
 		verbose=cmdLine.getBooleanVal("verbose");
 		readsToSkip = cmdLine.getIntVal("readsToSkip");
@@ -490,6 +492,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 		
 		 Barcodes.barcode_extent = cmdLine.getIntVal("barcode_extent");
 		 Barcodes.barcode_ignore = cmdLine.getIntVal("barcode_ignore");
+		 Barcodes.tolerance_barcode = cmdLine.getIntVal("tolerance_barcode");
 		// ViralTranscriptAnalysisCmd2.barcode_list = cmdLine.getStringVal("barcode_list");
 		 
 		 PolyAT.set_bc_len(cmdLine.getIntVal("bc_len_AT"));

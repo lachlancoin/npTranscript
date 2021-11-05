@@ -126,7 +126,22 @@ public class TranscriptUtils {
 	            intArray[size - i - 1] = temp; 
 	        } 
 	 } 
+	public static String reverse(String st){
+		char[] ch = st.toCharArray();
+		reverseArray(ch);
+		return new String(ch);
+	}
 	
+	public static void reverseArray(char[] intArray) {
+		 int size = intArray.length;
+	        int i, k;
+	       char temp; 
+	        for (i = 0; i < size / 2; i++) { 
+	            temp = intArray[i]; 
+	            intArray[i] = intArray[size - i - 1]; 
+	            intArray[size - i - 1] = temp; 
+	        } 
+	 } 
 	public static int polyAlen(Sequence refSeq){
 		int seqlen = refSeq.length();
 		char[] last10bp = refSeq.subSequence(seqlen-10, seqlen).charSequence();
