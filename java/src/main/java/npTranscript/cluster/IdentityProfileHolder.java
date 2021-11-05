@@ -421,12 +421,17 @@ static Comparator comp_q = new SamComparator(true);
 		int[] start_for_pA = new int[2];
 		int[] start_rev_pA = new int[2];
 		
-		
+		boolean align_reverse = sam.getReadNegativeStrandFlag();
+
 			String sa = sam.getReadString();
-			boolean align_reverse = sam.getReadNegativeStrandFlag();
-			if(align_reverse){  
-				// this converts read back to original orientation
-				sa = SequenceUtil.reverseComplement(sa);
+			if(ViralTranscriptAnalysisCmd2.illumina){
+				sa = sam.getReadName();
+			
+			}else{
+				if(align_reverse){  
+					// this converts read back to original orientation
+					sa = SequenceUtil.reverseComplement(sa);
+				}
 			}
 			Boolean forward_read=null;
 			

@@ -96,7 +96,7 @@ public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 	public static boolean exclude_polyT_strand=false;
 	public static boolean exclude_reads_without_barcode=false;
 	public static boolean verbose=false;
-	
+	public static boolean illumina =false;
 	public static boolean reverseForward = true;
 	public static int max_umi = 100; // including umi + barcode.  This should be bit bigger for getting polyT length , i.e. if reverseForward=false
 	public static int min_umi = 15;// including umi + barcode
@@ -136,7 +136,7 @@ public static int readsToSkip=0;
 		addBoolean("exclude_indeterminate_strand", false,"whether to exclude if we cnat figure out strand for cDNA");
 		addBoolean("exclude_polyT_strand", false,"whether to exclude RNA if it has a polyT strand");
 		addBoolean("exclude_reads_without_barcode", false,"whether to exclude read if it does not have barcode");
-
+addBoolean("illumina", false, "use illumina libary");
 		
 		addString("todo", null, "List of input files", false);
 		addString("inputFile", null, "Name of input file", false);
@@ -199,7 +199,7 @@ public static int readsToSkip=0;
 		addInt("min_first_last_exon",0, "minimum first or last exon size");
 		//addDouble("overlapThresh", 0.95, "Threshold for overlapping clusters");
 	//	addBoolean("coexpression", false, "whether to calc coexperssion matrices (large memory for small bin size)");
-	addBoolean("overwrite", true, "whether to overwrite existing results files");
+	addBoolean("overwrite", false, "whether to overwrite existing results files");
 		addBoolean("keepAlignment", false, "whether to keep alignment for MSA");
 	//	addBoolean("attempt5rescue", false, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
 	//	addBoolean("attempt3rescue", false, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
@@ -270,7 +270,7 @@ public static int readsToSkip=0;
 		reverseForward = cmdLine.getBooleanVal("reverseForward");
 		max_umi = cmdLine.getIntVal("max_umi");
 		min_umi = cmdLine.getIntVal("min_umi");
-		
+		illumina=cmdLine.getBooleanVal("illumina");
 		
 		Outputs.writeH5 = cmdLine.getBooleanVal("writeH5");
 		CigarHash2.round = cmdLine.getIntVal("bin0");
@@ -837,6 +837,9 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 			    if(sam==null){
 			    	break outer;
 			    }
+			    if(outp.skip(sam.getReadName())){
+					continue outer;
+				}
 			    if(verbose){
 					System.err.println(sam.getReadName());
 				}

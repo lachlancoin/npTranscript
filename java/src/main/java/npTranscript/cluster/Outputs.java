@@ -1,12 +1,18 @@
 package npTranscript.cluster;
 
 import java.awt.Color;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -21,6 +27,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 import org.apache.commons.math3.linear.SparseRealMatrix;
@@ -183,7 +190,7 @@ public class Outputs{
 		String genome_index;
 		 int[] col_inds, col_inds_depth;  // this is the col_inds for writing count information in h5 library
 		 int new_max_cols, new_max_cols_depth;
-		
+		private String last_id;
 		public Outputs(File resDir,  String[] type_nmes, boolean isoforms, boolean cluster_depth) throws IOException{
 			this.type_nmes = type_nmes;
 			genome_index = "0.";
@@ -208,14 +215,13 @@ public class Outputs{
 		
 		//	this.right=  new SequenceOutputStream((new FileOutputStream(new File(resDir,genome_index+".right" ))));
 			 reads_file = readsOutputFile==null ? new File(resDir,"0.readToCluster.txt.gz") : new File(readsOutputFile);
-			 if(!overwrite){
-				 int j=1;
-				 while(reads_file.exists()){
-					 reads_file = readsOutputFile==null ? new File(resDir,j+".readToCluster.txt.gz") : new File(readsOutputFile+"."+j+".gz");
-					 j++;
-				 }
+			 if(!overwrite && reads_file.exists()){
+				last_id = transferToNewFile(reads_file);//this makes sure there are no partial lines at the end 
+			 }else{
+				 last_id = null;
+					// TODO Auto-generated method stub
 			 }
-			 OutputStream os = new FileOutputStream(reads_file);
+			 OutputStream os = new FileOutputStream(reads_file, !overwrite);
 			// boolean gzip = true;
 			 if(reads_file.getName().endsWith(".gz")) os = new GZIPOutputStream(os);
 			 readClusters = new PrintWriter(
@@ -237,8 +243,9 @@ public class Outputs{
 }*/
 			 String str1 = 	 ViralTranscriptAnalysisCmd2.barcodes == null ? "": Barcodes.getHeader();
 ;
+if(last_id==null){
 			 readClusters.println(IdentityProfile1.header+"\t"+PolyAT.getHeader()+"\t"+str1); //\tbreakStart\tbreakEnd\tbreakStart2\tbreakEnd2\tstrand\tbreaks");
-		
+}
 			
 				
 			List<String> str = new ArrayList<String>();
@@ -284,6 +291,43 @@ public class Outputs{
 		
 		
 		
+
+
+
+		private String transferToNewFile(File reads_file) throws IOException {
+			File newF = new File(reads_file.getParentFile(),"tmp."+System.currentTimeMillis()+".gz");
+			OutputStream os = new GZIPOutputStream(new FileOutputStream(newF));
+			PrintWriter pw = new PrintWriter(new OutputStreamWriter(os));
+			InputStream is = new FileInputStream(reads_file);
+			if(reads_file.getName().endsWith(".gz")) is = new GZIPInputStream(is);
+			BufferedReader br = new BufferedReader(new InputStreamReader(is));
+			String st = br.readLine();
+			pw.println(st);
+			String[] head = st.split("\t");
+			int len = head.length;
+			String last=null;
+			
+			while((st = br.readLine())!=null){
+				String[] str = st.split("\t");
+				if(str.length!=head.length){
+					break;
+				}
+				pw.println(st);
+				last=str[0];
+			}
+			pw.close();
+			br.close();
+			String path = reads_file.getAbsolutePath();
+			reads_file.delete();
+			Files.move(Paths.get(newF.getAbsolutePath()), Paths.get(path));
+			
+			return last;
+			
+		}
+
+
+
+
 
 
 
@@ -719,6 +763,24 @@ public class Outputs{
 		public  void writeUnmapped(String readName) {
 			unmapped.println(readName);
 			
+		}
+
+
+
+
+
+
+
+		public boolean skip(String readName) {
+			if(last_id==null){
+				return false;
+			}else{
+				if(readName.equals(last_id)){
+					last_id= null;
+				}
+				return true;
+			}
+		
 		}
 
 
