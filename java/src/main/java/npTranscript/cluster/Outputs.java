@@ -2,6 +2,7 @@ package npTranscript.cluster;
 
 import java.awt.Color;
 import java.io.BufferedReader;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -306,21 +307,26 @@ if(last_id==null){
 			String[] head = st.split("\t");
 			int len = head.length;
 			String last=null;
-			
-			while((st = br.readLine())!=null){
-				String[] str = st.split("\t");
-				if(str.length!=head.length){
+			while(st!=null){
+				try{
+					st = br.readLine();
+					String[] str = st.split("\t");
+					if(str.length!=head.length){
+						break;
+					}
+					pw.println(st);
+					last=str[0];
+				}catch(EOFException exc){
+					st = null;
 					break;
 				}
-				pw.println(st);
-				last=str[0];
+			
 			}
 			pw.close();
 			br.close();
 			String path = reads_file.getAbsolutePath();
 			reads_file.delete();
 			Files.move(Paths.get(newF.getAbsolutePath()), Paths.get(path));
-			
 			return last;
 			
 		}
@@ -761,6 +767,7 @@ if(last_id==null){
 
 
 		public  void writeUnmapped(String readName) {
+			
 			unmapped.println(readName);
 			
 		}
@@ -769,11 +776,11 @@ if(last_id==null){
 
 
 
-
+ //keep on skippping until you hit the target
 
 		public boolean skip(String readName) {
 			if(last_id==null){
-				return false;
+			  	return false;
 			}else{
 				if(readName.equals(last_id)){
 					last_id= null;
