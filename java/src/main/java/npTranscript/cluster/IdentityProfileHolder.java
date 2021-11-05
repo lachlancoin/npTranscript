@@ -276,7 +276,9 @@ static Comparator comp_q = new SamComparator(true);
 			return;
 		}
 		if(primaryIndex>0){
-			throw new RuntimeException("expected at zero");
+	System.err.println(" problem with primary index");			
+return ;		
+	//throw new RuntimeException("expected at zero");
 		}
 		//List<SAMRecord>sam_1 = new ArrayList<SAMRecord>();
 		//sam_1.addAll(Arrays.asList(sam));
@@ -507,7 +509,7 @@ static Comparator comp_q = new SamComparator(true);
 								//System.err.println(umi1);
 							//	System.err.println("");
 							}else{
-								umi =  sa.substring(startB, startpA);
+								umi =  sa.substring(Math.max(0,startB), Math.min(read_len,startpA));
 							}
 						//	System.err.println(forward_read+" "+startB+" "+startpA+" "+diff+" "+umi);
 
