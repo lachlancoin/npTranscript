@@ -23,7 +23,7 @@
 --fail_thresh=0
 --supplementaryQ=1   ### if this is set to 1000 then essentially supplementary are not allowed.  This controls if fusions are reported
 
---RNA=name ; 	 --RNA=name ; 	--RNA=false ## if there is RNA or rna in the file name it will assume RNA
+--RNA=name ; 	 --RNA=name ; 	--RNA=false ; --RNA=false   ## if there is RNA or rna in the file name it will assume RNA
 --includeStart=false
 --enforceStrand=true
 
