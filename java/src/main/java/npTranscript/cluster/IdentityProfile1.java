@@ -1,6 +1,7 @@
 package npTranscript.cluster;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.SortedSet;
@@ -9,8 +10,6 @@ import java.util.TreeSet;
 import htsjdk.samtools.AlignmentBlock;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMRecord;
-import japsa.bio.np.barcode.SWGAlignment;
-import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import npTranscript.NW.PolyAT;
 import npTranscript.run.Barcodes;
@@ -167,6 +166,8 @@ this.updateSourceIndex(source_index);
 
 boolean fusion = false;
 	
+	public static List<int[]> coords = new ArrayList<int[]>();
+	
 	
 	
 
@@ -192,7 +193,7 @@ static char delim_start ='$';
 	 //public static String polyT = "TTTTTTTTTTTTTT";
 	// public static int polyA_ed_dist = 1;
 	// public static int checkdist = 20;
-	public void commit(Sequence readSeq, SAMRecord sam){
+	public void commit(Sequence readSeq, SAMRecord sam) throws IOException{
 		//int[] res = new int[2];
 		int read_len = readSeq.length();
 		if(sam.isSecondaryOrSupplementary()) throw new RuntimeException("need primary ");
@@ -237,6 +238,61 @@ static char delim_start ='$';
 		String str1 = PolyAT.getInfo(sam);
 		String str2 = ViralTranscriptAnalysisCmd2.barcodes == null ? "": Barcodes.getInfo(sam);
 		parent.o.printRead(str+"\t"+str1+"\t"+str2);
+		
+		
+		
+		
+/*		int start_target=1;
+		int end_target=50;
+		end_target =  29903;
+		start_target = end_target -100;
+		
+		if(st0.length>1){
+		
+		st0 = st0[1].split("_");
+		*/
+		
+		if(includeInConsensus  && Outputs.msa_sources.containsKey(source_index) && 
+				(Outputs.doMSA!=null && Outputs.doMSA.contains(type_nme)  )
+				&& breakSt.indexOf(";")<0
+				) {
+			String[] st0 = breakSt.split(";")[0].split(",");
+			for(int k=0; k<st0.length; k++){
+				String[] st0_1 = st0[k].split("_");
+				int start_ref = Integer.parseInt(st0_1[0]);
+				int end_ref = Integer.parseInt(st0_1[1]);
+			for(int j=0; j<coords.size(); j++){
+				int[] start_end = coords.get(j);
+				int start_target=start_end[0];
+				int end_target = start_end[1];
+				int targ_leng = end_target-start_target;
+
+			if(start_ref < start_target+5 && end_ref > end_target-5){
+				//String[] st1 = breakSt1.split(";")[0].split(",")[1].split("_");
+		//	if(true){
+				int start_read = sam.getReadPositionAtReferencePosition(start_target);//Integer.parseInt(st1[0]);
+				int end_read=sam.getReadPositionAtReferencePosition(end_target);
+				int read_leng = end_read-start_read;
+				if(start_read< end_read && read_leng < targ_leng+10 && read_leng >targ_leng-10){
+						Sequence readSeq1 = readSeq.subSequence(start_read,end_read );
+						String baseQ1 = baseQ.length()<=1 ? baseQ :baseQ.substring(start_read, end_read);
+				//		List<Integer>read_breaks = new ArrayList<Integer>();
+					//	for(int i=0; i<breaks.size(); i++){
+					//		read_breaks.add(sam.getReadPositionAtReferencePosition(breaks.get(i)-1, true));
+					//	}
+						//need to put breaks back in 0 coords for fasta file
+						int chrom_index=0;
+						readSeq1.setDesc(chrom_index+" "+breakSt+" "+breakSt1+" "+(end_read-start_read)+ " "+strand+" "+source_index);
+						String prefix = "" ;//TranscriptUtils.coronavirus ? "": num_exons+"_";
+						String subID = "";//"_"+clusterID[1]+"_"
+						String secondKeySt1 = start_target+"_"+end_target;//st0[0]+"_"+st0[1];
+						parent.o.writeToCluster(prefix+secondKeySt1,subID, source_index, readSeq1, baseQ1,  readSeq.getName(), strand.charAt(0));
+				}
+			}
+			
+		   }
+		}
+		}
 		
 	}
 	boolean hasLeaderBreak_;		String breakSt; String breakSt1; String secondKeySt;boolean includeInConsensus = true;
@@ -399,22 +455,8 @@ static char delim_start ='$';
 				}
 			}
 		}*/
-		/*
-		if(includeInConsensus  && Outputs.msa_sources.containsKey(source_index) && 
-				(Outputs.doMSA!=null && Outputs.doMSA.contains(type_nme)  || 
-						Outputs.doMSA!=null && Outputs.doMSA.contains(span) && Outputs.numExonsMSA.contains(num_exons) )
-				) {
-			Sequence readSeq1 = readSeq.subSequence(start_read, end_read);
-			String baseQ1 = baseQ.length()<=1 ? baseQ :baseQ.substring(start_read, end_read);
-			List<Integer>read_breaks = new ArrayList<Integer>();
-			for(int i=0; i<breaks.size(); i++){
-				read_breaks.add(sam.getReadPositionAtReferencePosition(breaks.get(i)-1, true));
-			}
-			//need to put breaks back in 0 coords for fasta file
-			readSeq1.setDesc(chrom_index+" "+CigarHash2.getString(breaks,-1)+" "+CigarHash2.getString(read_breaks)+" "+(end_read-start_read)+ " "+strand+" "+source_index);
-			String prefix = TranscriptUtils.coronavirus ? "": num_exons+"_";
-			parent.o.writeToCluster(prefix+secondKeySt,"_"+clusterID[1]+"_", source_index, readSeq1, baseQ1,  readSeq.getName(), strand);
-		}*/
+		/// this is new
+		
 		
 		return secondKeySt+" "+span_str;
 	}
@@ -673,6 +715,7 @@ static char delim_start ='$';
 			
 			String secondKey= profile.processRefPositions(  id, cluster_reads, 
 					 source_index, readSeq,baseQ, phredQs);
+			
 			//if(!ViralTranscriptAnalysisCmd2.allowSuppAlignments){
 				profile.commit(readSeq, sams.get(primary_index));
 		//	}

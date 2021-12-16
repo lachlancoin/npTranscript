@@ -174,7 +174,7 @@ public class SequenceOutputStream1 {
   int seqs_printed=0;
   
   public SequenceOutputStream1(File out) {
-	
+
 	this.target = out;
 	//this.append = append;
 	}
@@ -194,6 +194,7 @@ public void printAll() throws IOException {
 		public void run() {
 		//	System.err.println("launching "+target);
 			try{
+			//	target.getParentFile().mkdir();
 			 OutputStreamWriter	so = new OutputStreamWriter(new FileOutputStream(target, true));
  			while(stack.size()>0 && seqs_printed < max_seqs_per_cluster){
 				
