@@ -92,21 +92,13 @@ public static String getInfo(SAMRecord sam) {
 		EdlibAlignResult.ByValue resA_r=		EdlibLibrary.INSTANCE.edlibAlign(polyA,polyA.length(), sequence, sequence.length(), config);
 		int distA_r=	editDist(resA_r);
 		int mind = Math.min(distA_r, distT_l);
-		EdlibAlignResult.ByValue res = distA_r < distT_l ? resA_r : resT_l;
+		//EdlibAlignResult.ByValue res = distA_r < distT_l ? resA_r : resT_l;
 		String type = distA_r < distT_l ? "A" : "T";
-		String str =  pos+","+(offset+res.startLocations.getValue())+","+polyA.length()+","+type+","+mind;
-		clear(resA_r); clear(resT_l);
-		/*resA_r.clear();
-		resT_l.clear();*/
-		//EdlibLibrary.INSTANCE.edlibFreeAlignResult(resT_l);
-	//	resA_r.endLocations.getPointer().cl
+		int st_p = distA_r < distT_l  ? resA_r.startLocations().getValue() : resT_l.startLocations().getValue()
+		String str =  pos+","+(offset+st_p)+","+polyA.length()+","+type+","+mind;
+		clear(resA_r); 
+		clear(resT_l);
 		return str;
-		//return distA_r+","+distT_l;
-/*		if(mind<=edit_thresh_AT){
-			
-		}else{
-			return null;
-		}*/
 	}
 	
 	

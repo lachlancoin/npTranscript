@@ -501,7 +501,7 @@ static Comparator comp_q = new SamComparator(true);
 								String barcode = (String)sam.getAttribute(Barcodes.barcode_forward_tag);
 								//System.err.println(barcode);
 								int read_len = sa.length();
-								umi = SequenceUtil.reverseComplement(sa.substring(read_len - startpA, read_len - startB));
+								umi = SequenceUtil.reverseComplement(sa.substring(Math.max(0,read_len - startpA), Math.min(read_len,read_len - startB)));
 								//String umi1 = SequenceUtil.reverseComplement(sa.substring(read_len - startpA, read_len - startB+1));
 							//	System.err.println(umi);
 								//System.err.println(umi1);
