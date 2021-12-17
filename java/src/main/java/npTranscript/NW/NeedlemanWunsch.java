@@ -168,27 +168,69 @@ public static double score(AlignmentResult result){
 	//pw.println(alignments[1]);
 	return (double)matches/(double) alignments[0].length();
 }
-public static void printResult(PrintWriter pw, AlignmentResult result, String nme){
+public static void printResult(PrintWriter pw, AlignmentResult result, String prot, String prot1, String nme){
+printResult(pw, result, prot, prot1, nme,70);
+}
+static String modify(String prot, String align){
+	if(prot==null) return null;
+StringBuffer prot1 = new StringBuffer();
+	
+	int k1=0;
+	System.err.println(prot.length());
+	System.err.println(align.length());
+	for(int k=0; k<align.length(); k++){
+		
+		if(align.charAt(k)=='-'){
+			  prot1.append("-");
+			  
+		  }else{
+			  prot1.append(prot.charAt(k1));
+			  //System.err.println(k1+" "+k);
+			  k1 = k1+1;
+		  }
+	}
+	 return prot1.toString();
+}
+public static void printResult(PrintWriter pw, AlignmentResult result, String prot, String prot_1, String nme, int wrap){
 	String[] alignments= result.getAlignments();
-    
+   
 	
 	int matches=0;
 	int gaps=0;
 	StringBuffer sb = new StringBuffer();
+	
+	String prot11 = modify(prot, alignments[0]);
+	String prot21 = modify(prot_1, alignments[0]);
 	for (int k=0; k < alignments[0].length(); k++){
+		 
+		
 	if (alignments[0].charAt(k)==alignments[1].charAt(k)) {
 	    matches++;
 	    sb.append("|");
-	} else sb.append(" ");
+	} else {
+		sb.append(" ");
+	}
 	               
 	  if ( (alignments[0].charAt(k)=='-') ||
 	       (alignments[1].charAt(k)=='-')  ) 
 	  gaps++;
+	 
 	}
 	String sc=String.format( "%5.3g", (float)matches/alignments[0].length()).trim();
 	pw.println(nme+" match_score="+matches+" identity="+sc+" gaps="+gaps+" edit_distance="+result.getTotalCost()+" length="+result.getAlignmentLength());
-	pw.println(alignments[0]);
-	pw.println(sb.toString());
-	pw.println(alignments[1]);
+	int len = sb.length();
+	int num = (int) Math.ceil((double) len/(double) wrap);
+	int beginIndex=0;
+	int endIndex=0;
+	for(int k =0; k<num; k++){
+		endIndex = Math.min(len, beginIndex+wrap);
+		if(prot11!=null) pw.println(prot11.substring(beginIndex, endIndex));
+		pw.println(alignments[0].substring(beginIndex, endIndex));
+		pw.println(sb.toString().substring(beginIndex, endIndex));
+		pw.println(alignments[1].substring(beginIndex, endIndex));
+		if(prot21!=null) pw.println(prot21.substring(beginIndex, endIndex));
+		beginIndex=endIndex;
+		
+	}
 }
 }

@@ -12,21 +12,24 @@
 
 
 ## Load required modules
-module load anaconda3/5.3.0
+#module load anaconda3/5.3.0
+#source activate abpoa
+#abpoa=abpoa
+abpoa=/home/lachlan/github/abPOA-v1.2.5/bin/abpoa
 
-source activate abpoa
 dir=$1.tmp
 unzip $1 -d $dir
 outf=$1.consensus.fa
 rm $outf
-find $dir -name '*.fa' > $1.todo.txt
+todo=$1.todo.txt
+find $dir -name '*.fa' > $todo
 while read file; do
  echo $file
  filen=$(basename $file)
  echo $filen
- abpoa $file  | sed "s/Consensus_sequence/${filen}/g" >> $outf 
-done < todo.txt
+ $abpoa $file  | sed "s/Consensus_sequence/${filen}/g" >> $outf 
+done < $todo
 
 rm -f $dir/*fa
 rmdir $dir
-rm $1.todo.txt
+rm $todo

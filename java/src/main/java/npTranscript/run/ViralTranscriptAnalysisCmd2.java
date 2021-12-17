@@ -191,7 +191,7 @@ addBoolean("illumina", false, "use illumina libary");
 		addString("doMSA", "false" , "Options: 5_3 or all or span=0 ");
 		addString("library",".","library for h5 files");
 		addString("msa_source", null , "indicates how to group msa, e.g 0,1,2;3,4,5 ");
-		addString("coords_msa","1_65,28903_29903", "which coords to keep");
+		addString("coords_msa","coords.txt", "which coords to keep");
 		//addString("aligner", "kalign" , "Options: kalign3, poa, spoa, abpoa");
 		addInt("startThresh", 100, "Threshold for having 5'");
 		addInt("endThresh", 100, "Threshold for having 3'");
@@ -260,14 +260,19 @@ addBoolean("illumina", false, "use illumina libary");
 		Outputs.overwrite  = cmdLine.getBooleanVal("overwrite");
 		String coords_msa = cmdLine.getStringVal("coords_msa");
 		if(coords_msa!=null){
-			String[] coords = coords_msa.split(",");
-			for(int i=0; i<coords.length; i++){
+			BufferedReader br = new BufferedReader(new FileReader(coords_msa));
+			String st = br.readLine();
+			while((st = br.readLine())!=null){
+				String[] coords = st.split(",");
 				int[] pos = new int[2];
-				String[] coords1 = coords[i].split("_");
-			pos[0] = Integer.parseInt(coords1[0]);
-			pos[1] = Integer.parseInt(coords1[1]);
-				IdentityProfile1.coords.add(pos);
+				//String[] coords1 = coords.split("_");
+				pos[0] = Integer.parseInt(coords[1]);
+				pos[1] = Integer.parseInt(coords[2]);
+				IdentityProfile1.coords.add( pos);
+				IdentityProfile1.coords_name.add(coords[0].replace(" ", "_"));
+			
 			}
+			br.close();
 		}
 		Outputs.readsOutputFile = cmdLine.getStringVal("readsOutputFile");
 		int breakThresh = cmdLine.getIntVal("breakThresh");

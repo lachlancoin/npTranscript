@@ -1,6 +1,8 @@
 --optsType=RNA		;		--optsType=cDNA  ;	 --optsType=sc_cDNA ;	 --optsType=sc_cDNA_Illumina
 #--reference=~/github/npTranscript/data/U13369/combined.fa.gz 
---reference=/home/lachlan/github/npTranscript/data/U13369/combined.fa.gz  ### for fusion
+#--reference=/home/lachlan/github/npTranscript/data/U13369/combined.fa.gz  ### for fusion
+#--reference=/home/lachlan/github/npTranscript/data/SARS-Cov2/wuhan/wuhan_coronavirus.fasta.gz
+--reference=/home/lachlan/github/npTranscript/data/SARS-Cov2/VIC01/wuhan_coronavirus_australia.fasta.gz
  #--maxReads=1000
 --overwrite=false
 --sequential=true 
@@ -11,8 +13,9 @@
 --coronavirus=false
 #--extra_threshold=50 
 #--span=protein_coding
---doMSA=false
---msa_source=cDNA 
+--doMSA=all
+--msa_source=all 
+--coords_msa=coords1.txt
 --maxThreads=1
 --writeIsoforms=true
 --recordDepthByPosition=false
