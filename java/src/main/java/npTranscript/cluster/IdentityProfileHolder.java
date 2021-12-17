@@ -276,7 +276,9 @@ static Comparator comp_q = new SamComparator(true);
 			return;
 		}
 		if(primaryIndex>0){
-			throw new RuntimeException("expected at zero");
+	System.err.println(" problem with primary index");			
+return ;		
+	//throw new RuntimeException("expected at zero");
 		}
 		//List<SAMRecord>sam_1 = new ArrayList<SAMRecord>();
 		//sam_1.addAll(Arrays.asList(sam));
