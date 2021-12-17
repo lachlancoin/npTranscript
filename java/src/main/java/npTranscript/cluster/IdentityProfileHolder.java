@@ -509,7 +509,7 @@ return ;
 								//System.err.println(umi1);
 							//	System.err.println("");
 							}else{
-								umi =  sa.substring(Math.max(0,startB), Math.min(read_len,startpA));
+								umi =   sa.substring(startB, startpA);
 							}
 						//	System.err.println(forward_read+" "+startB+" "+startpA+" "+diff+" "+umi);
 
