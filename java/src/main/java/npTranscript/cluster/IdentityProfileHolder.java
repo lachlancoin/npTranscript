@@ -507,7 +507,7 @@ static Comparator comp_q = new SamComparator(true);
 								//System.err.println(umi1);
 							//	System.err.println("");
 							}else{
-								umi =  sa.substring(startB, startpA);
+								umi =   sa.substring(startB, startpA);
 							}
 						//	System.err.println(forward_read+" "+startB+" "+startpA+" "+diff+" "+umi);
 
