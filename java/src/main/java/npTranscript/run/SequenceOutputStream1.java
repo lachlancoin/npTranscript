@@ -170,7 +170,7 @@ public class SequenceOutputStream1 {
   public static int max_seqs_per_cluster = 100000;
  private  File target ;
   //boolean append;
-  int thresh = 10;
+ public static int thresh = 10;
   int seqs_printed=0;
   
   public SequenceOutputStream1(File out) {

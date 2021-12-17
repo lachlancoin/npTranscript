@@ -349,17 +349,23 @@ addBoolean("illumina", false, "use illumina libary");
 	//	String[] bamFiles =bamFile.split(":"); 
 		int len =  bamFiles.length;
 		if(msa_source!=null){
-			String[] str = msa_source.split(";");
-			outer: for(int j=0; j<bamFiles.length;j++){
-				for(int i=0; i<str.length;i++){
-						String[] str1 = str[i].split(",");
-						for(int k=0; k<str1.length; k++){
-							if(bamFiles[j].indexOf(str1[k])>=0){
-								Outputs.msa_sources.put(j, i);
-								continue outer;
+			if(msa_source.equals("all")){
+				for(int j=0; j<bamFiles.length;j++){
+					Outputs.msa_sources.put(j, j);
+				}
+			}else{
+				String[] str = msa_source.split(";");
+				outer: for(int j=0; j<bamFiles.length;j++){
+					for(int i=0; i<str.length;i++){
+							String[] str1 = str[i].split(",");
+							for(int k=0; k<str1.length; k++){
+								if(bamFiles[j].indexOf(str1[k])>=0){
+									Outputs.msa_sources.put(j, i);
+									continue outer;
+								}
 							}
 						}
-					}
+				}
 			}
 			System.err.println("msa_sources "+Outputs.msa_sources);
 		}else{

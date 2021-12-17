@@ -94,7 +94,7 @@ public static String getInfo(SAMRecord sam) {
 		int mind = Math.min(distA_r, distT_l);
 		//EdlibAlignResult.ByValue res = distA_r < distT_l ? resA_r : resT_l;
 		String type = distA_r < distT_l ? "A" : "T";
-		int st_p = distA_r < distT_l  ? resA_r.startLocations().getValue() : resT_l.startLocations().getValue()
+		int st_p = distA_r < distT_l  ? resA_r.startLocations.getValue() : resT_l.startLocations.getValue();
 		String str =  pos+","+(offset+st_p)+","+polyA.length()+","+type+","+mind;
 		clear(resA_r); 
 		clear(resT_l);

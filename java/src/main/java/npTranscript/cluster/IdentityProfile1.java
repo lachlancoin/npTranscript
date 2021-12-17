@@ -283,7 +283,7 @@ static char delim_start ='$';
 						//need to put breaks back in 0 coords for fasta file
 						int chrom_index=0;
 						readSeq1.setDesc(chrom_index+" "+breakSt+" "+breakSt1+" "+(end_read-start_read)+ " "+strand+" "+source_index);
-						String prefix = "" ;//TranscriptUtils.coronavirus ? "": num_exons+"_";
+						String prefix =source_index +"";//TranscriptUtils.coronavirus ? "": num_exons+"_";
 						String subID = "";//"_"+clusterID[1]+"_"
 						String secondKeySt1 = start_target+"_"+end_target;//st0[0]+"_"+st0[1];
 						parent.o.writeToCluster(prefix+secondKeySt1,subID, source_index, readSeq1, baseQ1,  readSeq.getName(), strand.charAt(0));
