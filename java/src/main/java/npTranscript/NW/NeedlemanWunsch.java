@@ -168,6 +168,14 @@ public static double score(AlignmentResult result){
 	//pw.println(alignments[1]);
 	return (double)matches/(double) alignments[0].length();
 }
+public static void printResult(PrintWriter pw, AlignmentResult result,   String nme){
+	printResult(pw, result,null, null, nme,70);
+
+}
+public static void printResult(PrintWriter pw, AlignmentResult result, String prot,  String nme){
+	printResult(pw, result, prot, null, nme,70);
+
+}
 public static void printResult(PrintWriter pw, AlignmentResult result, String prot, String prot1, String nme){
 printResult(pw, result, prot, prot1, nme,70);
 }
