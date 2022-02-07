@@ -4,7 +4,7 @@ package npTranscript.NW;
 import java.io.PrintWriter;
 
 public class NeedlemanWunsch {  
-public static boolean verbose=false;
+private static final boolean verbose=false;
  
 /*
 * prints out the score matrix 
@@ -184,15 +184,17 @@ static String modify(String prot, String align){
 StringBuffer prot1 = new StringBuffer();
 	
 	int k1=0;
-	System.err.println(prot.length());
-	System.err.println(align.length());
+	//System.err.println(prot.length());
+	//System.err.println(align.length());
 	for(int k=0; k<align.length(); k++){
 		
 		if(align.charAt(k)=='-'){
 			  prot1.append("-");
 			  
 		  }else{
+			  if(k1<prot.length()){
 			  prot1.append(prot.charAt(k1));
+			  }
 			  //System.err.println(k1+" "+k);
 			  k1 = k1+1;
 		  }
