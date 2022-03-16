@@ -52,7 +52,7 @@
 		    <artifactId>htsjdk</artifactId>
 		    <version>2.18.2</version>
 	</dependency>
-	<dependency>
+	<!--dependency>
 		    <groupId>org.biojava</groupId>
 		    <artifactId>biojava-core</artifactId>
 		    <version>5.3.0</version>
@@ -61,7 +61,7 @@
 		    <groupId>org.biojava</groupId>
 		    <artifactId>biojava-alignment</artifactId>
 		    <version>5.3.0</version>
-	</dependency>
+	</dependency-->
 	 <dependency>
           	  <groupId>coin</groupId>
           	  <artifactId>japsacov</artifactId>
