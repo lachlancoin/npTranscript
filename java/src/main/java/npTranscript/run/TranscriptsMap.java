@@ -114,37 +114,44 @@ public class TranscriptsMap{
 	static class SuperUmi implements Comparable{
 	
 		public SuperUmi(String barcode, String umi){
+			
 			this.barcode = barcode;
-			int umilen = umi.length();
-			int len1 = Math.min(umilen, barcode.length()+12);
-			this.umi = umi.substring(barcode.length(), len1);
-			this.polyT = umilen - len1;
+			
+				int umilen = umi.length();
+				int len1 = Math.min(umilen, barcode.length()+12);
+				this.umi = umilen > barcode.length() ? umi.substring(barcode.length(), len1) : null;
+				this.polyT = umilen - len1;
 	//		PolyAT.check(sequence_, pos)
 		}
 		String barcode;
 		String umi;
 		int polyT;
 		public String toString(){
-			return barcode+"_"+umi+"_"+polyT;
+			return // useUMI ? 
+					barcode+"_"+umi+"_"+polyT ;//: barcode;
 		}
 		
 		@Override
 		public boolean equals(Object o){
 			return this.compareTo(o)==0;
 		}
-
+//boolean useUMI = false;
 		@Override
 		public int compareTo(Object o) {
-			String umi1 = ((SuperUmi)o).umi;
+		
 			String barcode1 = ((SuperUmi)o).barcode;
 			if(!barcode1.equals(barcode)){
 				return barcode.compareTo(barcode1);
 			}else{
-				int dist = editDist(umi1, umi);
-				if(dist >edit_thresh){
-					return umi.compareTo(umi1);
-				}else{
-					return 0;
+//				if(!useUMI) return 0;else
+				{
+					String umi1 = ((SuperUmi)o).umi;
+					int dist = editDist(umi1, umi);
+					if(dist >edit_thresh){
+						return umi.compareTo(umi1);
+					}else{
+						return 0;
+					}
 				}
 			}
 		}
@@ -175,6 +182,7 @@ public class TranscriptsMap{
 		if(trans_ind==null){
 			trans_ind = getNext(transcript,  true);
 			if(pw!=null){
+				System.err.println(transcript+"\t"+trans_ind);
 				pw.println(transcript+"\t"+
 						line[read_id_index]+"\t"+
 						line[chrom_index]+"\t"+ line[start_index]+"\t"+line[end_index]+"\t"+line[breaks_index]

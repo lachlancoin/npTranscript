@@ -38,7 +38,7 @@ public class GlobalAligner {
 		 Map<Integer, Sequence[]> seqmap = new TreeMap<Integer, Sequence[]>();
 		 int seqlen = args1.length;
 	//	ArrayList<Sequence>[] seqs = new ArrayList[args1.length];
-		 pw_vcf.println("#pos,ref,type,identical"+args[1].replace(":", ",")+",gene_nme,aa_pos,aa_phase,"+args[1].replace(":", ","));
+		 pw_vcf.println("#pos,ref,type,identical,"+args[1].replace(":", ",")+",gene_nme,aa_pos,aa_phase,aa_ref,"+args[1].replace(":", ","));
 		for(int i=0; i<seqlen; i++){
 			List<Sequence> l = SequenceReader.readAll(args1[i], Alphabet.DNA());
 			for(int j=0; j<l.size(); j++){

@@ -22,7 +22,7 @@ import npTranscript.run.TranscriptsMap.SuperUmi;
 
 class ProcessReads{
 	
-	
+	static boolean useUMI = false;
 	
 	int[][] read_count; // [barcode][transcript_index]
 	int[][] indices;  // [barcode][transcript_index]
@@ -121,7 +121,7 @@ class ProcessReads{
 		this.start_index=  header.indexOf("startPos") ;
 		this.end_index =  header.indexOf("endPos") ;
 		this.breaks_index =  header.indexOf("breaks_ref") ;
-		this.umi_index = header.indexOf("UMI");
+		this.umi_index = useUMI ? header.indexOf("UMI") : -1;
 	//	inds = new int[] {read_id_index, chrom_index, start_index, end_index};
 		//this.bc_index = header.indexOf("barcode_index");
 		this.bc_str_index = header.indexOf("barcode");//_index");
@@ -180,7 +180,6 @@ class ProcessReads{
 			barcode_ 
 
 		}*/
-		
 		Comparable umi = umi_index>=0 ? new SuperUmi(barcode_, line[umi_index]) : barcode_;
 		
 		Integer  barc_ind = this.barc.get( umi);

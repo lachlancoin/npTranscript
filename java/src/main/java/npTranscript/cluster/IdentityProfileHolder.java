@@ -21,7 +21,7 @@ import japsa.seq.Sequence;
 import japsa.tools.seq.SequenceUtils;
 import npTranscript.NW.PolyAT;
 import npTranscript.run.Barcodes;
-import npTranscript.run.ViralChimericReadsAnalysisCmd;
+import npTranscript.run.TranscriptUtils1;
 import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 public class IdentityProfileHolder {
@@ -365,7 +365,7 @@ return ;
 						int qstart = record.getReadPositionAtReferencePosition(record.getAlignmentStart());
 						int qend = record.getReadPositionAtReferencePosition(record.getAlignmentEnd());
 						//System.err.println("qstart-end "+qstart+" "+qend);
-						q_str1.append(ViralChimericReadsAnalysisCmd.median(bq, qstart, qend-qstart));
+						q_str1.append(TranscriptUtils1.median(bq, qstart, qend-qstart));
 						//if(strand1!=strand) strand = 'm';
 					 	chrom.append(record.getReferenceName());
 					 	if(first){
@@ -500,7 +500,7 @@ return ;
 							String umi;
 							if(forward_read){
 								
-								String barcode = (String)sam.getAttribute(Barcodes.barcode_forward_tag);
+								//String barcode = (String)sam.getAttribute(Barcodes.barcode_forward_tag);
 								//System.err.println(barcode);
 								 int read_len = sa.length();
 								umi = SequenceUtil.reverseComplement(sa.substring(Math.max(0,read_len - startpA), Math.min(read_len,read_len - startB)));

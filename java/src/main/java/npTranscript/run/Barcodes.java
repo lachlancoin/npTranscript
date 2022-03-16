@@ -169,6 +169,14 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 		clear(res);
 		return out;
 	}
+	public static int getPos(String bc, String sequence) {
+	//	if(sequence.length() < bc_len_barcode) return Integer.MAX_VALUE;
+		 EdlibAlignResult.ByValue res=	align(sequence, bc);
+		int out = res.editDistance>3  ? -1 : res.endLocations.getValue();
+	//	int out = res.editDistance+ Math.max(0,bc_len_barcode-(res.endLocations.getValue()-res.startLocations.getValue()+1));
+		clear(res);
+		return out;
+	}
 	
 	 static void clear(ByValue resA_r) {
 			EdlibLibrary.INSTANCE.edlibFreeAlignResult(resA_r);

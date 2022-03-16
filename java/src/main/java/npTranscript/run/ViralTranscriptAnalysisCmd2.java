@@ -259,7 +259,7 @@ addBoolean("illumina", false, "use illumina libary");
 		readsToSkip = cmdLine.getIntVal("readsToSkip");
 		Outputs.overwrite  = cmdLine.getBooleanVal("overwrite");
 		String coords_msa = cmdLine.getStringVal("coords_msa");
-		if(coords_msa!=null){
+		if(coords_msa!=null && (new File(coords_msa)).exists()){
 			BufferedReader br = new BufferedReader(new FileReader(coords_msa));
 			String st = br.readLine();
 			while((st = br.readLine())!=null){
