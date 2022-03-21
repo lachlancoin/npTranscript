@@ -9,24 +9,22 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.zip.GZIPInputStream;
 
-import com.sun.jna.ptr.IntByReference;
-
 import edlib.EdlibAlignConfig;
 import edlib.EdlibAlignResult;
-import edlib.EdlibLibrary;
 import edlib.EdlibAlignResult.ByValue;
+import edlib.EdlibLibrary;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.SequenceUtil;
 import japsa.tools.seq.SequenceUtils;
-import npTranscript.NW.PolyAT;
-import npTranscript.cluster.TranscriptUtils;
 
 public class Barcodes {
 public static boolean verbose=false;	
@@ -101,11 +99,13 @@ public static int maxsize_tolerance_barcode=1;
 public static int barcode_extent=150;
 public static int barcode_ignore=0;
 
-public final int bc_len_barcode;
+public  int bc_len_barcode;
 
 static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfig(-1, MODE, TASK, null, 0);
 			
- 
+public boolean FLAMES_BARCODES = false; 
+Map<String, String> barcode_map ; // just needed if asigned is true
+
  public Barcodes(String infiles ) throws IOException{
 	// this.rev_compl=incl_rev_compl;
 	// barcodes_forward = new List[infiles.length];
@@ -123,17 +123,33 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
 			fis = new GZIPInputStream(fis);
 		}
 		BufferedReader br = new BufferedReader(new InputStreamReader(fis));
-		String st = "";
-		while((st = br.readLine())!=null){
-			String bc = st.split("-")[0];
-			barcodes_forward.add(bc);
-		//		barcodes_reverse.add(SequenceUtil.reverseComplement(bc));
-//						TranscriptUtils.revC(bc));
+		String st = br.readLine();
+		if(st.indexOf('#')>0){
+			 bc_len_barcode = st.split("#")[0].split("_")[0].length();
+
+			FLAMES_BARCODES=true;
+			barcode_map= new HashMap<String,String>();
+			while(st!=null){
+				String[] str = st.split("#");
+				barcode_map.put(str[1], str[0].split("_")[0]);
+				st = br.readLine();
+			}
+
+		}else{
+			 bc_len_barcode = st.split("-")[0].length();
+
+			while((st)!=null){
+				String bc = st.split("-")[0];
+				barcodes_forward.add(bc);
+				st = br.readLine();
+			//		barcodes_reverse.add(SequenceUtil.reverseComplement(bc));
+	//						TranscriptUtils.revC(bc));
+			}
+
 		}
 		}
 		 //}
 	// }
-	 bc_len_barcode = barcodes_forward.get(0).length();
 	}
 	public int calcMatches(Set<Integer> mins, int index, String sequence){//, boolean forward_barcodes){
 		//Set<Integer> mins = new TreeSet<Integer>();
@@ -196,6 +212,13 @@ static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfi
  * */
 	 
 	public int assign(SAMRecord sam, String sa, boolean forward_read, int[] startend) {
+		if(this.FLAMES_BARCODES){
+			String barc = this.barcode_map.get(sam.getReadName());
+			if(barc==null) return 10;
+
+			sam.setAttribute(forward_read ? Barcodes.barcode_forward_tag : Barcodes.barcode_reverse_tag, barc);
+			return 0;
+		}
 		Arrays.fill(startend, -1);
 		boolean forward_barcode = !forward_read;
 		int index = (Integer) sam.getAttribute(SequenceUtils.src_tag);

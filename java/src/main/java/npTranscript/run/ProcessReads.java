@@ -66,17 +66,22 @@ class ProcessReads{
 
 	public void run() {
 		try{
-		String str = "";
-		 for(int i=0; ((str = br.readLine())!=null); i++){
+		String str = br.readLine();
+		 for(int i=0; ((str )!=null); i++){
 			// if(str.startsWith("readID")) continue;
 			process(str);
+			try{
+			str = br.readLine();
+			}catch(Exception exc){
+				exc.printStackTrace();
+				break;
+			}
 		}
 		//br.close();
 		}catch(Exception exc){
 			exc.printStackTrace();
-		}finally{
-			leftover.flush();
 		}
+		leftover.flush();
 		
 	}
 	BufferedReader br;

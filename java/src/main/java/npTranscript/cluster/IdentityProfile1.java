@@ -687,7 +687,8 @@ static char delim_start ='$';
 			SAMRecord sam = sams.get(j);
 			if(!sam.isSecondaryOrSupplementary()) primary_index=j;
 			String id = sam.getReadName();
-			Sequence refSeq =sam.getReferenceIndex() < refSeqs.size() ?  refSeqs.get(sam.getReferenceIndex()) : null;
+			Sequence refSeq =(refSeqs==null || sam.getReferenceIndex() >= refSeqs.size()) ? null : 
+				refSeqs.get(sam.getReferenceIndex());
 			//String chrom = refSeq.getName();
 		//	profile.updateSourceIndex(source_index);
 			//List<AlignmentBlock> li = sam.getAlignmentBlocks();

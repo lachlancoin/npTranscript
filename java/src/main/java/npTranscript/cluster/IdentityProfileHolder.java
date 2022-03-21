@@ -413,6 +413,7 @@ return ;
 	private static boolean process(SAMRecord sam) {
 		boolean reverseForward = ViralTranscriptAnalysisCmd2.reverseForward;
 		int source_index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
+		boolean FLAMES=ViralTranscriptAnalysisCmd2.barcodes[source_index].FLAMES_BARCODES;
 
 		boolean RNA = ViralTranscriptAnalysisCmd2.RNA[source_index];
 		if(sam.isSecondaryOrSupplementary()){
@@ -437,7 +438,7 @@ return ;
 			}
 			Boolean forward_read=null;
 			
-			if(RNA){
+			if(RNA || FLAMES){ // if we useFlames we ignore the strand
 				forward_read = true;
 			}else{
 			//	boolean reverseForward = true;//true; // true gives longer UMI with polyA in it.  This could possibly be  a short cut to estimating polyA
@@ -464,6 +465,7 @@ return ;
 					int for_min;
 				if(forward_read){
 					for_min = ViralTranscriptAnalysisCmd2. barcodes[source_index].assign( sam,sa, true, start_end_for);
+				
 				}else{
 					for_min = ViralTranscriptAnalysisCmd2.barcodes[source_index].assign( sam,sa, false, start_end_rev);
 				}

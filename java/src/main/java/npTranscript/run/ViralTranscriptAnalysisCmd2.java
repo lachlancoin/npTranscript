@@ -113,7 +113,7 @@ public static int readsToSkip=0;
 		setDesc(annotation.scriptDesc());
 		
 		addString("readsOutputFile", null, "Name of file for output", false);
-
+		addString("flames_barcodes", null, "Extracted flames barcdes", false);
 		addString("optsFile", null, "Name of file with extra options", false);
 		addBoolean("verbose", false, "verbose output", false);
 

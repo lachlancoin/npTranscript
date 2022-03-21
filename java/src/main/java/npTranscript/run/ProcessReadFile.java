@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,6 +12,9 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.SequenceInputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -92,8 +94,8 @@ public class ProcessReadFile extends CommandLine {
 		tme0 = System.currentTimeMillis();
 		CommandLine cmdLine = new ProcessReadFile();
 		String[] args = cmdLine.stdParseLine(args1);
-		String[] inpDirs =  cmdLine.getStringVal("inputFileDir").split(":");
-		
+		String inpDir =  cmdLine.getStringVal("inputFileDir","./");
+	
 		String refDir =  cmdLine.getStringVal("refFileDir");
 
 		int num_barcodes=cmdLine.getIntVal("num_barcodes");
@@ -129,6 +131,16 @@ public class ProcessReadFile extends CommandLine {
 		overwrite=cmdLine.getBooleanVal("overwrite");
 		suffix = cmdLine.getStringVal("suffix");
 		
+		String[] inpDirs = ((new File(inpDir).list(new FilenameFilter(){
+
+			@Override
+			public boolean accept(File dir, String name) {
+				
+				File dir1 = new File(dir, name);
+				if(!dir1.isDirectory()) return false;
+				return dir1.list(filter).length>0;
+			}})));
+		
 		String  outFile = type+"_"+cmdLine.getStringVal("outputFile");	
 		File transcripts_file = null;
 	if(refDir!=null){
@@ -136,10 +148,12 @@ public class ProcessReadFile extends CommandLine {
 		transcripts_file =  run(new File(refDir), outFile,  null,1); //only one barcode for ref
 	}
 		 System.err.println("doing main class");
+		 Arrays.sort(inpDirs);
 		 for(int i=0 ; i<inpDirs.length; i++){
 			 System.err.println("running "+i);
-			 run(new File(inpDirs[i]),  outFile, transcripts_file, num_barcodes);
+			 transcripts_file = run(new File(inpDir,inpDirs[i]),  outFile, transcripts_file, num_barcodes);
 		 }
+		 Files.copy(transcripts_file.toPath(), (new File(inpDir, "all_transcripts.txt.gz")).toPath(), StandardCopyOption.REPLACE_EXISTING);
 		}//for type
 	}
 	
@@ -194,10 +208,10 @@ public class ProcessReadFile extends CommandLine {
 		
 		File transcripts_out_file1 = new File(outFile.getAbsolutePath()+".transcripts.mod.txt.gz");
 
-		PrintWriter transcripts_pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(transcripts_out_file))));
+		PrintWriter transcripts_pw_ = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(transcripts_out_file))));
 		boolean addCounts = true;
 		
-		TranscriptsMap tr = new TranscriptsMap(transcripts_pw, transcripts_file, addCounts);
+		TranscriptsMap tr = new TranscriptsMap(transcripts_pw_, transcripts_file, addCounts);
 		for(int index=0; remainder>0;index++){
 			int  ncols = (int) Math.floor(maxcells/(double)num_barcodes1);
 			
@@ -215,7 +229,7 @@ public class ProcessReadFile extends CommandLine {
 			pr.finalise(altT, reorder, reorder);
 			
 			if(index==0){
-				transcripts_pw.close();
+				transcripts_pw_.close();
 				if(addCounts){
 					tr.appendCounts(transcripts_out_file, transcripts_out_file1, 100);
 					if(deleteTmpFiles) transcripts_out_file.delete();
