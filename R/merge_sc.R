@@ -12,8 +12,8 @@ if(length(args)>0){
 split=getOption("split","\t")
 prefix=getOption("prefix","merged_")
 collapse=getOption("collapse","\t")
-input_file <-getOption("input_matrix","chrom_out_tex.txt")
-
+input_file <-getOption("input_matrix","chrom_out1_tex.txt")
+max_lines=30000
 dirs= grep(prefix, dir(),v=T)
 names(dirs)=dirs
 
@@ -43,7 +43,7 @@ min_length=1
 max_lines = 30000
 i=1
 len = length(connections)
-max_lines=60
+
 while(min_length>0 && i<max_lines){
   print(i)
   brk=FALSE

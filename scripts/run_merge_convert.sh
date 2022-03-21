@@ -18,13 +18,24 @@ module load r-bundle-bioconductor/3.9-r-3.6.0
 #cd $resdir
 #Rscript ${npTranscript}/R/convertHDF5Matrix.R
 if [ ! $npTranscript ]; then
- npTranscript=/home/lcoin/github/npTranscript
+ npTranscript=$HOME/github/npTranscript
 fi
+
+rcmd="R CMD BATCH --no-save --no-restore"
+
 
 for i in merged_all_lib*; do zcat $i/*transcripts.mod.txt.gz | cut -f 1 ; done  | sort | uniq > all_transcripts.txt
 
-for i in merged_all_lib*; do cd $i; Rscript  ${npTranscript}/R/convertHDFToMatrix.R  transcript_file=../all_transcripts.txt;  cd ..; done
+for i in merged_all_lib*; do 
+ cd $i; 
+${rcmd} '--args transcript_file=../all_transcripts.txt'  ${npTranscript}/R/convertHDFToMatrix.R
+ cd ..; 
+done
 
-Rscript ${npTranscript}/R/merge_sc.R --prefix=merge_all_lib
+#R CMD BATCH --no-save --no-restore '--args a=1 b=c(2,5,6)' test.R test.out
 
+${rcmd} ${npTranscript}/R/merge_sc.R 
+cmd="${rcmd}  ${npTranscript}/R/merge_sc.R"
+echo $cmd
+$cmd
 
