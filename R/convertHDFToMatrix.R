@@ -14,7 +14,7 @@ if(length(args)>0){
 }
 
 
-file="chrom_out1"
+file=getOption("file","chrom_out1")
 infile=paste(file, "h5",sep=".")
 transcript_file = getOption("transcript_file","../all_transcripts.txt")
 print(transcript_file)
