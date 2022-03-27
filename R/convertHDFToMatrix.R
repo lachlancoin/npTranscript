@@ -35,7 +35,10 @@ if(length(args)>0){
 }
 
 
-file_=getOption("file","spliced_out")
+files_=strsplit(getOption("file","spliced_out:chrom_out"),":")[[1]]
+
+for(file_ in files_){
+
 infile=paste(file_, "h5",sep=".")
 h5f = paste(file_, "h5",sep=".")         
 
@@ -158,5 +161,5 @@ params_file = paste0(file_,".json")
 
 write_json(params, params_file, pretty=T, auto_unbox=T)
 
-
+}
 
