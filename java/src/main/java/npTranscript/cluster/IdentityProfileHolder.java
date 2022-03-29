@@ -438,7 +438,7 @@ return ;
 			}
 			Boolean forward_read=null;
 			
-			if(RNA || FLAMES){ // if we useFlames we ignore the strand
+			if(RNA  ){ // if we useFlames we ignore the strand
 				forward_read = true;
 			}else{
 			//	boolean reverseForward = true;//true; // true gives longer UMI with polyA in it.  This could possibly be  a short cut to estimating polyA

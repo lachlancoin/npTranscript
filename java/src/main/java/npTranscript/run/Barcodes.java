@@ -212,15 +212,20 @@ Map<String, String> barcode_map ; // just needed if asigned is true
  * */
 	 
 	public int assign(SAMRecord sam, String sa, boolean forward_read, int[] startend) {
+		boolean forward_barcode = !forward_read;
 		if(this.FLAMES_BARCODES){
 			String barc = this.barcode_map.get(sam.getReadName());
 			if(barc==null) return 10;
-
-			sam.setAttribute(forward_read ? Barcodes.barcode_forward_tag : Barcodes.barcode_reverse_tag, barc);
+			int inds1=0;
+			int minv=0;
+			int st=0;
+			int end=0;
+			String sb = barc+"\t"+inds1+"\t"+minv+"\t"+st+","+end+"\t"+(forward_barcode ? fortag: revtag);
+			
+			sam.setAttribute(forward_read ? Barcodes.barcode_forward_tag : Barcodes.barcode_reverse_tag, sb);
 			return 0;
 		}
 		Arrays.fill(startend, -1);
-		boolean forward_barcode = !forward_read;
 		int index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
 		List<String> barcodes_i = barcodes_forward;//forward_barcode  ? barcodes_forward : barcodes_reverse;
 		if(barcodes_i.size()==0) return this.bc_len_barcode;
