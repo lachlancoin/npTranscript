@@ -113,11 +113,12 @@ public class IdentityProfileHolder {
  
 	boolean calcBreakpoints;
 	ArrayList<Sequence> genomes;
+	Annotation annot;
  public IdentityProfileHolder(ArrayList<Sequence> genomes, Sequence refSeq,
-		 Outputs o, String[] in_nmes,  boolean calcBreakpoints)//, Annotation annot)
+		 Outputs o, String[] in_nmes,  boolean calcBreakpoints, Annotation annot)
 		 throws IOException {
 	 this.genomes = genomes;
-	 
+	 this.annot = annot;
 	 this.calcBreakpoints = calcBreakpoints;
 	 Arrays.fill(basesStart,0);
 	 Arrays.fill(basesEnd,0);
@@ -413,7 +414,7 @@ return ;
 	private static boolean process(SAMRecord sam) {
 		boolean reverseForward = ViralTranscriptAnalysisCmd2.reverseForward;
 		int source_index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
-		boolean FLAMES=ViralTranscriptAnalysisCmd2.barcodes[source_index].FLAMES_BARCODES;
+		boolean FLAMES=ViralTranscriptAnalysisCmd2.barcodes==null  ? false: ViralTranscriptAnalysisCmd2.barcodes[source_index].FLAMES_BARCODES;
 
 		boolean RNA = ViralTranscriptAnalysisCmd2.RNA[source_index];
 		if(sam.isSecondaryOrSupplementary()){
@@ -498,7 +499,7 @@ return ;
 						int diff = startpA-startB ;
 					
 //						System.err.println(forward_read+" "+startB+" "+startpA+" "+diff);
-						if(diff< ViralTranscriptAnalysisCmd2.max_umi && diff>ViralTranscriptAnalysisCmd2.min_umi){
+						if(diff< ViralTranscriptAnalysisCmd2.max_umi && diff>ViralTranscriptAnalysisCmd2.min_umi && !FLAMES){
 							String umi;
 							if(forward_read){
 								

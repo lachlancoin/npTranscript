@@ -22,31 +22,28 @@ import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 
 public class IdentityProfile1 {
+	
+	
+	public static List<String> types_to_include = null; //5_3 5_no3 etc
+	Annotation annot = null;
+	public static String annotFile  = null;
 	public static final boolean checkPolyA = true;
 //	public static double fusion_overlap_thresh = 0.5;
 	public static String[] nmes = new String[] {"5_3", "5_no3", "no5_3", "no5_no3"};
-	public String nextDownstream(int rightBreak, int chrom_index, Boolean forward){
-		return ""+TranscriptUtils.round(rightBreak,CigarHash2.round);
-	}
-	public String  nextUpstream(int rightBreak, Boolean forward){
-	//	secondKey.append(this.chrom_);		secondKey.append("/");
-	//	secondKey.append(this.strand);secondKey.append("/");
-		
-		return ""+TranscriptUtils.round(rightBreak,CigarHash2.round);
-	}
+	
 	public void adjust3UTR(int seqlen2) {
 		
 	}
 	public boolean isLeader(int prev_pos) {
 		return prev_pos<100;
 	}
-	public int getTypeInd(int start, int end, Boolean forward) {
-		if(start <=TranscriptUtils.startThresh) return 0; //end >= seqlen -TranscriptUtils.endThresh ? 0:1;
-		else return 2; //end >= seqlen -TranscriptUtils.endThresh ? 2:3;
+	public int getTypeInd(int start, int end, Boolean forward, int seqlen) {
+		if(start <=TranscriptUtils.startThresh) return end >= seqlen -TranscriptUtils.endThresh ? 0:1;
+		else return end >= seqlen -TranscriptUtils.endThresh ? 2:3;
 		//return null;
 	}
-	public String getTypeNme(int start, int end, Boolean forward) {
-		return nmes[getTypeInd(start,end, forward)];
+	public String getTypeNme(int start, int end, Boolean forward, int seqlen) {
+		return nmes[getTypeInd(start,end, forward, seqlen)];
 	}
 	
 	
@@ -129,6 +126,7 @@ public class IdentityProfile1 {
 	//final CigarClusters all_clusters;
 	public IdentityProfile1(IdentityProfileHolder parent) {
 		this.parent=parent;
+		this.annot = parent.annot;
 		//this.chrom_index = parent.chrom_index;
 		//this.chrom_ = parent.chrom_;
 		this.num_sources = parent.num_sources;
@@ -189,7 +187,7 @@ static char delim_start ='$';
 	
 	//** this adds coRefPositions into the clusters
 	 public static String header = 
-"readID\tsource\tchrom\tstartPos\tendPos\talign_strand\terrorRatio\tid\tbreaks_ref\tbreaks_read\tread_len\tqval\tbaseQ\tpolyA_fusion_site";
+"readID\tsource\tchrom\tstartPos\tendPos\talign_strand\ttype\terrorRatio\tid\tbreaks_ref\tbreaks_read\tread_len\tqval\tbaseQ\tpolyA_fusion_site";
 	// public static String polyA = "AAAAAAAAAAAAAA";
 	 //public static String polyT = "TTTTTTTTTTTTTT";
 	// public static int polyA_ed_dist = 1;
@@ -229,7 +227,7 @@ static char delim_start ='$';
 		parent.o.addDepthMap(id_, coRefPositions.map);
 		String str = id+"\t"+source_index+"\t"
 		+chrom_+"\t"
-		+startPos+"\t"+endPos+"\t"+strand+"\t"
+		+startPos+"\t"+endPos+"\t"+strand+"\t"+this.type_nme+"\t"
 		+coRefPositions.getError(source_index)+"\t"+id_+"\t"+breakSt+"\t"+breakSt1+"\t"+read_len+"\t"+q_value_str.trim()+"\t"+this.base_q_str.trim()+"\t"+(st.toString() );
 	//	if(trainStrand){f
 		//	str = str+"\t"+readSeq.subSequence(0, 10)+"\t"+readSeq.subSequence(len1-10, len1)
@@ -311,7 +309,7 @@ static char delim_start ='$';
 			// double q_value//, Annotation annot
 			) throws IOException, NumberFormatException{
 		//CigarHash2 breaks  = coRefPositions.breaks;
-		IdentityProfile1  annot = this;
+		//final Annotation annot;// = this.annot==null ? this : annot;
 	//	int chrom_index = sam.getReferenceIndex();
 		this.baseQ  = baseQ; this.phredQ = phredQ;// this.q_value = q_value;
 		this.coRefPositions.strand = strand; 
@@ -365,10 +363,38 @@ static char delim_start ='$';
 		//String roundStartP = annotByBreakPosition ? TranscriptUtils.round(startPos, CigarHash2.round)+"" : 	"";
 		StringBuffer secondKey =new StringBuffer();
 		
-	//	 hasLeaderBreak = TranscriptUtils.coronavirus? (breaks.size()>1 &&  annot.isLeader(breaks.get(1))) : false;
+	boolean 	 hasLeaderBreak = ViralTranscriptAnalysisCmd2.coronavirus? (breaks.size()>1 &&  annot.isLeader(breaks.get(0))) : false;
 		
+		if(ViralTranscriptAnalysisCmd2.coronavirus){
+			boolean forward1 = true;//orward
+			if(includeStartEnd || breaks.size()==2){
+				secondKey.append(annot.nextUpstreamG(startPos, forward1)+delim);
+			}
+			boolean firstBreak=true;
+			for(int i=1; i<breaks.size()-1; i+=2){
+				int gap = breaks.get(i+1)-breaks.get(i);
+				String upst = annot.nextUpstreamG(breaks.get(i),forward1); //5prime break
+				secondKey.append(upst+delim1);
+				String downst = annot.nextDownstreamG(breaks.get(i+1),forward1);
+				secondKey.append(downst+delim);  //3prime break
+				if(annotByBreakPosition && gap > break_thresh){
+					if(firstBreak){
+						firstBreak=false;
+						if(annotByBreakPosition) parent.addBreakPoint(source_index, 0, breaks.get(i), breaks.get(i+1));
+					//	if(bp!=null) this.bp.addBreakPoint(source_index, 0, breaks.get(i), breaks.get(i+1));
+					//	hasLeaderBreak = true;
+					}else{
+						if(annotByBreakPosition)  parent.addBreakPoint(source_index, 1, breaks.get(i), breaks.get(i+1));
+
+					}
+				}
 		
-		if(true) {//annot instanceof EmptyAnnotation){
+			}
+		//	if(includeStartEnd || breaks.size()==2) {
+				secondKey.append(annot.nextUpstreamG(breaks.get(breaks.size()-1),  forward1)); //last break is upstream start pos
+		//	}
+				
+		}else if(annot instanceof EmptyAnnotation){
 			secondKey.append(chrom_+"/"+strand+"/");
 			for(int jjk =0; jjk<this.strand.length(); jjk++){
 				if(jjk>0) secondKey.append(";");
@@ -382,13 +408,15 @@ static char delim_start ='$';
 				}*/
 				///prob could rethink this
 				if(forward!=null){
-					if(strand.charAt(jjk)=='+') secondKey.append(TranscriptUtils.round(breaks.get(e1-1), CigarHash2.round1));
-					else secondKey.append(TranscriptUtils.round(breaks.get(s1),CigarHash2.round1));
+					if(strand.charAt(jjk)=='+') secondKey.append(this.annot.nextDownstream(breaks.get(e1-1), forward));//TranscriptUtils.round(breaks.get(e1-1), CigarHash2.round1));
+					else secondKey.append(this.annot.nextDownstream(breaks.get(s1), forward));//TranscriptUtils.round(breaks.get(s1),CigarHash2.round1));
 				}else{
-					secondKey.append(TranscriptUtils.round(breaks.get(e1-1), CigarHash2.round1));
+					secondKey.append(this.annot.nextDownstream(breaks.get(e1-1), true));//TranscriptUtils.round(breaks.get(e1-1), CigarHash2.round1));
 				}
 				
 			}
+		}else{
+			throw new RuntimeException("!!");
 		}
 		
 		
@@ -396,8 +424,11 @@ static char delim_start ='$';
 			
 	//	}
 		//System.err.println(secondKey);
-
-		type_nme =  getTypeNme( startPos, endPos, forward) ; //coRefPositions.getTypeNme(seqlen);
+		//if(hasLeaderBreak){
+		//	System.err.println("has leader break");
+		//}
+	//	int seqlen = readSeq.length();
+		type_nme =  getTypeNme( startPos, endPos, forward, annot.seqLen()) ; //coRefPositions.getTypeNme(seqlen);
 		geneNames.clear();
 		this.coRefPositions.setStartEnd(startPos,endPos,src_index);
 		 span_str = "";//annot.getSpan(coRefPositions.breaks, forward,  coRefPositions.span, geneNames);
@@ -705,22 +736,16 @@ static char delim_start ='$';
 		try{
 			int maxl = 100;
 			int tol=5;
-		//	int st_r = sam.getReadPositionAtReferencePosition(sam.getAlignmentStart());
-		//	int end_r = sam.getReadPositionAtReferencePosition(sam.getAlignmentEnd());
-		//	int diff_r = readSeq.length() -end_r;
 			String baseQ = sams.get(primary_index).getBaseQualityString();
 			byte[]phredQs = sams.get(primary_index).getBaseQualities();
-		//	char strand = sam.getReadNegativeStrandFlag() ? '-': '+';
-		//	boolean forward = !sam.getReadNegativeStrandFlag();
-			//int offset_3prime =0;
-		
-			
 			String secondKey= profile.processRefPositions(  id, cluster_reads, 
 					 source_index, readSeq,baseQ, phredQs);
 			
 			//if(!ViralTranscriptAnalysisCmd2.allowSuppAlignments){
+			  if(types_to_include==null || types_to_include.contains(profile.type_nme)){
+
 				profile.commit(readSeq, sams.get(primary_index));
-		//	}
+			}
 			
 		/*	if( supplementary){
 				 suppl_read.add(this.readSt); suppl_read.add(readEn);
@@ -730,7 +755,6 @@ static char delim_start ='$';
 		//	diff_r = readSeq.length() - profile.readEn;
 			//seq11[0]=  profile.readSt; seq11[1] = profile.readEn; 
 			//seq11[2] = profile.startPos; seq11[3] = profile.endPos;
-			
 		}catch(IOException exc){
 			exc.printStackTrace();
 		}

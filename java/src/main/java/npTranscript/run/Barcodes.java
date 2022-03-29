@@ -131,7 +131,7 @@ Map<String, String> barcode_map ; // just needed if asigned is true
 			barcode_map= new HashMap<String,String>();
 			while(st!=null){
 				String[] str = st.split("#");
-				barcode_map.put(str[1], str[0].split("_")[0]);
+				barcode_map.put(str[1], str[0]);;//;
 				st = br.readLine();
 			}
 
@@ -214,14 +214,17 @@ Map<String, String> barcode_map ; // just needed if asigned is true
 	public int assign(SAMRecord sam, String sa, boolean forward_read, int[] startend) {
 		boolean forward_barcode = !forward_read;
 		if(this.FLAMES_BARCODES){
-			String barc = this.barcode_map.get(sam.getReadName());
-			if(barc==null) return 10;
+			String barc_all = this.barcode_map.get(sam.getReadName());
+			if(barc_all==null) return 10;
+			String[] barcs = barc_all.split("_");
+			String barc=barcs[0];
+			String umi = barcs[1];
 			int inds1=0;
 			int minv=0;
 			int st=0;
 			int end=0;
 			String sb = barc+"\t"+inds1+"\t"+minv+"\t"+st+","+end+"\t"+(forward_barcode ? fortag: revtag);
-			
+			sam.setAttribute(Barcodes.umi_tag, umi);
 			sam.setAttribute(forward_read ? Barcodes.barcode_forward_tag : Barcodes.barcode_reverse_tag, sb);
 			return 0;
 		}

@@ -12,6 +12,10 @@ String chrom1;
 		pw.println(chrom1+"\t"+string);
 		// TODO Auto-generated constructor stub
 	}
+	public EmptyAnnotation( ) throws IOException {
+		
+		// TODO Auto-generated constructor stub
+	}
 	@Override
 	public int nextDownstream(int rightBreak,  boolean forward){
 		return TranscriptUtils.round(rightBreak,CigarHash2.round);
@@ -28,5 +32,22 @@ String chrom1;
 	}
 	
 	
+	/*if(forward!=null){
+		if(strand.charAt(jjk)=='+') secondKey.append(TranscriptUtils.round(breaks.get(e1-1), CigarHash2.round1));
+		else secondKey.append(TranscriptUtils.round(breaks.get(s1),CigarHash2.round1));
+	}else{
+		secondKey.append(TranscriptUtils.round(breaks.get(e1-1), CigarHash2.round1));
+	}*/
+	
+	
+	public String nextDownstream(int rightBreak, int chrom_index, Boolean forward){
+		return ""+TranscriptUtils.round(rightBreak,CigarHash2.round);
+	}
+	public String  nextUpstream(int rightBreak, Boolean forward){
+	//	secondKey.append(this.chrom_);		secondKey.append("/");
+	//	secondKey.append(this.strand);secondKey.append("/");
+		
+		return ""+TranscriptUtils.round(rightBreak,CigarHash2.round);
+	}
 
 }

@@ -60,12 +60,10 @@ import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecord.SAMTagAndValue;
 import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
-import htsjdk.samtools.util.SequenceUtil;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
@@ -78,6 +76,7 @@ import npTranscript.cluster.Annotation;
 import npTranscript.cluster.CigarCluster;
 import npTranscript.cluster.CigarHash;
 import npTranscript.cluster.CigarHash2;
+import npTranscript.cluster.EmptyAnnotation;
 import npTranscript.cluster.GFFAnnotation;
 import npTranscript.cluster.IdentityProfile1;
 import npTranscript.cluster.IdentityProfileHolder;
@@ -116,7 +115,7 @@ public static int readsToSkip=0;
 		addString("flames_barcodes", null, "Extracted flames barcdes", false);
 		addString("optsFile", null, "Name of file with extra options", false);
 		addBoolean("verbose", false, "verbose output", false);
-
+		addString("types_to_include",null, "For coronavirus only, which types to include, e.g. 5_3:5_no3", false);
 		addString("optsType", null, "Which column in opts file", false);
 		addInt("max_umi",150,"Maximum size of UMI + barcode and possibly polyT minus bc_len_AT if reverse forward is true");
 		addInt("min_umi",15,"Minimum size of UMI + barcode");
@@ -241,7 +240,7 @@ addBoolean("illumina", false, "use illumina libary");
 		
 	}
  public static int supplementaryQ = 20;
- public static boolean coronavirus = false;
+ public static boolean coronavirus = true;
  public static int maxReads = Integer.MAX_VALUE;
  public static String pool_sep="";
  public static boolean limit_to_read_list = true;
@@ -294,7 +293,8 @@ addBoolean("illumina", false, "use illumina libary");
 		Outputs.writeH5 = cmdLine.getBooleanVal("writeH5");
 		CigarHash2.round = cmdLine.getIntVal("bin0");
 		CigarHash2.round1 = cmdLine.getIntVal("bin1");
-
+		String types_to_include = cmdLine.getStringVal("types_to_include", null);
+		if(types_to_include!=null) IdentityProfile1.types_to_include = Arrays.asList(types_to_include.split(":"));
 		Annotation.enforceStrand = cmdLine.getBooleanVal("enforceStrand");
 		IdentityProfile1.trainStrand = cmdLine.getBooleanVal("trainStrand");
 		GFFAnnotation.enforceKnownLinkedExons = cmdLine.getBooleanVal("enforceKnownLinkedExons");
@@ -416,12 +416,12 @@ addBoolean("illumina", false, "use illumina libary");
 
 		Outputs.library = new File(cmdLine.getStringVal("library"));
 		
-		
+		String annotFile = cmdLine.getStringVal("annotation");
 		
 			errorAnalysis(bamFiles,barcode_files,  reference, readList,
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  
 				Outputs.calcBreaks, annotByBreakPosition,  chrs, chrsToIgnore,  isoformDepthThresh, coverageDepthThresh, probInclude, fastq, 
-				chromsToRemap);
+				chromsToRemap, annotFile);
 	}
  public static boolean sorted = true;
 public static boolean allowSuppAlignments = true;; // this has to be true for allowing supp alignments
@@ -644,7 +644,8 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 			String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads, 
 			boolean calcBreaks1 ,  boolean annotByBreakPosition, String chrToInclude, String chrToIgnore, 
-			int[] writeIsoformDepthThresh, int writeCoverageDepthThresh, double probInclude, boolean fastq, String chromsToRemap) throws IOException {
+			int[] writeIsoformDepthThresh, int writeCoverageDepthThresh, double probInclude, boolean fastq, String chromsToRemap, 
+			String annot_file) throws IOException {
 		boolean cluster_reads = true;
 		CigarHash2.round = round;
 		Annotation.tolerance = round;
@@ -674,7 +675,8 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 		TranscriptUtils.endThresh = endThresh;
 		IdentityProfile1.writeIsoformDepthThresh =writeIsoformDepthThresh;
 		IdentityProfile1.writeCoverageDepthThresh =writeCoverageDepthThresh;
-		
+		//File annotSummary = new File(resdir, "annotation.csv.gz");
+		//if(annotSummary.exists()) annotSummary.delete();
 	//	PrintWriter annotation_pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(annotSummary, false))));
 		Map<String, Integer> reads= new HashMap<String, Integer>();
 		if(readList.length>0 && readList[0].length()>0){
@@ -822,8 +824,13 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 			
 			
 		//	boolean calcBreaks1 = calcBreaks;// && break_thresh < seqlen && chr!=null;
+			
+			Annotation 	annot = annot_file == null ? new EmptyAnnotation( ) : 
+					new Annotation(new File(annot_file), len);
+			
+			
 			IdentityProfileHolder profile =  	
-					new IdentityProfileHolder(genomes, null, outp,  in_nmes, calcBreaks1);//, annot);
+					new IdentityProfileHolder(genomes, null, outp,  in_nmes, calcBreaks1, annot);
 			//boolean updateProfile = true;
 			
 			

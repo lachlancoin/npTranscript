@@ -48,7 +48,7 @@ public class Annotation{
 		public static int correctionDistLeft = 10000;
 		public static int correctionDistRight = 10000;	
 		public static boolean enforceStrand = true;
-		
+		 int seqlen;
 		public void print(PrintWriter pw){
 			
 			int len = spliced_count.length;
@@ -68,7 +68,14 @@ public class Annotation{
 			}
 			pw.flush();
 				}
-				
+				static String endStr="end";
+		public String  nextDownstreamG(int rightBreak,  boolean forward){
+			int i=nextDownstream(rightBreak, forward);
+			if(i==genes.size()) {
+				return genes.get(i-1);
+			}
+			return this.genes.get(i);
+		}
 			
 		
 		public int nextDownstream(int rightBreak,  boolean forward){
@@ -96,6 +103,10 @@ public class Annotation{
 			return sb.toString();
 		}*/
 		
+		public String nextUpstreamG(int leftBreak, boolean forward){
+			int i = this.nextUpstream(leftBreak, forward);
+			return genes.get(i);
+		}
 		public int nextUpstream(int leftBreak,  boolean forward){
 		//	if(leftBreak<0) return  "null";
 			for(int i=start.size()-1; i>=0 ;i--){
@@ -198,7 +209,11 @@ public class Annotation{
 		
 	}
 	
-	public	Annotation(File f, PrintWriter pw,int source_count) throws IOException{
+	public	Annotation(File f, int source_count) throws IOException{
+		this(f, null, source_count);
+	}
+	
+	public	Annotation(File f,PrintWriter pw, int source_count) throws IOException{
 		//this(chrom, seqlen);
 		BufferedReader br = new BufferedReader(new FileReader(f)) ;
 			List<String> header = Arrays.asList(br.readLine().split(","));
@@ -215,8 +230,10 @@ public class Annotation{
 				
 				int st = Integer.parseInt(line[start_ind]);
 				int en = Integer.parseInt(line[end_ind]);
-				String str1 = "0\t"+gene+"\t"+gene+"\t"+gene+"\t"+gene+"\t"+gene;
-				pw.println(str1);
+				if(pw!=null){
+					String str1 = "0\t"+gene+"\t"+gene+"\t"+gene+"\t"+gene+"\t"+gene;
+					pw.println(str1);
+				}
 				genes.add(gene);
 				start.add(st);
 				end.add(en);
@@ -238,7 +255,7 @@ public class Annotation{
 			}
 			br.close();
 			mkOrfs(source_count);
-			
+			this.seqlen = this.end.get(end.size()-1);
 		}
 	
 	String chrom="";
@@ -275,7 +292,7 @@ public class Annotation{
 		}
 
 		public boolean isLeader(int prev_pos) {
-			return prev_pos < this.start.get(1)-tolerance;
+			return prev_pos < this.start.get(1)+tolerance;
 		}
 
 	
@@ -390,6 +407,11 @@ public class Annotation{
 			String[] res = new String[l.size()];
 			for(int i=0; i<res.length; i++)res[i] = l.get(i) <0 ? "start" : l.get(i)==genes.size() ?  "end":  this.genes.get(l.get(i));
 			return Arrays.asList(res);
+		}
+
+
+		public int seqLen() {
+			return seqlen;
 		}
 
 
