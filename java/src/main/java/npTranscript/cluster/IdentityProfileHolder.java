@@ -351,7 +351,7 @@ return ;
 						boolean first = chr==null;
 						SAMRecord record = it.next();
 						if(read_strand==null){
-							strand.append("NA");
+							strand.append("N");
 						}else{
 							if(read_strand.charAt(0)=='+'){
 								strand.append(record.getReadNegativeStrandFlag() ? '-': '+');

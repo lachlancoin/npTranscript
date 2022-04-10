@@ -123,10 +123,6 @@ public static String getInfo(SAMRecord sam) {
 		if(read_len < len) return bc_len_AT;
 		int offset = forward ? Math.max(0, read_len-len) : dist_to_ignore_AT;
 		
-		//String str1 = 
-		//		forward_barcode ? sa.substring(barcode_ignore,Math.min(barcode_extent,read_len)) : sa.substring(Math.max(0, read_len-barcode_extent), read_len-barcode_ignore);
-		//int offset = forward_barcode ?  barcode_ignore : read_len-barcode_extent;
-	
 		String sequence_1  = 
 				forward ? sequence.substring(offset, read_len-dist_to_ignore_AT) : sequence.substring(dist_to_ignore_AT, Math.min(len, read_len)) ;
 		String sequence_ ;
