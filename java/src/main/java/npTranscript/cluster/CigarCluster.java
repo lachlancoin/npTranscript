@@ -753,10 +753,11 @@ static List<String> empty_list = Arrays.asList(new String[0]);
 				List<Integer> breaks = cnt.getBreaks();
 				 List<String> exons  = annot==null ? annot.empty_list : annot.matchExons(breaks, chrom, this.forward);
 				genes.addAll(exons);
-				int exonCount =(int) Math.round((double) breaks.size()/2.0);
+				//int exonCount =(int) Math.round((double) breaks.size()/2.0);
+				int exonCount = exons.size();
 				String read_count1 =  TranscriptUtils.getString(cnt.count());
 				String str = cc.id()+"/"+cnt.id()+"\t"+chrom+"\t"+breaks.get(0)+"\t"+breaks.get(breaks.size()-1)+"\t"+exonCount+
-				"\t"+CigarHash2.getString(breaks)+"\t"+CigarHash2.getString(exons)+"\t"+cnt.sum()+"\t"+read_count1+"\t";
+				"\t"+CigarHash2.getString(breaks)+"\t"+CigarHash2.getString1(exons," ;; ")+"\t"+cnt.sum()+"\t"+read_count1+"\t";
 				o.printTranscript(str,depth_str);
 			}
 		//	o.printTranscriptAlt(cc);

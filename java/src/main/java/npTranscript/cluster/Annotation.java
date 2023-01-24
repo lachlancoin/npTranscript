@@ -380,9 +380,12 @@ public class Annotation{
 			
 		}
 
-		static List<String> empty_list = Arrays.asList(new String[0]);
+		protected static List<String> empty_list = Arrays.asList(new String[0]);
 
-
+		protected boolean matchChrom(String chrom) {
+			// TODO Auto-generated method stub
+			return this.chrom.equals(chrom);
+		}
 		public List<String> matchExons(List<Integer> br, String chrom, Boolean forward) {
 			List<Integer> l = new ArrayList<Integer>();
 			if(!this.chrom.equals(chrom)){
@@ -398,6 +401,7 @@ public class Annotation{
 				}
 			l.add(this.nextDownstream(br.get(br.size()-1) , forward));
 
+			
 			return getStr(l);
 		}
 
