@@ -78,6 +78,8 @@ public class PrintResults extends CommandLine {
 		addString("h5file", null, "Input h5", false);
 		addString("annotation", null, "ORF annotation file or GFF file", false);
 		addString("optsFile", null, "Name of file with extra options", false);
+		addString("optsType", null, "Specifies the column", false);
+
 		addString("resdir", "./", "results directory");//"results"+System.currentTimeMillis()
 		addString("reference", null, "ref genome");
 		
@@ -221,8 +223,12 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 					
 					annot = new GFFAnnotation(gffFile, annotation_pw, gffFile.getName().indexOf(".gff")<0);
 			}else{
+				if(annot_file.toString().endsWith("bed")){
+				annot = new BedAnnotation(new File(annot_file), annotation_pw, len);	
+				}else{
 				annot = 
 					new Annotation(new File(annot_file),  annotation_pw, len);
+				}
 			}
 		//	if(anno!=null) anno.close();
 			if(annotation_pw!=null) annotation_pw.close();

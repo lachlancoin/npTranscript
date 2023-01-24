@@ -23,10 +23,10 @@ import npTranscript.run.ViralTranscriptAnalysisCmd2;
  */
 
 public class Annotation{
-		List<String> genes= new ArrayList<String>();
-		List<Integer> start = new ArrayList<Integer>();
-		 List<Integer> end = new ArrayList<Integer>();
-		 List<Boolean> strand = new ArrayList<Boolean>();
+		protected List<String> genes= new ArrayList<String>();
+		protected  List<Integer> start = new ArrayList<Integer>();
+		protected  List<Integer> end = new ArrayList<Integer>();
+		protected  List<Boolean> strand = new ArrayList<Boolean>();
 		 
 		
 		 public void clear(){
@@ -48,7 +48,7 @@ public class Annotation{
 		public static int correctionDistLeft = 10000;
 		public static int correctionDistRight = 10000;	
 		public static boolean enforceStrand = true;
-		 int seqlen;
+		 protected int seqlen;
 		public void print(PrintWriter pw){
 			
 			int len = spliced_count.length;
@@ -259,7 +259,7 @@ public class Annotation{
 		}
 	
 	String chrom="";
-	 void mkOrfs(int source_count) {
+	 protected void mkOrfs(int source_count) {
 		orfs = new int[start.size()][];
 		overlap = new double[start.size()];
 		orf_len = new int[start.size()];
