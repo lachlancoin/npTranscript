@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -16,22 +17,7 @@ import npTranscript.cluster.Annotation;
 
 public class BedAnnotation extends Annotation {
 	
-	static class Interval{
-		int st; int end;
-		String gene;
-		public Interval(int st2, int end2, String gene) {
-			this.st = st2;
-			this.end = end2;
-			this.gene = gene;
-		}
-		public double overlap(int st1, int end1){
-			double k0= Math.min(end1-st1, end-st);
-			double k1 = Math.min(end1-st, end -st1);
-			return Math.min(k0, k1);
-		}
-	}
-	List<Interval> intervalsF = new ArrayList<Interval>();
-	List<Interval> intervalsR = new ArrayList<Interval>();
+	
 
 static List<String> header = Arrays.asList("chrom:Minimum:Maximum:gene:unknown:Direction".split(":"));
 static String split="\t";
@@ -122,19 +108,7 @@ static String split="\t";
 		
 		
 	}
-	int min_overlap=5;
-	@Override
-	public List<String> matchExons(List<Integer> br, String chrom, Boolean forward) {
-		List<Integer> l = new ArrayList<Integer>();
-		if(!matchChrom(chrom)){
-			return empty_list;
-		}
-		int st1 = br.get(0);
-		int end1 = br.get(br.size()-1);
-		List<Interval> intervals = forward? intervalsF : intervalsR;
-		List<String> genes=	intervals.stream().filter(c -> c.overlap(st1, end1) > min_overlap).map(c->c.gene).collect(Collectors.toList());
-		return genes;
-	}
+	
 
 	
 

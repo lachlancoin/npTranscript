@@ -159,7 +159,7 @@ public class CigarCluster  {
    	//ID=ENSG00000223972.5;gene_id=ENSG00000223972.5;gene_type=transcribed_unprocessed_pseudogene;gene_name=DDX11L1;level=2;havana_gene=OTTHUMG00000000961.2
 private static void writeGFF1(List<Integer> breaks,List<String> exons,  String key, PrintWriter pw,SequenceOutputStream os,  PrintWriter[] bedW, String chr, 
 		String type,  String parent, String ID,  int start, int end, String type_nme, String secondKey, 
-		String geneID, String strand, Sequence seq,  int []counts){
+		String geneID, String strand, Sequence seq,  int []counts, int[] read_max){
 	byte[] seqb =  seq==null ? null : seq.toBytes();
 	boolean writeSeq = seqb!=null && seqb.length>0;
 	 pw.print(chr);pw.print("\tnp\t"+type+"\t");
@@ -223,8 +223,8 @@ private static void writeGFF1(List<Integer> breaks,List<String> exons,  String k
 	 int source_index =0;
 		if(bedW!=null){
 			for(int i=0; i<bedW.length; i++){
-				if(counts[i]>0){
-					printBed(bedW[i], chr, breaks, ID,  strand, source_index, geneID,   counts[i]);
+				if(i<counts.length && counts[i]>0){
+					printBed(bedW[i], chr, breaks, ID,  strand, i, geneID,   counts[i], read_max[i]);
 				}
 			}
 		}
@@ -233,7 +233,7 @@ private static void writeGFF1(List<Integer> breaks,List<String> exons,  String k
 }
 
 public static  synchronized void printBed(PrintWriter bedW, String chrom, List<Integer> breaks, String transcript_id, 
-		String strand, int source, String gene_id,   int read_depth){//, int span, String span_str){
+		String strand, int source, String gene_id,   int read_depth, int read_max){//, int span, String span_str){
 	if(bedW==null) return;
 	int num_exons =(int) Math.floor( (double)  breaks.size()/2.0);
 	int col_id = source % Outputs.col_len;
@@ -249,7 +249,8 @@ public static  synchronized void printBed(PrintWriter bedW, String chrom, List<I
 		block_sizes.append(comma+(breaks.get(i+1)-breaks.get(i)));
 		if(i==0) comma=",";
 	}
-	bedW.println(chrom+"\t"+startPos+"\t"+endPos+"\t"+transcript_id+"."+gene_id+"\t"+read_depth+"\t"+strand+"\t"+startPos+"\t"+endPos+"\t"
+	int score =(int) Math.round(1000.0*((double)read_depth/(double)read_max));
+	bedW.println(chrom+"\t"+startPos+"\t"+endPos+"\t"+transcript_id+"."+gene_id+"\t"+score+"\t"+strand+"\t"+startPos+"\t"+endPos+"\t"
 			+Outputs.col_str[col_id]+"\t"+num_exons+"\t"+block_sizes.toString()+"\t"+block_start.toString());
 
 }
@@ -273,6 +274,13 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 	boolean[] writeAny = new boolean[pw.length];
 	int[] starts = new int[pw.length];
 	int[] ends = new int[pw.length];
+	int[] read_max = new int[bedW.length];
+	for(int i=0; i<counts.size(); i++){
+		int[] cnt=counts.get(i).getValue().count;
+		for(int k=0; k<read_max.length; k++){
+			read_max[k] = Math.max(read_max[k] ,cnt[k]);
+ 		}
+	}
 	Arrays.fill(starts, Integer.MAX_VALUE);;
 	//System.err.println(min_cnt+" "+max_cnt+" "+counts.size());
 	if(max_cnt >=1){
@@ -325,7 +333,7 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 					if(end>ends[k]) ends[k] = end;
 				writeGFF1(br_, exons, keyv , pw[k], os ,bedW, chr, "transcript", 
 						this.id, gene_id, start,end
-						, type_nme, this.breaks_hash.secondKey,gene_id,  strand,seq,  br_next.count);
+						, type_nme, this.breaks_hash.secondKey,gene_id,  strand,seq,  br_next.count, read_max);
 				 }
 			 }
 			}
@@ -334,7 +342,7 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 		 for(int i=0; i<pw.length; i++){
 			 if(writeAny[i]){
 				 writeGFF1(null, null, null, pw[i], os,null, chr, "gene",  null, this.id, starts[i], ends[i], type_nme, this.breaks_hash.secondKey, 
-							this.id, strand, seq,this.readCount);
+							this.id, strand, seq,this.readCount, read_max);
 			 }
 		 }
 	}
@@ -385,8 +393,15 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 				this.endPos = -1;
 				 for(int i=0; i<ids.length; i++){
 					 Count cnt = new Count(ids[i],obj[i]);
-					 
-					for(int j=0; j<num_sources; j++){
+					 int len_c = cnt.count.length;
+					 if(len_c>num_sources){
+						 num_sources=len_c;
+						int[] rc1 = new int[len_c];
+						System.arraycopy(this.readCount, 0, rc1, 0,this.readCount.length );
+						this.readCount = rc1;
+					 }
+					 //System.err.println(len_c+" "+num_sources);
+					for(int j=0; j<len_c; j++){
 						this.readCount[j]+=cnt.count[j];
 					}
 					 String[] str = ids[i].split("[_,;]");
@@ -755,9 +770,11 @@ static List<String> empty_list = Arrays.asList(new String[0]);
 				genes.addAll(exons);
 				//int exonCount =(int) Math.round((double) breaks.size()/2.0);
 				int exonCount = exons.size();
+			//QUESTION ABOUT HOW TO REPORT EXON STRING
+				String exon_str =CigarHash2.getString(exons);//CigarHash2.getString1(exons," ;; ")
 				String read_count1 =  TranscriptUtils.getString(cnt.count());
 				String str = cc.id()+"/"+cnt.id()+"\t"+chrom+"\t"+breaks.get(0)+"\t"+breaks.get(breaks.size()-1)+"\t"+exonCount+
-				"\t"+CigarHash2.getString(breaks)+"\t"+CigarHash2.getString1(exons," ;; ")+"\t"+cnt.sum()+"\t"+read_count1+"\t";
+				"\t"+CigarHash2.getString(breaks)+"\t"+exon_str+"\t"+cnt.sum()+"\t"+read_count1+"\t";
 				o.printTranscript(str,depth_str);
 			}
 		//	o.printTranscriptAlt(cc);

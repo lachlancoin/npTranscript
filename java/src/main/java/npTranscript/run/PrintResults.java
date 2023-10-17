@@ -38,22 +38,18 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPOutputStream;
-import java.util.zip.ZipException;
-import java.util.zip.ZipFile;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
 import ch.systemsx.cisd.hdf5.IHDF5Reader;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
-import japsa.seq.ZipGFF;
 import japsa.util.CommandLine;
 import japsa.util.deploy.Deployable;
 import npTranscript.cluster.Annotation;
@@ -79,6 +75,7 @@ public class PrintResults extends CommandLine {
 		addString("annotation", null, "ORF annotation file or GFF file", false);
 		addString("optsFile", null, "Name of file with extra options", false);
 		addString("optsType", null, "Specifies the column", false);
+		addBoolean("enforce_strand", false, "Enforce strand");
 
 		addString("resdir", "./", "results directory");//"results"+System.currentTimeMillis()
 		addString("reference", null, "ref genome");
@@ -186,7 +183,7 @@ public static String getAnnotationsToInclude(String annotationType, boolean useE
 		//String  annotationType = getAnnotationsToInclude(cmdLine.getStringVal("annotType"), cmdLine.getBooleanVal("useExons"));
 		
 		//Outputs.gffThreshTranscriptSum=0;
-		
+		Annotation.enforceStrand=cmdLine.getBooleanVal("enforce_strand");
 			for(int k=0; k<gffThresh_1.length; k++){
 				Outputs1.gffThresh[k] = Integer.parseInt(gffThresh_1[k]);
 			}

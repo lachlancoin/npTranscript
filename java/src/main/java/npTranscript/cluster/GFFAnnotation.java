@@ -26,6 +26,7 @@ import java.util.zip.ZipFile;
 
 import japsa.seq.Sequence;
 import japsa.seq.ZipGFF;
+import npTranscript.cluster.Annotation.Interval;
 
 public class GFFAnnotation extends Annotation{
 
@@ -370,7 +371,7 @@ public class GFFAnnotation extends Annotation{
 				 val = descjv[descjv.length-1];
 			}
 			for(int k=0; k<names.size(); k++){
-			if(key.equals(names.get(k))){
+			if(key.toLowerCase().equals(names.get(k).toLowerCase())){
 				if(k==2){
 					 target[k ] = descj[1].split("\\[")[0];
 				}
@@ -501,6 +502,9 @@ public void close(){
 		String[] transcript_vals = new String[5];
 		String[] exon_vals = new String[5];
 		List<String> headers = Arrays.asList(new String[] {id, name, description, biotype, parent});
+		//headers = 
+		// +       .       ID=MN989412.1:1..10361;Dbxref=taxon:11676;gb-acronym=HIV-1;gbkey=Src;genome=proviral;isolate=
+
 		Map<String, String> genemap = new HashMap<String,String>();
 		String biot;String descr; String paren; String nme; String id;
 		boolean hasTranscript=true;
@@ -517,6 +521,8 @@ public void close(){
 			int start = Integer.parseInt(str[3]);
 			int end = Integer.parseInt(str[4]);
 			char strand = str[6].charAt(0);
+			
+
 		//	ncRNA_gene
 			//pseudogene
 			if(type.endsWith("gene")){
@@ -530,7 +536,7 @@ public void close(){
 				String stri = chr+"\t"+gene_vals[0]+"\t"+gene_vals[1]+"\t"+gene_vals[2]+"\t"+gene_vals[3];//+"\t"+paren;
 				pw.println(stri);
 			//	biotypes.putIfAbsent(biot, biot);
-			}else if(type.endsWith("exon")){
+			}else if(type.endsWith("exon") || type.endsWith("CDS")){
 				hasExon = true;
 				process(str[8], exon_vals, headers, split,removeQ);
 				paren = exon_vals[4];
@@ -549,8 +555,15 @@ public void close(){
 					this.strand.add(strand=='+');
 					//this hopefully saves memory by only keeping a pointer, rather than multiple copies.
 					genemap.putIfAbsent(paren, paren);
-					genes.add(genemap.get(paren));
+					String gene=genemap.get(paren);
+					genes.add(gene);
 					transcripts.add(transcript_vals[0]);
+					Interval interval = new Interval(start,end,gene);
+					if(strand=='+'){
+						this.intervalsF.add(interval);
+					}else{
+						this.intervalsR.add(interval);
+					}
 				}
 				//}else{
 					//System.err.println("missed "+st);

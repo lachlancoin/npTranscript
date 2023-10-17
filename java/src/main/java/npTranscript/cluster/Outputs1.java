@@ -81,7 +81,7 @@ public class Outputs1 {
 						File  bedoutput = new File(resDir,genome_index+k+".bed.gz");
 						 bedW[k] = new PrintWriter(
 							new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(bedoutput))));
-					 bedW[k].println("track name=\""+type_nmes[k]+"\" description=\""+type_nmes[k]+"\" itemRgb=\"On\" ");
+					 bedW[k].println("track name=\""+type_nmes[k]+"\" description=\""+type_nmes[k]+"\" itemRgb=\"Off\" useScore=1 ");
 					 }
 				 }
 				 if(writeGFF){

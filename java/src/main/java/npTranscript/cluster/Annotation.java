@@ -8,14 +8,17 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.SortedSet;
+import java.util.stream.Collectors;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 
 import japsa.seq.Sequence;
 import japsa.seq.ZipGFF;
+import npTranscript.cluster.Annotation.Interval;
 import npTranscript.run.ViralTranscriptAnalysisCmd2;
 /**
  * @author Lachlan Coin
@@ -23,6 +26,59 @@ import npTranscript.run.ViralTranscriptAnalysisCmd2;
  */
 
 public class Annotation{
+	int min_overlap=5;
+
+	protected static class Interval{
+		int st; int end;
+		int len1; int len2; // parent feature lengths
+		String gene;
+		int length(){
+			return end-st;
+		}
+		public Interval(int st2, int end2, String gene) {
+			this(st2,end2, gene,end2-st2, end2-st2);
+		}
+		
+		
+		public Interval(int st2, int end2, String gene, int len1, int len2) {
+			this.st = st2;
+			this.end = end2;
+			this.gene = gene;
+			this.len1 = len1;
+			this.len2 = len2;
+		}
+		double prop1(){
+			return length()/len1;
+		}
+		double prop2(){
+			return length()/len2;
+		}
+		
+		public String toString(){
+			double prop1 = (double) length()/(double) len1;
+			double prop2 = (double) length()/(double) len2;
+			return st+","+end+","+gene+","+String.format("%5.3g", prop1)+","+String.format("%5.3g", prop2);
+		}
+		public double overlap(int st1, int end1){
+			double k0= Math.min(end1-st1, end-st);
+			double k1 = Math.min(end1-st, end -st1);
+			return Math.min(k0, k1);
+		}
+		public Interval overlapI(int st1, int end1){
+			List<Integer>d = Arrays.asList(new Integer[] {end1-st1,end-st, end1-st, end-st1});
+			int min_i = d.indexOf(Collections.min(d));
+			int len1 = this.length();
+			int len2 = end1 = st1;
+			if(min_i==0) return new Interval(st1,end1,gene, len1, len2);
+			if(min_i==1) return new Interval(st,end, gene, len1, len2);
+			if(min_i==2) return new Interval(st, end1, gene, len1, len2);
+			if(min_i==3) return new Interval(st1,end, gene, len1, len2);
+			return null;
+		}
+	}
+	protected List<Interval> intervalsF = new ArrayList<Interval>();
+	protected List<Interval> intervalsR = new ArrayList<Interval>();
+	
 		protected List<String> genes= new ArrayList<String>();
 		protected  List<Integer> start = new ArrayList<Integer>();
 		protected  List<Integer> end = new ArrayList<Integer>();
@@ -237,13 +293,22 @@ public class Annotation{
 				genes.add(gene);
 				start.add(st);
 				end.add(en);
+				Interval interval = new Interval(st,en,gene);
 				if(both && enforceStrand){
 					strand.add(true); strand.add(false);
 					genes.add(gene);
 					start.add(st);
 					end.add(en);
+					intervalsF.add(interval) ;
+					intervalsF.add(interval) ;
+					
 				}else{
 					strand.add(forward);
+					if(forward) {
+						intervalsF.add(interval) ;
+						}else {
+							intervalsR.add(interval);
+						}
 				}
 			
 				//	if(i>0){
@@ -387,6 +452,40 @@ public class Annotation{
 			return this.chrom.equals(chrom);
 		}
 		public List<String> matchExons(List<Integer> br, String chrom, Boolean forward) {
+			if(br.get(0).equals(612)){
+				if(br.get(1).equals(1884)){
+					System.err.println("h");
+				}
+			}
+			List<Integer> l = new ArrayList<Integer>();
+			if(!matchChrom(chrom)){
+				return empty_list;
+			}
+			List<Interval> intervals =( !enforceStrand || forward)? intervalsF : intervalsR;
+List<String> genes = new ArrayList<String>();
+			for(int i=0;i<br.size(); i+=2){
+				int st1 = br.get(i);
+				int end1 = br.get(i+1);
+
+				List<Interval> overlaps=intervals.stream().filter(c -> c.overlap(st1, end1) > min_overlap).collect(Collectors.toList());
+				List<Interval> overlap1 = overlaps.stream().map(c->c.overlapI(st1, end1)).collect(Collectors.toList());
+				List<String> genes1=	overlaps.stream().map(c->c.gene).collect(Collectors.toList());
+                if(genes1.size()==0){
+                	genes.add("NA");genes.add("NA");
+                }else if(genes1.size()==1){
+                	genes.add(genes1.get(0));genes.add(genes1.get(0));
+                }else{
+                	genes.add(genes1.get(0));
+                	genes.add(genes1.get(genes1.size()-1));
+                }
+			}
+			
+//			List<String> genes=	intervals.stream().filter(c -> c.overlap(st1, end1) > min_overlap).map(c->c.gene).collect(Collectors.toList());
+			return genes;
+		}
+
+		
+		public List<String> matchExons1(List<Integer> br, String chrom, Boolean forward) {
 			List<Integer> l = new ArrayList<Integer>();
 			if(!this.chrom.equals(chrom)){
 				return empty_list;
