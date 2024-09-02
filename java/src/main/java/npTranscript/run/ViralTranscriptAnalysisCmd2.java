@@ -322,7 +322,8 @@ addBoolean("calcBreaks",false,"whether to calc break points");
 		//	
 		//	CigarCluster.recordDepthByPosition = true;
 			System.err.println("running in coronavirus mode");
-			calcBreaks  = true; 
+			calcBreaks  = true;
+			
 			filterBy5_3 = true;
 		//	Outputs.writeGFF=true;
 	//		Outputs.calcBreaks=true;

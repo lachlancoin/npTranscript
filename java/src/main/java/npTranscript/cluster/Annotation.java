@@ -33,7 +33,7 @@ public class Annotation{
 	//	5'UTR,5'UTR,1,265,265,forward,none
 
 		public static String NAstring = "NA";
-		public static int tolerance = 100;
+		public static int tolerance = 20;
 		public static int correctionDistLeft = 10000;
 		public static int correctionDistRight = 10000;	
 		public static boolean enforceStrand = true;
@@ -89,7 +89,7 @@ public class Annotation{
 			if(leftBreak<0) return  "null";
 			for(int i=start.size()-1; i>=0 ;i--){
 				if(!enforceStrand || forward==this.strand.get(i)){
-				if(leftBreak+tolerance >= start.get(i)){// && leftBreak-tolerance<end.get(i)){
+				if(leftBreak >= start.get(i)){// && leftBreak-tolerance<end.get(i)){
 					return genes.get(i);
 				}
 				}

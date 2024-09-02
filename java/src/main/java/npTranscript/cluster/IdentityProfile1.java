@@ -244,8 +244,12 @@ static char delim1 = ',';
 		if(Annotation.enforceStrand){
 			secondKey.append(forward ? '+' : '-');
 		}
-		//System.err.println(secondKey);
-
+	//	if(secondKey.indexOf("nsp")>0) {
+	//		System.err.println(id);
+	//		System.err.println(secondKey);
+	//		System.err.println(breaks);
+	//		System.err.println("h");
+	//	}
 		String type_nme = annot.getTypeNme( startPos, endPos, forward); //coRefPositions.getTypeNme(seqlen);
 		geneNames.clear();
 		
