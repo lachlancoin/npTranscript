@@ -11,7 +11,7 @@ if(FALSE){
   sampleID =strsplit(rev(strsplit(f,"/")[[1]])[2],"\\.")[[1]][1]
   vcf2 =read.delim(f, header=T,sep="\t")
   vcf2=subset(vcf2,source==0 )
-  iso$importTable(vcf2,sampleID, "local", flags=flags)
+  iso$importTable(vcf2,sampleID, "local", flags=list())
 #  dist$importVCF(vcf3, sampleID, "local",flags=flags)
   flags = list("genomic"=TRUE,"reference"="chrIS", "type"="dRNA","kit"="NA",
                "flowcell"="MinION",

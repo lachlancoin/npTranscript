@@ -33,16 +33,17 @@ df_all= .merge1(lapply(json1, function(j1){
      t=lapply(j2, function(j3){
        id = names(j3)
       df= cbind(data.frame(t(data.frame(j3))),id)
-      names(df) = c("count","count_nonNA",  "sum_pA","id")
+      names(df) = c("count","count_nonNA",  "sum_pA","code")
       df
      })
      .merge1(t,num_cols=num_cols,addName="end")
    }), num_cols=num_cols, addName="strand")
  }), num_cols=num_cols, addName="chrom")
-  df_all$id = as.character(df_all$id)
+  df_all$code = as.character(df_all$code)
   #df_all$chrom = as.character(df_all$chrom)
   #df_all$strand=as.character(df_all$strand)
-  cbind(df_all, sampleID)
+  id=apply(df_all[,match(c("chrom","strand","end","code"), names(df_all))],1,paste,collapse="/")
+  cbind(df_all, sampleID, id)
 }
 
 
@@ -131,6 +132,18 @@ isoEnv<-R6Class("isoEnv", public = list(
     try(dbWriteTable(self$mydb, "samples", df3,overwrite=F,append=T))
     return(list(sessionID=sessionID))
   },
+  extract=function(sampleID, sessionID, remote, flags){
+    all_d = dbGetQuery(self$mydb, 'SELECT * from ip where sessionID = :sessionID', list(sessionID=sessionID))
+    if(nrow(all_d)==0) return(list("message"="incorrect sessionID"))
+    if(all_d$sampleID[[1]]!=sampleID) return(list("message"="incorrect sessionID"))
+    ab2 = dbGetQuery(self$mydb, 'SELECT * from  isoforms where sampleID = :sampleID order by count DESC', list(sampleID=sampleID))
+    if("top" %in% names(flags)){
+      ab2 = head(ab2, flags[['top']])
+    }
+    ab21 = as.list(data.frame(t(ab2[,-1])))
+    names(ab21)=ab2[,1]
+    return(as.list(data.frame(t(ab2))))
+  },
   importJSON=function(json,sampleID, sessionID, remote, flags){ 
     all_d = dbGetQuery(self$mydb, 'SELECT * from ip where sessionID = :sessionID', list(sessionID=sessionID))
     if(nrow(all_d)==0) return(list("message"="incorrect sessionID"))
@@ -141,7 +154,7 @@ isoEnv<-R6Class("isoEnv", public = list(
       prev_count=0; prev_pA = 0; prev_num=0; prev_pA_count=0
       tbls=(dbListTables(self$mydb))
       if("isoforms" %in% tbls){
-         ab2 = dbGetQuery(self$mydb, 'SELECT id, count,count_nonNA,sum_pA from isoforms where id = :id AND sampleID = :sampleID ', as.list(tbl[,match(c("id","sampleID"), names(tbl))]))
+         ab2 = dbGetQuery(self$mydb, 'SELECT id, count,count_nonNA,sum_pA from isoforms where sampleID = :sampleID ', list(sampleID=sampleID))
           novel=tbl[which(!(tbl$id %in% ab2$id)),,drop=F]
           prev_count = sum(ab2$count)
           prev_pA = sum(ab2$sum_pA)
