@@ -136,13 +136,19 @@ isoEnv<-R6Class("isoEnv", public = list(
     all_d = dbGetQuery(self$mydb, 'SELECT * from ip where sessionID = :sessionID', list(sessionID=sessionID))
     if(nrow(all_d)==0) return(list("message"="incorrect sessionID"))
     if(all_d$sampleID[[1]]!=sampleID) return(list("message"="incorrect sessionID"))
-    ab2 = dbGetQuery(self$mydb, 'SELECT * from  isoforms where sampleID = :sampleID order by count DESC', list(sampleID=sampleID))
+    ab2 = dbGetQuery(self$mydb, 'SELECT count,count_nonNA, sum_pA,id from  isoforms where sampleID = :sampleID order by count DESC', list(sampleID=sampleID))
     if("top" %in% names(flags)){
       ab2 = head(ab2, flags[['top']])
     }
-    ab21 = as.list(data.frame(t(ab2[,-1])))
-    names(ab21)=ab2[,1]
-    return(as.list(data.frame(t(ab2))))
+    ab2$pA = ab2$sum_pA/ab2$count_nonNA
+    ab21 = ab2[,match( c("count","pA", "count_nonNA"),names(ab2))]
+    ab21 = as.list(data.frame(t(ab21)))
+    ab21=lapply(ab21, function(v){
+      names(v) = c("count","pA","nonNA")
+      as.list(v)
+    })
+    names(ab21)=ab2$id
+    ab21
   },
   importJSON=function(json,sampleID, sessionID, remote, flags){ 
     all_d = dbGetQuery(self$mydb, 'SELECT * from ip where sessionID = :sessionID', list(sessionID=sessionID))

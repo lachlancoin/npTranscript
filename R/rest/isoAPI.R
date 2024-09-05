@@ -55,6 +55,11 @@ function(req, json, sampleID,sessionID,flags) {
    iso$importJSON(json, sampleID, sessionID, req$REMOTE_ADDR, flags) 
 }
 
+#* @post /extract
+function(req,  sampleID,sessionID,flags) {
+  iso$extract(sampleID, sessionID, req$REMOTE_ADDR, flags) 
+}
+
 #* @post /register
 function(req, sampleID,flags) {
   #alt,sessionID, from, to,start, width, sampleID
