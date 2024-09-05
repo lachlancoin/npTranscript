@@ -13,8 +13,17 @@ if(FALSE){
   vcf2=subset(vcf2,source==0 )
   iso$importTable(vcf2,sampleID, "local", flags=flags)
 #  dist$importVCF(vcf3, sampleID, "local",flags=flags)
-  
-  
+  flags = list("genomic"=TRUE,"reference"="chrIS", "type"="dRNA","kit"="NA",
+               "flowcell"="MinION",
+               "alignment_command"="minimap2 -y -ax splice:hq -un $fa $1.fastq  | samtools view -bS > $1.bam"
+                 ,"alignment_version"="2.28-r1209")
+  toJSON(list(sampleID=sampleID, flags=flags))
+  list(sampleID=sampleID, flags = list());
+  sessionID_=iso$register(sampleID, remote,flags)
+  sessionID=sessionID_$sessionID
+  json = .processTable(vcf2,sampleID)
+  toJSON(list( sessionID=sessionID,sampleID=sampleID, flags=list(),json=json))
+  iso$importJSON(json,sampleID, sessionID, remote, flags)
 }
 
 #in1 = read_json("test.json")
@@ -39,6 +48,12 @@ function(req){
   iso$importTable(vcf2,multipart$upload$name, req$REMOTE_ADDR, flags=flags)
 }
 
+
+
+#* @post /addreads
+function(req, sampleID,sessionID,flags) {
+   iso$importJSON(json, sampleID, sessionID, req$REMOTE_ADDR, flags) 
+}
 
 #* @post /register
 function(req, sampleID,flags) {

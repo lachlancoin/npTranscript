@@ -80,7 +80,7 @@ isoEnv<-R6Class("isoEnv", public = list(
       ab = dbGetQuery(self$mydb, 'SELECT * from samples')
       self$samples = ab$sampleID
     }else{
-      nme= c("sampleID","genomic","reference", "type","kit","flowcell","alignment_command","alignment_version")
+      nme= c("sampleID","genomic","reference", "RNA","kit","flowcell","alignment_command","alignment_version","bin0","bin1","breakThresh")
     #  df2$ip = as.character(df2$ip)
       df2 = data.frame(matrix("",nrow=0, ncol=length(nme)))
       names(df2) = nme
@@ -161,6 +161,7 @@ isoEnv<-R6Class("isoEnv", public = list(
      total_pA = prev_pA + sum(tbl$sum_pA)
      return(list("new"=length(novel$id), prev_num = prev_num, prev_count=prev_count, 
                  avg_pa = total_pA/total_pA_count,
+                 total_reads=total,
                  new_count = sum(tbl$count)))
   }
  
