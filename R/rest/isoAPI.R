@@ -51,7 +51,7 @@ function(req){
 
 
 #* @post /addreads
-function(req, sampleID,sessionID,flags) {
+function(req, json, sampleID,sessionID,flags) {
    iso$importJSON(json, sampleID, sessionID, req$REMOTE_ADDR, flags) 
 }
 
