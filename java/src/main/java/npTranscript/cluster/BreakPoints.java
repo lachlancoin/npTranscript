@@ -119,7 +119,7 @@ public SparseRealMatrix calculateScores(int k, int[] left, int[] right, Sequence
  
 
 	
-		 void printBreakPoints(Outputs o, int chrom_index)  {
+		 /*void printBreakPoints(Outputs o, int chrom_index)  {
 			 Runnable run = new Runnable(){
 			 public void run(){
 				 int num = breakpoints[0].length;
@@ -157,7 +157,7 @@ public SparseRealMatrix calculateScores(int k, int[] left, int[] right, Sequence
 			 }
 			 };
 			 Outputs.h5writer.execute(run);
-		}
+		}*/
 	
 	
 }

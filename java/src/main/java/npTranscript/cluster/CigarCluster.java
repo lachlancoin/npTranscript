@@ -715,10 +715,25 @@ return addBlock(start, len, first, last, ref_ind,start-prev_position , negStrand
 			return st;
 		}
 
-		public String getBreakString() {
+		public String getBreakString(String strand) {
 			// TODO Auto-generated method stub
 			StringBuffer sb = new StringBuffer();
-			
+			boolean reverse = strand.charAt(0)=='+';
+			if(reverse) {
+				for(int i=this.start_positions.size()-1;i>=0; i--){
+					int fromIndex = start_positions.get(i);
+					
+					//String st1;
+					if(i < start_positions.size()-1){ 
+						int toIndex = start_positions.get(i+1);
+						sb.append(CigarHash2.getString(breaks.subList(fromIndex,  toIndex), strand.charAt(i))); 
+						sb.append(";");	
+					}else{
+						int toIndex =  breaks.size();
+						sb.append(CigarHash2.getString(breaks.subList(fromIndex,  toIndex), strand.charAt(i)));
+					}
+				}
+			}else {
 			for(int i=0; i<this.start_positions.size(); i++){
 				int fromIndex = start_positions.get(i);
 				
@@ -731,6 +746,7 @@ return addBlock(start, len, first, last, ref_ind,start-prev_position , negStrand
 					int toIndex =  breaks.size();
 					sb.append(CigarHash2.getString(breaks.subList(fromIndex,  toIndex)));
 				}
+			}
 			}
 			return sb.toString();
 		}

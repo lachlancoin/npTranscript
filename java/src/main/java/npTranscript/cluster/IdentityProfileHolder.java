@@ -19,6 +19,7 @@ import htsjdk.samtools.util.SequenceUtil;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.tools.seq.SequenceUtils;
+import jdk.internal.org.jline.terminal.spi.TerminalProvider.Stream;
 import npTranscript.NW.PolyAT;
 import npTranscript.run.Barcodes;
 import npTranscript.run.TranscriptUtils1;
@@ -50,7 +51,7 @@ public class IdentityProfileHolder {
  //Sequence genome;
  // String chrom_="";
  // int chrom_index;
- final String[] type_nmes;
+ final String type_nmes;
  final int num_sources;
  //Sequence chr5prime; Sequence chr3prime;
  
@@ -88,12 +89,12 @@ public class IdentityProfileHolder {
  public void clearUpTo(int endThresh){
 	 
 	 this.all_clusters.clearUpTo(endThresh, o, genome, chrom_index);
- }*/
+ }
  public void printBreakPoints(int chrom_index) throws IOException {
 		if(bp!=null) this.bp.printBreakPoints(this.o, chrom_index);
 		
 	}
- 
+*/ 
  
 	/*public void updateChrom(Sequence refSeq, String chrname, int chrom_index) {
 		// TODO Auto-generated method stub
@@ -115,7 +116,7 @@ public class IdentityProfileHolder {
 	ArrayList<Sequence> genomes;
 	Annotation annot;
  public IdentityProfileHolder(ArrayList<Sequence> genomes, Sequence refSeq,
-		 Outputs o, String[] in_nmes,  boolean calcBreakpoints, Annotation annot)
+		 Outputs o, String in_nmes,  boolean calcBreakpoints, Annotation annot)
 		 throws IOException {
 	 this.genomes = genomes;
 	 this.annot = annot;
@@ -123,7 +124,7 @@ public class IdentityProfileHolder {
 	 Arrays.fill(basesStart,0);
 	 Arrays.fill(basesEnd,0);
 	 this.type_nmes = in_nmes;
-	 this.num_sources = in_nmes.length;
+	 this.num_sources = 1;//in_nmes.length;
 	 this.o  = o;
 	// all_clusters =new CigarClusters( num_sources, genomes);
 	 bp=null;
@@ -131,6 +132,25 @@ public class IdentityProfileHolder {
 			System.err.println("calculating break point usage");
 			bp = new BreakPoints(num_sources, refSeq, genomes);
 	 }
+	}
+ 
+ static int lengthOnRead(SAMRecord s1) {
+		List<AlignmentBlock> l1 = s1.getAlignmentBlocks();
+		AlignmentBlock a1 = l1.get(0);
+		AlignmentBlock a2 = l1.get(l1.size()-1);
+		int st1 = a1.getReadStart();
+		int end1 = a2.getReadStart()+a2.getLength();
+		int diff = end1 -st1;
+		return diff;
+	}
+ static int readStart(SAMRecord s1) {
+		List<AlignmentBlock> l1 = s1.getAlignmentBlocks();
+		AlignmentBlock a1 = l1.get(0);
+		AlignmentBlock a2 = l1.get(l1.size()-1);
+		int st1 = a1.getReadStart();
+		int end1 = a2.getReadStart()+a2.getLength();
+		int diff = end1 -st1;
+		return st1;
 	}
 static class SamComparator implements Comparator<SAMRecord>{
 	boolean quality;
@@ -144,7 +164,11 @@ static class SamComparator implements Comparator<SAMRecord>{
 		if(quality) {
 			int i1 = Boolean.compare(o1.isSecondaryOrSupplementary(), o2.isSecondaryOrSupplementary());
 			if(i1!=0) return i1;
-			else return -1*Integer.compare(o1.getMappingQuality(), o2.getMappingQuality());
+			int i2 = -1*Integer.compare(o1.getMappingQuality(), o2.getMappingQuality());
+			if(i2!=0) return i2;
+			
+			
+			return 1*Integer.compare(readStart(o1),readStart(o2));
 		}
 		else return  Integer.compare(o1.getAlignmentBlocks().get(0).getReadStart(),
 			o2.getAlignmentBlocks().get(0).getReadStart());
@@ -161,7 +185,7 @@ static Comparator comp_q = new SamComparator(true);
 		SAMRecord first = sams.next();
 		SAMRecord primary  = null;
 		if(!first.isSecondaryOrSupplementary()) primary = first;
-
+		
 		int q1 = first.getMappingQuality();
 		sams.remove();
 		extracted.add(first);
@@ -178,13 +202,15 @@ static Comparator comp_q = new SamComparator(true);
 				read_overlap(extracted.get(j),sam,overl);
 			}
 		//	System.err.println(Arrays.asList(overl));
-			if(overl[2] < overlap_thresh *overl[1] && overl[2] < overlap_thresh*overl[0] && overl[2] < overlap_max){
+			if( ( overl[2] <= overlap_thresh *overl[1] && overl[2] <= overlap_thresh*overl[0] && overl[2] <= overlap_max)){
 				if(!sam.isSecondaryOrSupplementary()){
 					primary=sam;
 				}
 				extracted.add(sam);
 				
 				sams.remove();
+			}else {
+		//	System.err.println("excluded "+overl[0]+" ,"+overl[1]+","+overl[2]);
 			}
 		}
 		
@@ -207,7 +233,8 @@ static Comparator comp_q = new SamComparator(true);
 		//if(flipped!=null) return flipped.intValue()==0 ? fa
 		return primary;
 	}
-
+  
+	
 
 	private static void read_overlap(SAMRecord s1, SAMRecord s2, int[] overl) {
 		List<AlignmentBlock> l1 = s1.getAlignmentBlocks();
@@ -222,7 +249,7 @@ static Comparator comp_q = new SamComparator(true);
 		int st1 = a1.getReadStart();
 		int end1 = a2.getReadStart()+a2.getLength();
 		int overlap = CigarHash2.overlap(st, end,st1 , end1);
-		if(overlap>overl[2]){
+		if(overlap>overl[2] || overl[2] ==0){
 			overl[0] = end -st; 
 			overl[1] = end1 -st1;
 			overl[2] = overlap;
@@ -307,6 +334,7 @@ return ;
 					return ;
 				}
 				
+				
 				Sequence readSeq = new Sequence(alph, sam_1.get(0).getReadString(), sam_1.get(0).getReadName());
 
 		//		System.err.println("HHH,"+chrom_+","+sam.getAlignmentStart()+ ","+sam.getAlignmentEnd()+","+sam.getReadName()+","
@@ -315,7 +343,7 @@ return ;
 				if(sam_1.get(0).isSecondaryOrSupplementary()) {
 					throw new RuntimeException("first should be primary");
 				}
-				int source_index = (Integer) sam_1.get(0).getAttribute(SequenceUtils.src_tag);
+		//		int source_index = (Integer) sam_1.get(0).getAttribute(SequenceUtils.src_tag);
 				String rn= sam_1.get(0).getReadName();
 				final IdentityProfile1 profile = get();
 				int sze = sam_1.size();
@@ -380,6 +408,7 @@ return ;
 						}
 					}
 //					System.err.println(sam1.size());
+					int source_index=0;
 					 profile.setName(rn, chrom.toString(),strand.toString(), q_str.toString(), q_str1.toString(),source_index, fusion);
 				//	if(profile.coRefPositions.breaks.size()>0 && ! supp) throw new RuntimeException("this is not clear");
 				//	if(supp && profile.suppl!=null && profile.suppl.size()>0) throw new RuntimeException("supps not empty");
@@ -413,10 +442,10 @@ return ;
 
 	private static boolean process(SAMRecord sam) {
 		boolean reverseForward = ViralTranscriptAnalysisCmd2.reverseForward;
-		int source_index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
-		boolean FLAMES=ViralTranscriptAnalysisCmd2.barcodes==null  ? false: ViralTranscriptAnalysisCmd2.barcodes[source_index].FLAMES_BARCODES;
+	//	int source_index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
+		//boolean FLAMES=ViralTranscriptAnalysisCmd2.barcodes==null  ? false: ViralTranscriptAnalysisCmd2.barcodes[source_index].FLAMES_BARCODES;
 
-		boolean RNA = ViralTranscriptAnalysisCmd2.RNA[source_index];
+		boolean RNA = ViralTranscriptAnalysisCmd2.RNA;//[source_index];
 		if(sam.isSecondaryOrSupplementary()){
 			throw new RuntimeException();
 		}
@@ -442,22 +471,23 @@ return ;
 			if(RNA  ){ // if we useFlames we ignore the strand
 				forward_read = true;
 			}else{
+				forward_read=true;  //assume restraned
 			//	boolean reverseForward = true;//true; // true gives longer UMI with polyA in it.  This could possibly be  a short cut to estimating polyA
-				int forward_read_AT =PolyAT.assign(sam, sa, true, reverseForward, start_for_pA);
-				int backward_read_AT =PolyAT.assign(sam, sa, false,reverseForward, start_rev_pA);// this assigns tags indicating the orientation of the original read as + or -;
+			//	int forward_read_AT =PolyAT.assign(sam, sa, true, reverseForward, start_for_pA);
+			//	int backward_read_AT =PolyAT.assign(sam, sa, false,reverseForward, start_rev_pA);// this assigns tags indicating the orientation of the original read as + or -;
 			
-				if(forward_read_AT < backward_read_AT && forward_read_AT <= PolyAT.edit_thresh_AT){
-					forward_read=true;
-				}
-				if(forward_read_AT > backward_read_AT && backward_read_AT <= PolyAT.edit_thresh_AT){
-					forward_read=false;
-				}
+				//if(forward_read_AT < backward_read_AT && forward_read_AT <= PolyAT.edit_thresh_AT){
+				//	forward_read=true;
+				//}
+				//if(forward_read_AT > backward_read_AT && backward_read_AT <= PolyAT.edit_thresh_AT){
+				//	forward_read=false;
+				//}
 			}
 //			System.err.println("RNA "+RNA[source_index]);
 				if(forward_read!=null){
 					sam.setAttribute(PolyAT.read_strand_tag, forward_read ? "+" : "-");
 				}
-			
+		/*	
 			if(ViralTranscriptAnalysisCmd2.barcodes!=null){
 				if(forward_read==null) return false;
 				
@@ -473,14 +503,7 @@ return ;
 				if( ViralTranscriptAnalysisCmd2.exclude_reads_without_barcode && for_min> Barcodes.tolerance_barcode){
 					return false;
 				}
-				/*
-				Boolean forward_read1 = null;
-				if(for_min < Barcodes.tolerance_barcode && for_min < back_min){
-					forward_read1 = true;
-				}
-				if(back_min < Barcodes.tolerance_barcode && for_min > back_min){
-					forward_read1 = false;
-				}*/
+				
 			//	if(forward_read==null && forward_read1!=null){
 						sam.setAttribute(PolyAT.read_strand_tag, forward_read ? "+" : "-");
 				//}
@@ -531,6 +554,7 @@ return ;
 					exc.printStackTrace();
 				}
 			}
+			*/
 			if(Annotation.enforceStrand ){
 				if(forward_read==null ){
 					// cannot determine strand

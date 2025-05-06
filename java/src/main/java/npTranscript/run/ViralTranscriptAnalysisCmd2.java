@@ -57,6 +57,7 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 
 import htsjdk.samtools.SAMRecord;
@@ -68,7 +69,6 @@ import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
 import japsa.tools.seq.SequenceUtils;
-import japsa.tools.seq.SequenceUtils.FilteredIterator;
 import japsa.util.CommandLine;
 import japsa.util.deploy.Deployable;
 import npTranscript.NW.PolyAT;
@@ -91,6 +91,24 @@ import npTranscript.cluster.TranscriptUtils;
 @Deployable(scriptName = "npTranscript.run", scriptDesc = "Analysis of coronavirus sequence data")
 public class ViralTranscriptAnalysisCmd2 extends CommandLine {
 
+	
+	static class SAMRecord1  implements Comparable{
+		SAMRecord1(SAMRecord sr){
+			this.sr = sr;
+		}
+		SAMRecord sr;
+		@Override
+		public int compareTo(Object o) {
+			SAMRecord1 s1 = (SAMRecord1)o;
+		    int st = this.sr.getAlignmentStart();
+		    int st1 = s1.sr.getAlignmentStart();
+		    if(st <st1) return -1;
+		    if(st>st1) return 1;
+		    else return 0;
+			   
+		}
+		
+	}
 	public static boolean exclude_indeterminate_strand=true;
 	public static boolean exclude_polyT_strand=false;
 	public static boolean exclude_reads_without_barcode=false;
@@ -125,6 +143,8 @@ public static int readsToSkip=0;
 		addInt("barcode_ignore", 0, "search for barcode in first Ybp");
 		addString("barcode_list",null, "list for decoding barcodes (used if more than one bamfile when streaming from fastq");
 		addString("barcode_file",null, "barcode file");
+		
+		addString("api_url",null, "URL of database");
 		
 		
 		addInt("bc_len_AT",6,"Length of polyA or polyT tract to look for at ends");
@@ -205,14 +225,14 @@ addBoolean("illumina", false, "use illumina libary");
 	//	addBoolean("attempt5rescue", false, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
 	//	addBoolean("attempt3rescue", false, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
 		//addBoolean("writePolyA", false, "whether write reads with polyA in middle");
-		addBoolean("coronavirus", true, "whether to run in coronavirus mode (necessary to do breakpoint analysis, but takes more memory)");
+		addBoolean("coronavirus", false, "whether to run in coronavirus mode (necessary to do breakpoint analysis, but takes more memory)");
 		addBoolean("writeIsoforms", false, "whether to write isoforms");
 		addBoolean("enforceKnownLinkedExons", false, "whether to use exon_exon boundaries from annotation ");
 		addBoolean("writeH5", false,"whether to write h5 outputs");
 		addString("mm2_path", "/sw/minimap2/current/minimap2",  "minimap2 path", false);
 		addString("mm2Preset", "splice",  "preset for minimap2", false);
 		addString("mm2_splicing", null, "splicing option", false);
-		addInt("supplementaryQ", 1000,"quality threshold for including supplementary mapping");
+		addInt("supplementaryQ", 30,"quality threshold for including supplementary mapping");
 	//	addBoolean("writeBed", false, "whether to write bed",false);
 		//addString("mm2Preset", "map-ont",  "preset for minimap2", false);
 		addString("mm2_memory", (Runtime.getRuntime().maxMemory()-1000000000)+"",  "minimap2 memory", false);
@@ -245,10 +265,10 @@ addBoolean("illumina", false, "use illumina libary");
  public static String pool_sep="";
  public static boolean limit_to_read_list = true;
 	public static boolean sequential = true;
-	public static boolean[] RNA;
+	public static boolean RNA;
 	public static String mm2_index;
- public static void run(CommandLine cmdLine, String[] bamFiles,
-		 String[] barcode_files,
+ public static void run(CommandLine cmdLine, String bamFiles,
+		// String barcode_files,
 		 String resDir, String chrs, String chrsToIgnore,  boolean fastq, String reference) throws IOException{
 		int qual = cmdLine.getIntVal("qual");
 		int bin = cmdLine.getIntVal("bin");
@@ -276,7 +296,7 @@ addBoolean("illumina", false, "use illumina libary");
 		Outputs.readsOutputFile = cmdLine.getStringVal("readsOutputFile");
 		int breakThresh = cmdLine.getIntVal("breakThresh");
 		String pattern = cmdLine.getStringVal("pattern");
-		String[] readList = cmdLine.getStringVal("readList").split(":");
+		String readList = cmdLine.getStringVal("readList");
 		//String genesToInclude = cmdLine.getStringVal("genesToInclude");
 		
 		//boolean overwrite  = cmdLine.getBooleanVal("overwrite");
@@ -289,7 +309,7 @@ addBoolean("illumina", false, "use illumina libary");
 		max_umi = cmdLine.getIntVal("max_umi");
 		min_umi = cmdLine.getIntVal("min_umi");
 		illumina=cmdLine.getBooleanVal("illumina");
-		
+		Outputs.url = cmdLine.getStringVal("api_url");
 		Outputs.writeH5 = cmdLine.getBooleanVal("writeH5");
 		CigarHash2.round = cmdLine.getIntVal("bin0");
 		CigarHash2.round1 = cmdLine.getIntVal("bin1");
@@ -299,22 +319,16 @@ addBoolean("illumina", false, "use illumina libary");
 		IdentityProfile1.trainStrand = cmdLine.getBooleanVal("trainStrand");
 		GFFAnnotation.enforceKnownLinkedExons = cmdLine.getBooleanVal("enforceKnownLinkedExons");
 		if(IdentityProfile1.trainStrand && Annotation.enforceStrand) throw new RuntimeException("cant enforce and train");
-		String[] RNAstr = 		cmdLine.getStringVal("RNA").split(":");
-		System.err.println("RNA_str");
-		System.err.println(Arrays.asList(RNAstr));
-		RNA = new boolean[bamFiles.length];
+		String RNAstr = 		cmdLine.getStringVal("RNA","true");
+		//RNA = new boolean[bamFiles.length];
+		Outputs.sampleName =bamFiles;
 		if(RNAstr!=null){
-			if(RNAstr.length==1){
-				if(RNAstr[0].equals("name")) {
-					for(int i=0; i<bamFiles.length; i++){
-						RNA[i] = bamFiles[i].toLowerCase().indexOf("rna")>0;
-					}
+				if(RNAstr.equals("name")) {
+						RNA = bamFiles.toLowerCase().indexOf("rna")>0;
 				}
-				else Arrays.fill(RNA, Boolean.parseBoolean(RNAstr[0]) );
-			}
-			else for(int i=0; i<RNAstr.length; i++) RNA[i] = Boolean.parseBoolean(RNAstr[i]);
+				else RNA= Boolean.parseBoolean(RNAstr) ;
 		}else{
-			Arrays.fill(RNA, false);
+			RNA=true;
 		}
 		System.err.println(Arrays.asList(RNA));
 	//	if(IdentityProfile1.trainStrand &&
@@ -324,11 +338,8 @@ addBoolean("illumina", false, "use illumina libary");
 		IdentityProfileHolder.executor=  cmdLine.getIntVal("maxThreads")==1 ? null:  Executors.newFixedThreadPool(cmdLine.getIntVal("maxThreads"));
 		IdentityProfile1.qual_thresh = cmdLine.getDoubleVal("leftOverQualThresh");
 		//ViralTranscriptAnalysisCmd2.combineOutput = cmdLine.getBooleanVal("combineOutput");
-		String[] d_thresh = cmdLine.getStringVal("isoformDepthThresh").split(":");
-		int[] isoformDepthThresh  = new int[d_thresh.length];
-		for(int i=0; i<d_thresh.length; i++){
-			isoformDepthThresh[i] = Integer.parseInt(d_thresh[i]);
-		}
+		String d_thresh = cmdLine.getStringVal("isoformDepthThresh");
+		int isoformDepthThresh  = Integer.parseInt(d_thresh);
 		int coverageDepthThresh = cmdLine.getIntVal("coverageDepthThresh");
 		IdentityProfile1.msaDepthThresh =(int) Math.floor(cmdLine.getDoubleVal("msaDepthThresh"));
 	//IdentityProfile1.extra_threshold = cmdLine.getIntVal("extra_threshold");
@@ -349,11 +360,9 @@ addBoolean("illumina", false, "use illumina libary");
 	SequenceOutputStream1.max_seqs_per_cluster = cmdLine.getIntVal("max_seqs_per_cluster");
 		 coronavirus = cmdLine.getBooleanVal("coronavirus");
 		String[] msaOpts = cmdLine.getStringVal("doMSA").split(":"); //e.g 5_3:sep or all:sep
-		String msa_source = cmdLine.getStringVal("msa_source");
-		double probInclude = cmdLine.getDoubleVal("probInclude");
-	//	String[] bamFiles =bamFile.split(":"); 
-		int len =  bamFiles.length;
-		if(msa_source!=null){
+		//String msa_source = cmdLine.getStringVal("msa_source");
+		//double probInclude = cmdLine.getDoubleVal("probInclude");
+		/*if(msa_source!=null){
 			if(msa_source.equals("all")){
 				for(int j=0; j<bamFiles.length;j++){
 					Outputs.msa_sources.put(j, j);
@@ -381,7 +390,7 @@ addBoolean("illumina", false, "use illumina libary");
 		}
 		for(int i=0; i<msaOpts.length; i++){
 			if(msaOpts[i].startsWith("span=")) msaOpts[i] = msaOpts[i].split("=")[1];
-		}
+		}*/
 		Outputs.doMSA =Arrays.asList((msaOpts[0].equals("all") ?"5_3,no5_3,5_no3,no5_no3": msaOpts[0]).split(",")) ;
 		Outputs.minClusterEntries = cmdLine.getIntVal("minClusterEntries");
 		if(msaOpts[0].equals("false")){
@@ -417,10 +426,17 @@ addBoolean("illumina", false, "use illumina libary");
 		Outputs.library = new File(cmdLine.getStringVal("library"));
 		
 		String annotFile = cmdLine.getStringVal("annotation");
-		
-			errorAnalysis(bamFiles,barcode_files,  reference, readList,
+		/*	static void errorAnalysis(String bamFile_,
+		 String refFile,  String readList,    String resdir, 
+		String pattern, int qual, int round, 
+		int break_thresh, int startThresh, int endThresh, int max_reads, 
+		boolean calcBreaks1 ,  boolean annotByBreakPosition, String chrToInclude, String chrToIgnore, 
+		int writeIsoformDepthThresh, int writeCoverageDepthThresh, boolean fastq, String chromsToRemap, 
+		String annot_file) throws IOException {*/
+
+			errorAnalysis(bamFiles,reference, readList,
 				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  
-				Outputs.calcBreaks, annotByBreakPosition,  chrs, chrsToIgnore,  isoformDepthThresh, coverageDepthThresh, probInclude, fastq, 
+				Outputs.calcBreaks, annotByBreakPosition,  chrs, chrsToIgnore,  isoformDepthThresh, coverageDepthThresh,  fastq, 
 				chromsToRemap, annotFile);
 	}
  public static boolean sorted = true;
@@ -433,7 +449,8 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 		String optsFiles  = cmdLine.getStringVal(opts_file);
 		String optsType = cmdLine.getStringVal("optsType");
 		System.err.println("optsType "+optsType);
-		{
+		
+		if(optsFiles!=null){
 			BufferedReader br = new BufferedReader(new FileReader(optsFiles));
 			String st = "";
 			int column = 0;
@@ -549,33 +566,18 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 		printParams(resDir, args1);
 		String inputFile = cmdLine.getStringVal("inputFile");
 
-		String todo = cmdLine.getStringVal("todo");
-		String [] inputFiles_;
+		//String todo = cmdLine.getStringVal("todo");
+		String  inputFiles_;
 		if(stdin){
-			inputFiles_ = new String[] {"-"};
+			inputFiles_ = "-";
 		}
-		else if(todo==null){
-			inputFiles_ =inputFile.split(":");
+		else {
+			inputFiles_ =inputFile;
 		//	barcode_files =barcodeFile.split(":");
-		}else{
-			BufferedReader br = new BufferedReader(new FileReader(todo));
-			String st = "";
-			List<String> ifs = new ArrayList<String>();
-			while((st=br.readLine())!=null){
-				if(st.length()>0 && !st.trim().startsWith("#")){
-					String[] str = st.trim().split("\t");
-					ifs.add(str[0]);
-					
-				}
-			}
-			inputFiles_ = ifs.toArray(new String[0]);
-		//	barcode_files = ifs1.toArray(new String[0]);
-
-			br.close();
 		}
-			boolean bam = inputFiles_[0].equals("-") ||  inputFiles_[0].endsWith(".bam") || inputFiles_[0].endsWith("sam") ;
-			String[] barcode_files = new String[inputFiles_.length];
-			if(barcode_file!=null){
+			boolean bam = inputFiles_.equals("-") ||  inputFiles_.endsWith(".bam") || inputFiles_.endsWith("sam") ;
+			//String[] barcode_files = new String[inputFiles_.length];
+			/*if(barcode_file!=null){
 				barcode_files = barcode_file.split(":");
 				File fi = new File(barcode_files[0]);
 				if(!fi.exists()) {
@@ -607,7 +609,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 				}
 				}
 			}
-			}
+			}*/
 			
 			
 			boolean fastq = !bam;
@@ -620,7 +622,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 					exc.printStackTrace();
 				}
 			}
-		run(cmdLine, inputFiles_, barcode_files, resdir,   chroms, chroms_ignore, fastq, reference);
+		run(cmdLine, inputFiles_,  resdir,   chroms, chroms_ignore, fastq, reference);
 		System.err.println("shutting down executors");
 		
 		IdentityProfileHolder.shutDownExecutor();
@@ -638,20 +640,19 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 	/**
 	 * Error analysis of a bam file. Assume it has been sorted
 	 */
-	static void errorAnalysis(String[] bamFiles_,
-			String[] barcode_files,
-			 String refFile,  String[] readList,    String resdir, 
+	static void errorAnalysis(String bamFile_,
+			 String refFile,  String readList,    String resdir, 
 			String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads, 
 			boolean calcBreaks1 ,  boolean annotByBreakPosition, String chrToInclude, String chrToIgnore, 
-			int[] writeIsoformDepthThresh, int writeCoverageDepthThresh, double probInclude, boolean fastq, String chromsToRemap, 
+			int writeIsoformDepthThresh, int writeCoverageDepthThresh, boolean fastq, String chromsToRemap, 
 			String annot_file) throws IOException {
 		boolean cluster_reads = true;
 		CigarHash2.round = round;
 		Annotation.tolerance = round;
 		
 		//File barcode_file_ = new File(barcode_file);
-		barcodes= null;// we need barcodes for all or none
+		/*barcodes= null;// we need barcodes for all or none
 		PolyAT pAT = new PolyAT();
 		if(barcode_files!=null && barcode_files.length==bamFiles_.length && barcode_files[0] !=null) {
 			System.err.println("using barcodes"+Arrays.asList(barcode_files));
@@ -659,7 +660,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 			for(int i= 0;i<barcodes.length; i++){
 			barcodes[i]=new Barcodes(barcode_files[i]);
 			}
-		}
+		}*/
 		
 		// Integer[] basesStart = new Integer[] {0,0,0,0};
 		// Integer[] basesEnd  = new Integer[] {0,0,0,0};
@@ -678,8 +679,8 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 		//File annotSummary = new File(resdir, "annotation.csv.gz");
 		//if(annotSummary.exists()) annotSummary.delete();
 	//	PrintWriter annotation_pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(annotSummary, false))));
-		Map<String, Integer> reads= new HashMap<String, Integer>();
-		if(readList.length>0 && readList[0].length()>0){
+		Map<String, Integer> reads= null;//new HashMap<String, Integer>();
+		/*if(readList.length>0 && readList[0].length()>0){
 			 Map<String, Collection<String>> map = new HashMap<String, Collection<String>>();
 			 int readind =0;
 			 int orfind = -1;
@@ -727,11 +728,11 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 		if(reads.size()==0){
 			readList = null;
 			reads=null;  //make it null to turn off this feature
-		}
+		}*/
 		IdentityProfile1.break_thresh = break_thresh;
-		int len = bamFiles_.length;
+		//int len = bamFiles_.length;
 		// len = 1;
-		String[] in_nmes  = new String[len];
+	//	String[] in_nmes  = new String[len];
 		
 		System.err.println("reading genomes " + (System.currentTimeMillis()- tme0)/1000+" secs");
 		ArrayList<Sequence> genomes = refFile==null ? null : SequenceReader.readAll(refFile, Alphabet.DNA());
@@ -749,50 +750,55 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 		else if(!resDir.isDirectory()) throw new RuntimeException(resDir+"should be a directory");
 		///ArrayList<IdentityProfile1> profiles = new ArrayList<IdentityProfile1>();
 		
-		
-		for (int ii = 0; ii < len; ii++) {
-			String bamFile = bamFiles_[ii];
-			if(bamFile!="-"){
-				File bam = new File( bamFile);
-				in_nmes[ii] = bam.getName().split("\\.")[0];
+		String in_nmes;
+		//for (int ii = 0; ii < len; ii++) {
+			//String bamFile = bamFiles;
+			if(bamFile_!="-"){
+				File bam = new File( bamFile_);
+				in_nmes = bam.getName().split("\\.")[0];
 			}else{
-				in_nmes[ii] = "stdin";
+				in_nmes = "stdin";
 			}
-		}
+		
 			
 		
 	//	genes_all_pw.close();
 		
-		final Iterator<SAMRecord>[] samIters = new Iterator[len];
-		SamReader[] samReaders = new SamReader[len];
+		//final Iterator<SAMRecord> samIters;
+		SamReader samReaders= null;// = new SamReader[len];
 		boolean allNull = true;
 		
 		Iterator<SAMRecord> samIter=null;
-		if(bamFiles_[0].endsWith(".fastq") || bamFiles_[0].endsWith(".fastq.gz") || 
-				bamFiles_[0].endsWith(".fq.gz")){
+		if(bamFile_.endsWith(".fastq") || bamFile_.endsWith(".fastq.gz") || 
+				bamFile_.endsWith(".fq.gz")){
 			allNull = false;
+			Set<String>keyset=null;
+			if(readList!=null) {
+				keyset=reads.keySet();
+			}
 			samIter = 
 					SequenceUtils.getCombined(
-					SequenceUtils.getSAMIteratorFromFastq(bamFiles_, mm2_index, readsToSkip, maxReads, readList==null ? null : reads.keySet(), fail_thresh, null),
+					SequenceUtils.getSAMIteratorFromFastq(new String[] {bamFile_}, mm2_index, readsToSkip, maxReads, 
+							keyset, fail_thresh, null),
 					sorted, sequential);
 		}else{
-		inner: for (int ii = 0; ii < len; ii++) {
+		//inner: for (int ii = 0; ii < len; ii++) {
 			SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
 		//	SamReaderFactory.makeDefault().op
-			if(bamFiles_[ii].equals("-")){
-				samReaders[ii] = SamReaderFactory.makeDefault().open(SamInputResource.of(System.in));
+			if(bamFile_.equals("-")){
+				samReaders = SamReaderFactory.makeDefault().open(SamInputResource.of(System.in));
 			}else{
 
-				samReaders[ii] = SamReaderFactory.makeDefault().open(new File(bamFiles_[ii]));
+				samReaders = SamReaderFactory.makeDefault().open(new File(bamFile_));
 			}
-				samIters[ii] = samReaders[ii].iterator();
-			}
+				samIter = samReaders.iterator();
+			//}
 			allNull = false;
 		
-		 samIter= 
-				new FilteredIterator(
-				SequenceUtils.getCombined(samIters, sorted, sequential)
-				, readList==null ? null :reads.keySet(),readsToSkip,  max_reads, fail_thresh, false);
+//		 samIter= 
+			//	new FilteredIterator(
+	//			SequenceUtils.getCombined(samIters, sorted, sequential);
+				//, readList==null ? null :reads.keySet(),readsToSkip,  max_reads, fail_thresh, false);
 		}
 		//Map<String, int[]> chromsToInclude = getChromsToInclude(genomes, chrToInclude, chrToIgnore);
 		
@@ -817,16 +823,21 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 		//	int seqlen = chr.length();
 		//	FastqWriter[][] fqw = chromsToRemap==null ? null : Outputs.getFqWriter(chromsToRemap, resdir, in_nmes);   //chromToRemap.contains(chr.getName()) ? Outputs.getFqWriter(chr.getName(), resdir) : null;
 				// first row is primary , second is supplementary
+			//{"sampleID":["results_20240626221127_dorado"],"flags":{"genomic":[true],"reference":["chrIS"],"type":["dRNA"],"kit":["NA"],"flowcell":["MinION"],"alignment_command":["minimap2 -y -ax splice:hq -un $fa $1.fastq  | samtools view -bS > $1.bam"],"alignment_version":["2.28-r1209"]}}
+
+			Map<String, Object> expt=new HashMap<String, Object>() ;
+			Map<String, Object> flags = new HashMap<String, Object>();
+			expt.put("sampleID",resDir.getName()); // prob not best sampleID
+			expt.put("flags",flags);
+			flags.put("RNA", ViralTranscriptAnalysisCmd2.RNA);
 			
-			 
-			
-			Outputs 	outp = new Outputs(resDir,  in_nmes,   true, CigarCluster.recordDepthByPosition); 
+			Outputs 	outp = new Outputs(resDir,  in_nmes,   true, CigarCluster.recordDepthByPosition,expt); 
 			
 			
 		//	boolean calcBreaks1 = calcBreaks;// && break_thresh < seqlen && chr!=null;
 			
 			Annotation 	annot = annot_file == null ? new EmptyAnnotation( ) : 
-					new Annotation(new File(annot_file), len);
+					new Annotation(new File(annot_file), 1);
 			
 			
 			IdentityProfileHolder profile =  	
@@ -920,10 +931,10 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 					numNotAligned++;
 					continue;
 				}
-				if(probInclude<1.0 && Math.random()>probInclude){
+			/*	if(probInclude<1.0 && Math.random()>probInclude){
 					//randomly exclude
 					continue;
-				}
+				}*/
 				
 				boolean supplementary = false;
 				//System.err.println(sam.getMappingQuality());
@@ -950,12 +961,15 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 					continue;
 					}
 				}
-				int source_index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
+				//int source_index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
 				
 				
 					if(sams.size()>0 && (!sam.getReadName().equals(previousRead) )){
 						try{
-							
+//						    int[] mq = sams.stream().mapToInt(sa -> ((SAMRecord) sa).getMappingQuality()).toArray();
+
+	//					    int[] start = sams.stream().mapToInt(sa -> ((SAMRecord) sa).getReadPositionAtReferencePosition(sa.getAlignmentStart())).toArray();
+		//				    int[] end = sams.stream().mapToInt(sa -> ((SAMRecord) sa).getReadPositionAtReferencePosition(sa.getAlignmentEnd())).toArray();
 							profile.identity1(new ArrayList<SAMRecord>(sams),  cluster_reads,     genomes, primaryIndex);
 							sams.clear();
 							primaryIndex=-1;
@@ -982,11 +996,11 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 					exc.printStackTrace();
 				}
 			}
+			if(samReaders!=null)samReaders.close();
 			
-			
-			for(int ii=0; ii<samReaders.length; ii++){
-			if(samReaders[ii] !=null) samReaders[ii].close();
-			}
+//			for(int ii=0; ii<samReaders.length; ii++){
+	//		if(samReaders[ii] !=null) samReaders[ii].close();
+		//	}
 			
 		
 		

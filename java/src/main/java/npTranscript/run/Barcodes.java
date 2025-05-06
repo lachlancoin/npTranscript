@@ -7,24 +7,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
 import java.util.zip.GZIPInputStream;
 
-import edlib.EdlibAlignConfig;
-import edlib.EdlibAlignResult;
-import edlib.EdlibAlignResult.ByValue;
-import edlib.EdlibLibrary;
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.util.SequenceUtil;
-import japsa.tools.seq.SequenceUtils;
 
 public class Barcodes {
 public static boolean verbose=false;	
@@ -45,7 +35,7 @@ public static String umi_tag = "UM";
 	
 	//String sequence = null;;
 	
-
+/*
 	public static void main(String[] args){
 		try{
 			String inf = "./long_read_UK_72hpi_adult_barcodes.tsv.gz";
@@ -68,7 +58,7 @@ public static String umi_tag = "UM";
 		}catch(Exception exc){
 			exc.printStackTrace();
 		}
-	}
+	}*/
 	void getAll(Collection<Integer>inds, List<String> res, List<Integer>inds1, boolean forward_barcode){
 		for(Iterator<Integer> it = inds.iterator(); it.hasNext();){
 			int i = it.next();
@@ -92,8 +82,8 @@ public static String umi_tag = "UM";
 	 this.sequence = sequence;
  }*/
  
-static  int MODE = EdlibLibrary.EdlibAlignMode.EDLIB_MODE_HW;
-static  int TASK = EdlibLibrary.EdlibAlignTask.EDLIB_TASK_LOC;
+//static  int MODE = EdlibLibrary.EdlibAlignMode.EDLIB_MODE_HW;
+//static  int TASK = EdlibLibrary.EdlibAlignTask.EDLIB_TASK_LOC;
 public static int tolerance_barcode =1;
 public static int maxsize_tolerance_barcode=1;
 public static int barcode_extent=150;
@@ -101,7 +91,7 @@ public static int barcode_ignore=0;
 
 public  int bc_len_barcode;
 
-static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfig(-1, MODE, TASK, null, 0);
+//static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfig(-1, MODE, TASK, null, 0);
 			
 public boolean FLAMES_BARCODES = false; 
 Map<String, String> barcode_map ; // just needed if asigned is true
@@ -151,6 +141,7 @@ Map<String, String> barcode_map ; // just needed if asigned is true
 		 //}
 	// }
 	}
+ /*
 	public int calcMatches(Set<Integer> mins, int index, String sequence){//, boolean forward_barcodes){
 		//Set<Integer> mins = new TreeSet<Integer>();
 		int minv=Integer.MAX_VALUE;
@@ -170,10 +161,10 @@ Map<String, String> barcode_map ; // just needed if asigned is true
 		}
 		//}
 		return minv;
-	}
+	}*/
 	
-	private  static EdlibAlignResult.ByValue align(String sequence, String bc){
-	 EdlibAlignResult.ByValue res=		EdlibLibrary.INSTANCE.edlibAlign(bc, bc.length(), sequence, sequence.length(), config);
+/*	private  static EdlibAlignResult.ByValue align(String sequence, String bc){
+//	 EdlibAlignResult.ByValue res=		EdlibLibrary.INSTANCE.edlibAlign(bc, bc.length(), sequence, sequence.length(), config);
 	 
 //		 EdlibAlignResult res=	EdlibLibrary.INSTANCE.edlibAlign(sequence, sequence.length(), bc, bc.length(), config);
 		 return res;
@@ -198,7 +189,7 @@ Map<String, String> barcode_map ; // just needed if asigned is true
 			EdlibLibrary.INSTANCE.edlibFreeAlignResult(resA_r);
 			resA_r.clear();
 			
-		}
+		}*/
 	
 	 String fortag = "-5'_for";
 	 String revtag = "+3'_revC";
@@ -210,7 +201,7 @@ Map<String, String> barcode_map ; // just needed if asigned is true
  * sa is the original read uncorrected by minimap2
 
  * */
-	 
+	 /*
 	public int assign(SAMRecord sam, String sa, boolean forward_read, int[] startend) {
 		boolean forward_barcode = !forward_read;
 		if(this.FLAMES_BARCODES){
@@ -274,7 +265,7 @@ Map<String, String> barcode_map ; // just needed if asigned is true
 					if( verbose) System.err.println("not found "+minv+" "+mins.size());
 				}
 				return minv;
-	}
+	}*/
 	public static String getHeader(){
 		return "barcode\tbarcode_index\tbarcode_dist\tbarcode_pos\tbarcode_type\tconfidence\tUMI";
 	}

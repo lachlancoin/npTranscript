@@ -3,6 +3,7 @@ package npTranscript.cluster;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -64,7 +65,7 @@ public class IdentityProfile1 {
 	
 	public static boolean annotByBreakPosition = true;
 	public static int writeCoverageDepthThresh = 100;
-	public static int[] writeIsoformDepthThresh = new int[] {10};
+	public static int writeIsoformDepthThresh = 10;
 	public static int msaDepthThresh = 10;
 	public static boolean includeStartEnd = true;
 	
@@ -138,6 +139,7 @@ public class IdentityProfile1 {
 		
 	}
 	public String strand;
+	public boolean reverse;
 	//public boolean flip=false;
 	public void setName(String readName, String chrom_, String strand, String q_value,String q_value_base, int source_index, boolean fusion) {
 		// TODO Auto-generated method stub
@@ -147,13 +149,19 @@ public class IdentityProfile1 {
 	//	if(!supp) fusion = false;
 		//else if(chrom_index!=this.chrom_index) fusion = true;
 this.strand = strand;
+this.reverse = strand.charAt(0)=='+';
 this.q_value_str = q_value;
 this.base_q_str = q_value_base;
 this.updateSourceIndex(source_index);
 		this.readName = readName;
 		this.chrom_ = chrom_;// fusion ? this.chrom_+";"+chrom_ : chrom_;
-		
-		if(ViralTranscriptAnalysisCmd2.RNA[source_index]){
+		if(reverse && strand.length()>1) {
+			List<String> chr1= Arrays.asList(chrom_.split(","));
+			Collections.reverse(chr1);
+			this.chrom_ = String.join(",", chr1.toArray(new String[0]));
+			this.strand = (new StringBuilder(strand)).reverse().toString();
+		}
+		if(ViralTranscriptAnalysisCmd2.RNA){
 			coRefPositions.forward = strand.charAt(0)=='+';
 		}else{
 			coRefPositions.forward = null;
@@ -187,7 +195,7 @@ static char delim_start ='$';
 	
 	//** this adds coRefPositions into the clusters
 	 public static String header = 
-"readID\tsource\tchrom\tstartPos\tendPos\talign_strand\ttype\terrorRatio\tid\tbreaks_ref\tbreaks_read\tread_len\tqval\tbaseQ\tpolyA_fusion_site";
+"readID\tsource\tchrom\tstartPos\tendPos\tendStr\talign_strand\ttype\terrorRatio\tid\tbreaks_ref\tbreaks_read\tread_len\tqval\tbaseQ\tpolyA\tpolyA_fusion_site";
 	// public static String polyA = "AAAAAAAAAAAAAA";
 	 //public static String polyT = "TTTTTTTTTTTTTT";
 	// public static int polyA_ed_dist = 1;
@@ -210,7 +218,7 @@ static char delim_start ='$';
 					int len1 = coRefPositions.start_positions.size();
 			 		for(int j=1; j<len1; j++){
 						int br = coRefPositions1.breaks.get(coRefPositions.start_positions.get(j));
-								st.append(PolyAT.check(seq,br));
+								//st.append(PolyAT.check(seq,br));
 								if(j<len1-1) st.append(",");
 						}
 			 		
@@ -223,12 +231,16 @@ static char delim_start ='$';
 		// parent.all_clusters.matchCluster(coRefPositions, this.source_index, this.num_sources,  this.chrom_,  clusterID, strand, this.readName); // this also clears current cluster
 	//	int len1 = readSeq.length();
 		//Integer flipped = (Integer) sam.getAttribute(PolyAT.flipped_tag);
-		String id_ = parent.o.writeString(coRefPositions, source_index, chrom_);
+		Integer pt = sam.getIntegerAttribute("pt");
+		String pt1 = pt==null ? "NA" :pt.toString();
+		String id_ = parent.o.writeString(coRefPositions, source_index, chrom_, strand);
 		parent.o.addDepthMap(id_, coRefPositions.map);
 		String str = id+"\t"+source_index+"\t"
 		+chrom_+"\t"
-		+startPos+"\t"+endPos+"\t"+strand+"\t"+this.type_nme+"\t"
-		+coRefPositions.getError(source_index)+"\t"+id_+"\t"+breakSt+"\t"+breakSt1+"\t"+read_len+"\t"+q_value_str.trim()+"\t"+this.base_q_str.trim()+"\t"+(st.toString() );
+		+startPos+"\t"+endPos+"\t"+endPosStr+"\t"+strand+"\t"+this.type_nme+"\t"
+		+coRefPositions.getError(source_index)+"\t"+id_+"\t"+breakSt+"\t"+breakSt1+"\t"+read_len+"\t"+q_value_str.trim()+"\t"+this.base_q_str.trim()+"\t"+
+		pt1+"\t"+
+		(st.toString() );
 	//	if(trainStrand){f
 		//	str = str+"\t"+readSeq.subSequence(0, 10)+"\t"+readSeq.subSequence(len1-10, len1)
 //				+"\t"+toString(phredQ,0,10)+"\t"+toString(phredQ,len1-10,len1)
@@ -239,6 +251,7 @@ static char delim_start ='$';
 		parent.o.printRead(str+"\t"+str1+"\t"+str2);
 		
 		
+		parent.o.append(chrom_, strand, endPosStr, id_, pt);
 		
 		
 /*		int start_target=1;
@@ -297,6 +310,8 @@ static char delim_start ='$';
 	boolean hasLeaderBreak_;		String breakSt; String breakSt1; String secondKeySt;boolean includeInConsensus = true;
 	byte[] phredQ; String baseQ; String type_nme; String span_str; int span;  String q_value_str; String id;
 	String base_q_str;
+	
+	String endPosStr;
 	
 	
 	/*Note:  align5prime will be null if not coronavirus */
@@ -362,7 +377,7 @@ static char delim_start ='$';
 		
 		//String roundStartP = annotByBreakPosition ? TranscriptUtils.round(startPos, CigarHash2.round)+"" : 	"";
 		StringBuffer secondKey =new StringBuffer();
-		
+		//
 	boolean 	 hasLeaderBreak = ViralTranscriptAnalysisCmd2.coronavirus? (breaks.size()>1 &&  annot.isLeader(breaks.get(0))) : false;
 		
 		if(ViralTranscriptAnalysisCmd2.coronavirus){
@@ -395,9 +410,14 @@ static char delim_start ='$';
 		//	}
 				
 		}else if(annot instanceof EmptyAnnotation){
-			secondKey.append(chrom_+"/"+strand+"/");
-			for(int jjk =0; jjk<this.strand.length(); jjk++){
-				if(jjk>0) secondKey.append(";");
+			//secondKey.append(chrom_+"/"+strand+"/");
+	
+			
+			for(int jjk1 =0; jjk1<this.strand.length(); jjk1++){
+				
+				int	jjk = reverse ? strand.length()-(1+jjk1) : jjk1;
+				
+				if(jjk1>0 ) secondKey.append(";");
 				int s1 = startPositions.get(jjk);
 				int e1 = jjk < startPositions.size()-1 ? startPositions.get(jjk+1) : breaks.size();
 				/*if(flip){
@@ -415,6 +435,8 @@ static char delim_start ='$';
 				}
 				
 			}
+			this.endPosStr = secondKey.toString();
+			//secondKey.insert(0, chrom_+"/"+strand+"/");
 		}else{
 			throw new RuntimeException("!!");
 		}
@@ -437,8 +459,8 @@ static char delim_start ='$';
 	/*	if(!TranscriptUtils.coronavirus && span==0 && q_value < ViralTranscriptAnalysisCmd2.fail_thresh1){
 			return secondKey.toString();
 		}*/
-		breakSt = coRefPositions.getBreakString();
-		breakSt1 = coRefPositions1.getBreakString();
+		breakSt = coRefPositions.getBreakString(strand);
+		breakSt1 = coRefPositions1.getBreakString(strand);
 
 		//coRefPositions.breaks.adjustBreaks(annot);
 		// need to group by start position if we annotating by break pos,e.g. so 5'mapping reads map together
@@ -506,9 +528,9 @@ static char delim_start ='$';
 
 
 
-	private static String getString(Integer[] seq12) {
+	/*private static String getString(Integer[] seq12) {
 		return CigarHash2.getString(Arrays.asList(seq12));
-	}
+	}*/
 	
 	
 

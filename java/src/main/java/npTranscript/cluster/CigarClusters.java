@@ -160,7 +160,7 @@ public class CigarClusters {
 						//int totalDepth = cc.readCountSum();
 						//cc.process1( o,genomes==null ? null : genomes.get(cc.chrom));//, chrom, chrom_index);//,  geneNames);
 					//	if(Outputs.writeIsoforms) o.writeIsoforms(cc, this,  totalDepth);
-						o.writeDepthH5(cc.breaks_hash.secondKey, cc.map);
+						//o.writeDepthH5(cc.breaks_hash.secondKey, cc.map);
 						rem_count++;
 						l.remove(cc.breaks_hash);
 						//l.put(cc.breaks_hash, null); //set as null.  If we remove it creates a potential problem with threading
@@ -168,10 +168,7 @@ public class CigarClusters {
 						//torem.add(cc.breaks_hash);
 					}
 				}
-		/*rem_count+=torem.size();
-		for(int i=0; i<torem.size(); i++){
-			l.remove(torem.get(i));
-		}*/
+		
 		return rem_count;//torem.size();
 	}
 	

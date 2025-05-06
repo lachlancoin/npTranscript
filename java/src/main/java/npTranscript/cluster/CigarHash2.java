@@ -84,11 +84,11 @@ public class CigarHash2 extends ArrayList<Integer> {
 	 */
 	@Override
 	public String toString(){
-		return getString(this);
+		return getString(this, false);
 	}
-	public String toString(List<Integer> startp) {
+	public String toString(List<Integer> startp,String strand) {
 		// TODO Auto-generated method stub
-		return getString(this, startp);
+		return getString(this, startp, strand);
 	}
 	
 	
@@ -96,25 +96,48 @@ public class CigarHash2 extends ArrayList<Integer> {
 	public String toString(int round, int st, int end){
 		return getString(this, round, st, end);
 	}
-	private String getString(CigarHash2 l, List<Integer> startp) {
+	private String getString(CigarHash2 l, List<Integer> startp, String strand) {
+		boolean reverse=strand.charAt(0)=='+';
 		StringBuffer sb = new StringBuffer();
-		for(int j=0; j<startp.size(); j++){
-			int from = startp.get(j);
-			int to  = j < startp.size()-1 ? startp.get(j+1) : l.size();
-			sb.append(getString(l.subList(from, to)));
-			if(j<startp.size()-1) sb.append(";");
+		if(reverse) {
+			for(int j=startp.size()-1; j>=0; j--){
+				int from = startp.get(j);
+				int to  = j < startp.size()-1 ? startp.get(j+1) : l.size();
+				sb.append(getString(l.subList(from, to),strand.charAt(j)=='+'));
+				if(j>0) sb.append(";");
+			}
+		}else {
+				for(int j=0; j<startp.size(); j++){
+					int from = startp.get(j);
+					int to  = j < startp.size()-1 ? startp.get(j+1) : l.size();
+					sb.append(getString(l.subList(from, to),strand.charAt(j)=='+'));
+					if(j<startp.size()-1) sb.append(";");
+				}
 		}
 		return sb.toString();
 	}
 	
 	public static String getString(List l){
+		return getString(l, false);
+	}
+	
+	public static String getString(List l, boolean reverse){
 		StringBuffer sb = new StringBuffer();
 		boolean even=l.size()%2==0;
-		for(int i=0; i<l.size(); i++){
-			if(i>0) {
-				if(!even) sb.append(i%2==0 ? "_" : ","); else sb.append(i%2==0 ? "," : "_");
+		if(reverse) {
+			for(int i=l.size()-1; i>=0; i--){
+				if(i<l.size()-1) {
+					if(!even) sb.append(i%2==1 ? "_" : ","); else sb.append(i%2==1 ? "," : "_");
+				}
+				sb.append(l.get(i));//+"_"+l.get(i+1));
 			}
-			sb.append(l.get(i));//+"_"+l.get(i+1));
+		}else {
+				for(int i=0; i<l.size(); i++){
+					if(i>0) {
+						if(!even) sb.append(i%2==0 ? "_" : ","); else sb.append(i%2==0 ? "," : "_");
+					}
+					sb.append(l.get(i));//+"_"+l.get(i+1));
+				}
 		}
 		return sb.toString();
 	}

@@ -16,7 +16,6 @@ import java.util.Map;
 import java.util.Set;
 
 import ch.systemsx.cisd.hdf5.IHDF5Writer;
-import npTranscript.run.TranscriptsMap.SuperUmi;
 
 
 
@@ -185,7 +184,7 @@ class ProcessReads{
 			barcode_ 
 
 		}*/
-		Comparable umi = umi_index>=0 ? new SuperUmi(barcode_, line[umi_index]) : barcode_;
+		Comparable umi = barcode_ ;//umi_index>=0 ? new SuperUmi(barcode_, line[umi_index]) : barcode_;
 		
 		Integer  barc_ind = this.barc.get( umi);
 		

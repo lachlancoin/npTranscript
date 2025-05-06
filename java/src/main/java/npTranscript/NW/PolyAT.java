@@ -1,24 +1,8 @@
 package npTranscript.NW;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-import java.util.zip.GZIPInputStream;
 
-import edlib.EdlibAlignConfig;
-import edlib.EdlibAlignResult;
-import edlib.EdlibAlignResult.ByValue;
-import edlib.EdlibLibrary;
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.util.SequenceUtil;
-import japsa.seq.Sequence;
-import npTranscript.cluster.TranscriptUtils;
 
 public class PolyAT {
 	private static boolean verbose=false;
@@ -50,10 +34,10 @@ public static String getInfo(SAMRecord sam) {
 }
 	//
 	
-	static  int MODE = EdlibLibrary.EdlibAlignMode.EDLIB_MODE_HW;
-	static  int TASK = EdlibLibrary.EdlibAlignTask.EDLIB_TASK_LOC;
+	//static  int MODE = EdlibLibrary.EdlibAlignMode.EDLIB_MODE_HW;
+	//static  int TASK = EdlibLibrary.EdlibAlignTask.EDLIB_TASK_LOC;
 //	static int maxsize_tolerance=1;
-	static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfig(-1, MODE, TASK, null, 0);
+//	static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfig(-1, MODE, TASK, null, 0);
 	
 	// public PolyAT() throws IOException{
 	//		}
@@ -75,14 +59,14 @@ public static String getInfo(SAMRecord sam) {
 //	static int tolerance = 2;
 
 	
-	static int editDist(EdlibAlignResult resA_l ){
-		return resA_l.editDistance+ Math.max(0,bc_len_AT-(resA_l.endLocations.getValue()-resA_l.startLocations.getValue()+1));
-	}
+	//static int editDist(EdlibAlignResult resA_l ){
+	//	return resA_l.editDistance+ Math.max(0,bc_len_AT-(resA_l.endLocations.getValue()-resA_l.startLocations.getValue()+1));
+//	}
 	
 	
 	
 	
-	public static String check(String sequence_, int pos) {
+	/*public static String check(String sequence_, int pos) {
 		int dist = max_dist_to_end_AT;
 		int offset = Math.max(0, pos-dist);
 		String sequence = sequence_.substring(offset, Math.min(sequence_.length(), pos+dist));
@@ -99,14 +83,14 @@ public static String getInfo(SAMRecord sam) {
 		clear(resA_r); 
 		clear(resT_l);
 		return str;
-	}
+	}*/
 	
-	
+	/*
 	 static void clear(ByValue resA_r) {
 		EdlibLibrary.INSTANCE.edlibFreeAlignResult(resA_r);
 		resA_r.clear();
 		
-	}
+	}*/
 	/** 
 	 * if we find polyA that means its forward_read
 	 * if we find polyT that means its reverse_read
@@ -114,7 +98,7 @@ public static String getInfo(SAMRecord sam) {
 	 * returns polyA edit distance
 	 * forward means we assume it has polyA
 	 * reverse forward is default so as not to in
-	 * */
+	 * 
 	public static int assign(SAMRecord sam, String sequence, boolean forward, boolean reverse_forward, int[] start_end) {
 		int read_len = sequence.length();
 		
@@ -163,22 +147,12 @@ public static String getInfo(SAMRecord sam) {
 		start_end[0] = st_A;
 		start_end[1] = end_A;
 		/*if(verbose && false){
-//			System.err.println();
-			System.err.println("no polyA or polyT "+distA_r);
-			String seqRC =SequenceUtil.reverseComplement(sequence);
-			EdlibAlignResult resT=		EdlibLibrary.INSTANCE.edlibAlign(polyT, bc_len_AT, sequence, sequence.length(), config);
-			int distT=	editDist(resT);
-			EdlibAlignResult resA=		EdlibLibrary.INSTANCE.edlibAlign(polyA, bc_len_AT, sequence, sequence.length(), config);
-			int distA=	editDist(resA);
-			EdlibAlignResult res = distA < distT ? resA : resT;
-			int st = res.startLocations.getValue(); int end = read_len - res.endLocations.getValue();
-			System.err.println(distA+","+distT+","+st+","+end);
-		}*/
+//		
 		clear(resA_r);
 		return distA_r;
 		
 		
 		
-	}
+	}*/
 	
 }

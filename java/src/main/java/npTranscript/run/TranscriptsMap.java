@@ -16,19 +16,13 @@ import java.util.TreeMap;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-import edlib.EdlibAlignConfig;
-import edlib.EdlibAlignResult;
-import edlib.EdlibAlignResult.ByValue;
-import edlib.EdlibLibrary;
-import npTranscript.NW.PolyAT;
-
 // keeps a uniform list of transcripts
 public class TranscriptsMap{
 	
-	static  int MODE = EdlibLibrary.EdlibAlignMode.EDLIB_MODE_NW;
-	static  int TASK = EdlibLibrary.EdlibAlignTask.EDLIB_TASK_DISTANCE;
+//	static  int MODE = EdlibLibrary.EdlibAlignMode.EDLIB_MODE_NW;
+//	static  int TASK = EdlibLibrary.EdlibAlignTask.EDLIB_TASK_DISTANCE;
 //	static int maxsize_tolerance=1;
-	static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfig(-1, MODE, TASK, null, 0);
+//	static EdlibAlignConfig.ByValue config =EdlibLibrary.INSTANCE.edlibNewAlignConfig(-1, MODE, TASK, null, 0);
 	
 	
 	//final boolean saveReadID;
@@ -97,7 +91,7 @@ public class TranscriptsMap{
 	}
 	
 	
-	static int editDist(String umi, String umi1){
+	/*static int editDist(String umi, String umi1){
 			EdlibAlignResult.ByValue resA_r=		EdlibLibrary.INSTANCE.edlibAlign(umi,umi.length(), umi1	, umi1.length(), config);
 			int distA = resA_r.editDistance;
 			clear(resA_r);
@@ -107,11 +101,11 @@ public class TranscriptsMap{
 			EdlibLibrary.INSTANCE.edlibFreeAlignResult(resA_r);
 			resA_r.clear();
 			
-		}
+		}*/
 	
 	 static int edit_thresh = 2;
 	 
-	static class SuperUmi implements Comparable{
+	/*static class SuperUmi implements Comparable{
 	
 		public SuperUmi(String barcode, String umi){
 			
@@ -156,7 +150,7 @@ public class TranscriptsMap{
 			}
 		}
 		
-	}
+	}*/
 	
 	 boolean addcount;
 	//assumes is absent
