@@ -6,12 +6,19 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpClient.Version;
+import java.net.http.HttpRequest;
+import java.net.http.HttpRequest.BodyPublishers;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -20,7 +27,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedSet;
@@ -33,9 +39,9 @@ import java.util.zip.GZIPOutputStream;
 
 import org.apache.commons.math3.linear.SparseRealMatrix;
 
-import ch.systemsx.cisd.hdf5.HDF5Factory;
+import com.google.gson.Gson;
+
 import ch.systemsx.cisd.hdf5.IHDF5SimpleWriter;
-import ch.systemsx.cisd.hdf5.IHDF5Writer;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
@@ -52,6 +58,9 @@ import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 public class Outputs{
 	public static String readsOutputFile=null;
+	
+	public static String url="http://0.0.0.0:81";
+	public static String sampleName;
 	//public static  ExecutorService executor ;
 	
 	public static final FastqWriterFactory factory = new FastqWriterFactory();
@@ -66,6 +75,7 @@ public class Outputs{
 	
 	public static boolean writeIsoforms = false;
 
+	
 	public static File library = new File("./");
 	public static final ExecutorService writeCompressDirsExecutor  = Executors.newSingleThreadExecutor();
 	//public static final ExecutorService fastQwriter = Executors.newSingleThreadExecutor();
@@ -143,16 +153,20 @@ public class Outputs{
 		public  PrintWriter readClusters;//, plusMinus;
 		public  PrintWriter unmapped;//, plusMinus;
 
-		 IHDF5SimpleWriter clusterW = null;
-		 IHDF5Writer altT = null;
-		 IHDF5Writer breakPW = null;
+		// IHDF5SimpleWriter clusterW = null;
+		 //IHDF5Writer altT = null;
+		 //IHDF5Writer breakPW = null;
 		File resDir;
 		CompressDir[] clusters;
 		
 		
 		
-		String[] type_nmes;
+		String type_nmes;
 		public void close() throws IOException{
+			System.err.println();
+			this.post();
+			Map output1 = this.extract();
+			//System.err.println(output1);
 		//	if(plusMinus!=null) plusMinus.close();
 			//IdentityProfileHolder.waitOnThreads(100);
 			if(writeCompressDirsExecutor!=null){
@@ -167,11 +181,11 @@ public class Outputs{
 			}
 			readClusters.close();
 			unmapped.close();
-			if(clusterW!=null){
+			/*if(clusterW!=null){
 				writeAllDepths();
 				clusterW.close();
-			}
-			if(altT!=null) this.altT.close();
+			}*/
+			//if(altT!=null) this.altT.close();
 			//this.clusters.close();
 			for(int i=0; i<clusters.length; i++){
 				if(clusters[i]!=null) this.clusters[i].run(Outputs.minClusterEntries *2, writeCompressDirsExecutor);
@@ -189,14 +203,16 @@ public class Outputs{
 		boolean writeDirectToZip = false;
 		
 		String genome_index;
-		 int[] col_inds, col_inds_depth;  // this is the col_inds for writing count information in h5 library
+		 int col_inds, col_inds_depth;  // this is the col_inds for writing count information in h5 library
 		 int new_max_cols, new_max_cols_depth;
 		private String last_id;
-		public Outputs(File resDir,  String[] type_nmes, boolean isoforms, boolean cluster_depth) throws IOException{
+		public Outputs(File resDir,  String type_nmes, boolean isoforms, boolean cluster_depth, Map<String, Object> expt) throws IOException{
 			this.type_nmes = type_nmes;
+			this.expt = expt;
+			this.register();
 			genome_index = "0.";
 			 this.resDir = resDir;
-			 int num_sources = type_nmes.length;
+			 int num_sources = 1;//type_nmes.length;
 			 outfile2 = new File(resDir, genome_index+"clusters.h5");
 			 outfile10 = new File(resDir,genome_index+"isoforms.h5");
 			outfile12 = new File(library,genome_index+"breakpoints.h5");
@@ -251,23 +267,23 @@ if(last_id==null){
 				
 			List<String> str = new ArrayList<String>();
 			//str.add("subID"); //str.add("ẗype"); 
-			for(int j=0; j<num_sources; j++){
-				str.add(this.type_nmes[j]);
-			}
-			this.col_inds = new int[this.type_nmes.length];
-			if(Outputs.writeH5){
+			//for(int j=0; j<num_sources; j++){
+				str.add(this.type_nmes);
+			//}
+		//	this.col_inds = new int[this.type_nmes.length];
+		/*	if(Outputs.writeH5){
 				if(overwrite) outfile10.delete(); // remove existing h5 (temporary)
 				altT = HDF5Factory.open(outfile10);
-			}
-			if(Outputs.calcBreaks && Outputs.writeH5){
+			}*/
+/*			if(Outputs.calcBreaks && Outputs.writeH5){
 				this.breakPW =  HDF5Factory.open(outfile12);
 
-			}
-			
+			}*/
+			/*
 			if(altT!=null) {
 				writeStringArray(altT, "header", str.toArray(new String[0]),this.col_inds,0);
-			}
-			this.new_max_cols = Arrays.stream(col_inds) .max() .getAsInt()+1;
+			}*/
+			this.new_max_cols = col_inds +1;//Arrays.stream(col_inds) .max() .getAsInt()+1;
 				     
 				     
 					
@@ -275,16 +291,16 @@ if(last_id==null){
 			str .clear();
 			str.add("pos"); //str.add("ẗype"); 
 		//	str.add("base");
-			for(int j=0; j<num_sources; j++){
-				str.add(type_nmes[j]);
-			}
-			if(cluster_depth && writeH5){
+//			for(int j=0; j<num_sources; j++){
+				str.add(type_nmes);
+	//		}
+		/*	if(cluster_depth && writeH5){
 				if(overwrite) outfile2.delete();
 			clusterW = 	 HDF5Factory.open(outfile2);
 			col_inds_depth =new int[num_sources];
 			writeStringArray(clusterW, "header", str.toArray(new String[0]),col_inds_depth,1);
 			this.new_max_cols_depth = Arrays.stream(col_inds_depth) .max() .getAsInt()+1;
-			}
+			}*/
 			
 		//	clusterW.writeStringArray("header", str.toArray(new String[0]));
 		}
@@ -343,8 +359,8 @@ if(last_id==null){
 			return clusterW;
 		}*/
 
-		
-		private static void writeStringArray(IHDF5SimpleWriter altT2, String string, String[] array, int[] inds,  int start) {
+		/*
+		private static void writeStringArray(IHDF5SimpleWriter altT2, String string, String array, int inds,  int start) {
 			boolean exists = altT2.exists("header");
 			List<String> newh= new ArrayList<String>();
 			if(exists){
@@ -364,7 +380,7 @@ if(last_id==null){
 						}
 				}
 			altT2.writeStringArray(string, newh.toArray(new String[0]));
-		}
+		}*/
 		/*public synchronized void printTranscriptAlt(CigarCluster cc){
 			if(altT!=null){
 			String id2 = "trans/"+cc.breaks_hash.secondKey;
@@ -388,9 +404,9 @@ if(last_id==null){
 			
 		}
 		
-		private PrintWriter getBreakPointPw( String chrom, int i, int j)  throws IOException{
+		private PrintWriter getBreakPointPw( String chrom,  int j)  throws IOException{
 			System.err.println("writing breakpoint files");
-				File outfile1_ =  new File(resDir,chrom+".breakpoints."+type_nmes[i]+"."+j +".txt.gz") ;
+				File outfile1_ =  new File(resDir,chrom+".breakpoints."+type_nmes+"."+j +".txt.gz") ;
 //						new File(resDir,chrom+".breakpoints."+type_nmes[i]+"."+i +".txt.gz");
 				PrintWriter pw = new PrintWriter(
 					new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outfile1_, !overwrite))));
@@ -398,8 +414,8 @@ if(last_id==null){
 			return pw;
 		}
 		
-		void printMatrix(SparseRealMatrix cod, SparseVector breakSt2, SparseVector breakEnd2,   int chrom_index, int i, int j, String prefix) throws IOException{
-			String id = prefix+"/"+this.type_nmes[i]+"/"+j;
+		void printMatrix(SparseRealMatrix cod, SparseVector breakSt2, SparseVector breakEnd2,   int chrom_index, int j, String prefix) throws IOException{
+			String id = prefix+"/"+this.type_nmes+"/"+j;
 			//String id_scores = scores+"/"+this.chrom+"/"+this.type_nmes[i]+"/"+j;
 //			PrintWriter pw = getBreakPointPw(chrom_index+"",i, j);
 			StringBuffer secondLine = new StringBuffer();
@@ -423,7 +439,7 @@ if(last_id==null){
 				}
 				//pw.println();
 			}
-			this.breakPW.writeIntMatrix(id, mat);
+		//	this.breakPW.writeIntMatrix(id, mat);
 			//pw.close();
 			
 		}
@@ -488,16 +504,17 @@ if(last_id==null){
 			}
 		}
 		
-		public void writeAllDepths(){
+		/*public void writeAllDepths(){
 			for(Iterator<String> keys = all_maps.keySet().iterator(); keys.hasNext();){
 				String key = keys.next(); 
 				Maps map = all_maps.get(key);
 				writeDepthH5(key, map);
 				keys.remove();	
 			}
-		}
+		}*/
 		
 		//	cc.breaks_hash.secondKey;
+		/*
 		public void writeDepthH5(String secondKey,Maps map) {
 			int offset=1;
 			int totalDepth = map.totalDepth();
@@ -534,10 +551,10 @@ if(last_id==null){
 				}
 				
 			}
-		}
+		}*/
 		
 	
-		
+		/*
 		private int[][] getMatr( String key, int offset, List<Integer>keys) {
 			int[][]matr;
 			if(clusterW.exists(key)){
@@ -560,7 +577,7 @@ if(last_id==null){
 			return matr;
 		}
 
-
+*/
 
 
 
@@ -653,7 +670,7 @@ if(last_id==null){
 	//	String[] transcript_info  = new String[12];
 		SortedSet<String> geneNames = new TreeSet<String>();
 		
-		public synchronized void writeTotalString(CigarClusters cigarClusters){
+/*		public synchronized void writeTotalString(CigarClusters cigarClusters){
 			if(altT==null) return;
 			 String id2 = "counts/";//+cigarClusters.chr;
 			int[]   obj;
@@ -669,18 +686,191 @@ if(last_id==null){
 			}
 			altT.writeIntArray(id2, obj);
 			
+		}*/
+		
+		public static void main(String[] args) {
+			/*
+			
+			int[] ints = {1, 2, 3, 4, 5};
+			String[] strings = {"abc", "def", "ghi"};
+Map<String,Map<String, int[]>> a = new HashMap<String, Map<String,int[]>>();
+Map<String, int[]> ab=new HashMap<String, int[]>();
+ab.put("aaab", new int[] {2,3});
+a.put("aa", ab);
+String str2 = gson.toJson(a);
+			
+			// Serialization
+			String str1 = gson.toJson(ints);     // ==> [1,2,3,4,5]
+			gson.toJson(strings);  // ==> ["abc", "def", "ghi"]
+System.err.println(str2);
+gson.fromJson(str1,  int[].class);
+			// Deserialization
+			int[] ints2 = gson.fromJson("[1,2,3,4,5]", int[].class);*/
+		}
+
+		
+		
+		Map<String,Map<String,Map<String,Map<String,int[]>>>> all_res = 
+				new HashMap<String,Map<String,Map<String,Map<String,int[]>>>>();
+		
+		
+		int total_num=0;
+		static int report=500;
+		public synchronized void append(String chrom, String strand, String endPos, String key,Integer polyA){
+			Map<String,Map<String,Map<String,int[]>>> all_res_chr = all_res.get(chrom);
+			if(all_res_chr==null) {
+				all_res_chr = new HashMap<String, Map<String, Map<String, int[]>>>();
+				all_res.put(chrom, all_res_chr);
+			}
+			Map<String,Map<String,int[]>> all_res_chr_strand = all_res_chr.get(strand);
+			if(all_res_chr_strand==null) {
+				all_res_chr_strand = new HashMap<String, Map<String, int[]>>();
+				all_res_chr.put(strand, all_res_chr_strand);
+			}
+			Map<String,int[]> all_res_chr_end = all_res_chr_strand.get(endPos);
+			if(all_res_chr_end==null) {
+				all_res_chr_end = new HashMap<String, int[]>();
+				all_res_chr_strand.put(endPos, all_res_chr_end);
+			}
+			int[] vals = all_res_chr_end.get(key);
+			if(vals==null) {
+				vals = new int[] {0,0,0};
+				all_res_chr_end.put(key, vals);
+			}
+			vals[0]+=1;
+			if(polyA!=null) {
+				vals[1]+=1;
+				vals[2]+=polyA.intValue();
+			}
+			total_num +=1;
+			 if(total_num==report) {
+				 this.post();
+			 }
+		}
+		
+		Map<String, Object> expt;
+	
+		
+		static void printCommand(ProcessBuilder pb) {
+			List<String> cmd = pb.command();
+			StringBuffer sb  = new StringBuffer();
+			for(int i=0; i<cmd.size(); i++){
+				sb.append(cmd.get(i)+" ");
+			}
+			System.err.println(sb.toString());
+			
+		}
+		
+		class Curl{
+			//String url="http://45.113.234.196:89";
+			
+				String url1, json_str;
+	/* Example			
+//				curl -H "Content-Type: application/json" --data '{"sampleID":"results_20240626221127_dorado","flags":{"RNA":true}}' http://45.113.234.196:89/register 
+ */
+				HttpClient client = HttpClient.newHttpClient();
+				Gson gson = new Gson();
+				PrintWriter pw;
+				File endP;
+				public Curl(Map map, String endpoint) {
+					json_str = gson.toJson(map);
+					if(url==null) {
+						endP=new File(resDir, endpoint+".endpoint.gz");
+					}else {
+						url1 = url+"/"+endpoint;
+					}
+					
+				}
+				public Map run() {
+					Map output = null;
+					if(url==null) {
+					try {
+						PrintWriter pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.endP, true))));
+						pw.println(json_str);
+						pw.close();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					}	else {				
+					HttpRequest request = HttpRequest.newBuilder()
+							.version(Version.HTTP_1_1)
+					    .uri(URI.create(url1))
+					    .POST(BodyPublishers.ofString(json_str))
+					    .setHeader("Content-Type", "application/json")
+					    .build();
+					
+					try {
+					HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+					String str = response.body();
+					System.err.println(str);
+					output = gson.fromJson(str, Map.class);
+					
+
+					} catch (IOException | InterruptedException  e) {
+						// TODO Auto-generated catch block
+						//e.printStackTrace();
+					}
+					}
+					return output;
+				}
+				
+			}
+			
+		Number sessionID = null;
+		//Executor executor = Executors.newFixedThreadPool(1);
+		public void register() {
+			Curl curl = new Curl(this.expt, "register");
+			Map output = curl.run();
+			sessionID=1;
+			if(output!=null) {
+			List<Number> l = (List<Number>) output.get("sessionID");
+			
+			sessionID=l.get(0);
+			}
+			all_res1.put("sessionID", sessionID.intValue());
+			all_res1.put("sampleID", this.expt.get("sampleID"));
+			all_res1.put("flags", new HashMap<>());
+			
+			all_res2.put("sessionID", sessionID.intValue());
+			all_res2.put("sampleID", this.expt.get("sampleID"));
+			all_res2.put("flags", new HashMap<>());
+		//				executor.execute(curl);
+			//			System.err.println(curl.out);
+						
+		}
+		Map<String, Object> all_res1 = new HashMap<String, Object>();
+		Map<String, Object> all_res2 = new HashMap<String, Object>();
+
+		public  void post() {
+			total_num=0;
+			
+			
+			all_res1.put("json", all_res);
+		//	this.all_res.put("sessionID", sessionID);
+			Curl curl = new Curl(all_res1, "addreads");
+			Map output = curl.run();
+			//executor.execute(curl);
+			this.all_res.clear(); 
+			//this.extract();
+			
+		}
+		public Map extract() {
+			Curl curl = new Curl(all_res2,"extract");
+			Map output = curl.run();
+			return output;
 		}
 		
 		/** writes the isoform information */
-		public synchronized String writeString(CigarCluster cc, int source_index, String chrom){//, CigarClusters cigarClusters) {
+		public synchronized String writeString(CigarCluster cc, int source_index, String chrom, String strand){//, CigarClusters cigarClusters) {
 			String id_1 = cc.breaks_hash.secondKey;
 			CigarHash2 key = cc.breaks;
 			CigarHash2 key2 = cc.cloneBreaks();
 			List<Integer> startp = cc.start_positions;
-				String id_2 = key2.toString(startp);
+				String id_2 = key2.toString(startp, strand);
 				String id_ = id_1+"/"+id_2;
 				String id = "transcripts/"+id_;
-				HDFObj obji;
+/*				HDFObj obji;
 				if(altT!=null){
 				if(altT.exists(id)){
 				//	m = new HashMap<String, HDFObj>();
@@ -696,8 +886,8 @@ if(last_id==null){
 					obji = new HDFObj( key, source_index, new_max_cols, CigarCluster.Count.divisor); // need to worry about cols? 
 				}
 				altT.writeString(id,obji.toString());
-			}
-				return id_;
+			}*/
+				return id_2;
 		}
 		
 		
