@@ -155,7 +155,7 @@ public static int readsToSkip=0;
 		addBoolean("exclude_reads_without_barcode", false,"whether to exclude read if it does not have barcode");
 addBoolean("illumina", false, "use illumina libary");
 		
-		addString("inputFile", null, "Name of input file", false);
+		addString("inputFile", "-", "Name of input file", false);
 		addString("sampleID",null, "sampleID");
 		//addString("fastqFile", null, "Name of bam file", false);
 		addString("reference", null, "Name of reference genome", false);
@@ -748,7 +748,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 		String in_nmes;
 		//for (int ii = 0; ii < len; ii++) {
 			//String bamFile = bamFiles;
-			if(bamFile_!="-"){
+			if(!bamFile_.equals("-")){
 				File bam = new File( bamFile_);
 				in_nmes = bam.getName().split("\\.")[0];
 			}else{
@@ -781,6 +781,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 			SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
 		//	SamReaderFactory.makeDefault().op
 			if(bamFile_.equals("-")){
+				System.err.println("reading from stdin");
 				samReaders = SamReaderFactory.makeDefault().open(SamInputResource.of(System.in));
 			}else{
 
