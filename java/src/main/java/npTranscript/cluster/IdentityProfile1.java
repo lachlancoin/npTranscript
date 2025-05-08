@@ -251,7 +251,7 @@ static char delim_start ='$';
 		parent.o.printRead(str+"\t"+str1+"\t"+str2);
 		
 		
-		parent.o.append(chrom_, strand, endPosStr, id_, pt);
+		parent.o.append(sam.getReadName(), chrom_, strand, endPosStr, id_, pt);
 		
 		
 /*		int start_target=1;
@@ -417,13 +417,13 @@ static char delim_start ='$';
 				
 				int	jjk = reverse ? strand.length()-(1+jjk1) : jjk1;
 				
-				if(jjk1>0 ) secondKey.append(";");
+				if(jjk1>0) secondKey.append(";");
 				int s1 = startPositions.get(jjk);
 				int e1 = jjk < startPositions.size()-1 ? startPositions.get(jjk+1) : breaks.size();
 				/*if(flip){
 					int s2 = s1;
 					int e2 = e1;
-					s1 = e2;
+					s1 = e2;x
 					e1 = s2;
 				}*/
 				///prob could rethink this
@@ -459,8 +459,8 @@ static char delim_start ='$';
 	/*	if(!TranscriptUtils.coronavirus && span==0 && q_value < ViralTranscriptAnalysisCmd2.fail_thresh1){
 			return secondKey.toString();
 		}*/
-		breakSt = coRefPositions.getBreakString(strand);
-		breakSt1 = coRefPositions1.getBreakString(strand);
+		breakSt = coRefPositions.toString(); //getBreakString(strand);
+		breakSt1 = coRefPositions1.toString(); //getBreakString(strand);
 
 		//coRefPositions.breaks.adjustBreaks(annot);
 		// need to group by start position if we annotating by break pos,e.g. so 5'mapping reads map together
@@ -471,44 +471,7 @@ static char delim_start ='$';
 		int num_exons =(int) Math.floor( (double)  coRefPositions.breaks.size()/2.0);
 
 		boolean writeMSA = Outputs.doMSA!=null && Outputs.msa_sources !=null && includeInConsensus  && Outputs.msa_sources.containsKey(source_index);
-		/*if(includeInConsensus && TranscriptUtils.coronavirus){
-			//int st1 = startPos; //position>0 ? position : startPos; // start after break
-			int st1 = breaks.get(breaks.size()-2); // start of last segment
-			inner: for(int i=annot.start.size()-1; i>=0; i--){
-				if( annot.start.get(i)<st1-10) break inner;
-				if(endPos > annot.start.get(i)+100){
-					annot.addCount(i,src_index, startPos<=TranscriptUtils.startThresh);
-				}else{
-					//System.err.println(annot.end.get(i)+ " "+endPos);
-				}
-				if(writeMSA && endPos > annot.end.get(i)){
-					boolean include = false;
-					inner1: for(int k=0; k<breaks.size(); k+=2){
-						int st = breaks.get(k);
-						int end = breaks.get(k+1);
-						if(st-5 < annot.start.get(i) && end+5 > annot.end.get(i)){
-							include=true;
-							break inner1;
-						}
-					}
-					if(include){ // this means read covers ORF without break
-					//	annot.addCount(i,src_index, startPos<=TranscriptUtils.startThresh);
-						int start_ref = annot.start.get(i)-1; // need to put back in zero coords
-						int end_ref = annot.end.get(i)-1;// need to put back in zero coords
-						int start_read1 =  sam.getReadPositionAtReferencePosition(start_ref, true);
-						int end_read1 =  sam.getReadPositionAtReferencePosition(end_ref, true);
-						double diff = end_ref - start_ref;
-						double diff1 = end_read1 - start_read1;
-						if(diff1>0 && diff1> 0.8 *diff){
-							Sequence readSeq1 = readSeq.subSequence(start_read1, end_read1);
-							String baseQ1 = baseQ.length()<=1 ? baseQ : baseQ.substring(start_read1, end_read1);
-							readSeq1.setDesc(chrom_index+" "+start_ref+","+end_ref+" "+start_read1+","+end_read1+" "+(end_read1-start_read1)+" "+strand+" "+source_index);
-							parent.o.writeToCluster("annot_"+annot.genes.get(i),null, source_index, readSeq1, baseQ1, readSeq.getName(), strand);
-						}
-					}
-				}
-			}
-		}*/
+		
 		/// this is new
 		
 		

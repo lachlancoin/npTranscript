@@ -492,6 +492,8 @@ public static boolean recordStartEnd = false;
 public int addBlock(int start, int len, boolean first, boolean last, int ref_ind, boolean negStrand) {
 return addBlock(start, len, first, last, ref_ind,start-prev_position , negStrand);
 }
+
+//List<Boolean> neg_strand = new ArrayList<Boolean>();
 	public int addBlock(int start, int len, boolean first, boolean last, int ref_ind, int gap, boolean negStrand) {
 		int mult = 1;//negStrand ? -1 : 1;
 		if(first) {
@@ -512,6 +514,8 @@ return addBlock(start, len, first, last, ref_ind,start-prev_position , negStrand
 			breaks.add(mult*prev_position);
 			breaks.add(mult*start);
 		}
+		//neg_strand.add(negStrand);
+		//neg_strand.add(negStrand);
 		prev_position = end;
 		this.prev_ind = ref_ind;
 		return gap;

@@ -6,12 +6,12 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -60,7 +60,10 @@ public class Outputs{
 	public static String readsOutputFile=null;
 	
 	public static String url="http://0.0.0.0:81";
+	public static PrintStream outputstream;  // this is the main output stream
+	public static String format;
 	public static String sampleName;
+	
 	//public static  ExecutorService executor ;
 	
 	public static final FastqWriterFactory factory = new FastqWriterFactory();
@@ -142,16 +145,16 @@ public class Outputs{
 	public static boolean writeH5=false;
 	
 		
-		public File reads_file; 
+		//public File reads_file; 
 		
-		private final File  outfile2,  outfile10,  outfile12;
+	//	private final File  outfile2,  outfile10,  outfile12;
 		//private final File[] gff_output;
 		//outfile9;
 		//private final FOutp[] leftover_l, polyA;//, leftover_r, fusion_l, fusion_r;
 	
 	//	final int seqlen;
-		public  PrintWriter readClusters;//, plusMinus;
-		public  PrintWriter unmapped;//, plusMinus;
+		//public  PrintWriter readClusters;//, plusMinus;
+		//public  PrintWriter unmapped;//, plusMinus;
 
 		// IHDF5SimpleWriter clusterW = null;
 		 //IHDF5Writer altT = null;
@@ -165,6 +168,7 @@ public class Outputs{
 		public void close() throws IOException{
 			System.err.println();
 			this.post();
+			this.outputstream.close();
 			Map output1 = this.extract();
 			//System.err.println(output1);
 		//	if(plusMinus!=null) plusMinus.close();
@@ -179,8 +183,8 @@ public class Outputs{
 			if(h5writer!=null){
 				Outputs.waitOnThreads(h5writer, 100);
 			}
-			readClusters.close();
-			unmapped.close();
+			//readClusters.close();
+			//unmapped.close();
 			/*if(clusterW!=null){
 				writeAllDepths();
 				clusterW.close();
@@ -206,16 +210,16 @@ public class Outputs{
 		 int col_inds, col_inds_depth;  // this is the col_inds for writing count information in h5 library
 		 int new_max_cols, new_max_cols_depth;
 		private String last_id;
-		public Outputs(File resDir,  String type_nmes, boolean isoforms, boolean cluster_depth, Map<String, Object> expt) throws IOException{
+		public Outputs( String type_nmes, boolean isoforms, boolean cluster_depth, Map<String, Object> expt) throws IOException{
 			this.type_nmes = type_nmes;
 			this.expt = expt;
 			this.register();
 			genome_index = "0.";
 			 this.resDir = resDir;
 			 int num_sources = 1;//type_nmes.length;
-			 outfile2 = new File(resDir, genome_index+"clusters.h5");
-			 outfile10 = new File(resDir,genome_index+"isoforms.h5");
-			outfile12 = new File(library,genome_index+"breakpoints.h5");
+			// outfile2 = new File(resDir, genome_index+"clusters.h5");
+			 //outfile10 = new File(resDir,genome_index+"isoforms.h5");
+			//outfile12 = new File(library,genome_index+"breakpoints.h5");
 			List<Integer> vals = new ArrayList<Integer>(new HashSet<Integer> (Outputs.msa_sources.values()));
 			Collections.sort(vals);
 			 if(doMSA!=null && ( Outputs.msa_sources.size()==0)){
@@ -231,24 +235,24 @@ public class Outputs{
 			 }
 		
 		//	this.right=  new SequenceOutputStream((new FileOutputStream(new File(resDir,genome_index+".right" ))));
-			 reads_file = readsOutputFile==null ? new File(resDir,"0.readToCluster.txt.gz") : new File(readsOutputFile);
-			 if(!overwrite && reads_file.exists()){
-				last_id = transferToNewFile(reads_file);//this makes sure there are no partial lines at the end 
-			 }else{
+		//	 reads_file = readsOutputFile==null ? null : new File(readsOutputFile);
+			// if(!overwrite && reads_file.exists()){
+			//	last_id = transferToNewFile(reads_file);//this makes sure there are no partial lines at the end 
+			 //}else{
 				 last_id = null;
 					// TODO Auto-generated method stub
-			 }
-			 OutputStream os = new FileOutputStream(reads_file, !overwrite);
+			// }
+			// OutputStream os = new FileOutputStream(reads_file, !overwrite);
 			// boolean gzip = true;
-			 if(reads_file.getName().endsWith(".gz")) os = new GZIPOutputStream(os);
-			 readClusters = new PrintWriter(
-					new OutputStreamWriter(os));
+			 //if(reads_file.getName().endsWith(".gz")) os = new GZIPOutputStream(os);
+			// readClusters = new PrintWriter(	new OutputStreamWriter(os));
+				
 			 
-			 OutputStream os1 = new FileOutputStream(reads_file+".unmapped.gz", !overwrite);
+			// OutputStream os1 = null;//new FileOutputStream(reads_file+".unmapped.gz", !overwrite);
 				// boolean gzip = true;
-				os1 = new GZIPOutputStream(os1);
-				 unmapped = new PrintWriter(
-						new OutputStreamWriter(os1));
+//				os1 = new GZIPOutputStream(os1);
+	//			 unmapped = new PrintWriter(
+	//					new OutputStreamWriter(os1));
 			 
 			
 //			 readID  clusterId       subID   source  length  start_read      end_read   
@@ -260,8 +264,9 @@ public class Outputs{
 }*/
 			 String str1 = 	 ViralTranscriptAnalysisCmd2.barcodes == null ? "": Barcodes.getHeader();
 ;
-if(last_id==null){
-			 readClusters.println(IdentityProfile1.header+"\t"+PolyAT.getHeader()+"\t"+str1); //\tbreakStart\tbreakEnd\tbreakStart2\tbreakEnd2\tstrand\tbreaks");
+//if(last_id==null){
+if(!Outputs.format.equals("json")) {
+			 Outputs.outputstream.println(IdentityProfile1.header+"\t"+PolyAT.getHeader()+"\t"+str1); //\tbreakStart\tbreakEnd\tbreakStart2\tbreakEnd2\tstrand\tbreaks");
 }
 			
 				
@@ -400,7 +405,11 @@ if(last_id==null){
 		}*/
 		
 		public synchronized void printRead(String string) {
-			this.readClusters.println(string); this.readClusters.flush();
+			//System.err.println(string);
+			if(!Outputs.format.equals("json")) {
+					Outputs.outputstream.println(string);
+			}
+//			this.readClusters.println(string); this.readClusters.flush();
 			
 		}
 		
@@ -715,8 +724,10 @@ gson.fromJson(str1,  int[].class);
 		
 		
 		int total_num=0;
-		static int report=500;
-		public synchronized void append(String chrom, String strand, String endPos, String key,Integer polyA){
+		public static int report=5000; // how many reads to aggregate before reporting
+		String first_read = null;
+		public synchronized void append(String readname, String chrom, String strand, String endPos, String key,Integer polyA){
+			if(total_num==0) first_read=readname;
 			Map<String,Map<String,Map<String,int[]>>> all_res_chr = all_res.get(chrom);
 			if(all_res_chr==null) {
 				all_res_chr = new HashMap<String, Map<String, Map<String, int[]>>>();
@@ -734,11 +745,14 @@ gson.fromJson(str1,  int[].class);
 			}
 			int[] vals = all_res_chr_end.get(key);
 			if(vals==null) {
-				vals = new int[] {0,0,0};
+				vals = polyA==null ? new int[] {0} : new int [] {0,0,0};
 				all_res_chr_end.put(key, vals);
 			}
 			vals[0]+=1;
 			if(polyA!=null) {
+				if(vals.length==1) {
+					vals = new int[] {vals[1],0,0};
+				}
 				vals[1]+=1;
 				vals[2]+=polyA.intValue();
 			}
@@ -770,27 +784,21 @@ gson.fromJson(str1,  int[].class);
  */
 				HttpClient client = HttpClient.newHttpClient();
 				Gson gson = new Gson();
-				PrintWriter pw;
-				File endP;
+				//PrintWriter pw;
+				//File endP;
 				public Curl(Map map, String endpoint) {
 					json_str = gson.toJson(map);
-					if(url==null) {
-						endP=new File(resDir, endpoint+".endpoint.gz");
-					}else {
+					if(url!=null) {
 						url1 = url+"/"+endpoint;
 					}
-					
 				}
 				public Map run() {
 					Map output = null;
 					if(url==null) {
-					try {
-						PrintWriter pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.endP, true))));
-						pw.println(json_str);
-						pw.close();
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
+					//PrintWriter pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(this.endP, true))));
+					if(Outputs.format.equals("json")) {
+						Outputs.outputstream.println(json_str);
+						Outputs.outputstream.flush();
 					}
 					}	else {				
 					HttpRequest request = HttpRequest.newBuilder()
@@ -820,42 +828,44 @@ gson.fromJson(str1,  int[].class);
 		Number sessionID = null;
 		//Executor executor = Executors.newFixedThreadPool(1);
 		public void register() {
+			if(Outputs.url==null) return; 
 			Curl curl = new Curl(this.expt, "register");
 			Map output = curl.run();
-			sessionID=1;
-			if(output!=null) {
-			List<Number> l = (List<Number>) output.get("sessionID");
-			
-			sessionID=l.get(0);
-			}
-			all_res1.put("sessionID", sessionID.intValue());
 			all_res1.put("sampleID", this.expt.get("sampleID"));
-			all_res1.put("flags", new HashMap<>());
-			
-			all_res2.put("sessionID", sessionID.intValue());
+		
+			flags1.put("break", IdentityProfile1.break_thresh);
+			flags1.put("round", CigarHash2.round);
+			all_res1.put("flags", flags1);
 			all_res2.put("sampleID", this.expt.get("sampleID"));
-			all_res2.put("flags", new HashMap<>());
+			
+			all_res2.put("flags", flags2);
 		//				executor.execute(curl);
 			//			System.err.println(curl.out);
 						
 		}
 		Map<String, Object> all_res1 = new HashMap<String, Object>();
 		Map<String, Object> all_res2 = new HashMap<String, Object>();
-
+		Map<String, Object> flags1 = new HashMap<String, Object>();
+		Map<String, Object> flags2 = new HashMap<String, Object>();
 		public  void post() {
-			total_num=0;
 			
+			all_res1.put("sampleID", this.expt.get("sampleID"));
 			
 			all_res1.put("json", all_res);
+			flags1.put("firstread", this.first_read);
+			flags1.put("readcount", this.total_num);
+			all_res1.put("flags", flags1);
 		//	this.all_res.put("sessionID", sessionID);
 			Curl curl = new Curl(all_res1, "addreads");
 			Map output = curl.run();
 			//executor.execute(curl);
-			this.all_res.clear(); 
+			this.all_res.clear();
+			total_num=0;
 			//this.extract();
 			
 		}
 		public Map extract() {
+			if(Outputs.url==null) return(null); 
 			Curl curl = new Curl(all_res2,"extract");
 			Map output = curl.run();
 			return output;
@@ -957,11 +967,11 @@ gson.fromJson(str1,  int[].class);
 
 
 
-		public  void writeUnmapped(String readName) {
+//		public  void writeUnmapped(String readName) {
 			
-			unmapped.println(readName);
+	//		unmapped.println(readName);
 			
-		}
+	//	}
 
 
 

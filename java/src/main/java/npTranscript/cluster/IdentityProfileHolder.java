@@ -207,10 +207,10 @@ static Comparator comp_q = new SamComparator(true);
 					primary=sam;
 				}
 				extracted.add(sam);
-				
+				//System.err.println("included "+overl[0]+" ,"+overl[1]+","+overl[2]);
 				sams.remove();
 			}else {
-		//	System.err.println("excluded "+overl[0]+" ,"+overl[1]+","+overl[2]);
+			//System.err.println("excluded "+overl[0]+" ,"+overl[1]+","+overl[2]);
 			}
 		}
 		
@@ -234,23 +234,29 @@ static Comparator comp_q = new SamComparator(true);
 		return primary;
 	}
   
-	
-
-	private static void read_overlap(SAMRecord s1, SAMRecord s2, int[] overl) {
+	static int[] getStEnd(SAMRecord s1) {
 		List<AlignmentBlock> l1 = s1.getAlignmentBlocks();
-		List<AlignmentBlock> l2 = s2.getAlignmentBlocks();
-
-		AlignmentBlock b1 = l2.get(0);
-		AlignmentBlock b2 = l2.get(l2.size()-1);
-		int st = b1.getReadStart();
-		int end = b2.getReadStart()+b2.getLength();
+		boolean neg1=s1.getReadNegativeStrandFlag();
 		AlignmentBlock a1 = l1.get(0);
 		AlignmentBlock a2 = l1.get(l1.size()-1);
 		int st1 = a1.getReadStart();
 		int end1 = a2.getReadStart()+a2.getLength();
-		int overlap = CigarHash2.overlap(st, end,st1 , end1);
+		if(neg1) {
+			st1 = s1.getReadLength()-st1;
+			end1 = s1.getReadLength()-end1;
+		}
+		return new int[] {st1,end1};
+	}
+
+	private static void read_overlap(SAMRecord s1, SAMRecord s2, int[] overl) {
+		int[] se1=getStEnd(s1);
+		int[] se2=getStEnd(s2);
+		int st1 = se1[0]; int end1 = se1[1];
+		int st2 = se2[0]; int end2 = se2[1];
+	
+		int overlap = CigarHash2.overlap(st2, end2,st1 , end1);
 		if(overlap>overl[2] || overl[2] ==0){
-			overl[0] = end -st; 
+			overl[0] = end2 -st2; 
 			overl[1] = end1 -st1;
 			overl[2] = overlap;
 		}

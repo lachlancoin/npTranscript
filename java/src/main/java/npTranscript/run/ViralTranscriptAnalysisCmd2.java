@@ -36,16 +36,14 @@ package npTranscript.run;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -57,8 +55,7 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamInputResource;
@@ -71,7 +68,6 @@ import japsa.seq.SequenceReader;
 import japsa.tools.seq.SequenceUtils;
 import japsa.util.CommandLine;
 import japsa.util.deploy.Deployable;
-import npTranscript.NW.PolyAT;
 import npTranscript.cluster.Annotation;
 import npTranscript.cluster.CigarCluster;
 import npTranscript.cluster.CigarHash;
@@ -144,22 +140,23 @@ public static int readsToSkip=0;
 		addString("barcode_list",null, "list for decoding barcodes (used if more than one bamfile when streaming from fastq");
 		addString("barcode_file",null, "barcode file");
 		
+
 		addString("api_url",null, "URL of database");
+		addInt("report",5000,"number of reads to aggregate in single line of json output");	
 		
-		
-		addInt("bc_len_AT",6,"Length of polyA or polyT tract to look for at ends");
+/*		addInt("bc_len_AT",6,"Length of polyA or polyT tract to look for at ends");
 		addInt("edit_thresh_AT",1,"Max edit dist (inclusive for AT tracts");
 		addInt("max_dist_to_end_AT",20,"Max distance from end of reads to find AT");
 		addInt("dist_to_ignore_AT",0,"Distance to ignore for polyA at ends of read");
-
+*/
 
 		addBoolean("exclude_indeterminate_strand", false,"whether to exclude if we cnat figure out strand for cDNA");
 		addBoolean("exclude_polyT_strand", false,"whether to exclude RNA if it has a polyT strand");
 		addBoolean("exclude_reads_without_barcode", false,"whether to exclude read if it does not have barcode");
 addBoolean("illumina", false, "use illumina libary");
 		
-		addString("todo", null, "List of input files", false);
 		addString("inputFile", null, "Name of input file", false);
+		addString("sampleID",null, "sampleID");
 		//addString("fastqFile", null, "Name of bam file", false);
 		addString("reference", null, "Name of reference genome", false);
 		addString("annotation", null, "ORF annotation file or GFF file", false);
@@ -175,7 +172,7 @@ addBoolean("illumina", false, "use illumina libary");
 		addString("chroms_to_ignore", "none", "Ignore these chroms", false);
 	//	addString("bedChr", null, "Use this for the chrom in bed chr, e.g. NC_045512v2, false");
         addBoolean("singleGFF", false, "whether to have single output gff, rather than different for different input. ");
-		addString("resdir", "results"+System.currentTimeMillis(), "results directory");
+	//	addString("resdir", "results"+System.currentTimeMillis(), "results directory");
 		addString("RNA", "name", "If is direct RNA.  Can be tab delimmited boolean, e.g. true:true  or if set to name it will look for RNA string in name");
 		addBoolean("trainStrand", false,"whether to produce training data for strand correction");
 		addBoolean("recordDepthByPosition", false, "whether to store position specific depth (high memory");
@@ -193,7 +190,7 @@ addBoolean("illumina", false, "use illumina libary");
 		addInt("qual", 0, "Minimum quality required");
 		
 		addInt("bin0", 1, "Bin size for numerical hashing");
-		addInt("bin1",100, "Bin size for hashing of the end");
+	//	addInt("bin1",100, "Bin size for hashing of the end");
 		addDouble("overlap_thresh",0.33,"max percentage overlap between supp alignments considered");
 		addInt("overlap_max",20,"max bp overlap between supp alignments considered");
 
@@ -220,7 +217,7 @@ addBoolean("illumina", false, "use illumina libary");
 		addInt("min_first_last_exon",0, "minimum first or last exon size");
 		//addDouble("overlapThresh", 0.95, "Threshold for overlapping clusters");
 	//	addBoolean("coexpression", false, "whether to calc coexperssion matrices (large memory for small bin size)");
-	addBoolean("overwrite", false, "whether to overwrite existing results files");
+	addBoolean("overwrite", true, "whether to overwrite existing results files");
 		addBoolean("keepAlignment", false, "whether to keep alignment for MSA");
 	//	addBoolean("attempt5rescue", false, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
 	//	addBoolean("attempt3rescue", false, "whether to attempt rescue of leader sequence if extra unmapped 5 read");
@@ -233,6 +230,7 @@ addBoolean("illumina", false, "use illumina libary");
 		addString("mm2Preset", "splice",  "preset for minimap2", false);
 		addString("mm2_splicing", null, "splicing option", false);
 		addInt("supplementaryQ", 30,"quality threshold for including supplementary mapping");
+		addString("output",null, "Output file, default is stdout");
 	//	addBoolean("writeBed", false, "whether to write bed",false);
 		//addString("mm2Preset", "map-ont",  "preset for minimap2", false);
 		addString("mm2_memory", (Runtime.getRuntime().maxMemory()-1000000000)+"",  "minimap2 memory", false);
@@ -267,9 +265,10 @@ addBoolean("illumina", false, "use illumina libary");
 	public static boolean sequential = true;
 	public static boolean RNA;
 	public static String mm2_index;
+	public static String sampleID;
  public static void run(CommandLine cmdLine, String bamFiles,
 		// String barcode_files,
-		 String resDir, String chrs, String chrsToIgnore,  boolean fastq, String reference) throws IOException{
+		 String chrs, String chrsToIgnore,  boolean fastq, String reference) throws IOException{
 		int qual = cmdLine.getIntVal("qual");
 		int bin = cmdLine.getIntVal("bin");
 		
@@ -310,9 +309,18 @@ addBoolean("illumina", false, "use illumina libary");
 		min_umi = cmdLine.getIntVal("min_umi");
 		illumina=cmdLine.getBooleanVal("illumina");
 		Outputs.url = cmdLine.getStringVal("api_url");
+		String output = cmdLine.getStringVal("output", null);
+		Outputs.format="json";
+		if(output==null) {
+			Outputs.outputstream = System.out;
+		}else {
+		  Outputs.outputstream =  output.endsWith(".gz")  ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output))) : new PrintStream(new FileOutputStream(output));
+		  Outputs.format = output.endsWith(".json.gz") || output.endsWith(".json") ? "json" : "tsv";
+		}
 		Outputs.writeH5 = cmdLine.getBooleanVal("writeH5");
+		Outputs.report = cmdLine.getIntVal("report");
 		CigarHash2.round = cmdLine.getIntVal("bin0");
-		CigarHash2.round1 = cmdLine.getIntVal("bin1");
+	//	CigarHash2.round1 = cmdLine.getIntVal("bin1");
 		String types_to_include = cmdLine.getStringVal("types_to_include", null);
 		if(types_to_include!=null) IdentityProfile1.types_to_include = Arrays.asList(types_to_include.split(":"));
 		Annotation.enforceStrand = cmdLine.getBooleanVal("enforceStrand");
@@ -435,7 +443,7 @@ addBoolean("illumina", false, "use illumina libary");
 		String annot_file) throws IOException {*/
 
 			errorAnalysis(bamFiles,reference, readList,
-				resDir,pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  
+				pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  
 				Outputs.calcBreaks, annotByBreakPosition,  chrs, chrsToIgnore,  isoformDepthThresh, coverageDepthThresh,  fastq, 
 				chromsToRemap, annotFile);
 	}
@@ -506,15 +514,9 @@ public static boolean allowSuppAlignments = true;; // this has to be true for al
 		
 	 return cmdLine.stdParseLine(args);
  }
-	public static void main(String[] args0) throws IOException, InterruptedException {
+	public static void main(String[] args1) throws IOException, InterruptedException {
 		tme0 = System.currentTimeMillis();
-		boolean stdin = false;
-		String[] args1 = args0;
-		if(args0[args0.length-1].equals("-")){
-			stdin = true;
-			args1 = new String[args0.length-1];
-			System.arraycopy(args0, 0, args1, 0, args1.length);
-		}
+		
 		CommandLine cmdLine = new ViralTranscriptAnalysisCmd2();
 		String[] args2 = ViralTranscriptAnalysisCmd2.readOpts(cmdLine, args1,"optsFile");
 		
@@ -535,10 +537,10 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 		 Barcodes.tolerance_barcode = cmdLine.getIntVal("tolerance_barcode");
 		// ViralTranscriptAnalysisCmd2.barcode_list = cmdLine.getStringVal("barcode_list");
 		 
-		 PolyAT.set_bc_len(cmdLine.getIntVal("bc_len_AT"));
-		 PolyAT.edit_thresh_AT = cmdLine.getIntVal("edit_thresh_AT");
-		 PolyAT.max_dist_to_end_AT = cmdLine.getIntVal("max_dist_to_end_AT");
-		 PolyAT.dist_to_ignore_AT = cmdLine.getIntVal("dist_to_ignore_AT");
+		// PolyAT.set_bc_len(cmdLine.getIntVal("bc_len_AT"));
+		// PolyAT.edit_thresh_AT = cmdLine.getIntVal("edit_thresh_AT");
+		// PolyAT.max_dist_to_end_AT = cmdLine.getIntVal("max_dist_to_end_AT");
+		// PolyAT.dist_to_ignore_AT = cmdLine.getIntVal("dist_to_ignore_AT");
 
 
 		ViralTranscriptAnalysisCmd2.exclude_indeterminate_strand= cmdLine.getBooleanVal("exclude_indeterminate_strand");
@@ -553,7 +555,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 		
 		
 		
-		String resdir = cmdLine.getStringVal("resdir");
+	//	String resdir = cmdLine.getStringVal("resdir");
 		
 		
 		String chroms= cmdLine.getStringVal("chroms_to_include");
@@ -561,21 +563,14 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 		
 		//boolean gff = annot_file !=null && (annot_file.contains(".gff") || annot_file.contains(".gtf"));
 		
-		File resDir = new File(resdir);
-		if(!resDir.exists())resDir.mkdir();
-		printParams(resDir, args1);
-		String inputFile = cmdLine.getStringVal("inputFile");
-
-		//String todo = cmdLine.getStringVal("todo");
-		String  inputFiles_;
-		if(stdin){
-			inputFiles_ = "-";
-		}
-		else {
-			inputFiles_ =inputFile;
-		//	barcode_files =barcodeFile.split(":");
-		}
-			boolean bam = inputFiles_.equals("-") ||  inputFiles_.endsWith(".bam") || inputFiles_.endsWith("sam") ;
+		//File resDir = new File(resdir);
+		//if(!resDir.exists())resDir.mkdir();
+		//printParams(resDir, args1);
+		String inputFiles_ = cmdLine.getStringVal("inputFile","-");
+		//if(inputFile.equals("-"))stdin=true;
+		String[] pathToInpFile = inputFiles_.split("/");
+		sampleID = cmdLine.getStringVal("sampleID",pathToInpFile[pathToInpFile.length-1]);
+			boolean bam = true; //inputFiles_.equals("-") ||  inputFiles_.endsWith(".bam") || inputFiles_.endsWith("sam") ;
 			//String[] barcode_files = new String[inputFiles_.length];
 			/*if(barcode_file!=null){
 				barcode_files = barcode_file.split(":");
@@ -622,7 +617,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 					exc.printStackTrace();
 				}
 			}
-		run(cmdLine, inputFiles_,  resdir,   chroms, chroms_ignore, fastq, reference);
+		run(cmdLine, inputFiles_,     chroms, chroms_ignore, fastq, reference);
 		System.err.println("shutting down executors");
 		
 		IdentityProfileHolder.shutDownExecutor();
@@ -641,7 +636,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 	 * Error analysis of a bam file. Assume it has been sorted
 	 */
 	static void errorAnalysis(String bamFile_,
-			 String refFile,  String readList,    String resdir, 
+			 String refFile,  String readList,  
 			String pattern, int qual, int round, 
 			int break_thresh, int startThresh, int endThresh, int max_reads, 
 			boolean calcBreaks1 ,  boolean annotByBreakPosition, String chrToInclude, String chrToIgnore, 
@@ -745,9 +740,9 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 		}
 		
 		// get the first chrom
-		File resDir =  new File(resdir);
-		if(!resDir.exists()) resDir.mkdir();
-		else if(!resDir.isDirectory()) throw new RuntimeException(resDir+"should be a directory");
+		//File resDir =  new File(resdir);
+		//if(!resDir.exists()) resDir.mkdir();
+		//else if(!resDir.isDirectory()) throw new RuntimeException(resDir+"should be a directory");
 		///ArrayList<IdentityProfile1> profiles = new ArrayList<IdentityProfile1>();
 		
 		String in_nmes;
@@ -827,11 +822,11 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 
 			Map<String, Object> expt=new HashMap<String, Object>() ;
 			Map<String, Object> flags = new HashMap<String, Object>();
-			expt.put("sampleID",resDir.getName()); // prob not best sampleID
+			expt.put("sampleID",sampleID); // prob not best sampleID
 			expt.put("flags",flags);
 			flags.put("RNA", ViralTranscriptAnalysisCmd2.RNA);
 			
-			Outputs 	outp = new Outputs(resDir,  in_nmes,   true, CigarCluster.recordDepthByPosition,expt); 
+			Outputs 	outp = new Outputs( in_nmes,   true, CigarCluster.recordDepthByPosition,expt); 
 			
 			
 		//	boolean calcBreaks1 = calcBreaks;// && break_thresh < seqlen && chr!=null;
@@ -863,7 +858,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 		
 			outer: for ( ij=0; samIter.hasNext() ;ij++ ) {
 				
-				if(ij%1000 ==0){
+			/*	if(ij%1000 ==0){
 				//	Debug.getMemoryInfo();
 					long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
 
@@ -874,7 +869,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 					
 					
 					
-				}
+				}*/
 				
 				final SAMRecord sam=samIter.next();
 				
@@ -888,7 +883,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 					System.err.println(sam.getReadName());
 				}
 				if (sam.getReadUnmappedFlag()) {
-					outp.writeUnmapped(sam.getReadName());
+				//	outp.writeUnmapped(sam.getReadName());
 					numNotAligned++;
 					continue;
 				}
