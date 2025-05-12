@@ -711,6 +711,8 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 				}
 			}
 			flags.put("programs", programs);
+			flags.put("annotation", Outputs.annotation_mode);
+			flags.put("round", CigarHash2.round);
 			m.put("id", sampleID);
 			m.put("flags", flags);
 				samIter = samReaders.iterator();
