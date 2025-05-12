@@ -100,7 +100,7 @@ public class Annotation{
 	//	5'UTR,5'UTR,1,265,265,forward,none
 
 		public static String NAstring = "NA";
-		public static int tolerance = 10;
+		//public static int tolerance = 10;
 		public static int correctionDistLeft = 10000;
 		public static int correctionDistRight = 10000;	
 		public static boolean enforceStrand = true;
@@ -125,8 +125,8 @@ public class Annotation{
 			pw.flush();
 				}
 				static String endStr="end";
-		public String  nextDownstreamG(int rightBreak,  boolean forward){
-			int i=nextDownstream(rightBreak, forward);
+		public String  nextDownstreamG(int rightBreak,  boolean forward, int round){
+			int i=nextDownstream(rightBreak, forward, round);
 			if(i==genes.size()) {
 				return genes.get(i-1);
 			}
@@ -134,11 +134,11 @@ public class Annotation{
 		}
 			
 		
-		public int nextDownstream(int rightBreak,  boolean forward){
+		public int nextDownstream(int rightBreak,  boolean forward, int round){
 		
 			for(int i=0; i<start.size(); i++){
 				if(!enforceStrand || forward==this.strand.get(i)){
-					if(rightBreak -tolerance <= start.get(i) ){//&& rightBreak < end.get(i)){
+					if(rightBreak -round <= start.get(i) ){//&& rightBreak < end.get(i)){
 						return i;
 					}
 				}
@@ -159,15 +159,15 @@ public class Annotation{
 			return sb.toString();
 		}*/
 		
-		public String nextUpstreamG(int leftBreak, boolean forward){
-			int i = this.nextUpstream(leftBreak, forward);
+		public String nextUpstreamG(int leftBreak, boolean forward, int round){
+			int i = this.nextUpstream(leftBreak, forward, round);
 			return genes.get(i);
 		}
-		public int nextUpstream(int leftBreak,  boolean forward){
+		public int nextUpstream(int leftBreak,  boolean forward, int round){
 		//	if(leftBreak<0) return  "null";
 			for(int i=start.size()-1; i>=0 ;i--){
 				if(!enforceStrand || forward==this.strand.get(i)){
-				if(leftBreak+tolerance >= start.get(i)){// && leftBreak-tolerance<end.get(i)){
+				if(leftBreak+round >= start.get(i)){// && leftBreak-tolerance<end.get(i)){
 					return i;
 				}
 				}
@@ -175,11 +175,11 @@ public class Annotation{
 			return -1;//+chrom;//+(chrom_index>0 ? "."+chrom_index : "");//+(enforceStrand ? (forward ? "+" : "-") : "");
 		}
 	
-    int updateLeft(int en, int refStart){
+    int updateLeft(int en, int refStart, int round){
     	int breaks_out_0= en;
     	for(int i=0; i< this.start.size(); i++){
     		int st_i = start.get(i);
-	    	if(en+ tolerance > st_i ){
+	    	if(en+ round > st_i ){
 				if(Math.abs(st_i - en) < correctionDistLeft && st_i >refStart) {
 					breaks_out_0 = st_i;
 					
@@ -189,10 +189,10 @@ public class Annotation{
     	return breaks_out_0;
     }
     
-    int updateRight( int st, int refEnd){
+    int updateRight( int st, int refEnd, int round){
     	for(int i=0; i< this.start.size(); i++){
 	    	int st_i = start.get(i);
-	    	if(st - tolerance < st_i) {
+	    	if(st - round < st_i) {
 				int dist = Math.abs(st_i - st);
 				if(dist < correctionDistRight && st_i <refEnd) {
 					return st_i;
@@ -204,10 +204,10 @@ public class Annotation{
     	return st;
     }
 		
-	public void getBreaks(int[] breaks_in, int[] breaks_out, int refStart, int refEnd){
+	public void getBreaks(int[] breaks_in, int[] breaks_out, int refStart, int refEnd, int round){
 		System.arraycopy(breaks_in, 0, breaks_out, 0, 2);
-		breaks_out[1] = this.updateRight(breaks_in[1], refEnd);
-		breaks_out[0] = this.updateLeft(breaks_in[0], refStart);
+		breaks_out[1] = this.updateRight(breaks_in[1], refEnd, round);
+		breaks_out[0] = this.updateLeft(breaks_in[0], refStart, round);
 	}
 	public Annotation(){
 		
@@ -356,8 +356,8 @@ public class Annotation{
 			
 		}
 
-		public boolean isLeader(int prev_pos) {
-			return prev_pos < this.start.get(1)+tolerance;
+		public boolean isLeader(int prev_pos, int round) {
+			return prev_pos < this.start.get(1)+round;
 		}
 
 	
@@ -485,7 +485,7 @@ List<String> genes = new ArrayList<String>();
 		}
 
 		
-		public List<String> matchExons1(List<Integer> br, String chrom, Boolean forward) {
+		/*public List<String> matchExons1(List<Integer> br, String chrom, Boolean forward) {
 			List<Integer> l = new ArrayList<Integer>();
 			if(!this.chrom.equals(chrom)){
 				return empty_list;
@@ -502,7 +502,7 @@ List<String> genes = new ArrayList<String>();
 
 			
 			return getStr(l);
-		}
+		}*/
 
 
 

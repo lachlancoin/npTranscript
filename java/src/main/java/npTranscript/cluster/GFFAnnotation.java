@@ -38,12 +38,12 @@ public class GFFAnnotation extends Annotation{
 	
 	
 	@Override
-	public int nextDownstream(int rightBreak,  boolean forward){
+	public int nextDownstream(int rightBreak,  boolean forward, int round){
 		//if(rightBreak<0) return null;
 		SortedMap<Integer, Integer> indices = new TreeMap<Integer,Integer>();
 		for(int i=0; i<end.size(); i++){
 			if(!enforceStrand || forward==this.strand.get(i)){
-			if(rightBreak -tolerance <= end.get(i) && rightBreak+tolerance>=start.get(i) ){//&& rightBreak < end.get(i)){
+			if(rightBreak -round <= end.get(i) && rightBreak+round>=start.get(i) ){//&& rightBreak < end.get(i)){
 				indices.put(Math.abs(rightBreak - start.get(i)),i);
 				
 			}
@@ -56,12 +56,12 @@ public class GFFAnnotation extends Annotation{
 	}
 	
 	@Override
-	public int nextUpstream(int leftBreak,  boolean forward){
+	public int nextUpstream(int leftBreak,  boolean forward, int round){
 	//	if(leftBreak<0) return null;
 		SortedMap<Integer, Integer> indices = new TreeMap<Integer,Integer>();
 		for(int i=start.size()-1; i>=0 ;i--){
 			if(!enforceStrand || forward==this.strand.get(i)){
-			if(leftBreak + tolerance >= start.get(i) && leftBreak-tolerance<=end.get(i)){// && leftBreak-tolerance<end.get(i)){
+			if(leftBreak + round >= start.get(i) && leftBreak-round<=end.get(i)){// && leftBreak-tolerance<end.get(i)){
 				
 				indices.put(Math.abs(leftBreak - end.get(i)),i);
 			}
@@ -71,37 +71,37 @@ public class GFFAnnotation extends Annotation{
 		return -1;
 	}
 	
-	boolean contains(int l2, int r2, int i){
+	boolean contains(int l2, int r2, int i, int tolerance){
 		boolean match = r2 -tolerance <= end.get(i) && r2+tolerance>=start.get(i)  && l2 -tolerance <= end.get(i) && l2+tolerance>=start.get(i) ;
 		return match;
 //		return match ? Math.abs(r2 - end.get(i)) + Math.abs(l2 - start.get(i)) : -1;
 	}
 	
 
-	public List<String> matchExons(List<Integer> br, String chrom, Boolean forward) {
+	public List<String> matchExons(List<Integer> br, String chrom, Boolean forward, int round) {
 		List<Integer> l = new ArrayList<Integer>();
 		if(!this.chrom.equals(chrom)){
 			return empty_list;
 		}
-		l.add(this.nextUpstream(br.get(0) , forward));
+		l.add(this.nextUpstream(br.get(0) , forward, round));
 		for(int i=1;i<br.size(); i++){
 				if(i%2 ==0 ){//exon start
-					l.add(this.nextUpstream(br.get(i) , forward));
+					l.add(this.nextUpstream(br.get(i) , forward, round));
 				}else{
-					l.add(this.nextDownstream(br.get(i) , forward));
+					l.add(this.nextDownstream(br.get(i) , forward, round));
 				}
 			}
 		return getStr(l);
 	}
 	
 	/** left is left of break point and right is right break point */
-	public synchronized Integer nextUpstream(int l1,  int r1, int chrom_index, Boolean forward) {
+	public synchronized Integer nextUpstream(int l1,  int r1, int chrom_index, Boolean forward, int round) {
 		if(l1<0) return null;
 		SortedMap<Integer, Integer> indices = new TreeMap<Integer,Integer>();
 		for(int i=start.size()-1; i>=0 ;i--){
 			if(forward==null ||  forward==this.strand.get(i)){
 				//
-				 boolean sc2 = contains(l1,r1,i);
+				 boolean sc2 = contains(l1,r1,i, round);
 					
 					 if(sc2){
 							indices.put(Math.abs(l1 - start.get(i))+Math.abs(r1 - end.get(i)),i);
@@ -111,22 +111,22 @@ public class GFFAnnotation extends Annotation{
 	//	System.err.println(indices.size());
 		if(indices.size()>0) {
 			int key = indices.firstKey();
-			if(key<=2*tolerance) return indices.get(indices.firstKey());
+			if(key<=2*round) return indices.get(indices.firstKey());
 		}
 		return null;
 	}
 	
 	/** left is left of break point and right is right break point */
-	public synchronized Integer nextUpstream(int l1,  int r1, int l2, int r2, int chrom_index, Boolean forward) {
+	public synchronized Integer nextUpstream(int l1,  int r1, int l2, int r2, int chrom_index, Boolean forward, int round) {
 		if(l1<0) return null;
 		SortedMap<Integer, Integer> indices = new TreeMap<Integer,Integer>();
 		for(int i=start.size()-1; i>0 ;i--){
 			if(forward==null || forward==this.strand.get(i)){
 				//
-				boolean sc1 = contains(l2,r2,i);
+				boolean sc1 = contains(l2,r2,i, round);
 				
 				if( sc1 ) {
-					 boolean sc2 = contains(l1,r1,i-1);
+					 boolean sc2 = contains(l1,r1,i-1, round);
 					 if(sc2){
 					//System.err.println("left "+starti+","+endi);
 						if(this.transcripts.get(i).equals(this.transcripts.get(i-1))) {
@@ -143,26 +143,26 @@ public class GFFAnnotation extends Annotation{
 		if(indices.size()>0) {
 			int key = indices.firstKey();
 			//System.err.println("key "+key);
-			if(key <= 2*tolerance) return indices.get(indices.firstKey());
+			if(key <= 2*round) return indices.get(indices.firstKey());
 		}
 		return null;
 	}
-	public String getCoord(int l1,  int r1, int l2, int r2, int chrom_index, boolean forward){
-		return chrom_index+"."+TranscriptUtils.round(r1,CigarHash2.round)+"."+TranscriptUtils.round(l2,CigarHash2.round);//+(enforceStrand ? (forward ? "+" : "-") : "");
+	public String getCoord(int l1,  int r1, int l2, int r2, int chrom_index, boolean forward, int round){
+		return chrom_index+"."+TranscriptUtils.round(r1,round)+"."+TranscriptUtils.round(l2,round);//+(enforceStrand ? (forward ? "+" : "-") : "");
 
 	}
-	public String getCoord(int leftBreak, int chrom_index, Boolean forward){
-		return chrom_index+"."+TranscriptUtils.round(leftBreak,CigarHash2.round);//+(enforceStrand ? (forward ? "+" : "-") : "");
+	public String getCoord(int leftBreak, int chrom_index, Boolean forward, int round){
+		return chrom_index+"."+TranscriptUtils.round(leftBreak,round);//+(enforceStrand ? (forward ? "+" : "-") : "");
 
 	}
-	public String getCoord(int leftBreak, int rightBreak, int chrom_index, Boolean forward){
-		return chrom_index+"."+TranscriptUtils.round(leftBreak,CigarHash2.round)+"$"+TranscriptUtils.round(rightBreak,CigarHash2.round);//+(enforceStrand ? (forward ? "+" : "-") : "");
+	public String getCoord(int leftBreak, int rightBreak, int chrom_index, Boolean forward, int round){
+		return chrom_index+"."+TranscriptUtils.round(leftBreak,round)+"$"+TranscriptUtils.round(rightBreak,round);//+(enforceStrand ? (forward ? "+" : "-") : "");
 
 	}
-	//return chrom_index+"."+TranscriptUtils.round(leftBreak,CigarHash2.round);//+(enforceStrand ? (forward ? "+" : "-") : "");
-	//return   chrom_index+"."+TranscriptUtils.round(rightBreak,CigarHash2.round);//+(enforceStrand ? (forward ? "+" : "-") : "");
+	//return chrom_index+"."+TranscriptUtils.round(leftBreak,round);//+(enforceStrand ? (forward ? "+" : "-") : "");
+	//return   chrom_index+"."+TranscriptUtils.round(rightBreak,round);//+(enforceStrand ? (forward ? "+" : "-") : "");
 	
-	private int nextUpstreamIndex(int leftBreak, boolean forward){
+	private int nextUpstreamIndex(int leftBreak, boolean forward, int tolerance){
 		if(leftBreak<0) return -1;
 		for(int i=start.size()-1; i>=0 ;i--){
 			if(!enforceStrand || forward==this.strand.get(i)){
@@ -192,7 +192,7 @@ public class GFFAnnotation extends Annotation{
 		return sb.toString();
 	}
 	
-	private int nextDownstreamIndex(int rightBreak, boolean forward){
+	private int nextDownstreamIndex(int rightBreak, boolean forward, int tolerance){
 		if(rightBreak<0) return -1;
 		for(int i=0; i<end.size(); i++){
 			if(!enforceStrand || forward==this.strand.get(i)){
@@ -206,7 +206,7 @@ public class GFFAnnotation extends Annotation{
 	}
 	
 	@Override
-	 int updateRight( int st, int refEnd){
+	 int updateRight( int st, int refEnd, int tolerance){
 	    	for(int i=0; i< this.start.size(); i++){
 		    	int end_i = end.get(i);
 		    	if(st - tolerance < end_i) {

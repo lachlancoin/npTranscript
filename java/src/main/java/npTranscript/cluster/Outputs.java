@@ -720,19 +720,24 @@ gson.fromJson(str1,  int[].class);
 
 		
 		
-		Map<String,Map<String,Map<String,Map<String,Object>>>> all_res = 
-				new HashMap<String,Map<String,Map<String,Map<String,Object>>>>();
+		Map<Integer,Map<String,Map<String,Map<String,Map<String,Object>>>>> all_res = 
+				new HashMap<Integer,Map<String,Map<String,Map<String,Map<String,Object>>>>>();
 		
 		
 		int total_num=0;
 		public static int report=5000; // how many reads to aggregate before reporting
 		String first_read = null;
-		public synchronized void append(String readname,  String chrom, String strand, String endPos, String key,Integer polyA){
+		public synchronized void append(String readname,  String chrom, String strand, String endPos, String key,Integer polyA, Integer round){
 			if(total_num==0) first_read=readname;
-			Map<String,Map<String,Map<String,Object>>> all_res_chr = all_res.get(chrom);
+			Map<String,Map<String,Map<String,Map<String,Object>>>> all_res_bin = all_res.get(round);
+			if(all_res_bin==null) {
+				all_res_bin = new HashMap<String,Map<String, Map<String, Map<String, Object>>>>();
+			}
+			Map<String,Map<String,Map<String,Object>>> all_res_chr = all_res_bin.get(chrom);
 			if(all_res_chr==null) {
 				all_res_chr = new HashMap<String, Map<String, Map<String, Object>>>();
-				all_res.put(chrom, all_res_chr);
+				all_res_bin.put(chrom, all_res_chr);
+				all_res.put(round, all_res_bin);
 			}
 			Map<String,Map<String,Object>> all_res_chr_strand = all_res_chr.get(strand);
 			if(all_res_chr_strand==null) {
@@ -887,10 +892,10 @@ gson.fromJson(str1,  int[].class);
 		}
 		
 		/** writes the isoform information */
-		public synchronized String writeString(CigarCluster cc, int source_index, String chrom, String strand){//, CigarClusters cigarClusters) {
+		public synchronized String writeString(CigarCluster cc, int source_index, String chrom, String strand, int round){//, CigarClusters cigarClusters) {
 			String id_1 = cc.breaks_hash.secondKey;
 			CigarHash2 key = cc.breaks;
-			CigarHash2 key2 = cc.cloneBreaks();
+			CigarHash2 key2 = cc.cloneBreaks(round);
 			List<Integer> startp = cc.start_positions;
 				String id_2 = key2.toString(startp, strand);
 				String id_ = id_1+"/"+id_2;

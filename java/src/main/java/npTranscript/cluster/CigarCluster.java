@@ -420,17 +420,14 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 			}
 				
 		
-		public CigarCluster(String chr, String id,  int num_sources, CigarCluster c1, int source_index, String strand,
+		/*public CigarCluster(String chr, String id,  int num_sources, CigarCluster c1, int source_index, String strand,
 				String subId) throws NumberFormatException{
 			this(chr, id, num_sources,strand);
 			//this.strand = strand;
 			this.span.addAll(c1.span);
 		//	if(c1.forward==null) throw new RuntimeException("!!");
 			this.forward = c1.forward;
-			/*this.breakSt = c1.breakSt;
-			this.breakEnd = c1.breakEnd;
-			this.breakSt2 = c1.breakSt2;
-			this.breakEnd2 = c1.breakEnd2*/;
+		
 			all_breaks = new HashMap<CigarHash2, Count>();
 			Count cnt =new Count(num_sources, source_index,  subId);
 			this.breaks = c1.cloneBreaks();
@@ -451,7 +448,7 @@ static Comparator entryComparator = new Comparator<Entry<CigarHash2, Count>>(){
 
 				
 			}
-		}
+		}*/
 final Maps map;
 		 
 		
@@ -607,35 +604,27 @@ return addBlock(start, len, first, last, ref_ind,start-prev_position , negStrand
 			return source.values().stream() .reduce(0, Integer::sum);
 		}*/
 		
-		public CigarHash2 cloneBreaks(){
-			if(IdentityProfile1.includeStartEnd ) return  (CigarHash2)  breaks.clone(true,0, breaks.size()) ;
+		public CigarHash2 cloneBreaks(int round){
+			if(IdentityProfile1.includeStartEnd ) return  (CigarHash2)  breaks.clone(true,0, breaks.size(), round) ;
 			else if(forward!=null){ // we know strand
 				if(forward){
-					return breaks.clone(true,1,breaks.size());
+					return breaks.clone(true,1,breaks.size(), round);
 				}else{
-					return breaks.clone(true,0,breaks.size()-1);
+					return breaks.clone(true,0,breaks.size()-1, round);
 				}
 			}else{
-				 return  (CigarHash2)  breaks.clone(true,0, breaks.size()) ;
+				 return  (CigarHash2)  breaks.clone(true,0, breaks.size(), round) ;
 			}
 		}
 		
-		public CigarHash2 merge(CigarCluster c1, int num_sources, int src_index, String[] clusterID, String readId) {
+		/*public CigarHash2 merge(CigarCluster c1, int num_sources, int src_index, String[] clusterID, String readId) {
 			if(c1.startPos < startPos) startPos = c1.startPos;
 			if(c1.endPos > endPos) endPos = c1.endPos;
-			/*if(breakSt<0 || (c1.breakSt>=0 & c1.breakSt > breakSt)) breakSt = c1.breakSt;
-			if(breakEnd<0 || (c1.breakEnd>=0 &  c1.breakEnd < breakEnd)) breakEnd = c1.breakEnd;
-			if(breakSt2<0 || (c1.breakSt2>=0 & c1.breakSt2 > breakSt2)) breakSt2 = c1.breakSt2;
-			if(breakEnd2<0 || (c1.breakEnd2>=0 &  c1.breakEnd2 < breakEnd2)) breakEnd2 = c1.breakEnd2;
-			*///int subID;
+			
 			this.span.addAll(c1.span);
 			//this.strand = c1.strand;
 			if(c1.all_breaks!=null){
-				/*for(Iterator<CigarHash2> it = c1.all_breaks.keySet().iterator() ; it.hasNext();){
-					CigarHash2 nxt = it.next();
-					Integer count = this.all_breaks.get(nxt);
-					all_breaks.put(nxt, count==null ? 1 : count+1);
-				}*/
+			
 				throw new RuntimeException("!!");
 			}
 			
@@ -676,7 +665,7 @@ return addBlock(start, len, first, last, ref_ind,start-prev_position , negStrand
 				map.merge( c1.map);
 			}
 			return br;
-		}
+		}*/
 	
 		
 

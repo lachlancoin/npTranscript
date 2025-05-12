@@ -73,12 +73,12 @@ static String split="\t";
 		}
 	
 	@Override
-	public int nextUpstream(int leftBreak,  boolean forward){
+	public int nextUpstream(int leftBreak,  boolean forward, int round){
 	//	if(leftBreak<0) return null;
 		SortedMap<Integer, Integer> indices = new TreeMap<Integer,Integer>();
 		for(int i=start.size()-1; i>=0 ;i--){
 			if(!enforceStrand || forward==this.strand.get(i)){
-			if(leftBreak + tolerance >= start.get(i) && leftBreak-tolerance<=end.get(i)){// && leftBreak-tolerance<end.get(i)){
+			if(leftBreak + round >= start.get(i) && leftBreak-round<=end.get(i)){// && leftBreak-tolerance<end.get(i)){
 				
 				indices.put(Math.abs(leftBreak - end.get(i)),i);
 			}
@@ -92,12 +92,12 @@ static String split="\t";
 	
 
 	@Override
-	public int nextDownstream(int rightBreak,  boolean forward){
+	public int nextDownstream(int rightBreak,  boolean forward, int round){
 		//if(rightBreak<0) return null;
 		SortedMap<Integer, Integer> indices = new TreeMap<Integer,Integer>();
 		for(int i=0; i<end.size(); i++){
 			if(!enforceStrand || forward==this.strand.get(i)){
-			if(rightBreak -tolerance <= end.get(i) && rightBreak+tolerance>=start.get(i) ){//&& rightBreak < end.get(i)){
+			if(rightBreak -round <= end.get(i) && rightBreak+round>=start.get(i) ){//&& rightBreak < end.get(i)){
 				indices.put(Math.abs(rightBreak - start.get(i)),i);
 				
 			}

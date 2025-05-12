@@ -75,7 +75,7 @@ public class CigarClusters {
 
 	int currID=0;
 	
-	public synchronized void matchCluster(CigarCluster c1,  int source_index, int num_sources, String chr,String[] clusterIDs, 
+	/*public synchronized void matchCluster(CigarCluster c1,  int source_index, int num_sources, String chr,String[] clusterIDs, 
 			String strand, String readId) throws NumberFormatException{
 		String clusterID;
 		CigarHash br = c1.breaks_hash;
@@ -104,7 +104,7 @@ public class CigarClusters {
 	clusterIDs[0] = clusterID;
 	//clusterIDs[1] = subID.rescale().toString();
 		//return clusterID;
-	}
+	}*/
 	
 	//final Annotation annot1;
 	//final Sequence  refseq;

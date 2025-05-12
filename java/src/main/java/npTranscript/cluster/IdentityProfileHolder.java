@@ -418,6 +418,7 @@ return ;
 				//	if(supp && profile.suppl!=null && profile.suppl.size()>0) throw new RuntimeException("supps not empty");
 					
 					profile.identity1(genome,  readSeq, sam1, source_index, cluster_reads);
+						
 				//	profile.commit();
 					
 					

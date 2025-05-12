@@ -274,7 +274,7 @@ addBoolean("illumina", false, "use illumina libary");
 		// String barcode_files,
 		 String chrs, String chrsToIgnore,  boolean fastq, String reference) throws IOException{
 		int qual = cmdLine.getIntVal("qual");
-		int bin = cmdLine.getIntVal("bin");
+		//int bin = cmdLine.getIntVal("bin");
 		
 		CigarCluster.singleGFF = cmdLine.getBooleanVal("singleGFF");
 		verbose=cmdLine.getBooleanVal("verbose");
@@ -324,7 +324,9 @@ addBoolean("illumina", false, "use illumina libary");
 		Outputs.annotation_mode = cmdLine.getBooleanVal("annotation_mode");
 		Outputs.writeH5 = cmdLine.getBooleanVal("writeH5");
 		Outputs.report = cmdLine.getIntVal("report");
-		CigarHash2.round = cmdLine.getIntVal("bin0");
+		String[] round = cmdLine.getStringVal("round", "10").split(":");
+		CigarHash2.round = new Integer[ round.length];
+		for(int i=0; i<round.length;i++)CigarHash2.round[i] = Integer.parseInt(round[i]);
 	//	CigarHash2.round1 = cmdLine.getIntVal("bin1");
 		String types_to_include = cmdLine.getStringVal("types_to_include", null);
 		if(types_to_include!=null) IdentityProfile1.types_to_include = Arrays.asList(types_to_include.split(":"));
@@ -448,7 +450,7 @@ addBoolean("illumina", false, "use illumina libary");
 		String annot_file) throws IOException {*/
 
 			errorAnalysis(bamFiles,reference, readList,
-				pattern, qual, bin, breakThresh, startThresh, endThresh,maxReads,  
+				pattern, qual,  breakThresh, startThresh, endThresh,maxReads,  
 				Outputs.calcBreaks, annotByBreakPosition,  chrs, chrsToIgnore,  isoformDepthThresh, coverageDepthThresh,  fastq, 
 				chromsToRemap, annotFile);
 	}
@@ -642,14 +644,14 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 	 */
 	static void errorAnalysis(String bamFile_,
 			 String refFile,  String readList,  
-			String pattern, int qual, int round, 
+			String pattern, int qual, 
 			int break_thresh, int startThresh, int endThresh, int max_reads, 
 			boolean calcBreaks1 ,  boolean annotByBreakPosition, String chrToInclude, String chrToIgnore, 
 			int writeIsoformDepthThresh, int writeCoverageDepthThresh, boolean fastq, String chromsToRemap, 
 			String annot_file) throws IOException {
 		boolean cluster_reads = true;
-		CigarHash2.round = round;
-		Annotation.tolerance = round;
+	
+	//	Annotation.tolerance = round;
 		
 		IdentityProfile1.annotByBreakPosition = annotByBreakPosition;
 		CigarHash.cluster_by_annotation =true;// cluster_by_annotation;

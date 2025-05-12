@@ -19,12 +19,12 @@ public class CigarHash2 extends ArrayList<Integer> {
 	}
 	//public static boolean subclusterBasedOnStEnd = false;
 	boolean rounded = false;
-	public CigarHash2 clone(boolean round, int start, int end){
+	public CigarHash2 clone(boolean round, int start, int end, int round1){
 		if(round && this.rounded) {
 			throw new RuntimeException("already rounded");
 		}
 		CigarHash2 obj =new CigarHash2(round || rounded);
-		if(round) obj.addAllR(this,start, end);
+		if(round) obj.addAllR(this,start, end, round1);
 		else obj.addAll(this, start);
 		return obj;
 	}
@@ -59,22 +59,22 @@ public class CigarHash2 extends ArrayList<Integer> {
 		}
 	}
 	
-	public void addAllR(CigarHash2 obj, int start) {
-		this.addAllR(obj, start, obj.size());
-	}
+/*	public void addAllR(CigarHash2 obj, int start, int round) {
+		this.addAllR(obj, start, obj.size(), round);
+	}*/
 
-	public void addAllR(CigarHash2 obj, int start, int end) {
+	public void addAllR(CigarHash2 obj, int start, int end, int round) {
 		if(this.size()>0) throw new RuntimeException("not empty");
 		if(obj.rounded) throw new RuntimeException("is rounded");
 		this.rounded = true;
 			for(int i=start; i<end; i++){
-				addR(obj.get(i));
+				addR(obj.get(i), round);
 			}
 		
 	}
 	
 	
-	public static int round = 100;
+	public static Integer[] round = new Integer[] {100};
 	//public static int round1=500;
 	//static int[] breaks_in = new int[2];
 	//static int[] breaks_out = new int[2];
@@ -172,7 +172,7 @@ public class CigarHash2 extends ArrayList<Integer> {
 	}
 	
 	
-	private boolean addR(Integer i){ 
+	private boolean addR(Integer i, int round){ 
 		if(!this.rounded) throw new RuntimeException("!!");
 		Integer i1 = TranscriptUtils.round(i, round);
 		return (super.add(i1));
@@ -193,13 +193,13 @@ public class CigarHash2 extends ArrayList<Integer> {
 	 }
 	 return -1;
 	}
-	public List<Integer> rescale() {
+	/*public List<Integer> rescale() {
 		List<Integer> keyv = this.clone();
 		for(int j=0; j<keyv.size(); j++){
 			keyv.set(j, keyv.get(j)*round);
 		}
 		return keyv;
-	}
+	}*/
 	
 
 	

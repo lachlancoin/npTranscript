@@ -17,12 +17,12 @@ String chrom1;
 		// TODO Auto-generated constructor stub
 	}
 	@Override
-	public int nextDownstream(int rightBreak,  boolean forward){
-		return TranscriptUtils.round(rightBreak,CigarHash2.round);
+	public int nextDownstream(int rightBreak,  boolean forward, int round){
+		return TranscriptUtils.round(rightBreak,round);
 	}
 	@Override
-	public int  nextUpstream(int rightBreak, boolean forward){
-		return TranscriptUtils.round(rightBreak,CigarHash2.round);
+	public int  nextUpstream(int rightBreak, boolean forward, int round){
+		return TranscriptUtils.round(rightBreak,round);
 	}
 	public void adjust3UTR(int seqlen2) {
 		
@@ -40,14 +40,14 @@ String chrom1;
 	}*/
 	
 	
-	public String nextDownstream(int rightBreak, int chrom_index, Boolean forward){
-		return ""+TranscriptUtils.round(rightBreak,CigarHash2.round);
+	public String nextDownstream(int rightBreak, int chrom_index, Boolean forward, int round){
+		return ""+TranscriptUtils.round(rightBreak,round);
 	}
-	public String  nextUpstream(int rightBreak, Boolean forward){
+	public String  nextUpstream(int rightBreak, Boolean forward, int round){
 	//	secondKey.append(this.chrom_);		secondKey.append("/");
 	//	secondKey.append(this.strand);secondKey.append("/");
 		
-		return ""+TranscriptUtils.round(rightBreak,CigarHash2.round);
+		return ""+TranscriptUtils.round(rightBreak,round);
 	}
 
 }
