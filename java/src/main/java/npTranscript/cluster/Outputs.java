@@ -848,7 +848,7 @@ gson.fromJson(str1,  int[].class);
 		
 			
 			all_res1.put("flags", flags1);
-			all_res2.put("sampleID", this.expt.get("sampleID"));
+			all_res2.put("id", this.expt.get("sampleID"));
 			
 			all_res2.put("flags", flags2);
 		//				executor.execute(curl);
@@ -861,7 +861,7 @@ gson.fromJson(str1,  int[].class);
 		Map<String, Object> flags2 = new HashMap<String, Object>();
 		public  void post() {
 			
-			all_res1.put("sampleID", this.expt.get("sampleID"));
+			all_res1.put("id", this.expt.get("sampleID"));
 			
 			all_res1.put("reads", all_res);
 			flags1.put("annotation", Outputs.annotation_mode);

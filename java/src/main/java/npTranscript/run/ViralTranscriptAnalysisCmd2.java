@@ -710,6 +710,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 				}
 			}
 			m.put("programs", programs);
+			m.put("id", sampleID);
 				samIter = samReaders.iterator();
 				Gson gson = new Gson();
 				String json_str = gson.toJson(m);
