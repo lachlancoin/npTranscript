@@ -690,8 +690,9 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 				samReaders = SamReaderFactory.makeDefault().open(new File(bamFile_));
 			}
 			Map<String, Object> m = new HashMap();
+			Map<String, Object> flags = new HashMap();
 			List<SAMProgramRecord> pr = samReaders.getFileHeader().getProgramRecords();
-			m.put("program_records",pr );
+			flags.put("program_records",pr );
 			List<String> programs = new ArrayList<String>();
 			for(int kk=0; kk<pr.size(); kk++) {
 				SAMProgramRecord pr1 = pr.get(kk);
@@ -700,17 +701,18 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 					List<String>str = Arrays.asList(pr1.getCommandLine().split("\\s+"));
 					StringBuffer sb = new StringBuffer();
 					for(int jk=1; jk<str.size()-2; jk++) sb.append(str.get(jk)+" ");
-					m.put("minimap2_options", sb.toString().trim());
-					m.put("minimap2_version", pr1.getAttribute("VN"));
-					m.put("minimap2_reference", str.get(str.size()-2).replaceAll(".mmi", ""));
-					m.put("fastq", str.get(str.size()-1));
+					flags.put("minimap2_options", sb.toString().trim());
+					flags.put("minimap2_version", pr1.getAttribute("VN"));
+					flags.put("minimap2_reference", str.get(str.size()-2).replaceAll(".mmi", ""));
+					flags.put("fastq", str.get(str.size()-1));
 					if(sampleID.equals("-") ||sampleID.equals("fastq")) {
 						sampleID = (String) m.get("fastq");
 					}
 				}
 			}
-			m.put("programs", programs);
+			flags.put("programs", programs);
 			m.put("id", sampleID);
+			m.put("flags", flags);
 				samIter = samReaders.iterator();
 				Gson gson = new Gson();
 				String json_str = gson.toJson(m);
@@ -718,10 +720,10 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 			allNull = false;
 
 			Map<String, Object> expt=new HashMap<String, Object>() ;
-			Map<String, Object> flags = new HashMap<String, Object>();
+			Map<String, Object> flags1 = new HashMap<String, Object>();
 			expt.put("sampleID",sampleID); // prob not best sampleID
-			expt.put("flags",flags);
-			flags.put("RNA", ViralTranscriptAnalysisCmd2.RNA);
+			expt.put("flags",flags1);
+			flags1.put("RNA", ViralTranscriptAnalysisCmd2.RNA);
 			Outputs 	outp = new Outputs( in_nmes,   true, CigarCluster.recordDepthByPosition,expt); 
 			
 			
