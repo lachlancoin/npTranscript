@@ -705,8 +705,8 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 					flags.put("minimap2_version", pr1.getAttribute("VN"));
 					flags.put("minimap2_reference", str.get(str.size()-2).replaceAll(".mmi", ""));
 					flags.put("fastq", str.get(str.size()-1));
-					if(sampleID.equals("-") ||sampleID.equals("fastq")) {
-						sampleID = (String) m.get("fastq");
+					if(sampleID==null || sampleID.equals("-") ||sampleID.equals("fastq")) {
+						sampleID = (String) flags.get("fastq");
 					}
 				}
 			}
