@@ -63,6 +63,7 @@ public class Outputs{
 	public static PrintStream outputstream;  // this is the main output stream
 	public static String format;
 	public static String sampleName;
+	public static Boolean annotation_mode;
 	
 	//public static  ExecutorService executor ;
 	
@@ -719,42 +720,53 @@ gson.fromJson(str1,  int[].class);
 
 		
 		
-		Map<String,Map<String,Map<String,Map<String,int[]>>>> all_res = 
-				new HashMap<String,Map<String,Map<String,Map<String,int[]>>>>();
+		Map<String,Map<String,Map<String,Map<String,Object>>>> all_res = 
+				new HashMap<String,Map<String,Map<String,Map<String,Object>>>>();
 		
 		
 		int total_num=0;
 		public static int report=5000; // how many reads to aggregate before reporting
 		String first_read = null;
-		public synchronized void append(String readname, String chrom, String strand, String endPos, String key,Integer polyA){
+		public synchronized void append(String readname,  String chrom, String strand, String endPos, String key,Integer polyA){
 			if(total_num==0) first_read=readname;
-			Map<String,Map<String,Map<String,int[]>>> all_res_chr = all_res.get(chrom);
+			Map<String,Map<String,Map<String,Object>>> all_res_chr = all_res.get(chrom);
 			if(all_res_chr==null) {
-				all_res_chr = new HashMap<String, Map<String, Map<String, int[]>>>();
+				all_res_chr = new HashMap<String, Map<String, Map<String, Object>>>();
 				all_res.put(chrom, all_res_chr);
 			}
-			Map<String,Map<String,int[]>> all_res_chr_strand = all_res_chr.get(strand);
+			Map<String,Map<String,Object>> all_res_chr_strand = all_res_chr.get(strand);
 			if(all_res_chr_strand==null) {
-				all_res_chr_strand = new HashMap<String, Map<String, int[]>>();
+				all_res_chr_strand = new HashMap<String, Map<String, Object>>();
 				all_res_chr.put(strand, all_res_chr_strand);
 			}
-			Map<String,int[]> all_res_chr_end = all_res_chr_strand.get(endPos);
+			Map<String,Object> all_res_chr_end = all_res_chr_strand.get(endPos);
 			if(all_res_chr_end==null) {
-				all_res_chr_end = new HashMap<String, int[]>();
+				all_res_chr_end = new HashMap<String, Object>();
 				all_res_chr_strand.put(endPos, all_res_chr_end);
 			}
-			int[] vals = all_res_chr_end.get(key);
-			if(vals==null) {
-				vals = polyA==null ? new int[] {0} : new int [] {0,0,0};
-				all_res_chr_end.put(key, vals);
-			}
-			vals[0]+=1;
-			if(polyA!=null) {
-				if(vals.length==1) {
-					vals = new int[] {vals[1],0,0};
+			Object vals1 = all_res_chr_end.get(key);
+			if(vals1==null) {
+				if(!annotation_mode) {
+					vals1 = polyA==null ? new int[] {0} : new int [] {0,0,0};
+				}else {
+					vals1 = new ArrayList<String>();
+					//((List<String>)vals1).add(readname);
 				}
-				vals[1]+=1;
-				vals[2]+=polyA.intValue();
+				all_res_chr_end.put(key, vals1);
+			}
+			if(vals1 instanceof int[]) {
+				int[] vals = (int[])vals1;
+				vals[0]+=1;
+				if(polyA!=null) {
+					if(vals.length==1) {
+						vals = new int[] {vals[1],0,0};
+					}
+					vals[1]+=1;
+					vals[2]+=polyA.intValue();
+				}
+			}else {
+				List<String>vals = (List<String>)vals1;
+				vals.add(readname);
 			}
 			total_num +=1;
 			 if(total_num==report) {
@@ -831,10 +843,10 @@ gson.fromJson(str1,  int[].class);
 			if(Outputs.url==null) return; 
 			Curl curl = new Curl(this.expt, "register");
 			Map output = curl.run();
-			all_res1.put("sampleID", this.expt.get("sampleID"));
+			all_res1.put("id", this.expt.get("sampleID"));
+			
 		
-			flags1.put("break", IdentityProfile1.break_thresh);
-			flags1.put("round", CigarHash2.round);
+			
 			all_res1.put("flags", flags1);
 			all_res2.put("sampleID", this.expt.get("sampleID"));
 			
@@ -851,9 +863,12 @@ gson.fromJson(str1,  int[].class);
 			
 			all_res1.put("sampleID", this.expt.get("sampleID"));
 			
-			all_res1.put("json", all_res);
-			flags1.put("firstread", this.first_read);
-			flags1.put("readcount", this.total_num);
+			all_res1.put("reads", all_res);
+			flags1.put("annotation", Outputs.annotation_mode);
+			flags1.put("read1", this.first_read);
+			flags1.put("nreads", this.total_num);
+			flags1.put("break", IdentityProfile1.break_thresh);
+			flags1.put("round", CigarHash2.round);
 			all_res1.put("flags", flags1);
 		//	this.all_res.put("sessionID", sessionID);
 			Curl curl = new Curl(all_res1, "addreads");
