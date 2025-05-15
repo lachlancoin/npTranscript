@@ -24,14 +24,14 @@ fi
 
 mvn clean package install
 
-jar xf out.jar lib/linux_x64/libedlib.so
-mkdir target/classes/linux-x86-64
-mv lib/linux_x64/libedlib.so target/classes/linux-x86-64
-rm -rf lib
+#jar xf out.jar lib/linux_x64/libedlib.so
+#mkdir target/classes/linux-x86-64
+#mv lib/linux_x64/libedlib.so target/classes/linux-x86-64
+#rm -rf lib
 #rm out.jar
 #module load gcc
-module load GCC/11.3.0
+#module load GCC/11.3.0
 
-export mainclass=npTranscript.run.Barcodes
-bash ../scripts/run.sh
-export mainclass=npTranscript.run.ViralTranscriptAnalysisCmd2
+#export mainclass=npTranscript.run.Barcodes
+#bash ../scripts/run.sh
+#export mainclass=npTranscript.run.ViralTranscriptAnalysisCmd2
