@@ -748,7 +748,7 @@ gson.fromJson(str1,  int[].class);
 				flags1.put("chr", chr);
 				flags1.put("br", br);
 				flags1.put("strand", strand);
-				flags1.put("lens", "L"+strand.length());
+				flags1.put("lens", "L"+strand1.length());
 				Set<String> s = Arrays.asList(chr.split(";")).stream().collect(Collectors.toSet());
 				Set<String> s1 = s.stream().map(t -> t.substring(0, 2)).collect(Collectors.toSet());
 				flags1.put("chroms", s);
