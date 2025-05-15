@@ -29,11 +29,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -168,9 +170,9 @@ public class Outputs{
 		String type_nmes;
 		public void close() throws IOException{
 			System.err.println();
-			this.post();
-			this.outputstream.close();
-			Map output1 = this.extract();
+			this.all_res.values().stream().forEach(t ->t.values().forEach(t1 -> t1.post()) );
+			Outputs.outputstream.close();
+		//	Map output1 = this.extract();
 			//System.err.println(output1);
 		//	if(plusMinus!=null) plusMinus.close();
 			//IdentityProfileHolder.waitOnThreads(100);
@@ -720,63 +722,114 @@ gson.fromJson(str1,  int[].class);
 
 		
 		
-		Map<Integer,Map<String,Map<String,Map<String,Map<String,Object>>>>> all_res = 
-				new HashMap<Integer,Map<String,Map<String,Map<String,Map<String,Object>>>>>();
+	//	Map<String,Map<String,Map<String,Map<String,Map<String,Object>>>>> all_res = 
+	//			new HashMap<String,Map<String,Map<String,Map<String,Map<String,Object>>>>>();
 		
+		Map<String,Map<String,JSONOut>> all_res = new HashMap<String,Map<String, JSONOut>>(); //chrom strand
 		
-		int total_num=0;
+		class JSONOut{
+			String chr;String strand;
+			String first_read;
+			boolean transplice;
+			Set<String> reads = new TreeSet<String>();
+			Map<String,Map<String,Map<String,Object>>> all_res =  //round, end, code
+					new HashMap<String,Map<String,Map<String,Object>>>();
+			Map<String, Object> all_res1 = new HashMap<String, Object>();
+			Map<String, Object> flags1 = new HashMap<String, Object>();
+			JSONOut(String chr, String strand1, int br){
+				this.chr = chr; 
+				this.strand =String.join(";",strand1.split(""));
+				all_res1.put("id", expt.get("sampleID"));
+				
+				flags1.put("annot", Outputs.annotation_mode);
+				all_res1.put("id", expt.get("sampleID"));
+
+				
+				flags1.put("chr", chr);
+				flags1.put("br", br);
+				flags1.put("strand", strand);
+				flags1.put("lens", "L"+strand.length());
+				Set<String> s = Arrays.asList(chr.split(";")).stream().collect(Collectors.toSet());
+				Set<String> s1 = s.stream().map(t -> t.substring(0, 2)).collect(Collectors.toSet());
+				flags1.put("chroms", s);
+				flags1.put("species", s1);
+				
+				all_res1.put("flags", flags1);
+				all_res1.put("reads", all_res);
+			}
+			public  void post() {
+				flags1.put("read1", this.first_read);
+				flags1.put("nreads", this.reads.size());
+			//	this.all_res.put("sessionID", sessionID);
+				Curl curl = new Curl(all_res1, "addreads");
+				Map output = curl.run();
+				//executor.execute(curl);
+				this.all_res.clear();
+				this.reads.clear();
+			}
+			
+			public synchronized void append(String readname,  String endPos, String key,Integer polyA, Integer round){
+				 if(reads.size() >0 && (reads.size()+1>=report && !reads.contains(readname))) {
+					 this.post();
+				 }
+				
+				if(reads.size()==0) first_read=readname;
+				Map<String,Map<String,Object>> all_res_round = all_res.get(round.toString());
+				if(all_res_round==null) {
+					all_res_round = new HashMap<String,  Map<String, Object>>();
+				//	all_res_bin.put(chrom, all_res_chr);
+					all_res.put(round.toString(), all_res_round);
+				}
+				Map<String,Object> all_res_chr_end = all_res_round.get(endPos);
+				if(all_res_chr_end==null) {
+					all_res_chr_end = new HashMap<String, Object>();
+					all_res_round.put(endPos, all_res_chr_end);
+				}
+				Object vals1 = all_res_chr_end.get(key);
+				if(vals1==null) {
+					if(!annotation_mode) {
+						vals1 = polyA==null ? new int[] {0} : new int [] {0,0,0};
+					}else {
+						vals1 = new ArrayList<String>();
+						//((List<String>)vals1).add(readname);
+					}
+					all_res_chr_end.put(key, vals1);
+				}
+				if(vals1 instanceof int[]) {
+					int[] vals = (int[])vals1;
+					vals[0]+=1;
+					if(polyA!=null) {
+						if(vals.length==1) {
+							vals = new int[] {vals[1],0,0};
+						}
+						vals[1]+=1;
+						vals[2]+=polyA.intValue();
+					}
+				}else {
+					List<String>vals = (List<String>)vals1;
+					vals.add(readname);
+				}
+				reads.add(readname);
+			
+			}
+			
+		}
+		//int total_num=0;
 		public static int report=5000; // how many reads to aggregate before reporting
 		String first_read = null;
+		public Set<String> reads = new TreeSet<String>();
 		public synchronized void append(String readname,  String chrom, String strand, String endPos, String key,Integer polyA, Integer round){
-			if(total_num==0) first_read=readname;
-			Map<String,Map<String,Map<String,Map<String,Object>>>> all_res_bin = all_res.get(round);
-			if(all_res_bin==null) {
-				all_res_bin = new HashMap<String,Map<String, Map<String, Map<String, Object>>>>();
+			Map<String,JSONOut> all_res_round_strand = all_res.get(strand);
+			if(all_res_round_strand==null) {
+				all_res_round_strand = new HashMap<String, JSONOut>();
+				all_res.put(strand, all_res_round_strand);
 			}
-			Map<String,Map<String,Map<String,Object>>> all_res_chr = all_res_bin.get(chrom);
+			JSONOut all_res_chr = all_res_round_strand.get(chrom);
 			if(all_res_chr==null) {
-				all_res_chr = new HashMap<String, Map<String, Map<String, Object>>>();
-				all_res_bin.put(chrom, all_res_chr);
-				all_res.put(round, all_res_bin);
+				all_res_chr = new JSONOut(chrom,strand, IdentityProfile1.break_thresh);
+				all_res_round_strand.put(chrom, all_res_chr);
 			}
-			Map<String,Map<String,Object>> all_res_chr_strand = all_res_chr.get(strand);
-			if(all_res_chr_strand==null) {
-				all_res_chr_strand = new HashMap<String, Map<String, Object>>();
-				all_res_chr.put(strand, all_res_chr_strand);
-			}
-			Map<String,Object> all_res_chr_end = all_res_chr_strand.get(endPos);
-			if(all_res_chr_end==null) {
-				all_res_chr_end = new HashMap<String, Object>();
-				all_res_chr_strand.put(endPos, all_res_chr_end);
-			}
-			Object vals1 = all_res_chr_end.get(key);
-			if(vals1==null) {
-				if(!annotation_mode) {
-					vals1 = polyA==null ? new int[] {0} : new int [] {0,0,0};
-				}else {
-					vals1 = new ArrayList<String>();
-					//((List<String>)vals1).add(readname);
-				}
-				all_res_chr_end.put(key, vals1);
-			}
-			if(vals1 instanceof int[]) {
-				int[] vals = (int[])vals1;
-				vals[0]+=1;
-				if(polyA!=null) {
-					if(vals.length==1) {
-						vals = new int[] {vals[1],0,0};
-					}
-					vals[1]+=1;
-					vals[2]+=polyA.intValue();
-				}
-			}else {
-				List<String>vals = (List<String>)vals1;
-				vals.add(readname);
-			}
-			total_num +=1;
-			 if(total_num==report) {
-				 this.post();
-			 }
+			all_res_chr.append(readname, endPos, key, polyA, round);
 		}
 		
 		Map<String, Object> expt;
@@ -846,50 +899,26 @@ gson.fromJson(str1,  int[].class);
 		//Executor executor = Executors.newFixedThreadPool(1);
 		public void register() {
 			if(Outputs.url==null) return; 
+			
 			Curl curl = new Curl(this.expt, "register");
 			Map output = curl.run();
-			all_res1.put("id", this.expt.get("sampleID"));
-			
+			//all_res2.put("id", this.expt.get("sampleID"));
 		
-			
-			all_res1.put("flags", flags1);
-			all_res2.put("id", this.expt.get("sampleID"));
-			
-			all_res2.put("flags", flags2);
+			//all_res2.put("flags", flags2);
 		//				executor.execute(curl);
 			//			System.err.println(curl.out);
 						
 		}
-		Map<String, Object> all_res1 = new HashMap<String, Object>();
-		Map<String, Object> all_res2 = new HashMap<String, Object>();
-		Map<String, Object> flags1 = new HashMap<String, Object>();
-		Map<String, Object> flags2 = new HashMap<String, Object>();
-		public  void post() {
-			
-			all_res1.put("id", this.expt.get("sampleID"));
-			
-			all_res1.put("reads", all_res);
-			flags1.put("annotation", Outputs.annotation_mode);
-			flags1.put("read1", this.first_read);
-			flags1.put("nreads", this.total_num);
-			flags1.put("break", IdentityProfile1.break_thresh);
-			flags1.put("round", CigarHash2.round);
-			all_res1.put("flags", flags1);
-		//	this.all_res.put("sessionID", sessionID);
-			Curl curl = new Curl(all_res1, "addreads");
-			Map output = curl.run();
-			//executor.execute(curl);
-			this.all_res.clear();
-			total_num=0;
-			//this.extract();
-			
-		}
-		public Map extract() {
+		//Map<String, Object> all_res2 = new HashMap<String, Object>();
+		
+		//Map<String, Object> flags2 = new HashMap<String, Object>();
+		
+	/*	public Map extract() {
 			if(Outputs.url==null) return(null); 
 			Curl curl = new Curl(all_res2,"extract");
 			Map output = curl.run();
 			return output;
-		}
+		}*/
 		
 		/** writes the isoform information */
 		public synchronized String writeString(CigarCluster cc, int source_index, String chrom, String strand, int round){//, CigarClusters cigarClusters) {

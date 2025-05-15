@@ -159,7 +159,7 @@ this.updateSourceIndex(source_index);
 		if(reverse && strand.length()>1) {
 			List<String> chr1= Arrays.asList(chrom_.split(","));
 			Collections.reverse(chr1);
-			this.chrom_ = String.join(",", chr1.toArray(new String[0]));
+			this.chrom_ = String.join(";", chr1.toArray(new String[0]));
 			this.strand = (new StringBuilder(strand)).reverse().toString();
 		}
 		if(ViralTranscriptAnalysisCmd2.RNA){
@@ -647,7 +647,7 @@ static char delim_start ='$';
 			byte[]phredQs = sams.get(primary_index).getBaseQualities();
 			for(int kk=0; kk<CigarHash2.round.length; kk++) {
 				Integer round = CigarHash2.round[kk];
-			//String secondKey= profile.processRefPositions(  id, cluster_reads,  source_index, readSeq,baseQ, phredQs, round);
+			String secondKey= profile.processRefPositions(  id, cluster_reads,  source_index, readSeq,baseQ, phredQs, round);
 					
 			
 			//if(!ViralTranscriptAnalysisCmd2.allowSuppAlignments){

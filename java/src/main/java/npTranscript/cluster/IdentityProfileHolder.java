@@ -407,8 +407,8 @@ return ;
 							fusion = true;
 						}
 						if(it.hasNext()){
-							chrom.append(",");
-							q_str.append(",");q_str1.append(",");
+							chrom.append(";");
+							q_str.append(";");q_str1.append(";");
 						}
 					}
 //					System.err.println(sam1.size());

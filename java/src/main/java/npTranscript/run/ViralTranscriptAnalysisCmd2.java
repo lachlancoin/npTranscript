@@ -193,7 +193,7 @@ addBoolean("illumina", false, "use illumina libary");
 		addString("span", "protein_coding", "Filtering span.  Use all not to filter.");
 		addInt("qual", 0, "Minimum quality required");
 		
-		addInt("bin0", 1, "Bin size for numerical hashing");
+		addString("round", "1", "Bin size for numerical hashing");
 	//	addInt("bin1",100, "Bin size for hashing of the end");
 		addDouble("overlap_thresh",0.33,"max percentage overlap between supp alignments considered");
 		addInt("overlap_max",20,"max bp overlap between supp alignments considered");
@@ -713,8 +713,9 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 				}
 			}
 			flags.put("programs", programs);
-			flags.put("annotation", Outputs.annotation_mode);
+			flags.put("annot", Outputs.annotation_mode);
 			flags.put("round", CigarHash2.round);
+			flags.put("br", IdentityProfile1.break_thresh);
 			m.put("id", sampleID);
 			m.put("flags", flags);
 				samIter = samReaders.iterator();
