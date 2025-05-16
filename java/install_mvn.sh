@@ -30,8 +30,8 @@ mv lib/linux_x64/libedlib.so target/classes/linux-x86-64
 rm -rf lib
 #rm out.jar
 #module load gcc
-module load GCC/11.3.0
+#module load GCC/11.3.0
 
-export mainclass=npTranscript.run.Barcodes
-bash ../scripts/run.sh
+#export mainclass=npTranscript.run.Barcodes
+#bash ../scripts/run.sh
 export mainclass=npTranscript.run.ViralTranscriptAnalysisCmd2
