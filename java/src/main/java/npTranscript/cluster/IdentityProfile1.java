@@ -140,9 +140,10 @@ public class IdentityProfile1 {
 		
 	}
 	public String strand;
-	public boolean reverse;
+	public String read_pos;
+//	public boolean reverse;
 	//public boolean flip=false;
-	public void setName(String readName, String chrom_, String strand, String q_value,String q_value_base, int source_index, boolean fusion) {
+	public void setName(String readName, String chrom_, String strand, String q_value,String q_value_base, String read_pos, int source_index, boolean fusion) {
 		// TODO Auto-generated method stub
 		this.id = readName;
 	//	this.flip = flip;
@@ -150,13 +151,15 @@ public class IdentityProfile1 {
 	//	if(!supp) fusion = false;
 		//else if(chrom_index!=this.chrom_index) fusion = true;
 this.strand = strand;
-this.reverse = strand.charAt(0)=='+';
+//this.reverse = strand.charAt(0)=='+';
 this.q_value_str = q_value;
 this.base_q_str = q_value_base;
 this.updateSourceIndex(source_index);
 		this.readName = readName;
+		this.read_pos = read_pos;
 		this.chrom_ = chrom_;// fusion ? this.chrom_+";"+chrom_ : chrom_;
-		if(reverse && strand.length()>1) {
+		if(false &&//reverse && 
+				strand.length()>1) {
 			List<String> chr1= Arrays.asList(chrom_.split(","));
 			Collections.reverse(chr1);
 			this.chrom_ = String.join(";", chr1.toArray(new String[0]));
@@ -240,7 +243,7 @@ static char delim_start ='$';
 				String str = id+"\t"+round+"\t"
 				+chrom_+"\t"
 				+startPos+"\t"+endPos+"\t"+endPosStr+"\t"+strand+"\t"+this.type_nme+"\t"
-				+coRefPositions.getError(source_index)+"\t"+id_+"\t"+breakSt+"\t"+breakSt1+"\t"+read_len+"\t"+q_value_str.trim()+"\t"+this.base_q_str.trim()+"\t"+
+				+coRefPositions.getError(source_index)+"\t"+id_+"\t"+breakSt+"\t"+read_pos+"\t"+read_len+"\t"+q_value_str.trim()+"\t"+this.base_q_str.trim()+"\t"+
 				pt1+"\t"+
 				(st.toString() );
 			//	if(trainStrand){f
@@ -377,7 +380,7 @@ static char delim_start ='$';
 			
 			for(int jjk1 =0; jjk1<this.strand.length(); jjk1++){
 				
-				int	jjk = reverse ? strand.length()-(1+jjk1) : jjk1;
+				int	jjk = jjk1;//reverse ? strand.length()-(1+jjk1) : jjk1;
 				
 				if(jjk1>0) secondKey.append(";");
 				int s1 = startPositions.get(jjk);
@@ -623,9 +626,9 @@ static char delim_start ='$';
 			
 			SAMRecord sam = sams.get(j);
 			if(!sam.isSecondaryOrSupplementary()) primary_index=j;
-			String id = sam.getReadName();
-			Sequence refSeq =(refSeqs==null || sam.getReferenceIndex() >= refSeqs.size()) ? null : 
-				refSeqs.get(sam.getReferenceIndex());
+			//String id = sam.getReadName();
+			//Sequence refSeq =(refSeqs==null || sam.getReferenceIndex() >= refSeqs.size()) ? null : 
+			//	refSeqs.get(sam.getReferenceIndex());
 			//String chrom = refSeq.getName();
 		//	profile.updateSourceIndex(source_index);
 			//List<AlignmentBlock> li = sam.getAlignmentBlocks();
@@ -639,7 +642,7 @@ static char delim_start ='$';
 		}
 	//	Integer flipped = .getIntegerAttribute(PolyAT.flipped_tag);
 	//	boolean flip = flipped!=null && flipped.intValue()==1;
-		boolean flip1 = TranscriptUtils.isFlipped(sams.get(primary_index));
+	//	boolean flip1 = TranscriptUtils.isFlipped(sams.get(primary_index));
 		try{
 			int maxl = 100;
 			int tol=5;

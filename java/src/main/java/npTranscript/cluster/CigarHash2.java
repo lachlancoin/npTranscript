@@ -99,7 +99,7 @@ public class CigarHash2 extends ArrayList<Integer> {
 	private String getString(CigarHash2 l, List<Integer> startp, String strand) {
 		boolean reverse=strand.charAt(0)=='+';
 		StringBuffer sb = new StringBuffer();
-		if(reverse) {
+		if(reverse && false) {
 			for(int j=startp.size()-1; j>=0; j--){
 				int from = startp.get(j);
 				int to  = j < startp.size()-1 ? startp.get(j+1) : l.size();

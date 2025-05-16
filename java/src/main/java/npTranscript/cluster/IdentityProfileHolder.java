@@ -185,7 +185,8 @@ static Comparator comp_q = new SamComparator(true);
 		SAMRecord first = sams.next();
 		SAMRecord primary  = null;
 		if(!first.isSecondaryOrSupplementary()) primary = first;
-		
+		if(primary==null) throw new RuntimeException("first is not primary");
+		int read_length = primary.getReadLength();
 		int q1 = first.getMappingQuality();
 		sams.remove();
 		extracted.add(first);
@@ -199,7 +200,7 @@ static Comparator comp_q = new SamComparator(true);
 			Arrays.fill(overl,0);
 		//	List<AlignmentBlock> l2 = sam.getAlignmentBlocks();
 			for(int j=0; j<extracted.size(); j++){
-				read_overlap(extracted.get(j),sam,overl);
+				read_overlap(extracted.get(j),sam,overl, read_length);
 			}
 		//	System.err.println(Arrays.asList(overl));
 			if( ( overl[2] <= overlap_thresh *overl[1] && overl[2] <= overlap_thresh*overl[0] && overl[2] <= overlap_max)){
@@ -234,23 +235,29 @@ static Comparator comp_q = new SamComparator(true);
 		return primary;
 	}
   
-	static int[] getStEnd(SAMRecord s1) {
+	static int[] getStEnd(SAMRecord s1, int read_length) {
 		List<AlignmentBlock> l1 = s1.getAlignmentBlocks();
 		boolean neg1=s1.getReadNegativeStrandFlag();
 		AlignmentBlock a1 = l1.get(0);
 		AlignmentBlock a2 = l1.get(l1.size()-1);
 		int st1 = a1.getReadStart();
 		int end1 = a2.getReadStart()+a2.getLength();
+	//	int readlen = s1.getReadLength();
 		if(neg1) {
-			st1 = s1.getReadLength()-st1;
-			end1 = s1.getReadLength()-end1;
+			int end2 = read_length-st1;
+			int st2 = read_length-end1;
+//System.err.println(s1+" "+st2+" "+end2);
+			return new int[] {st2,end2};
+
 		}
+//		System.err.println(s1+" "+st1+" "+end1);
+
 		return new int[] {st1,end1};
 	}
 
-	private static void read_overlap(SAMRecord s1, SAMRecord s2, int[] overl) {
-		int[] se1=getStEnd(s1);
-		int[] se2=getStEnd(s2);
+	private static void read_overlap(SAMRecord s1, SAMRecord s2, int[] overl, int read_length) {
+		int[] se1=getStEnd(s1, read_length);
+		int[] se2=getStEnd(s2, read_length);
 		int st1 = se1[0]; int end1 = se1[1];
 		int st2 = se2[0]; int end2 = se2[1];
 	
@@ -363,7 +370,7 @@ return ;
 					}
 					//boolean flip = TranscriptUtils.isFlipped(primary);
 					String read_strand = (String) primary.getAttribute(PolyAT.read_strand_tag);
-					
+					int read_length = primary.getReadLength();
 					
 					byte[] bq = primary.getBaseQualities();
 				//	System.err.println(sam1.size()+" "+sze);
@@ -372,22 +379,36 @@ return ;
 					StringBuffer q_str = new StringBuffer();
 					StringBuffer q_str1 = new StringBuffer();
 					String chr = null;
+					StringBuffer read_pos = new StringBuffer();
 					boolean fusion = false;
 					
-				//	if(flip){
+				Comparator samComparator = new Comparator<SAMRecord>() {
+
+					@Override
+					public int compare(SAMRecord o1, SAMRecord o2) {
+						int[] se1 = getStEnd(o1, read_length);
+						int[] se2 = getStEnd(o2, read_length);
+						return -1*(Integer.compare(se1[1], se2[1]));
+					}
+					
+					
+				};
+					//	if(flip){
 				//		Collections.reverse(sam1);
 				//	}
-					
+					Collections.sort(sam1, samComparator);
 					Iterator<SAMRecord> it = sam1.iterator();
 					while(it.hasNext()){
 						boolean first = chr==null;
 						SAMRecord record = it.next();
+						boolean reverse=record.getReadNegativeStrandFlag();
 						if(read_strand==null){
 							strand.append("N");
 						}else{
 							if(read_strand.charAt(0)=='+'){
 								strand.append(record.getReadNegativeStrandFlag() ? '-': '+');
 							}else{
+								
 								strand.append(record.getReadNegativeStrandFlag() ? '+': '-');
 							}
 						}
@@ -397,6 +418,14 @@ return ;
 						
 						int qstart = record.getReadPositionAtReferencePosition(record.getAlignmentStart());
 						int qend = record.getReadPositionAtReferencePosition(record.getAlignmentEnd());
+						if(reverse) {
+							int qstart1 = read_length-qstart;
+							int qend1 = read_length- qend;
+							qend = qstart1;
+							qstart = qend1;		
+						}
+						if(!first) read_pos.append(";");
+						read_pos.append(qend+"_"+qstart);
 						//System.err.println("qstart-end "+qstart+" "+qend);
 						q_str1.append(TranscriptUtils1.median(bq, qstart, qend-qstart));
 						//if(strand1!=strand) strand = 'm';
@@ -413,7 +442,7 @@ return ;
 					}
 //					System.err.println(sam1.size());
 					int source_index=0;
-					 profile.setName(rn, chrom.toString(),strand.toString(), q_str.toString(), q_str1.toString(),source_index, fusion);
+					 profile.setName(rn, chrom.toString(),strand.toString(), q_str.toString(), q_str1.toString(),read_pos.toString(), source_index, fusion);
 				//	if(profile.coRefPositions.breaks.size()>0 && ! supp) throw new RuntimeException("this is not clear");
 				//	if(supp && profile.suppl!=null && profile.suppl.size()>0) throw new RuntimeException("supps not empty");
 					
@@ -425,6 +454,11 @@ return ;
 				//	removeStart(start);
 				}
 				replace(profile);
+			}
+
+			private Object getStart(SAMRecord t) {
+				// TODO Auto-generated method stub
+				return null;
 			}
 
 			
