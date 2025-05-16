@@ -28,7 +28,8 @@ import npTranscript.run.ViralTranscriptAnalysisCmd2;
 public class IdentityProfileHolder {
 	
 	static boolean CHECK=true;
-	
+	public static double overlap_thresh = 0.33;
+	public static double overlap_max = 20;
 	public static void waitOnThreads(int sleep) {
 		if(executor==null) return;
 		if(executor instanceof ThreadPoolExecutor){
@@ -180,8 +181,7 @@ static class SamComparator implements Comparator<SAMRecord>{
 static Comparator comp = new SamComparator(false);
 static Comparator comp_q = new SamComparator(true);
 
-	public static double overlap_thresh = 0.33;
-	public static double overlap_max = 20;
+	
 	
 	static SAMRecord groupSam(Iterator<SAMRecord> sams, List<SAMRecord> extracted){
 		SAMRecord first = sams.next();
@@ -447,10 +447,10 @@ return ;
 				
 				if(CHECK) {
 					for(int kk=0; kk<la.size()-1; kk++) {
-						if(la.get(kk)-5>la.get(kk+1)) System.err.println("problem with "+sam1.get(0).getReadName()+" "+la);
+						if(la.get(kk)-overlap_max>la.get(kk+1)) System.err.println("problem with "+sam1.get(0).getReadName()+" "+la);
 					}
 				}
-				System.err.println(read_pos.toString());
+				//System.err.println(read_pos.toString());
 //					System.err.println(sam1.size());
 					int source_index=0;
 					 profile.setName(rn, chrom.toString(),strand.toString(), q_str.toString(), q_str1.toString(),read_pos.toString(), source_index, fusion);
