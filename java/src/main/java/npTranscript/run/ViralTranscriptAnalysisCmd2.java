@@ -142,7 +142,7 @@ public static int readsToSkip=0;
 		addInt("barcode_ignore", 0, "search for barcode in first Ybp");
 		addString("barcode_list",null, "list for decoding barcodes (used if more than one bamfile when streaming from fastq");
 		addString("barcode_file",null, "barcode file");
-		addBoolean("annotation_mode",false, "annotation mode");
+		addString("annotation_mode","none", "annotation mode");
 		
 
 		addString("api_url",null, "URL of database");
@@ -321,7 +321,7 @@ addBoolean("illumina", false, "use illumina libary");
 		  Outputs.outputstream =  output.endsWith(".gz")  ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output))) : new PrintStream(new FileOutputStream(output));
 		  Outputs.format = output.endsWith(".json.gz") || output.endsWith(".json") ? "json" : "tsv";
 		}
-		Outputs.annotation_mode = cmdLine.getBooleanVal("annotation_mode");
+		Outputs.annotation_mode = Arrays.asList(cmdLine.getStringVal("annotation_mode").split(":"));
 		Outputs.writeH5 = cmdLine.getBooleanVal("writeH5");
 		Outputs.report = cmdLine.getIntVal("report");
 		String[] round = cmdLine.getStringVal("round", "10").split(":");

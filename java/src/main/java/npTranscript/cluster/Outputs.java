@@ -65,7 +65,7 @@ public class Outputs{
 	public static PrintStream outputstream;  // this is the main output stream
 	public static String format;
 	public static String sampleName;
-	public static Boolean annotation_mode;
+	public static List<String> annotation_mode;
 	
 	//public static  ExecutorService executor ;
 	
@@ -730,7 +730,8 @@ gson.fromJson(str1,  int[].class);
 		class JSONOut{
 			String chr;String strand;
 			String first_read;
-			boolean transplice;
+			//boolean transplice;
+			boolean annotate;
 			Set<String> reads = new TreeSet<String>();
 			Map<String,Map<String,Map<String,Object>>> all_res =  //round, end, code
 					new HashMap<String,Map<String,Map<String,Object>>>();
@@ -741,21 +742,27 @@ gson.fromJson(str1,  int[].class);
 				this.strand =String.join(";",strand1.split(""));
 				all_res1.put("id", expt.get("sampleID"));
 				
-				flags1.put("annot", Outputs.annotation_mode);
+				
 				all_res1.put("id", expt.get("sampleID"));
 
 				
 				flags1.put("chr", chr);
 				flags1.put("br", br);
 				flags1.put("strand", strand);
-				flags1.put("lens", "L"+strand1.length());
+				String strandc = "L"+strand1.length();
+				flags1.put("lens", strandc);
 				Set<String> s = Arrays.asList(chr.split(";")).stream().collect(Collectors.toSet());
-				Set<String> s1 = s.stream().map(t -> t.substring(0, 2)).collect(Collectors.toSet());
+				Set<String> s1 = s.stream().map(t -> t.substring(0, Math.min(t.length(),3))).collect(Collectors.toSet());
 				flags1.put("chroms", s);
-				flags1.put("species", s1);
-				
+//				flags1.put("species", s1);
+				String speciesc = "S"+s1.size();
+				flags1.put("species", speciesc);
 				all_res1.put("flags", flags1);
 				all_res1.put("reads", all_res);
+				annotate = annotation_mode.contains(strandc) ||
+						annotation_mode.contains(speciesc) || 
+						annotation_mode.contains("all");
+				flags1.put("annot", annotate);
 			}
 			public  void post() {
 				flags1.put("read1", this.first_read);
@@ -787,7 +794,7 @@ gson.fromJson(str1,  int[].class);
 				}
 				Object vals1 = all_res_chr_end.get(key);
 				if(vals1==null) {
-					if(!annotation_mode) {
+					if(!annotate) {
 						vals1 = polyA==null ? new int[] {0} : new int [] {0,0,0};
 					}else {
 						vals1 = new ArrayList<String>();
