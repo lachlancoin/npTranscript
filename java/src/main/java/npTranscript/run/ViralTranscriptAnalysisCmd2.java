@@ -57,6 +57,9 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPOutputStream;
 
+import com.google.gson.Gson;
+
+import htsjdk.samtools.SAMProgramRecord;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
@@ -139,6 +142,7 @@ public static int readsToSkip=0;
 		addInt("barcode_ignore", 0, "search for barcode in first Ybp");
 		addString("barcode_list",null, "list for decoding barcodes (used if more than one bamfile when streaming from fastq");
 		addString("barcode_file",null, "barcode file");
+		addBoolean("annotation_mode",false, "annotation mode");
 		
 
 		addString("api_url",null, "URL of database");
@@ -155,11 +159,11 @@ public static int readsToSkip=0;
 		addBoolean("exclude_reads_without_barcode", false,"whether to exclude read if it does not have barcode");
 addBoolean("illumina", false, "use illumina libary");
 		
-		addString("inputFile", null, "Name of input file", false);
+		addString("inputFile", "-", "Name of input file", false);
 		addString("sampleID",null, "sampleID");
 		//addString("fastqFile", null, "Name of bam file", false);
 		addString("reference", null, "Name of reference genome", false);
-		addString("annotation", null, "ORF annotation file or GFF file", false);
+		addString("annotation_file", null, "ORF annotation file or GFF file", false);
 		addBoolean("useExons", true, "wehether to use exons");
 	//	addBoolean("baseBreakPointsOnFirst", false, "whether the break points should be preferentially based on the first bam");
 		addBoolean("sorted", false, "whether bamfile sorted in terms of position.");
@@ -317,6 +321,7 @@ addBoolean("illumina", false, "use illumina libary");
 		  Outputs.outputstream =  output.endsWith(".gz")  ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output))) : new PrintStream(new FileOutputStream(output));
 		  Outputs.format = output.endsWith(".json.gz") || output.endsWith(".json") ? "json" : "tsv";
 		}
+		Outputs.annotation_mode = cmdLine.getBooleanVal("annotation_mode");
 		Outputs.writeH5 = cmdLine.getBooleanVal("writeH5");
 		Outputs.report = cmdLine.getIntVal("report");
 		CigarHash2.round = cmdLine.getIntVal("bin0");
@@ -433,7 +438,7 @@ addBoolean("illumina", false, "use illumina libary");
 
 		Outputs.library = new File(cmdLine.getStringVal("library"));
 		
-		String annotFile = cmdLine.getStringVal("annotation");
+		String annotFile = cmdLine.getStringVal("annotation_file");
 		/*	static void errorAnalysis(String bamFile_,
 		 String refFile,  String readList,    String resdir, 
 		String pattern, int qual, int round, 
@@ -646,89 +651,15 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 		CigarHash2.round = round;
 		Annotation.tolerance = round;
 		
-		//File barcode_file_ = new File(barcode_file);
-		/*barcodes= null;// we need barcodes for all or none
-		PolyAT pAT = new PolyAT();
-		if(barcode_files!=null && barcode_files.length==bamFiles_.length && barcode_files[0] !=null) {
-			System.err.println("using barcodes"+Arrays.asList(barcode_files));
-			barcodes = new Barcodes[barcode_files.length];
-			for(int i= 0;i<barcodes.length; i++){
-			barcodes[i]=new Barcodes(barcode_files[i]);
-			}
-		}*/
-		
-		// Integer[] basesStart = new Integer[] {0,0,0,0};
-		// Integer[] basesEnd  = new Integer[] {0,0,0,0};
-	//	 int leng = 10; int thresh_A = 4;int thresh_T = 5; // how many As or Ts required for determination of strand
-	//	 String chars_forward = "ACGT";
-		
-	//	 String chars_reverse = "TGCA";
-		 
-		// Integer[] counts = new Integer[] {0,0,0};
 		IdentityProfile1.annotByBreakPosition = annotByBreakPosition;
 		CigarHash.cluster_by_annotation =true;// cluster_by_annotation;
 		TranscriptUtils.startThresh = startThresh;
 		TranscriptUtils.endThresh = endThresh;
 		IdentityProfile1.writeIsoformDepthThresh =writeIsoformDepthThresh;
 		IdentityProfile1.writeCoverageDepthThresh =writeCoverageDepthThresh;
-		//File annotSummary = new File(resdir, "annotation.csv.gz");
-		//if(annotSummary.exists()) annotSummary.delete();
-	//	PrintWriter annotation_pw = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(annotSummary, false))));
 		Map<String, Integer> reads= null;//new HashMap<String, Integer>();
-		/*if(readList.length>0 && readList[0].length()>0){
-			 Map<String, Collection<String>> map = new HashMap<String, Collection<String>>();
-			 int readind =0;
-			 int orfind = -1;
-			 int chromind = -1;
-			 int posind = -1;
-			
-			 for(int i=0; i<readList.length; i++){
-				 InputStream is = new FileInputStream(new File(readList[i]));
-				 if(readList[i].endsWith(".gz")) is = new GZIPInputStream(is);
-			 BufferedReader br = new BufferedReader(new InputStreamReader(is));
-				String st;
-				if(readList[i].indexOf("readToCluster.txt.gz")>=0){
-					st = br.readLine();
-				
-					List<String> head = Arrays.asList(st.split("\\t"));
-					readind = head.indexOf("readID");
-					orfind = head.indexOf("ORFs");
-					chromind = head.indexOf("chrom");
-					posind = head.indexOf("end");
-				}
-				while((st = br.readLine())!=null){
-					String[] str  = st.split("\\s+");
-					String readId = str[readind];
-					String orfID = orfind>=0 && orfind < str.length ? ((chromind>=0  && chromind<str.length? str[chromind]+";" : "")+str[orfind]) : i+"";
-					if(posind>=0) orfID = orfID+":"+str[posind];
-					Collection<String> l= map.get(orfID) ;
-					if(l==null) {
-						map.put(orfID, new HashSet<String>());
-						l= map.get(orfID) ;
-					}
-					l.add(readId);
-				}
-				br.close();
-			 }
-			readList = map.keySet().toArray(new String[0]);
-			for(int i=0; i<readList.length; i++){
-				Iterator<String> it =  map.get(readList[i]).iterator();
-				while(it.hasNext()){
-					reads.put(it.next(),i);
-				}
-			}
-		 
-		 
-		}
-		if(reads.size()==0){
-			readList = null;
-			reads=null;  //make it null to turn off this feature
-		}*/
+	
 		IdentityProfile1.break_thresh = break_thresh;
-		//int len = bamFiles_.length;
-		// len = 1;
-	//	String[] in_nmes  = new String[len];
-		
 		System.err.println("reading genomes " + (System.currentTimeMillis()- tme0)/1000+" secs");
 		ArrayList<Sequence> genomes = refFile==null ? null : SequenceReader.readAll(refFile, Alphabet.DNA());
 		System.err.println("done reading genomes" + (System.currentTimeMillis()- tme0)/1000+" secs");
@@ -739,97 +670,65 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 			}
 		}
 		
-		// get the first chrom
-		//File resDir =  new File(resdir);
-		//if(!resDir.exists()) resDir.mkdir();
-		//else if(!resDir.isDirectory()) throw new RuntimeException(resDir+"should be a directory");
-		///ArrayList<IdentityProfile1> profiles = new ArrayList<IdentityProfile1>();
-		
+	
 		String in_nmes;
-		//for (int ii = 0; ii < len; ii++) {
-			//String bamFile = bamFiles;
-			if(bamFile_!="-"){
+			if(!bamFile_.equals("-")){
 				File bam = new File( bamFile_);
 				in_nmes = bam.getName().split("\\.")[0];
 			}else{
 				in_nmes = "stdin";
 			}
-		
-			
-		
-	//	genes_all_pw.close();
-		
-		//final Iterator<SAMRecord> samIters;
 		SamReader samReaders= null;// = new SamReader[len];
 		boolean allNull = true;
-		
 		Iterator<SAMRecord> samIter=null;
-		if(bamFile_.endsWith(".fastq") || bamFile_.endsWith(".fastq.gz") || 
-				bamFile_.endsWith(".fq.gz")){
-			allNull = false;
-			Set<String>keyset=null;
-			if(readList!=null) {
-				keyset=reads.keySet();
-			}
-			samIter = 
-					SequenceUtils.getCombined(
-					SequenceUtils.getSAMIteratorFromFastq(new String[] {bamFile_}, mm2_index, readsToSkip, maxReads, 
-							keyset, fail_thresh, null),
-					sorted, sequential);
-		}else{
-		//inner: for (int ii = 0; ii < len; ii++) {
 			SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
-		//	SamReaderFactory.makeDefault().op
 			if(bamFile_.equals("-")){
+				System.err.println("reading from stdin");
 				samReaders = SamReaderFactory.makeDefault().open(SamInputResource.of(System.in));
 			}else{
 
 				samReaders = SamReaderFactory.makeDefault().open(new File(bamFile_));
 			}
+			Map<String, Object> m = new HashMap();
+			Map<String, Object> flags = new HashMap();
+			List<SAMProgramRecord> pr = samReaders.getFileHeader().getProgramRecords();
+			flags.put("program_records",pr );
+			List<String> programs = new ArrayList<String>();
+			for(int kk=0; kk<pr.size(); kk++) {
+				SAMProgramRecord pr1 = pr.get(kk);
+				programs.add(pr1.getProgramName());
+				if(pr1.getCommandLine().startsWith("minimap2")) {
+					List<String>str = Arrays.asList(pr1.getCommandLine().split("\\s+"));
+					StringBuffer sb = new StringBuffer();
+					for(int jk=1; jk<str.size()-2; jk++) sb.append(str.get(jk)+" ");
+					flags.put("minimap2_options", sb.toString().trim());
+					flags.put("minimap2_version", pr1.getAttribute("VN"));
+					flags.put("minimap2_reference", str.get(str.size()-2).replaceAll(".mmi", ""));
+					flags.put("fastq", str.get(str.size()-1));
+					if(sampleID==null || sampleID.equals("-") ||sampleID.equals("fastq")) {
+						sampleID = (String) flags.get("fastq");
+					}
+				}
+			}
+			flags.put("programs", programs);
+			flags.put("annotation", Outputs.annotation_mode);
+			flags.put("round", CigarHash2.round);
+			m.put("id", sampleID);
+			m.put("flags", flags);
 				samIter = samReaders.iterator();
-			//}
+				Gson gson = new Gson();
+				String json_str = gson.toJson(m);
+				Outputs.outputstream.print(json_str);Outputs.outputstream.println();
 			allNull = false;
-		
-//		 samIter= 
-			//	new FilteredIterator(
-	//			SequenceUtils.getCombined(samIters, sorted, sequential);
-				//, readList==null ? null :reads.keySet(),readsToSkip,  max_reads, fail_thresh, false);
-		}
-		//Map<String, int[]> chromsToInclude = getChromsToInclude(genomes, chrToInclude, chrToIgnore);
-		
-		
-		
-		/*for(int key=0; key<genomes.size();key++){
-			if( chromsToInclude.containsKey(genomes.get(key).getName()))
-				chrom_indices_to_include.put(key, chromsToInclude.get(key));
-		}
-		System.err.println("chrom indices to include");*/
-		//System.err.println(chrom_indices_to_include);
-		//if(chrom_indices_to_include.size()==0) chrom_indices_to_include=null;
-		//Collection<String> chromToRemap = Arrays.asList(chromsToRemap);
-		
-		
-		//System.err.println(chromsToInclude.size());
-			int currentIndex = -1;
-			
-		
-			
-		//	Sequence chr =  new Sequence( Alphabet.DNA(), 0, ""); 
-		//	int seqlen = chr.length();
-		//	FastqWriter[][] fqw = chromsToRemap==null ? null : Outputs.getFqWriter(chromsToRemap, resdir, in_nmes);   //chromToRemap.contains(chr.getName()) ? Outputs.getFqWriter(chr.getName(), resdir) : null;
-				// first row is primary , second is supplementary
-			//{"sampleID":["results_20240626221127_dorado"],"flags":{"genomic":[true],"reference":["chrIS"],"type":["dRNA"],"kit":["NA"],"flowcell":["MinION"],"alignment_command":["minimap2 -y -ax splice:hq -un $fa $1.fastq  | samtools view -bS > $1.bam"],"alignment_version":["2.28-r1209"]}}
 
 			Map<String, Object> expt=new HashMap<String, Object>() ;
-			Map<String, Object> flags = new HashMap<String, Object>();
+			Map<String, Object> flags1 = new HashMap<String, Object>();
 			expt.put("sampleID",sampleID); // prob not best sampleID
-			expt.put("flags",flags);
-			flags.put("RNA", ViralTranscriptAnalysisCmd2.RNA);
-			
+			expt.put("flags",flags1);
+			flags1.put("RNA", ViralTranscriptAnalysisCmd2.RNA);
 			Outputs 	outp = new Outputs( in_nmes,   true, CigarCluster.recordDepthByPosition,expt); 
 			
 			
-		//	boolean calcBreaks1 = calcBreaks;// && break_thresh < seqlen && chr!=null;
 			
 			Annotation 	annot = annot_file == null ? new EmptyAnnotation( ) : 
 					new Annotation(new File(annot_file), 1);
@@ -837,7 +736,6 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 			
 			IdentityProfileHolder profile =  	
 					new IdentityProfileHolder(genomes, null, outp,  in_nmes, calcBreaks1, annot);
-			//boolean updateProfile = true;
 			
 			
 			int numReads = 0;
@@ -858,18 +756,6 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 		
 			outer: for ( ij=0; samIter.hasNext() ;ij++ ) {
 				
-			/*	if(ij%1000 ==0){
-				//	Debug.getMemoryInfo();
-					long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
-
-
-				    long freeMemory = Runtime.getRuntime().maxMemory() - usedMemory;
-					System.err.println("used mem "+((double) usedMemory)/1e6+ "mb "+ij);
-					System.err.println("free mem "+((double) freeMemory)/1e6+ "mb "+ij);
-					
-					
-					
-				}*/
 				
 				final SAMRecord sam=samIter.next();
 				
@@ -888,14 +774,6 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 					continue;
 				}
 				
-			//	Object obj = sam.getAttribute("rl");
-				
-			//	List<SAMTagAndValue> l = sam.getAttributes();
-			//	for(int i=0; i<l.size(); i++){
-			//		System.err.println(l.get(i).tag+" "+l.get(i).value);
-			//	}
-			//	Object val = sam.getAttributes().get(0).value;
-			//	Object tag = sam.getAttributes().get(0).tag;
 				byte[] b = sam.getBaseQualities();
 				double q1 = 500;
 				if(b.length>0){
@@ -911,43 +789,25 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 						continue;
 					}
 				}
-			//	
 				
 				if(sam==null) break outer;
-				
-			
-			
-				
-				//String poolID = readSeq.get
-				
 
 				numReads++;
 				if (sam.getMappingQuality() < qual) {
 					numNotAligned++;
 					continue;
 				}
-			/*	if(probInclude<1.0 && Math.random()>probInclude){
-					//randomly exclude
-					continue;
-				}*/
-				
 				boolean supplementary = false;
-				//System.err.println(sam.getMappingQuality());
 				if(sam.isSecondaryOrSupplementary()) {
 					if(!ViralTranscriptAnalysisCmd2.allowSuppAlignments) continue;
-					//boolean supp = sam.getSupplementaryAlignmentFlag();
-				//	boolean sameIndex = sam.getReferenceIndex()==previousRefIndex;
 					if( sam.getReadName().equals(previousRead) ){
 						supplementary = true;
 						int qual1 = sam.getMappingQuality();
 						
 						if(qual1 < supplementaryQ  ){
-							// we cant include supplementary if not sorted
-							//System.err.println("remove "+qual1);
 							continue; // need secondary read quality of 5
 						}else{
 							if(sorted) throw new RuntimeException("!!");;
-							//System.err.println("include supplementary read " + sam.getReadName()+" " + qual1);
 						}
 						
 					}else{
@@ -956,15 +816,10 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 					continue;
 					}
 				}
-				//int source_index = (Integer) sam.getAttribute(SequenceUtils.src_tag);
 				
 				
 					if(sams.size()>0 && (!sam.getReadName().equals(previousRead) )){
 						try{
-//						    int[] mq = sams.stream().mapToInt(sa -> ((SAMRecord) sa).getMappingQuality()).toArray();
-
-	//					    int[] start = sams.stream().mapToInt(sa -> ((SAMRecord) sa).getReadPositionAtReferencePosition(sa.getAlignmentStart())).toArray();
-		//				    int[] end = sams.stream().mapToInt(sa -> ((SAMRecord) sa).getReadPositionAtReferencePosition(sa.getAlignmentEnd())).toArray();
 							profile.identity1(new ArrayList<SAMRecord>(sams),  cluster_reads,     genomes, primaryIndex);
 							sams.clear();
 							primaryIndex=-1;
@@ -981,7 +836,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 
 					previousRead = sam.getReadName();
 					previousRefIndex = sam.getReferenceIndex();
-			}//samIter.hasNext()
+			}
 			if(sams.size()>0){
 				try{
 					
@@ -993,38 +848,20 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 			}
 			if(samReaders!=null)samReaders.close();
 			
-//			for(int ii=0; ii<samReaders.length; ii++){
-	//		if(samReaders[ii] !=null) samReaders[ii].close();
-		//	}
-			
 		
 		
 			if(profile!=null){
 				IdentityProfileHolder.waitOnThreads(300);
-				//profile.printBreakPoints(currentIndex);
-				//profile.getConsensus();
-				/*if(TranscriptUtils.writeAnnotP) {
-					annot.print(outp.annotP);
-				}*/
 			}
 			if(outp!=null) outp.close();
-		/*	if(fqw!=null) {
-				//Outputs.waitOnThreads(Outputs.fastQwriter, 100); //make sure the fastqWriter has finished. 
-				for(int i=0; i<fqw.length; i++) {
-					for(int j=0; j<fqw[i].length; j++) fqw[i][j].close();
-				}
-			}*/
+	
 			
 				
 			{
 				long delta =  System.currentTimeMillis() -  time0;
 				double timeperread =  ((double)delta)/ ((double)ij);
 				System.err.println(timeperread+" milliseconds per read at "+ij);
-				//time0 = System.currentTimeMillis();
-				//cnt0= ij;
 			}	
-	//if(anno!=null) anno.close();
-	//	if(annotation_pw!=null) annotation_pw.close();
 	}
 
 	

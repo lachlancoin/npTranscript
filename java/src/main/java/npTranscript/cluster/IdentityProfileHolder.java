@@ -341,10 +341,8 @@ return ;
 				}
 				
 				
-				Sequence readSeq = new Sequence(alph, sam_1.get(0).getReadString(), sam_1.get(0).getReadName());
+				String readSeq = sam_1.get(0).getReadString();//new Sequence(alph, sam_1.get(0).getReadString(), sam_1.get(0).getReadName());
 
-		//		System.err.println("HHH,"+chrom_+","+sam.getAlignmentStart()+ ","+sam.getAlignmentEnd()+","+sam.getReadName()+","
-			//+sam.getReadLength());
 				Collections.sort(sam_1 , comp_q);
 				if(sam_1.get(0).isSecondaryOrSupplementary()) {
 					throw new RuntimeException("first should be primary");
