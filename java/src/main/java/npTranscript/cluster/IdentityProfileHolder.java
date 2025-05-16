@@ -27,6 +27,8 @@ import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 public class IdentityProfileHolder {
 	
+	static boolean CHECK=true;
+	
 	public static void waitOnThreads(int sleep) {
 		if(executor==null) return;
 		if(executor instanceof ThreadPoolExecutor){
@@ -211,13 +213,13 @@ static Comparator comp_q = new SamComparator(true);
 				//System.err.println("included "+overl[0]+" ,"+overl[1]+","+overl[2]);
 				sams.remove();
 			}else {
-			//System.err.println("excluded "+overl[0]+" ,"+overl[1]+","+overl[2]);
+			     System.err.println("excluded "+overl[0]+" ,"+overl[1]+","+overl[2]+" "+primary.getReadName());
 			}
 		}
 		
-		Collections.sort(extracted , comp);
+		//Collections.sort(extracted , comp);
 		
-		if(false){
+		/*if(false){
 		for(int i=0; i<extracted.size(); i++){
 			SAMRecord sr = extracted.get(i);
 			System.err.println(sr.getReferenceName() + " "+sr.getReadNegativeStrandFlag());
@@ -228,7 +230,7 @@ static Comparator comp_q = new SamComparator(true);
 
 		}
 		System.err.println("h");
-		}
+		}*/
 	//	return extracted;
 		//return extracted;
 		//if(flipped!=null) return flipped.intValue()==0 ? fa
@@ -349,13 +351,14 @@ return ;
 				
 				
 				String readSeq = sam_1.get(0).getReadString();//new Sequence(alph, sam_1.get(0).getReadString(), sam_1.get(0).getReadName());
-
-				Collections.sort(sam_1 , comp_q);
+///DONT THINK NEED TO SORT
+				//Collections.sort(sam_1 , comp_q);
 				if(sam_1.get(0).isSecondaryOrSupplementary()) {
 					throw new RuntimeException("first should be primary");
 				}
 		//		int source_index = (Integer) sam_1.get(0).getAttribute(SequenceUtils.src_tag);
 				String rn= sam_1.get(0).getReadName();
+				int read_length = sam_1.get(0).getReadLength();
 				final IdentityProfile1 profile = get();
 				int sze = sam_1.size();
 				List<SAMRecord>sam1 = new ArrayList<SAMRecord>();
@@ -370,7 +373,7 @@ return ;
 					}
 					//boolean flip = TranscriptUtils.isFlipped(primary);
 					String read_strand = (String) primary.getAttribute(PolyAT.read_strand_tag);
-					int read_length = primary.getReadLength();
+					
 					
 					byte[] bq = primary.getBaseQualities();
 				//	System.err.println(sam1.size()+" "+sze);
@@ -396,7 +399,7 @@ return ;
 					//	if(flip){
 				//		Collections.reverse(sam1);
 				//	}
-					Collections.sort(sam1, samComparator);
+					Collections.sort(sam1, samComparator); // orders along the read
 					Iterator<SAMRecord> it = sam1.iterator();
 					while(it.hasNext()){
 						boolean first = chr==null;
@@ -440,6 +443,14 @@ return ;
 							q_str.append(";");q_str1.append(";");
 						}
 					}
+				List<Integer> la = Arrays.asList(read_pos.toString().split("[;_]")).reversed().stream().map(t -> Integer.parseInt(t)).toList();
+				
+				if(CHECK) {
+					for(int kk=0; kk<la.size()-1; kk++) {
+						if(la.get(kk)-5>la.get(kk+1)) System.err.println("problem with "+sam1.get(0).getReadName()+" "+la);
+					}
+				}
+				System.err.println(read_pos.toString());
 //					System.err.println(sam1.size());
 					int source_index=0;
 					 profile.setName(rn, chrom.toString(),strand.toString(), q_str.toString(), q_str1.toString(),read_pos.toString(), source_index, fusion);
