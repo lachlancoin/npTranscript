@@ -369,7 +369,7 @@ static AlignmentParameters align_p =new AlignmentParameters();
 		
 	};
 	
-	SortedMap<int[], String> copy(SortedMap<int[], SAMRecord> map) {
+	static SortedMap<int[], String> copy(SortedMap<int[], SAMRecord> map) {
 		TreeMap<int[], String> tm = new TreeMap<int[], String>(map.comparator());
 		Iterator<Entry<int[], SAMRecord>> it = map.entrySet().iterator();
 		while(it.hasNext()) {
@@ -381,6 +381,7 @@ static AlignmentParameters align_p =new AlignmentParameters();
 		}
 		return tm;
 	}
+	static boolean PRINT_MAP=false;
 	static boolean checkList(SortedMap<int[], SAMRecord> res, SAMRecord primary, 
 			StringBuffers sb
 			
@@ -395,7 +396,18 @@ static AlignmentParameters align_p =new AlignmentParameters();
 			String read_str1 = primary_neg ?  NeedlemanWunsch.reverseComplement(read_str) : read_str;
 			int cnt=1;
 			
-			
+			if(PRINT_MAP) {
+				System.err.println(gson.toJson(res.keySet()));
+				System.err.println(gson.toJson(copy(res).values()));
+				if(false) {
+					List<Boolean> strands=res.values().stream().map(t -> t.getReadNegativeStrandFlag()).collect(Collectors.toList());
+					List<List<int[]>> strands1=res.values().stream().map(t -> 
+					t.getAlignmentBlocks().stream().map(t1 -> stEnd(t1)).collect(Collectors.toList())).collect(Collectors.toList());
+					List<int[]> strands2=res.values().stream().map(t -> stEnd1(t)).collect(Collectors.toList());
+	
+					System.err.println("h");
+					}
+			}
 			Iterator<Entry<int[], SAMRecord>> it1 =  res.entrySet().iterator();
 		
 			//String chr = null;
@@ -410,31 +422,23 @@ static AlignmentParameters align_p =new AlignmentParameters();
 				
 					int overlap = se_prev[1] - se1[0];
 					sb.overlaps.append(overlap);
-					if(overlap>overlap_max) {
+					if(overlap>0) {
 						String substr = read_str1.substring(se1[0],se_prev[1]);
 						SAMRecord sr1 = res.get(se_prev);
 						SAMRecord sr2 = res.get(se1);
 						String char1 = sr1.getReadNegativeStrandFlag() ? "-" : "+";
 						String char2 = sr2.getReadNegativeStrandFlag() ? "-" : "+";
-//						System.err.println(gson.toJson(res.keySet()));
-//						System.err.println(gson.toJson(copy(res).values()));
-//						System.err.println("problem with "+readname);
-					//	it.remove();
-						if(false) {
-						List<Boolean> strands=res.values().stream().map(t -> t.getReadNegativeStrandFlag()).collect(Collectors.toList());
-						List<List<int[]>> strands1=res.values().stream().map(t -> 
-						t.getAlignmentBlocks().stream().map(t1 -> stEnd(t1)).collect(Collectors.toList())).collect(Collectors.toList());
-						List<int[]> strands2=res.values().stream().map(t -> stEnd1(t)).collect(Collectors.toList());
 
-						System.err.println("h");
-						}
+					//	it.remove();
+						
 
 						if(Outputs.overlapOut!=null) {
-							Outputs.overlapOut.println(">"+readname+" overlap:"+overlap+" cnt:"+cnt+" "+se1[0]+se_prev[1]+" "+char1+" " +char2+" "+sr1.getReferenceName()+" "+sr2.getReferenceName());
+							Outputs.overlapOut.print(">"+readname+",overlap:"+overlap+",cnt:"+cnt+","+se1[0]+se_prev[1]+","+char1+"," +char2+","+sr1.getReferenceName()+","+sr2.getReferenceName()+"\t");
 							Outputs.overlapOut.println(substr);
 						}
-					
-						removed=true;
+						if(overlap>overlap_max) {
+							removed=true;
+						}
 						//return null;
 
 					}else if(overlap <0) {
@@ -446,7 +450,7 @@ static AlignmentParameters align_p =new AlignmentParameters();
 						String char2 = sr2.getReadNegativeStrandFlag() ? "-" : "+";
 
 						if(Outputs.joinOut!=null) {
-							Outputs.joinOut.println(">"+readname+" "+cnt+" "+se_prev[1]+"-"+se1[0]+" "+char1+" " +char2+" "+sr1.getReferenceName()+" "+sr2.getReferenceName());
+							Outputs.joinOut.print(">"+readname+":"+cnt+","+se_prev[1]+"-"+se1[0]+","+char1+";" +char2+","+sr1.getReferenceName()+","+sr2.getReferenceName()+"\t");
 						Outputs.joinOut.println(substr);
 						
 						}
