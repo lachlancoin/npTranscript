@@ -63,6 +63,7 @@ public class Outputs{
 	
 	public static String url="http://0.0.0.0:81";
 	public static PrintStream outputstream;  // this is the main output stream
+	public static PrintStream joinOut,overlapOut;
 	public static String format;
 	public static String sampleName;
 	public static List<String> annotation_mode;
@@ -172,6 +173,8 @@ public class Outputs{
 			System.err.println();
 			this.all_res.values().stream().forEach(t ->t.values().forEach(t1 -> t1.post()) );
 			Outputs.outputstream.close();
+			if(Outputs.joinOut!=null) Outputs.joinOut.close();
+			if(Outputs.overlapOut!=null) Outputs.overlapOut.close();
 		//	Map output1 = this.extract();
 			//System.err.println(output1);
 		//	if(plusMinus!=null) plusMinus.close();
@@ -823,6 +826,8 @@ gson.fromJson(str1,  int[].class);
 		}
 		//int total_num=0;
 		public static int report=5000; // how many reads to aggregate before reporting
+
+		
 		String first_read = null;
 		public Set<String> reads = new TreeSet<String>();
 		public synchronized void append(String readname,  String chrom, String strand, String endPos, String key,Integer polyA, Integer round){

@@ -36,6 +36,6 @@ public class AlignmentParameters {
     public AlignmentParameters() {
         super();
         this.gapPenalty = 2;
-        this.substitutePenalty = 1;
+        this.substitutePenalty = 10;
     }
 }

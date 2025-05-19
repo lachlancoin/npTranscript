@@ -3,26 +3,32 @@ package npTranscript.cluster;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
+import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.Stack;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import com.google.gson.Gson;
 
 import htsjdk.samtools.AlignmentBlock;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.SequenceUtil;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
-import japsa.tools.seq.SequenceUtils;
-import jdk.internal.org.jline.terminal.spi.TerminalProvider.Stream;
+import npTranscript.NW.AlignmentParameters;
+import npTranscript.NW.AlignmentResult;
+import npTranscript.NW.NeedlemanWunsch;
 import npTranscript.NW.PolyAT;
-import npTranscript.run.Barcodes;
-import npTranscript.run.TranscriptUtils1;
 import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 public class IdentityProfileHolder {
@@ -30,6 +36,7 @@ public class IdentityProfileHolder {
 	static boolean CHECK=true;
 	public static double overlap_thresh = 0.33;
 	public static double overlap_max = 20;
+	static Gson gson = new Gson();
 	public static void waitOnThreads(int sleep) {
 		if(executor==null) return;
 		if(executor instanceof ThreadPoolExecutor){
@@ -181,39 +188,40 @@ static class SamComparator implements Comparator<SAMRecord>{
 static Comparator comp = new SamComparator(false);
 static Comparator comp_q = new SamComparator(true);
 
+static AlignmentParameters align_p =new AlignmentParameters();
 	
-	
-	static SAMRecord groupSam(Iterator<SAMRecord> sams, List<SAMRecord> extracted){
+	static SAMRecord groupSam(List<SAMRecord>sam_1, List<SAMRecord> extracted,
+			List<int[]>se){
+		Iterator<SAMRecord> sams = sam_1.iterator();
 		SAMRecord first = sams.next();
+		int mq = first.getMappingQuality();
 		SAMRecord primary  = null;
 		if(!first.isSecondaryOrSupplementary()) primary = first;
 		if(primary==null) throw new RuntimeException("first is not primary");
 		int read_length = primary.getReadLength();
+		String read_str = primary.getReadString();
 		int q1 = first.getMappingQuality();
-		sams.remove();
+		//sams.remove();
 		extracted.add(first);
-		int[] overl = new int[3];
-		
-		for(int i=0; sams.hasNext(); i++){
-			SAMRecord sam = sams.next();
-			
-		//	int q2 = sam.getMappingQuality();
-		//	if(q2>q1 && i>1) throw new RuntimeException("!!");
-			Arrays.fill(overl,0);
-		//	List<AlignmentBlock> l2 = sam.getAlignmentBlocks();
-			for(int j=0; j<extracted.size(); j++){
-				read_overlap(extracted.get(j),sam,overl, read_length);
-			}
-		//	System.err.println(Arrays.asList(overl));
-			if( ( overl[2] <= overlap_thresh *overl[1] && overl[2] <= overlap_thresh*overl[0] && overl[2] <= overlap_max)){
-				if(!sam.isSecondaryOrSupplementary()){
-					primary=sam;
+		boolean primary_neg = primary.getReadNegativeStrandFlag();
+	
+		//int[] overl = new int[3];
+		if(sams.hasNext()) {
+			se.add(getStEnd(first, read_str,read_length, primary_neg));
+			outer: for(int i=0; sams.hasNext(); i++){
+				SAMRecord sam = sams.next();
+				//int mq1 = sam.getMappingQuality();
+				int[] se1=getStEnd(sam, read_str,read_length, primary_neg);
+				for(int j=0; j<extracted.size(); j++){
+					int[] se_j=se.get(j);
+					int overl1 = read_overlap(se1,se_j);
+					System.err.println(overl1);
+					if( overl1>overlap_thresh) {
+					     continue outer;
+					}
 				}
-				extracted.add(sam);
-				//System.err.println("included "+overl[0]+" ,"+overl[1]+","+overl[2]);
-				sams.remove();
-			}else {
-			     System.err.println("excluded "+overl[0]+" ,"+overl[1]+","+overl[2]+" "+primary.getReadName());
+					extracted.add(sam);
+					se.add(se1);
 			}
 		}
 		
@@ -236,40 +244,104 @@ static Comparator comp_q = new SamComparator(true);
 		//if(flipped!=null) return flipped.intValue()==0 ? fa
 		return primary;
 	}
-  
-	static int[] getStEnd(SAMRecord s1, int read_length) {
-		List<AlignmentBlock> l1 = s1.getAlignmentBlocks();
+	
+	static Pattern patt = Pattern.compile("[ACTG]");
+ 
+	static int[] getStEnd(SAMRecord s1,  String read_str, int read_length, boolean primary_neg) {
+		boolean primary= !s1.isSecondaryOrSupplementary();
+		int mq = s1.getMappingQuality();
+		String str1 =s1.getReadString(); String read_str1 = read_str;
+		int len =s1.getReadLength();
 		boolean neg1=s1.getReadNegativeStrandFlag();
-		AlignmentBlock a1 = l1.get(0);
-		AlignmentBlock a2 = l1.get(l1.size()-1);
-		int st1 = a1.getReadStart();
+
+		
+		//int len1 = s1.getAlignmentEnd()-s1.getAlignmentStart();
+		//List<AlignmentBlock> l1 = s1.getAlignmentBlocks();
+		//AlignmentBlock a1 = l1.get(0);
+	//	AlignmentBlock a2 = l1.get(l1.size()-1);
+		int st = s1.getStart();int end = s1.getEnd();
+		int st_ = s1.getReadPositionAtReferencePosition(st);
+		int end_ = s1.getReadPositionAtReferencePosition(end);
+		if(!neg1 & st <end & st_>end_) {
+			throw new RuntimeException("this should not happen");
+		}
+//	    if(neg1 && ! primary_neg || !neg1 && primary_neg) {
+		boolean aligns_to_end=false;
+		boolean adjusted=false;
+		if(len!=read_length   & st_<5 & true) {
+			String str = str1;
+			if(neg1) { 
+				// System.err.println(str);
+				str = NeedlemanWunsch.reverseComplement(str1);
+				// System.err.println(str);
+			}
+			if(primary_neg) {
+				read_str1 = NeedlemanWunsch.reverseComplement(read_str);
+			}
+			
+			int shift_read = read_str1.indexOf(str);
+			if(shift_read<0) {
+				if(true) throw new RuntimeException("no subindex!");
+					AlignmentResult result= 
+							NeedlemanWunsch.computeNWAlignment(read_str1, str, align_p);
+					double sc = NeedlemanWunsch.score(result);
+					  String[] alignments = result.getAlignments();
+					
+					//  System.err.println("ref\n"+alignments[0]);
+					  String s2 = alignments[1];
+					  Matcher m = patt.matcher(s2);
+					  m.find();
+					   shift_read = m.start();
+			}
+			 
+		//	  st_ =  st_+shift_read;
+			//  end_ = end_+shift_read;
+			  st_ = shift_read;
+			  end_ = st_ + len;
+			 adjusted=true;
+		}
+		
+		
+	    if(neg1 & !adjusted) { // & !primary_neg || primary_neg && !neg1) {
+	    	
+	    	int st1 = read_length-end_ + 1;
+	    	int st2 = read_length - st_ +1;
+	    //	System.err.println(read_str.substring(st1,st2));
+	    //	System.err.println(read_str.substring(st_,end_));
+	    //	System.err.println(NeedlemanWunsch.reverseComplement(str1));
+	    	return new int[] {st1,st2};
+	    }
+		
+		return new int[] {st_,end_};
+/*		int st1 = a1.getReadStart();
 		int end1 = a2.getReadStart()+a2.getLength();
 	//	int readlen = s1.getReadLength();
 		if(neg1) {
-			int end2 = read_length-st1;
-			int st2 = read_length-end1;
+			int end2 = read_length-st1+1;
+			int st2 = read_length-end1+1;
+			
+			 
+			
 //System.err.println(s1+" "+st2+" "+end2);
 			return new int[] {st2,end2};
 
 		}
 //		System.err.println(s1+" "+st1+" "+end1);
 
-		return new int[] {st1,end1};
+		return new int[] {st1,end1};*/
 	}
 
-	private static void read_overlap(SAMRecord s1, SAMRecord s2, int[] overl, int read_length) {
-		int[] se1=getStEnd(s1, read_length);
-		int[] se2=getStEnd(s2, read_length);
+	private static int read_overlap(int[] se1, int[] se2) {
 		int st1 = se1[0]; int end1 = se1[1];
 		int st2 = se2[0]; int end2 = se2[1];
 	
 		int overlap = CigarHash2.overlap(st2, end2,st1 , end1);
-		if(overlap>overl[2] || overl[2] ==0){
+	/*	if(overlap>overl[2] || overl[2] ==0){
 			overl[0] = end2 -st2; 
 			overl[1] = end1 -st1;
 			overl[2] = overlap;
-		}
-		
+		}*/
+		return overlap;
 	}
  
 	
@@ -280,6 +352,137 @@ static Comparator comp_q = new SamComparator(true);
 	public synchronized void addBreakPoint(int source_index, String i, int br_i, int br_i1) {
 	 	this.bp.addBreakPoint(source_index, i, br_i, br_i1);
 		
+	}
+	
+	static Comparator<int[]> revcomp = new Comparator<int[]>() {
+
+		@Override
+		public int compare(int[] se1, int[] se2) {
+			// TODO Auto-generated method stub
+			if(se1[0]==se2[0]) return 0;
+			return se1[0] < se2[0]? -1 : 1;
+//			return -1*(Integer.compare(se1[0], se2[0]));
+		}
+		
+		
+	};
+	
+	SortedMap<int[], String> copy(SortedMap<int[], SAMRecord> map) {
+		TreeMap<int[], String> tm = new TreeMap<int[], String>(map.comparator());
+		Iterator<Entry<int[], SAMRecord>> it = map.entrySet().iterator();
+		while(it.hasNext()) {
+			Entry<int[], SAMRecord> ent = it.next();
+			SAMRecord sr = ent.getValue();
+			int[] key = ent.getKey();
+			tm.put(key,key[0]+","+key[1]+":"+
+					sr.getReferenceName()+",neg:"+sr.getReadNegativeStrandFlag()+",supp:"+sr.isSecondaryOrSupplementary());
+		}
+		return tm;
+	}
+	
+	SortedMap<int[], SAMRecord> getList(List<SAMRecord> li){
+		SAMRecord primary = li.get(0);
+		if(primary.isSecondaryAlignment()) throw new RuntimeException("!");
+		//sam1.clear();//seXM_004737643.2.clear();
+		//sam1.addAll(sam_1);
+
+		int read_length = primary.getReadLength();
+		String read_str = primary.getReadString();
+		boolean primary_neg = primary.getReadNegativeStrandFlag();
+		TreeMap<int[], SAMRecord> res = new TreeMap<int[],SAMRecord>(revcomp);
+	//	System.err.println(li.get(0).getReadName());
+		//List<Boolean >res1 = new ArrayList<Boolean>();
+		if(li.size()==1) {
+			SAMRecord sr = li.get(0);
+			res.put(new int[] {0, sr.getReadLength()}, sr);
+			return res;
+		}
+		for(int k=0; k<li.size(); k++) {
+			int[] stp = getStEnd(li.get(k), read_str,read_length, primary_neg);
+			res.put(stp,(li.get(k)));
+			
+		}
+		if(CHECK) {
+			String readname = primary.getReadName();
+			Iterator<int[]> it = res.keySet().iterator();
+			int[] se_prev = it.next();
+			boolean removed=false;
+			String read_str1 = primary_neg ?  NeedlemanWunsch.reverseComplement(read_str) : read_str;
+			int cnt=1;
+			while(it.hasNext()) {
+				int[] se1 = it.next();
+				int overlap = se_prev[1] - se1[0];
+				if(overlap>overlap_max) {
+				
+					String substr = read_str1.substring(se1[0],se_prev[1]);
+					SAMRecord sr1 = res.get(se_prev);
+					SAMRecord sr2 = res.get(se1);
+					String char1 = sr1.getReadNegativeStrandFlag() ? "-" : "+";
+					String char2 = sr2.getReadNegativeStrandFlag() ? "-" : "+";
+
+					
+//					System.err.println(gson.toJson(res.keySet()));
+//					System.err.println(gson.toJson(copy(res).values()));
+//					System.err.println("problem with "+readname);
+				//	it.remove();
+					if(false) {
+					List<Boolean> strands=res.values().stream().map(t -> t.getReadNegativeStrandFlag()).collect(Collectors.toList());
+					List<List<int[]>> strands1=res.values().stream().map(t -> 
+					t.getAlignmentBlocks().stream().map(t1 -> stEnd(t1)).collect(Collectors.toList())).collect(Collectors.toList());
+					List<int[]> strands2=res.values().stream().map(t -> stEnd1(t)).collect(Collectors.toList());
+
+					System.err.println("h");
+					}
+
+					if(Outputs.overlapOut!=null) {
+						Outputs.overlapOut.println(">"+readname+" overlap:"+overlap+" cnt:"+cnt+" "+se1[0]+se_prev[1]+" "+char1+" " +char2+" "+sr1.getReferenceName()+" "+sr2.getReferenceName());
+						Outputs.overlapOut.println(substr);
+					}
+				
+					removed=true;
+					//return null;
+
+				}else if(se1[0] >se_prev[1]) {
+					
+					String substr = read_str1.substring(se_prev[1], se1[0]);
+					SAMRecord sr1 = res.get(se_prev);
+					SAMRecord sr2 = res.get(se1);
+					String char1 = sr1.getReadNegativeStrandFlag() ? "-" : "+";
+					String char2 = sr2.getReadNegativeStrandFlag() ? "-" : "+";
+
+					if(Outputs.joinOut!=null) {
+						Outputs.joinOut.println(">"+readname+" "+cnt+" "+se_prev[1]+"-"+se1[0]+" "+char1+" " +char2+" "+sr1.getReferenceName()+" "+sr2.getReferenceName());
+					Outputs.joinOut.println(substr);
+					}
+				}
+				cnt++;
+			}
+			
+			if(removed) {
+				/*
+					if(!strands.contains(true)){
+				
+				System.err.println(gson.toJson(res.keySet()));
+				System.err.println("problem"+readname);
+				System.exit(0);;
+				}*/
+				return null;
+			}
+		}
+		return res;
+		
+	}
+	static int[] stEnd(AlignmentBlock ab) {
+		int st = ab.getReadStart();
+		int end = st+ab.getLength();
+		return new int[] {st,end};
+	}
+	static int[] stEnd1(SAMRecord sr) {
+		int st = sr.getAlignmentBlocks().get(0).getReadStart();
+		AlignmentBlock ab = 
+				sr.getAlignmentBlocks().get(sr.getAlignmentBlocks().size()-1);
+		int end = ab.getReadStart()+ab.getLength();
+		return new int[] {st,end};
 	}
 	public void empty(){
 		int len =idents.size();
@@ -338,7 +541,7 @@ return ;
 	//	}
 		//Boolean backwardStrand =null;
 		
-		
+	
 		
 		Runnable run = new Runnable(){
 			public void run(){
@@ -352,27 +555,26 @@ return ;
 				
 				String readSeq = sam_1.get(0).getReadString();//new Sequence(alph, sam_1.get(0).getReadString(), sam_1.get(0).getReadName());
 ///DONT THINK NEED TO SORT
-				//Collections.sort(sam_1 , comp_q);
+			//	Collections.sort(sam_1 , comp_q);
 				if(sam_1.get(0).isSecondaryOrSupplementary()) {
 					throw new RuntimeException("first should be primary");
 				}
 		//		int source_index = (Integer) sam_1.get(0).getAttribute(SequenceUtils.src_tag);
 				String rn= sam_1.get(0).getReadName();
-				int read_length = sam_1.get(0).getReadLength();
 				final IdentityProfile1 profile = get();
 				int sze = sam_1.size();
-				List<SAMRecord>sam1 = new ArrayList<SAMRecord>();
-				
+				//List<SAMRecord>sam1 = new ArrayList<SAMRecord>();
+		//	List<int[]>se = new ArrayList<int[]>();
 				int limit = 1;
-				inner: for(int j=0; sam_1.size()>0 && j<limit; j++){
-					sam1.clear();
-					SAMRecord primary = groupSam(sam_1.iterator(), sam1);
-					if(primary==null){
-						System.err.println("warning not primary "+j);
-						continue inner;
-					}
-					//boolean flip = TranscriptUtils.isFlipped(primary);
-					String read_strand = (String) primary.getAttribute(PolyAT.read_strand_tag);
+			//	inner: for(int j=0; sam_1.size()>0 && j<limit; j++){
+					SAMRecord primary = sam_1.get(0);
+					if(primary.isSecondaryAlignment()) throw new RuntimeException("!");
+					//sam1.clear();//se.clear();
+					//sam1.addAll(sam_1);
+			
+					int read_length = primary.getReadLength();
+					String read_str = primary.getReadString();
+			//	String read_strand = (String) primary.getAttribute(PolyAT.read_strand_tag);
 					
 					
 					byte[] bq = primary.getBaseQualities();
@@ -384,53 +586,45 @@ return ;
 					String chr = null;
 					StringBuffer read_pos = new StringBuffer();
 					boolean fusion = false;
+					boolean primary_neg = primary.getReadNegativeStrandFlag();
+					boolean multi = sam_1.size()>1;
+					SortedMap<int[], SAMRecord> map = getList(sam_1);
 					
-				Comparator samComparator = new Comparator<SAMRecord>() {
+//					System.err.println(gson.toJson(copy(map)));
+/*					if(multi) {
+						Comparator samComparator = new Comparator<SAMRecord>() {
 
-					@Override
-					public int compare(SAMRecord o1, SAMRecord o2) {
-						int[] se1 = getStEnd(o1, read_length);
-						int[] se2 = getStEnd(o2, read_length);
-						return -1*(Integer.compare(se1[1], se2[1]));
-					}
-					
-					
-				};
-					//	if(flip){
-				//		Collections.reverse(sam1);
-				//	}
-					Collections.sort(sam1, samComparator); // orders along the read
-					Iterator<SAMRecord> it = sam1.iterator();
-					while(it.hasNext()){
-						boolean first = chr==null;
-						SAMRecord record = it.next();
-						boolean reverse=record.getReadNegativeStrandFlag();
-						if(read_strand==null){
-							strand.append("N");
-						}else{
-							if(read_strand.charAt(0)=='+'){
-								strand.append(record.getReadNegativeStrandFlag() ? '-': '+');
-							}else{
-								
-								strand.append(record.getReadNegativeStrandFlag() ? '+': '-');
+							@Override
+							public int compare(SAMRecord o1, SAMRecord o2) {
+								int[] se1 = getStEnd(o1, read_str,read_length, primary_neg);
+								int[] se2 = getStEnd(o2,read_str, read_length, primary_neg);
+								return -1*(Integer.compare(se1[1], se2[1]));
 							}
-						}
+							
+							
+						};
+					Collections.sort(sam_1, samComparator); // orders along the read
+					}*/
+					if(map!=null) {
+					Iterator<Entry<int[], SAMRecord>> it1 =  map.entrySet().iterator();
+					while(it1.hasNext()) {
+						
+						boolean first = chr==null;
+						Entry<int[],SAMRecord> ent = it1.next();
+						SAMRecord record = ent.getValue();
+								strand.append(record.getReadNegativeStrandFlag() ? '-': '+');
+							
 						q_str.append(record.getMappingQuality());
 						//byte[] q = record.getBaseQualities();
 					//	System.err.println(q.length+" "+record.getReadLength());
+						int[] se1 = ent.getKey();
+						int qstart = se1[0];//record.getReadPositionAtReferencePosition(record.getAlignmentStart());
+						int qend = se1[1];//record.getReadPositionAtReferencePosition(record.getAlignmentEnd());
 						
-						int qstart = record.getReadPositionAtReferencePosition(record.getAlignmentStart());
-						int qend = record.getReadPositionAtReferencePosition(record.getAlignmentEnd());
-						if(reverse) {
-							int qstart1 = read_length-qstart;
-							int qend1 = read_length- qend;
-							qend = qstart1;
-							qstart = qend1;		
-						}
 						if(!first) read_pos.append(";");
-						read_pos.append(qend+"_"+qstart);
+						//read_pos.append(qend+"_"+qstart);
 						//System.err.println("qstart-end "+qstart+" "+qend);
-						q_str1.append(TranscriptUtils1.median(bq, qstart, qend-qstart));
+						//q_str1.append(TranscriptUtils1.median(bq, qstart, qend-qstart));
 						//if(strand1!=strand) strand = 'm';
 					 	chrom.append(record.getReferenceName());
 					 	if(first){
@@ -438,18 +632,14 @@ return ;
 						}else{
 							fusion = true;
 						}
-						if(it.hasNext()){
+						if(it1.hasNext()){
 							chrom.append(";");
 							q_str.append(";");q_str1.append(";");
 						}
 					}
-				List<Integer> la = Arrays.asList(read_pos.toString().split("[;_]")).reversed().stream().map(t -> Integer.parseInt(t)).toList();
+//			List<Integer> la = Arrays.asList(read_pos.toString().split("[;_]")).reversed().stream().map(t -> Integer.parseInt(t)).toList();
 				
-				if(CHECK) {
-					for(int kk=0; kk<la.size()-1; kk++) {
-						if(la.get(kk)-overlap_max>la.get(kk+1)) System.err.println("problem with "+sam1.get(0).getReadName()+" "+la);
-					}
-				}
+				
 				//System.err.println(read_pos.toString());
 //					System.err.println(sam1.size());
 					int source_index=0;
@@ -457,15 +647,16 @@ return ;
 				//	if(profile.coRefPositions.breaks.size()>0 && ! supp) throw new RuntimeException("this is not clear");
 				//	if(supp && profile.suppl!=null && profile.suppl.size()>0) throw new RuntimeException("supps not empty");
 					
-					profile.identity1(genome,  readSeq, sam1, source_index, cluster_reads);
-						
+					profile.identity1(genome,  readSeq, sam_1, source_index, cluster_reads);
+					}
 				//	profile.commit();
 					
 					
 				//	removeStart(start);
-				}
 				replace(profile);
 			}
+
+		
 
 			private Object getStart(SAMRecord t) {
 				// TODO Auto-generated method stub
@@ -516,27 +707,12 @@ return ;
 					sa = SequenceUtil.reverseComplement(sa);
 				}
 			}
-			Boolean forward_read=null;
+			//Boolean forward_read=true;
 			
-			if(RNA  ){ // if we useFlames we ignore the strand
-				forward_read = true;
-			}else{
-				forward_read=true;  //assume restraned
-			//	boolean reverseForward = true;//true; // true gives longer UMI with polyA in it.  This could possibly be  a short cut to estimating polyA
-			//	int forward_read_AT =PolyAT.assign(sam, sa, true, reverseForward, start_for_pA);
-			//	int backward_read_AT =PolyAT.assign(sam, sa, false,reverseForward, start_rev_pA);// this assigns tags indicating the orientation of the original read as + or -;
-			
-				//if(forward_read_AT < backward_read_AT && forward_read_AT <= PolyAT.edit_thresh_AT){
-				//	forward_read=true;
-				//}
-				//if(forward_read_AT > backward_read_AT && backward_read_AT <= PolyAT.edit_thresh_AT){
-				//	forward_read=false;
-				//}
-			}
 //			System.err.println("RNA "+RNA[source_index]);
-				if(forward_read!=null){
-					sam.setAttribute(PolyAT.read_strand_tag, forward_read ? "+" : "-");
-				}
+				//if(forward_read!=null){
+					sam.setAttribute(PolyAT.read_strand_tag, "+");// forward_read ? "+" : "-");
+				//}
 		/*	
 			if(ViralTranscriptAnalysisCmd2.barcodes!=null){
 				if(forward_read==null) return false;
@@ -554,9 +730,7 @@ return ;
 					return false;
 				}
 				
-			//	if(forward_read==null && forward_read1!=null){
-						sam.setAttribute(PolyAT.read_strand_tag, forward_read ? "+" : "-");
-				//}
+			
 				//if(forward_read!=null && forward_read1!=null){
 					if(for_min <= Barcodes.tolerance_barcode) { //forward_read.equals(forward_read1)){
 						int startpA;
@@ -605,24 +779,7 @@ return ;
 				}
 			}
 			*/
-			if(Annotation.enforceStrand ){
-				if(forward_read==null ){
-					// cannot determine strand
-					if( ViralTranscriptAnalysisCmd2.exclude_indeterminate_strand) return false;
-				}
-				if(forward_read!=null && RNA && !forward_read ){
-					if(ViralTranscriptAnalysisCmd2.exclude_polyT_strand) {
-							System.err.println ("warning RNA should always be forward strand, found polyT .. excluding ");
-
-						return false;
-					}
-				}
-				if(forward_read!=null  &&   !RNA){
-					// flip if the original read is not forward
-					int flip  = forward_read.booleanValue()!= align_reverse ? 1 : 0;
-					sam.setAttribute(PolyAT.flipped_tag, flip);
-				}
-			}
+		
 			return true;
 	}
 

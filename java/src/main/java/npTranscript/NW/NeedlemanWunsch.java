@@ -28,6 +28,32 @@ for (int i =0; i< column.length(); i++){
  }
 }
       
+
+
+
+    public static String reverseComplement(String dna) {
+        StringBuilder reversed = new StringBuilder(dna).reverse();
+        for (int i = 0; i < reversed.length(); i++) {
+            char c = reversed.charAt(i);
+            switch (c) {
+                case 'A':
+                    reversed.setCharAt(i, 'T');
+                    break;
+                case 'T':
+                    reversed.setCharAt(i, 'A');
+                    break;
+                case 'C':
+                    reversed.setCharAt(i, 'G');
+                    break;
+                case 'G':
+                    reversed.setCharAt(i, 'C');
+                    break;
+            }
+        }
+        return reversed.toString();
+    }
+
+
 /*
 * Needleman-Wunsch Dynamic Programming Algorithm
 * see http://amrita.vlab.co.in/?sub=3&brch=274&sim=1431&cnt=1

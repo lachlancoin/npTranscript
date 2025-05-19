@@ -171,6 +171,8 @@ addBoolean("illumina", false, "use illumina libary");
 	
 		addBoolean("enforceStrand", false, "whether to enforce strandedness");
 		addString("readList", "", "List of reads", false);
+		addString("join_out",null, "Output for joining sequences");
+		addString("overlap_out",null, "Output for overlap sequences");
 
 		addString("chroms_to_include", "all", "Restrict to these chroms, colon delimited", false);
 		addString("chroms_to_ignore", "none", "Ignore these chroms", false);
@@ -314,6 +316,8 @@ addBoolean("illumina", false, "use illumina libary");
 		illumina=cmdLine.getBooleanVal("illumina");
 		Outputs.url = cmdLine.getStringVal("api_url");
 		String output = cmdLine.getStringVal("output", null);
+		String output_join = cmdLine.getStringVal("join_out", null);
+		String output_overlap = cmdLine.getStringVal("overlap_out", null);
 		Outputs.format="json";
 		if(output==null) {
 			Outputs.outputstream = System.out;
@@ -321,6 +325,9 @@ addBoolean("illumina", false, "use illumina libary");
 		  Outputs.outputstream =  output.endsWith(".gz")  ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output))) : new PrintStream(new FileOutputStream(output));
 		  Outputs.format = output.endsWith(".json.gz") || output.endsWith(".json") ? "json" : "tsv";
 		}
+		Outputs.joinOut =output_join==null ? null : (output_join.endsWith(".gz") ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output_join))) : new PrintStream(new FileOutputStream(output_join)));
+		Outputs.overlapOut =output_overlap==null ? null : (output_overlap.endsWith(".gz") ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output_overlap))) : new PrintStream(new FileOutputStream(output_overlap)));
+
 		Outputs.annotation_mode = Arrays.asList(cmdLine.getStringVal("annotation_mode").split(":"));
 		Outputs.writeH5 = cmdLine.getBooleanVal("writeH5");
 		Outputs.report = cmdLine.getIntVal("report");
@@ -367,10 +374,6 @@ addBoolean("illumina", false, "use illumina libary");
 	ViralTranscriptAnalysisCmd2.fail_thresh1 = fail_thresh.length>1 ? Double.parseDouble(fail_thresh[1]) : Double.parseDouble(fail_thresh[0]);
 
 		Pattern patt = Pattern.compile(":");
-		Outputs.numExonsMSA = cmdLine.getStringVal("numExonsMSA")=="none"  ?  Arrays.asList(new Integer[0]) : 
-				patt.splitAsStream(cmdLine.getStringVal("numExonsMSA"))
-		                            .map(Integer::valueOf)
-		                            .collect(Collectors.toList());
 		IdentityProfile1.includeStartEnd = cmdLine.getBooleanVal("includeStart");
 	SequenceOutputStream1.max_seqs_per_cluster = cmdLine.getIntVal("max_seqs_per_cluster");
 		 coronavirus = cmdLine.getBooleanVal("coronavirus");
@@ -802,6 +805,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 				}
 				boolean supplementary = false;
 				if(sam.isSecondaryOrSupplementary()) {
+					if(sam.isSecondaryAlignment()) continue;
 					if(!ViralTranscriptAnalysisCmd2.allowSuppAlignments) continue;
 					if( sam.getReadName().equals(previousRead) ){
 						supplementary = true;
