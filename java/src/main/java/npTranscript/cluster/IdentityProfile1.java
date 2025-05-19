@@ -14,6 +14,7 @@ import htsjdk.samtools.SAMRecord;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import npTranscript.NW.PolyAT;
+import npTranscript.cluster.IdentityProfileHolder.StringBuffers;
 import npTranscript.run.Barcodes;
 import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
@@ -139,32 +140,29 @@ public class IdentityProfile1 {
 		//this.all_clusters = parent.all_clusters;
 		
 	}
-	public String strand;
+	public String strand,overlap_str;
 	public String read_pos;
 //	public boolean reverse;
 	//public boolean flip=false;
-	public void setName(String readName, String chrom_, String strand, String q_value,String q_value_base, String read_pos, int source_index, boolean fusion) {
+	public void setName(String readName, StringBuffers sb, int source_index, boolean fusion) {
+		//String chrom_, String strand, String q_value,String q_value_base, String read_pos, 
+		//chrom.toString(),strand.toString(), q_str.toString(), q_str1.toString(),read_pos.toString(), 
 		// TODO Auto-generated method stub
 		this.id = readName;
 	//	this.flip = flip;
 		this.fusion = fusion;
 	//	if(!supp) fusion = false;
 		//else if(chrom_index!=this.chrom_index) fusion = true;
-this.strand = strand;
+this.strand = sb.strand.toString();
 //this.reverse = strand.charAt(0)=='+';
-this.q_value_str = q_value;
-this.base_q_str = q_value_base;
+this.q_value_str = sb.q_str.toString();
+this.base_q_str = sb.q_str1.toString();
+this.overlap_str = sb.overlaps.toString();
 this.updateSourceIndex(source_index);
 		this.readName = readName;
-		this.read_pos = read_pos;
-		this.chrom_ = chrom_;// fusion ? this.chrom_+";"+chrom_ : chrom_;
-		if(false &&//reverse && 
-				strand.length()>1) {
-			List<String> chr1= Arrays.asList(chrom_.split(","));
-			Collections.reverse(chr1);
-			this.chrom_ = String.join(";", chr1.toArray(new String[0]));
-			this.strand = (new StringBuilder(strand)).reverse().toString();
-		}
+		this.read_pos =sb.read_pos.toString();
+		this.chrom_ = sb.chrom.toString();// fusion ? this.chrom_+";"+chrom_ : chrom_;
+		
 		if(ViralTranscriptAnalysisCmd2.RNA){
 			coRefPositions.forward = strand.charAt(0)=='+';
 		}else{
@@ -199,7 +197,7 @@ static char delim_start ='$';
 	
 	//** this adds coRefPositions into the clusters
 	 public static String header = 
-"readID\tsource\tchrom\tstartPos\tendPos\tendStr\talign_strand\ttype\terrorRatio\tid\tbreaks_ref\tbreaks_read\tread_len\tqval\tbaseQ\tpolyA\tpolyA_fusion_site";
+"readID\tsource\tchrom\tstartPos\tendPos\tendStr\talign_strand\toverlaps\ttype\terrorRatio\tid\tbreaks_ref\tbreaks_read\tread_len\tqval\tbaseQ\tpolyA\tpolyA_fusion_site";
 	// public static String polyA = "AAAAAAAAAAAAAA";
 	 //public static String polyT = "TTTTTTTTTTTTTT";
 	// public static int polyA_ed_dist = 1;
@@ -242,7 +240,7 @@ static char delim_start ='$';
 				parent.o.addDepthMap(id_, coRefPositions.map);
 				String str = id+"\t"+round+"\t"
 				+chrom_+"\t"
-				+startPos+"\t"+endPos+"\t"+endPosStr+"\t"+strand+"\t"+this.type_nme+"\t"
+				+startPos+"\t"+endPos+"\t"+endPosStr+"\t"+strand+"\t"+overlap_str+"\t"+this.type_nme+"\t"
 				+coRefPositions.getError(source_index)+"\t"+id_+"\t"+breakSt+"\t"+read_pos+"\t"+read_len+"\t"+q_value_str.trim()+"\t"+this.base_q_str.trim()+"\t"+
 				pt1+"\t"+
 				(st.toString() );

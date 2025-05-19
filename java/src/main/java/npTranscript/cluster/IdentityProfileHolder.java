@@ -36,6 +36,8 @@ public class IdentityProfileHolder {
 	static boolean CHECK=true;
 	public static double overlap_thresh = 0.33;
 	public static double overlap_max = 20;
+	public static double gap_max = 20;  // max gap on read between adjacent alignments
+
 	static Gson gson = new Gson();
 	public static void waitOnThreads(int sleep) {
 		if(executor==null) return;
@@ -379,6 +381,102 @@ static AlignmentParameters align_p =new AlignmentParameters();
 		}
 		return tm;
 	}
+	static boolean checkList(SortedMap<int[], SAMRecord> res, SAMRecord primary, 
+			StringBuffers sb
+			
+			){
+			String readname = primary.getReadName();
+			String read_str = primary.getReadString();
+			boolean primary_neg = primary.getReadNegativeStrandFlag();
+		//	Iterator<int[]> it = res.keySet().iterator();
+		//	int[] se_prev = it.next();
+			int[] se_prev=null;
+			boolean removed=false;
+			String read_str1 = primary_neg ?  NeedlemanWunsch.reverseComplement(read_str) : read_str;
+			int cnt=1;
+			
+			
+			Iterator<Entry<int[], SAMRecord>> it1 =  res.entrySet().iterator();
+		
+			//String chr = null;
+			
+			while(it1.hasNext()) {
+				boolean first = se_prev==null;
+				
+				Entry<int[],SAMRecord> ent = it1.next();
+				int[] se1 = ent.getKey();
+				if(!first) {
+					sb.append(";");
+				
+					int overlap = se_prev[1] - se1[0];
+					sb.overlaps.append(overlap);
+					if(overlap>overlap_max) {
+						String substr = read_str1.substring(se1[0],se_prev[1]);
+						SAMRecord sr1 = res.get(se_prev);
+						SAMRecord sr2 = res.get(se1);
+						String char1 = sr1.getReadNegativeStrandFlag() ? "-" : "+";
+						String char2 = sr2.getReadNegativeStrandFlag() ? "-" : "+";
+//						System.err.println(gson.toJson(res.keySet()));
+//						System.err.println(gson.toJson(copy(res).values()));
+//						System.err.println("problem with "+readname);
+					//	it.remove();
+						if(false) {
+						List<Boolean> strands=res.values().stream().map(t -> t.getReadNegativeStrandFlag()).collect(Collectors.toList());
+						List<List<int[]>> strands1=res.values().stream().map(t -> 
+						t.getAlignmentBlocks().stream().map(t1 -> stEnd(t1)).collect(Collectors.toList())).collect(Collectors.toList());
+						List<int[]> strands2=res.values().stream().map(t -> stEnd1(t)).collect(Collectors.toList());
+
+						System.err.println("h");
+						}
+
+						if(Outputs.overlapOut!=null) {
+							Outputs.overlapOut.println(">"+readname+" overlap:"+overlap+" cnt:"+cnt+" "+se1[0]+se_prev[1]+" "+char1+" " +char2+" "+sr1.getReferenceName()+" "+sr2.getReferenceName());
+							Outputs.overlapOut.println(substr);
+						}
+					
+						removed=true;
+						//return null;
+
+					}else if(overlap <0) {
+						
+						String substr = read_str1.substring(se_prev[1], se1[0]);
+						SAMRecord sr1 = res.get(se_prev);
+						SAMRecord sr2 = res.get(se1);
+						String char1 = sr1.getReadNegativeStrandFlag() ? "-" : "+";
+						String char2 = sr2.getReadNegativeStrandFlag() ? "-" : "+";
+
+						if(Outputs.joinOut!=null) {
+							Outputs.joinOut.println(">"+readname+" "+cnt+" "+se_prev[1]+"-"+se1[0]+" "+char1+" " +char2+" "+sr1.getReferenceName()+" "+sr2.getReferenceName());
+						Outputs.joinOut.println(substr);
+						
+						}
+						if(overlap < -1 *gap_max) {
+							removed=true;
+						}
+					}
+					cnt++;
+				}
+				se_prev = se1;
+				
+				SAMRecord record = ent.getValue();
+						sb.strand.append(record.getReadNegativeStrandFlag() ? '-': '+');
+					
+				sb.q_str.append(record.getMappingQuality());
+			//	int[] se1 = ent.getKey();
+				int qstart = se1[0];//record.getReadPositionAtReferencePosition(record.getAlignmentStart());
+				int qend = se1[1];//record.getReadPositionAtReferencePosition(record.getAlignmentEnd());
+				sb.read_pos.append(qstart+"_"+qend);
+				
+			 	sb.chrom.append(record.getReferenceName());
+			 
+			}
+			
+			
+			
+			
+			return removed;
+			
+	}
 	
 	SortedMap<int[], SAMRecord> getList(List<SAMRecord> li){
 		SAMRecord primary = li.get(0);
@@ -402,73 +500,7 @@ static AlignmentParameters align_p =new AlignmentParameters();
 			res.put(stp,(li.get(k)));
 			
 		}
-		if(CHECK) {
-			String readname = primary.getReadName();
-			Iterator<int[]> it = res.keySet().iterator();
-			int[] se_prev = it.next();
-			boolean removed=false;
-			String read_str1 = primary_neg ?  NeedlemanWunsch.reverseComplement(read_str) : read_str;
-			int cnt=1;
-			while(it.hasNext()) {
-				int[] se1 = it.next();
-				int overlap = se_prev[1] - se1[0];
-				if(overlap>overlap_max) {
-				
-					String substr = read_str1.substring(se1[0],se_prev[1]);
-					SAMRecord sr1 = res.get(se_prev);
-					SAMRecord sr2 = res.get(se1);
-					String char1 = sr1.getReadNegativeStrandFlag() ? "-" : "+";
-					String char2 = sr2.getReadNegativeStrandFlag() ? "-" : "+";
-
-					
-//					System.err.println(gson.toJson(res.keySet()));
-//					System.err.println(gson.toJson(copy(res).values()));
-//					System.err.println("problem with "+readname);
-				//	it.remove();
-					if(false) {
-					List<Boolean> strands=res.values().stream().map(t -> t.getReadNegativeStrandFlag()).collect(Collectors.toList());
-					List<List<int[]>> strands1=res.values().stream().map(t -> 
-					t.getAlignmentBlocks().stream().map(t1 -> stEnd(t1)).collect(Collectors.toList())).collect(Collectors.toList());
-					List<int[]> strands2=res.values().stream().map(t -> stEnd1(t)).collect(Collectors.toList());
-
-					System.err.println("h");
-					}
-
-					if(Outputs.overlapOut!=null) {
-						Outputs.overlapOut.println(">"+readname+" overlap:"+overlap+" cnt:"+cnt+" "+se1[0]+se_prev[1]+" "+char1+" " +char2+" "+sr1.getReferenceName()+" "+sr2.getReferenceName());
-						Outputs.overlapOut.println(substr);
-					}
-				
-					removed=true;
-					//return null;
-
-				}else if(se1[0] >se_prev[1]) {
-					
-					String substr = read_str1.substring(se_prev[1], se1[0]);
-					SAMRecord sr1 = res.get(se_prev);
-					SAMRecord sr2 = res.get(se1);
-					String char1 = sr1.getReadNegativeStrandFlag() ? "-" : "+";
-					String char2 = sr2.getReadNegativeStrandFlag() ? "-" : "+";
-
-					if(Outputs.joinOut!=null) {
-						Outputs.joinOut.println(">"+readname+" "+cnt+" "+se_prev[1]+"-"+se1[0]+" "+char1+" " +char2+" "+sr1.getReferenceName()+" "+sr2.getReferenceName());
-					Outputs.joinOut.println(substr);
-					}
-				}
-				cnt++;
-			}
-			
-			if(removed) {
-				/*
-					if(!strands.contains(true)){
-				
-				System.err.println(gson.toJson(res.keySet()));
-				System.err.println("problem"+readname);
-				System.exit(0);;
-				}*/
-				return null;
-			}
-		}
+		
 		return res;
 		
 	}
@@ -498,7 +530,22 @@ static AlignmentParameters align_p =new AlignmentParameters();
 	SortedSet<String> geneNames = new TreeSet<String>();
 	
 		
-	
+	static class StringBuffers{
+		StringBuffer chrom = new StringBuffer();
+		StringBuffer strand = new StringBuffer();//sam1.get(0).getReadNegativeStrandFlag() ? '-': '+';
+		StringBuffer q_str = new StringBuffer();
+		StringBuffer q_str1 = new StringBuffer();
+		StringBuffer read_pos = new StringBuffer();
+		StringBuffer overlaps = new StringBuffer();
+		public void append(String string) {
+			read_pos.append(";");
+			chrom.append(";");//strand.append(";");
+			q_str.append(";");q_str1.append(";");
+			overlaps.append(";");
+			// TODO Auto-generated method stub
+			
+		}	
+	}
 	
 
 	/*SortedMap<Integer, Integer> currentStart = new TreeMap<Integer, Integer>();
@@ -579,16 +626,14 @@ return ;
 					
 					byte[] bq = primary.getBaseQualities();
 				//	System.err.println(sam1.size()+" "+sze);
-					StringBuffer chrom = new StringBuffer();
-					StringBuffer strand = new StringBuffer();//sam1.get(0).getReadNegativeStrandFlag() ? '-': '+';
-					StringBuffer q_str = new StringBuffer();
-					StringBuffer q_str1 = new StringBuffer();
-					String chr = null;
-					StringBuffer read_pos = new StringBuffer();
-					boolean fusion = false;
-					boolean primary_neg = primary.getReadNegativeStrandFlag();
-					boolean multi = sam_1.size()>1;
+					
+				//	boolean fusion = false;
+					//boolean primary_neg = primary.getReadNegativeStrandFlag();
+					//boolean multi = sam_1.size()>1;
 					SortedMap<int[], SAMRecord> map = getList(sam_1);
+					List<Integer> overlaps = new ArrayList<Integer>();
+					StringBuffers sb = new StringBuffers();
+					boolean remove = checkList(map, primary, sb);
 					
 //					System.err.println(gson.toJson(copy(map)));
 /*					if(multi) {
@@ -605,45 +650,12 @@ return ;
 						};
 					Collections.sort(sam_1, samComparator); // orders along the read
 					}*/
-					if(map!=null) {
-					Iterator<Entry<int[], SAMRecord>> it1 =  map.entrySet().iterator();
-					while(it1.hasNext()) {
-						
-						boolean first = chr==null;
-						Entry<int[],SAMRecord> ent = it1.next();
-						SAMRecord record = ent.getValue();
-								strand.append(record.getReadNegativeStrandFlag() ? '-': '+');
-							
-						q_str.append(record.getMappingQuality());
-						//byte[] q = record.getBaseQualities();
-					//	System.err.println(q.length+" "+record.getReadLength());
-						int[] se1 = ent.getKey();
-						int qstart = se1[0];//record.getReadPositionAtReferencePosition(record.getAlignmentStart());
-						int qend = se1[1];//record.getReadPositionAtReferencePosition(record.getAlignmentEnd());
-						
-						if(!first) read_pos.append(";");
-						//read_pos.append(qend+"_"+qstart);
-						//System.err.println("qstart-end "+qstart+" "+qend);
-						//q_str1.append(TranscriptUtils1.median(bq, qstart, qend-qstart));
-						//if(strand1!=strand) strand = 'm';
-					 	chrom.append(record.getReferenceName());
-					 	if(first){
-							chr = record.getReferenceName();
-						}else{
-							fusion = true;
-						}
-						if(it1.hasNext()){
-							chrom.append(";");
-							q_str.append(";");q_str1.append(";");
-						}
-					}
-//			List<Integer> la = Arrays.asList(read_pos.toString().split("[;_]")).reversed().stream().map(t -> Integer.parseInt(t)).toList();
+					if(!remove) {
+					
 				
 				
-				//System.err.println(read_pos.toString());
-//					System.err.println(sam1.size());
 					int source_index=0;
-					 profile.setName(rn, chrom.toString(),strand.toString(), q_str.toString(), q_str1.toString(),read_pos.toString(), source_index, fusion);
+					 profile.setName(rn, sb,source_index, map.size()>1);
 				//	if(profile.coRefPositions.breaks.size()>0 && ! supp) throw new RuntimeException("this is not clear");
 				//	if(supp && profile.suppl!=null && profile.suppl.size()>0) throw new RuntimeException("supps not empty");
 					

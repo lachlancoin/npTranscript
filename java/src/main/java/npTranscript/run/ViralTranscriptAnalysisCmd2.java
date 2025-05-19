@@ -198,7 +198,8 @@ addBoolean("illumina", false, "use illumina libary");
 		addString("round", "1", "Bin size for numerical hashing");
 	//	addInt("bin1",100, "Bin size for hashing of the end");
 		addDouble("overlap_thresh",0.33,"max percentage overlap between supp alignments considered");
-		addInt("overlap_max",20,"max bp overlap between supp alignments considered");
+		addInt("overlap_max",20,"max bp overlap on read between supp alignments considered");
+		addInt("gap_max",20,"min bp gap on read between supp alignments considered");
 
 		addString("numExonsMSA", "none", "number of exons For  MSA");
 		addInt("max_seqs_per_cluster",100000,"max sequences in MSA files");
@@ -426,6 +427,7 @@ addBoolean("illumina", false, "use illumina libary");
 		CigarCluster.recordDepthByPosition = cmdLine.getBooleanVal("recordDepthByPosition");
 		CigarCluster.recordStartEnd = cmdLine.getBooleanVal("recordDepthByPosition");
 		IdentityProfileHolder.overlap_max = cmdLine.getIntVal("overlap_max");
+		IdentityProfileHolder.gap_max = cmdLine.getIntVal("gap_max");
 		IdentityProfileHolder.overlap_thresh = cmdLine.getDoubleVal("overlap_thresh");
 		IdentityProfile1.min_first_last_exon_length = cmdLine.getIntVal("min_first_last_exon");
 		if(coronavirus){
