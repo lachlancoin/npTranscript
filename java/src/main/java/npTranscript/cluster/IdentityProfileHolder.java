@@ -429,12 +429,11 @@ static AlignmentParameters align_p =new AlignmentParameters();
 					String char1 = sr1.getReadNegativeStrandFlag() ? "-" : "+";
 					String char2 = sr2.getReadNegativeStrandFlag() ? "-" : "+";
 					boolean same =sr1.getReferenceName().equals(sr2.getReferenceName());
-					String header = ">"+readname+",overlap:"+overlap+",cnt:"+cnt+","+se1[0]+","+se_prev[1]+","+char1+"," +char2+","+sr1.getReferenceName()+","+sr2.getReferenceName()+","+same+"\t";
+					String header = ">"+readname+",overlap:"+overlap+",cnt:"+cnt+","+se1[0]+","+se_prev[1]+","+char1+"," +char2+","+sr1.getReferenceName()+","+sr2.getReferenceName()+","+same;
 					if(overlap>0) {
 						String substr = read_str1.substring(se1[0]-1,se_prev[1]-1);
 						if(Outputs.overlapOut!=null) {
-							Outputs.overlapOut.print(header);
-							Outputs.overlapOut.println(substr);
+							Outputs.overlapOut.println(header+"\t"+substr);
 						}
 						if(overlap>overlap_max) {
 							removed=true;
@@ -447,8 +446,7 @@ static AlignmentParameters align_p =new AlignmentParameters();
 						
 
 						if(Outputs.joinOut!=null) {
-							Outputs.joinOut.print(header);
-							Outputs.joinOut.println(substr);
+							Outputs.joinOut.println(header+"\t"+substr);
 						}
 						if(overlap < -1 *gap_max) {
 							removed=true;
@@ -456,9 +454,7 @@ static AlignmentParameters align_p =new AlignmentParameters();
 					}else if(overlap<2 && overlap >-2) {
 						String substr = read_str1.substring(se_prev[1]-6, se1[0]+4); //because its one based
 						if(Outputs.noGap!=null) {
-							Outputs.noGap.print(header);
-							Outputs.noGap.println(substr);
-						
+							Outputs.noGap.println(header+"\t"+substr);
 						}
 						
 					}
