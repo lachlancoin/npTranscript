@@ -29,6 +29,7 @@ import npTranscript.NW.AlignmentParameters;
 import npTranscript.NW.AlignmentResult;
 import npTranscript.NW.NeedlemanWunsch;
 import npTranscript.NW.PolyAT;
+import npTranscript.run.TranscriptUtils1;
 import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 public class IdentityProfileHolder {
@@ -408,6 +409,7 @@ static AlignmentParameters align_p =new AlignmentParameters();
 					System.err.println("h");
 					}
 			}
+			byte[] bq = primary.getBaseQualities();
 			Iterator<Entry<int[], SAMRecord>> it1 =  res.entrySet().iterator();
 		
 			//String chr = null;
@@ -466,10 +468,15 @@ static AlignmentParameters align_p =new AlignmentParameters();
 						sb.strand.append(record.getReadNegativeStrandFlag() ? '-': '+');
 					
 				sb.q_str.append(record.getMappingQuality());
+				
+				
 			//	int[] se1 = ent.getKey();
 				int qstart = se1[0];//record.getReadPositionAtReferencePosition(record.getAlignmentStart());
 				int qend = se1[1];//record.getReadPositionAtReferencePosition(record.getAlignmentEnd());
 				sb.read_pos.append(qstart+"_"+qend);
+				
+				//System.err.println("qstart-end "+qstart+" "+qend);
+				sb.q_str1.append(TranscriptUtils1.median(bq, qstart, qend-qstart));
 				
 			 	sb.chrom.append(record.getReferenceName());
 			 
