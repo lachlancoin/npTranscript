@@ -250,6 +250,39 @@ static AlignmentParameters align_p =new AlignmentParameters();
 	
 	static Pattern patt = Pattern.compile("[ACTG]");
  
+	static void getStEndRef(SAMRecord s1,  String read_str, int read_length, boolean primary_neg, int gap, boolean three_to_five,
+			StringBuffer sb, StringBuffer sb3
+			) {
+		
+		
+		List<Integer> pos = new ArrayList<Integer>();
+		boolean neg1=s1.getReadNegativeStrandFlag();
+		Iterator<AlignmentBlock> ab = s1.getAlignmentBlocks().iterator();
+		AlignmentBlock ab1 = ab.next();
+		int st = ab1.getReferenceStart();
+		int end = st + ab1.getLength();
+		while(ab.hasNext()) {
+			ab1=ab.next();
+			int st1 = ab1.getReferenceStart();
+			if(st1 - end > gap) {
+				pos.add(st); pos.add(end);
+				st = st1;
+			}
+				end = st1 +ab1.getLength();
+		}
+		if(pos.contains(st)) throw new RuntimeException("!!");
+		pos.add(st); pos.add(end);
+		sb3.append(neg1 ? pos.get(0) :pos.get(pos.size()-1));
+		if(three_to_five && neg1 || !three_to_five && neg1) pos = pos.reversed();  // we going 3
+		
+		for(int j=0; j<pos.size(); j+=2) {
+			if(j>0) sb.append(",");
+			sb.append(pos.get(j)+"_"+pos.get(j+1));
+			
+		}
+		
+	}
+
 	static int[] getStEnd(SAMRecord s1,  String read_str, int read_length, boolean primary_neg) {
 		boolean primary= !s1.isSecondaryOrSupplementary();
 		int mq = s1.getMappingQuality();
@@ -388,8 +421,9 @@ static AlignmentParameters align_p =new AlignmentParameters();
 			
 			){
 			String readname = primary.getReadName();
-			String read_str = primary.getReadString();
+			final String read_str = primary.getReadString();
 			boolean primary_neg = primary.getReadNegativeStrandFlag();
+			int read_length=primary.getReadLength();
 		//	Iterator<int[]> it = res.keySet().iterator();
 		//	int[] se_prev = it.next();
 			int[] se_prev=null;
@@ -413,12 +447,13 @@ static AlignmentParameters align_p =new AlignmentParameters();
 			Iterator<Entry<int[], SAMRecord>> it1 =  res.entrySet().iterator();
 		
 			//String chr = null;
-			
+			boolean three_to_five = false;
 			while(it1.hasNext()) {
 				boolean first = se_prev==null;
 				
 				Entry<int[],SAMRecord> ent = it1.next();
 				int[] se1 = ent.getKey();
+				
 				if(!first) {
 					sb.append(";");
 				
@@ -428,13 +463,15 @@ static AlignmentParameters align_p =new AlignmentParameters();
 					SAMRecord sr2 = res.get(se1);
 					String char1 = sr1.getReadNegativeStrandFlag() ? "-" : "+";
 					String char2 = sr2.getReadNegativeStrandFlag() ? "-" : "+";
+					int st1 = sr1.getStart();
+					int st2 = sr2.getStart();
 					boolean same =sr1.getReferenceName().equals(sr2.getReferenceName());
-					String header = ">"+readname+",overlap:"+overlap+",cnt:"+cnt+","+se1[0]+","+se_prev[1]+","+char1+"," +char2+","+sr1.getReferenceName()+","+sr2.getReferenceName()+","+same;
+					String header = ">"+readname+",overlap:"+overlap+" cnt:"+cnt+" "+se1[0]+","+se_prev[1]+" "+char1+"," +char2+" "+sr1.getReferenceName()+","+sr2.getReferenceName()+" "+st1+" "+st2+" "+same;
 					if(overlap>0) {
 						
 						if(Outputs.overlapOut!=null) {
 							String substr = read_str1.substring(se1[0]-1,se_prev[1]-1);
-							if(primary_neg) substr =  NeedlemanWunsch.reverseComplement(substr);
+						//	if(primary_neg) substr =  NeedlemanWunsch.reverseComplement(substr);
 							Outputs.overlapOut.println(header+"\t"+substr);
 						}
 						if(overlap>overlap_max) {
@@ -447,7 +484,7 @@ static AlignmentParameters align_p =new AlignmentParameters();
 						
 						if(Outputs.joinOut!=null) {
 							String substr = read_str1.substring(se_prev[1]-1, se1[0]-1);
-							if(primary_neg) substr =  NeedlemanWunsch.reverseComplement(substr);
+							//if(primary_neg) substr =  NeedlemanWunsch.reverseComplement(substr);
 							Outputs.joinOut.println(header+"\t"+substr);
 						}
 						if(overlap < -1 *gap_max) {
@@ -456,21 +493,27 @@ static AlignmentParameters align_p =new AlignmentParameters();
 					}else if(overlap<2 && overlap >-2) {
 						if(Outputs.noGap!=null) {
 							String substr = read_str1.substring(se_prev[1]-6, se1[0]+4); //because its one based
-							if(primary_neg) substr =  NeedlemanWunsch.reverseComplement(substr);
+							//if(primary_neg) substr =  NeedlemanWunsch.reverseComplement(substr);
 							Outputs.noGap.println(header+"\t"+substr);
 						}
 						
 					}
 					cnt++;
 				}
+
+				
 				se_prev = se1;
 				
 				SAMRecord record = ent.getValue();
 						sb.strand.append(record.getReadNegativeStrandFlag() ? '-': '+');
 					
 				sb.q_str.append(record.getMappingQuality());
-				
-				
+				if(Outputs.allOut!=null) {
+					StringBuffer sb_1 = new StringBuffer(); StringBuffer sb_3 = new StringBuffer();
+					getStEndRef(ent.getValue(), read_str,read_length, primary_neg,IdentityProfile1.break_thresh, three_to_five,sb_1,sb_3);
+					sb.ref_pos.append(sb_1.toString());
+					sb.ref_3.append(sb_3.toString());
+				}
 			//	int[] se1 = ent.getKey();
 				int qstart = se1[0];//record.getReadPositionAtReferencePosition(record.getAlignmentStart());
 				int qend = se1[1];//record.getReadPositionAtReferencePosition(record.getAlignmentEnd());
@@ -483,7 +526,9 @@ static AlignmentParameters align_p =new AlignmentParameters();
 			 
 			}
 			
-			
+			if(Outputs.allOut!=null) {
+				Outputs.allOut.println(">"+readname+" "+sb.getString()+"\n"+read_str1);
+			}
 			
 			
 			return removed;
@@ -548,14 +593,22 @@ static AlignmentParameters align_p =new AlignmentParameters();
 		StringBuffer q_str = new StringBuffer();
 		StringBuffer q_str1 = new StringBuffer();
 		StringBuffer read_pos = new StringBuffer();
+		StringBuffer ref_pos = new StringBuffer();
+		StringBuffer ref_3 = new StringBuffer();
 		StringBuffer overlaps = new StringBuffer();
 		public void append(String string) {
 			read_pos.append(";");
 			chrom.append(";");//strand.append(";");
 			q_str.append(";");q_str1.append(";");
 			overlaps.append(";");
+			ref_pos.append(";");
+			ref_3.append(";");
 			// TODO Auto-generated method stub
 			
+		}
+		public String getString() {
+			// TODO Auto-generated method stub
+			return chrom.toString()+" "+strand.toString()+" "+ref_3.toString()+" "+ q_str.toString()+" "+q_str1.toString()+" " +read_pos.toString()+" "+ref_pos.toString()+" "+overlaps.toString();
 		}	
 	}
 	
