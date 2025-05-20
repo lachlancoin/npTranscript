@@ -173,6 +173,7 @@ addBoolean("illumina", false, "use illumina libary");
 		addString("readList", "", "List of reads", false);
 		addString("join_out",null, "Output for joining sequences");
 		addString("overlap_out",null, "Output for overlap sequences");
+		addString("nogap_out",null, "Output for nogap  sequences");
 
 		addString("chroms_to_include", "all", "Restrict to these chroms, colon delimited", false);
 		addString("chroms_to_ignore", "none", "Ignore these chroms", false);
@@ -319,6 +320,7 @@ addBoolean("illumina", false, "use illumina libary");
 		String output = cmdLine.getStringVal("output", null);
 		String output_join = cmdLine.getStringVal("join_out", null);
 		String output_overlap = cmdLine.getStringVal("overlap_out", null);
+		String output_nogap = cmdLine.getStringVal("nogap_out", null);
 		Outputs.format="json";
 		boolean append = !Outputs.overwrite;
 		if(output==null) {
@@ -329,6 +331,7 @@ addBoolean("illumina", false, "use illumina libary");
 		}
 		Outputs.joinOut =output_join==null ? null : (output_join.endsWith(".gz") ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output_join, append))) : new PrintStream(new FileOutputStream(output_join, append)));
 		Outputs.overlapOut =output_overlap==null ? null : (output_overlap.endsWith(".gz") ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output_overlap, append))) : new PrintStream(new FileOutputStream(output_overlap, append)));
+		Outputs.noGap =output_nogap==null ? null : (output_nogap.endsWith(".gz") ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output_nogap, append))) : new PrintStream(new FileOutputStream(output_nogap, append)));
 
 		Outputs.annotation_mode = Arrays.asList(cmdLine.getStringVal("annotation_mode").split(":"));
 		Outputs.writeH5 = cmdLine.getBooleanVal("writeH5");

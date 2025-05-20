@@ -282,7 +282,7 @@ static AlignmentParameters align_p =new AlignmentParameters();
 				read_str1 = NeedlemanWunsch.reverseComplement(read_str);
 			}
 			
-			int shift_read = read_str1.indexOf(str);
+			int shift_read = read_str1.indexOf(str)+1;
 			if(shift_read<0) {
 				if(true) throw new RuntimeException("no subindex!");
 					AlignmentResult result= 
@@ -424,18 +424,16 @@ static AlignmentParameters align_p =new AlignmentParameters();
 				
 					int overlap = se_prev[1] - se1[0];
 					sb.overlaps.append(overlap);
+					SAMRecord sr1 = res.get(se_prev);
+					SAMRecord sr2 = res.get(se1);
+					String char1 = sr1.getReadNegativeStrandFlag() ? "-" : "+";
+					String char2 = sr2.getReadNegativeStrandFlag() ? "-" : "+";
+					boolean same =sr1.getReferenceName().equals(sr2.getReferenceName());
+					String header = ">"+readname+",overlap:"+overlap+",cnt:"+cnt+","+se1[0]+","+se_prev[1]+","+char1+"," +char2+","+sr1.getReferenceName()+","+sr2.getReferenceName()+","+same+"\t";
 					if(overlap>0) {
-						String substr = read_str1.substring(se1[0],se_prev[1]);
-						SAMRecord sr1 = res.get(se_prev);
-						SAMRecord sr2 = res.get(se1);
-						String char1 = sr1.getReadNegativeStrandFlag() ? "-" : "+";
-						String char2 = sr2.getReadNegativeStrandFlag() ? "-" : "+";
-
-					//	it.remove();
-						
-
+						String substr = read_str1.substring(se1[0]-1,se_prev[1]-1);
 						if(Outputs.overlapOut!=null) {
-							Outputs.overlapOut.print(">"+readname+",overlap:"+overlap+",cnt:"+cnt+","+se1[0]+","+se_prev[1]+","+char1+"," +char2+","+sr1.getReferenceName()+","+sr2.getReferenceName()+"\t");
+							Outputs.overlapOut.print(header);
 							Outputs.overlapOut.println(substr);
 						}
 						if(overlap>overlap_max) {
@@ -445,20 +443,24 @@ static AlignmentParameters align_p =new AlignmentParameters();
 
 					}else if(overlap <0) {
 						
-						String substr = read_str1.substring(se_prev[1], se1[0]);
-						SAMRecord sr1 = res.get(se_prev);
-						SAMRecord sr2 = res.get(se1);
-						String char1 = sr1.getReadNegativeStrandFlag() ? "-" : "+";
-						String char2 = sr2.getReadNegativeStrandFlag() ? "-" : "+";
+						String substr = read_str1.substring(se_prev[1]-1, se1[0]-1);
+						
 
 						if(Outputs.joinOut!=null) {
-							Outputs.joinOut.print(">"+readname+":"+cnt+","+se_prev[1]+"-"+se1[0]+","+char1+";" +char2+","+sr1.getReferenceName()+","+sr2.getReferenceName()+"\t");
-						Outputs.joinOut.println(substr);
-						
+							Outputs.joinOut.print(header);
+							Outputs.joinOut.println(substr);
 						}
 						if(overlap < -1 *gap_max) {
 							removed=true;
 						}
+					}else if(overlap<2 && overlap >-2) {
+						String substr = read_str1.substring(se_prev[1]-6, se1[0]+4); //because its one based
+						if(Outputs.noGap!=null) {
+							Outputs.noGap.print(header);
+							Outputs.noGap.println(substr);
+						
+						}
+						
 					}
 					cnt++;
 				}
