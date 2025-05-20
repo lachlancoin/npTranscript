@@ -320,14 +320,15 @@ addBoolean("illumina", false, "use illumina libary");
 		String output_join = cmdLine.getStringVal("join_out", null);
 		String output_overlap = cmdLine.getStringVal("overlap_out", null);
 		Outputs.format="json";
+		boolean append = !Outputs.overwrite;
 		if(output==null) {
 			Outputs.outputstream = System.out;
 		}else {
-		  Outputs.outputstream =  output.endsWith(".gz")  ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output))) : new PrintStream(new FileOutputStream(output));
+		  Outputs.outputstream =  output.endsWith(".gz")  ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output, append))) : new PrintStream(new FileOutputStream(output, append));
 		  Outputs.format = output.endsWith(".json.gz") || output.endsWith(".json") ? "json" : "tsv";
 		}
-		Outputs.joinOut =output_join==null ? null : (output_join.endsWith(".gz") ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output_join))) : new PrintStream(new FileOutputStream(output_join)));
-		Outputs.overlapOut =output_overlap==null ? null : (output_overlap.endsWith(".gz") ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output_overlap))) : new PrintStream(new FileOutputStream(output_overlap)));
+		Outputs.joinOut =output_join==null ? null : (output_join.endsWith(".gz") ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output_join, append))) : new PrintStream(new FileOutputStream(output_join, append)));
+		Outputs.overlapOut =output_overlap==null ? null : (output_overlap.endsWith(".gz") ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output_overlap, append))) : new PrintStream(new FileOutputStream(output_overlap, append)));
 
 		Outputs.annotation_mode = Arrays.asList(cmdLine.getStringVal("annotation_mode").split(":"));
 		Outputs.writeH5 = cmdLine.getBooleanVal("writeH5");
