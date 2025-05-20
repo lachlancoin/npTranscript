@@ -431,8 +431,10 @@ static AlignmentParameters align_p =new AlignmentParameters();
 					boolean same =sr1.getReferenceName().equals(sr2.getReferenceName());
 					String header = ">"+readname+",overlap:"+overlap+",cnt:"+cnt+","+se1[0]+","+se_prev[1]+","+char1+"," +char2+","+sr1.getReferenceName()+","+sr2.getReferenceName()+","+same;
 					if(overlap>0) {
-						String substr = read_str1.substring(se1[0]-1,se_prev[1]-1);
+						
 						if(Outputs.overlapOut!=null) {
+							String substr = read_str1.substring(se1[0]-1,se_prev[1]-1);
+							if(primary_neg) substr =  NeedlemanWunsch.reverseComplement(substr);
 							Outputs.overlapOut.println(header+"\t"+substr);
 						}
 						if(overlap>overlap_max) {
@@ -442,18 +444,19 @@ static AlignmentParameters align_p =new AlignmentParameters();
 
 					}else if(overlap <0) {
 						
-						String substr = read_str1.substring(se_prev[1]-1, se1[0]-1);
 						
-
 						if(Outputs.joinOut!=null) {
+							String substr = read_str1.substring(se_prev[1]-1, se1[0]-1);
+							if(primary_neg) substr =  NeedlemanWunsch.reverseComplement(substr);
 							Outputs.joinOut.println(header+"\t"+substr);
 						}
 						if(overlap < -1 *gap_max) {
 							removed=true;
 						}
 					}else if(overlap<2 && overlap >-2) {
-						String substr = read_str1.substring(se_prev[1]-6, se1[0]+4); //because its one based
 						if(Outputs.noGap!=null) {
+							String substr = read_str1.substring(se_prev[1]-6, se1[0]+4); //because its one based
+							if(primary_neg) substr =  NeedlemanWunsch.reverseComplement(substr);
 							Outputs.noGap.println(header+"\t"+substr);
 						}
 						
