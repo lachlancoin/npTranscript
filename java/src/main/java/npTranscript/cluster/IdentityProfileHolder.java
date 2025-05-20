@@ -435,7 +435,7 @@ static AlignmentParameters align_p =new AlignmentParameters();
 						
 
 						if(Outputs.overlapOut!=null) {
-							Outputs.overlapOut.print(">"+readname+",overlap:"+overlap+",cnt:"+cnt+","+se1[0]+se_prev[1]+","+char1+"," +char2+","+sr1.getReferenceName()+","+sr2.getReferenceName()+"\t");
+							Outputs.overlapOut.print(">"+readname+",overlap:"+overlap+",cnt:"+cnt+","+se1[0]+","+se_prev[1]+","+char1+"," +char2+","+sr1.getReferenceName()+","+sr2.getReferenceName()+"\t");
 							Outputs.overlapOut.println(substr);
 						}
 						if(overlap>overlap_max) {
