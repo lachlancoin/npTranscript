@@ -2,8 +2,6 @@ package npTranscript.cluster;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -14,7 +12,7 @@ import htsjdk.samtools.SAMRecord;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import npTranscript.NW.PolyAT;
-import npTranscript.cluster.IdentityProfileHolder.StringBuffers;
+import npTranscript.cluster.MultiSAMRecord.StringBuffers;
 import npTranscript.run.Barcodes;
 import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
@@ -79,44 +77,8 @@ public class IdentityProfile1 {
 	public static double qual_thresh = 20.0D;
 	public static int break_thresh = 1000;
 	
-	public static String[] seqs = new String[] {
-			"AAAAAAAAAAAAAAAAAAAA",
-//			 1st adapter 		 RTA 
-			 //Top: 5' - 3'
-			 "GGCTTCTTCTTGCTCTTAGGTAGTAGGTTC",
-		//	 Bottom:  5' - 3'
-			 "GAGGCGAGCGGTCAATTTTCCTAAGAGCAAGAAGAAGCCTTTTTTTTTT",//- 3' 
-
-//			 2nd adapter 			 RMX 			 Top: 
-
-			 //5' - 
-			 "TGATGATGAGGGATAGACGATGGTTGTTTCTGTTGGTGCTGATATTGCTTTTTTTTTTTTTATGATGCAAGATACGCAC", //- 3' 
-
-			 //Bottom: 
-//			 5' - 3'
-			 "GAGGCGAGCGGTCAATTTGCAATATCAGCACCAACAGAAACAACCATCGTCTATCCCTCATCATCAGAACCTACTA" 
-			 //- 3' 
-
-	};
-	
-	/*public static Sequence[] polyAs;// , polyT;
-	static {
-	//	char[] As = new char[20];
-		//Arrays.fill(As, 'A');
-		//char[] Ts = new char[20];
-		//Arrays.fill(As, 'T');
-		
-		polyAs=  new Sequence[seqs.length];
-		for(int i=0; i<polyAs.length; i++){
-			polyAs[i] = new Sequence(Alphabet.DNA(), seqs[i], "adaptor."+i);
-		}
-		//polyT= new Sequence(Alphabet.DNA(), Ts, "polyT");
-	}*/
-	//public  static boolean tryComplementOnExtra = false;
-	//public static boolean reAlignExtra = false;
 	
 	public int startPos, endPos;
-	//public int readSt, readEn; 
 	
 	static Integer[] seq1 = new Integer[4];
 	static Integer[] seq2 = new  Integer[2];
@@ -147,7 +109,7 @@ public class IdentityProfile1 {
 	public void setName(String readName, StringBuffers sb, int source_index, boolean fusion) {
 		//String chrom_, String strand, String q_value,String q_value_base, String read_pos, 
 		//chrom.toString(),strand.toString(), q_str.toString(), q_str1.toString(),read_pos.toString(), 
-		// TODO Auto-generated method stub
+		// TODO Auto-generated method stubO
 		this.id = readName;
 	//	this.flip = flip;
 		this.fusion = fusion;
@@ -441,12 +403,6 @@ static char delim_start ='$';
 
 
 
-	/*private static String getString(Integer[] seq12) {
-		return CigarHash2.getString(Arrays.asList(seq12));
-	}*/
-	
-	
-
 	
 
 
@@ -624,13 +580,7 @@ static char delim_start ='$';
 			
 			SAMRecord sam = sams.get(j);
 			if(!sam.isSecondaryOrSupplementary()) primary_index=j;
-			//String id = sam.getReadName();
-			//Sequence refSeq =(refSeqs==null || sam.getReferenceIndex() >= refSeqs.size()) ? null : 
-			//	refSeqs.get(sam.getReferenceIndex());
-			//String chrom = refSeq.getName();
-		//	profile.updateSourceIndex(source_index);
-			//List<AlignmentBlock> li = sam.getAlignmentBlocks();
-		//	li.get(0).get
+		
 			if(CigarCluster.recordDepthByPosition  ){
 				throw new RuntimeException("not supported in this version");
 //				this.processCigar(sam, refSeq, readSeq, coref);
@@ -638,9 +588,6 @@ static char delim_start ='$';
 				this.processAlignmentBlocks(sam, coref, coRefPositions1);
 			}
 		}
-	//	Integer flipped = .getIntegerAttribute(PolyAT.flipped_tag);
-	//	boolean flip = flipped!=null && flipped.intValue()==1;
-	//	boolean flip1 = TranscriptUtils.isFlipped(sams.get(primary_index));
 		try{
 			int maxl = 100;
 			int tol=5;

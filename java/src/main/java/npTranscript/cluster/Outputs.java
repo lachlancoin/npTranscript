@@ -5,6 +5,7 @@ import java.io.BufferedReader;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -63,7 +64,7 @@ public class Outputs{
 	
 	public static String url="http://0.0.0.0:81";
 	public static PrintStream outputstream;  // this is the main output stream
-	public static PrintStream joinOut,overlapOut,noGap,allOut;
+	public static PrintStream joinOut,overlapOut,noGap,allOut, spliceOut, fiveOut, threeOut;
 	public static String format;
 	public static String sampleName;
 	public static List<String> annotation_mode;
@@ -177,6 +178,9 @@ public class Outputs{
 			if(Outputs.overlapOut!=null) Outputs.overlapOut.close();
 			if(Outputs.noGap!=null) Outputs.noGap.close();
 			if(Outputs.allOut!=null) Outputs.allOut.close();
+			if(Outputs.spliceOut!=null) Outputs.spliceOut.close();
+			if(Outputs.fiveOut!=null) Outputs.fiveOut.close();
+			if(Outputs.threeOut!=null) Outputs.threeOut.close();
 		//	Map output1 = this.extract();
 			//System.err.println(output1);
 		//	if(plusMinus!=null) plusMinus.close();
@@ -1052,6 +1056,17 @@ gson.fromJson(str1,  int[].class);
 				return true;
 			}
 		
+		}
+
+
+
+
+
+
+
+		public static PrintStream getOutput(String output_join, boolean append) throws FileNotFoundException, IOException {
+			return output_join==null ? null : (output_join.endsWith(".gz") ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output_join, append))) : new PrintStream(new FileOutputStream(output_join, append)));
+
 		}
 
 

@@ -175,12 +175,18 @@ addBoolean("illumina", false, "use illumina libary");
 		addString("overlap_out",null, "Output for overlap sequences");
 		addString("nogap_out",null, "Output for nogap  sequences");
 		addString("fasta_out",null, "Output for printing original reads in fasta");
+		addString("splice_out",null, "Output for printing observed splice sites");
+		addString("five_out",null, "Output for printing observed five sites");
+		addString("three_out",null, "Output for printing observed three sites");
 
+		
+		
 		addString("chroms_to_include", "all", "Restrict to these chroms, colon delimited", false);
 		addString("chroms_to_ignore", "none", "Ignore these chroms", false);
 	//	addString("bedChr", null, "Use this for the chrom in bed chr, e.g. NC_045512v2, false");
         addBoolean("singleGFF", false, "whether to have single output gff, rather than different for different input. ");
-	//	addString("resdir", "results"+System.currentTimeMillis(), "results directory");
+addBoolean("3prime",false,"whether to order 3 to 5");
+        //	addString("resdir", "results"+System.currentTimeMillis(), "results directory");
 		addString("RNA", "name", "If is direct RNA.  Can be tab delimmited boolean, e.g. true:true  or if set to name it will look for RNA string in name");
 		addBoolean("trainStrand", false,"whether to produce training data for strand correction");
 		addBoolean("recordDepthByPosition", false, "whether to store position specific depth (high memory");
@@ -319,22 +325,21 @@ addBoolean("illumina", false, "use illumina libary");
 		illumina=cmdLine.getBooleanVal("illumina");
 		Outputs.url = cmdLine.getStringVal("api_url");
 		String output = cmdLine.getStringVal("output", null);
-		String output_join = cmdLine.getStringVal("join_out", null);
-		String output_overlap = cmdLine.getStringVal("overlap_out", null);
-		String output_nogap = cmdLine.getStringVal("nogap_out", null);
-		String output_fasta= cmdLine.getStringVal("fasta_out", null);
 		Outputs.format="json";
 		boolean append = !Outputs.overwrite;
 		if(output==null) {
 			Outputs.outputstream = System.out;
 		}else {
-		  Outputs.outputstream =  output.endsWith(".gz")  ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output, append))) : new PrintStream(new FileOutputStream(output, append));
+		  Outputs.outputstream =  Outputs.getOutput(output, append);
 		  Outputs.format = output.endsWith(".json.gz") || output.endsWith(".json") ? "json" : "tsv";
 		}
-		Outputs.joinOut =output_join==null ? null : (output_join.endsWith(".gz") ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output_join, append))) : new PrintStream(new FileOutputStream(output_join, append)));
-		Outputs.overlapOut =output_overlap==null ? null : (output_overlap.endsWith(".gz") ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output_overlap, append))) : new PrintStream(new FileOutputStream(output_overlap, append)));
-		Outputs.noGap =output_nogap==null ? null : (output_nogap.endsWith(".gz") ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output_nogap, append))) : new PrintStream(new FileOutputStream(output_nogap, append)));
-		Outputs.allOut =output_fasta==null ? null : (output_fasta.endsWith(".gz") ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output_fasta, append))) : new PrintStream(new FileOutputStream(output_fasta, append)));
+		Outputs.joinOut =Outputs.getOutput(cmdLine.getStringVal("join_out", null), append);
+		Outputs.overlapOut =Outputs.getOutput(cmdLine.getStringVal("overlap_out", null), append);
+		Outputs.noGap =Outputs.getOutput( cmdLine.getStringVal("nogap_out", null), append);//
+		Outputs.allOut =Outputs.getOutput(cmdLine.getStringVal("fasta_out", null), append);
+		Outputs.spliceOut =Outputs.getOutput(cmdLine.getStringVal("splice_out", null), append);
+		Outputs.threeOut =Outputs.getOutput(cmdLine.getStringVal("three_out", null), append);
+		Outputs.fiveOut =Outputs.getOutput(cmdLine.getStringVal("five_out", null), append);
 
 		Outputs.annotation_mode = Arrays.asList(cmdLine.getStringVal("annotation_mode").split(":"));
 		Outputs.writeH5 = cmdLine.getBooleanVal("writeH5");
@@ -383,6 +388,7 @@ addBoolean("illumina", false, "use illumina libary");
 
 		Pattern patt = Pattern.compile(":");
 		IdentityProfile1.includeStartEnd = cmdLine.getBooleanVal("includeStart");
+		IdentityProfileHolder.prime3 = cmdLine.getBooleanVal("3prime");
 	SequenceOutputStream1.max_seqs_per_cluster = cmdLine.getIntVal("max_seqs_per_cluster");
 		 coronavirus = cmdLine.getBooleanVal("coronavirus");
 		String[] msaOpts = cmdLine.getStringVal("doMSA").split(":"); //e.g 5_3:sep or all:sep
