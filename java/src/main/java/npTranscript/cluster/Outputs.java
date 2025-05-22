@@ -222,7 +222,7 @@ public class Outputs{
 			this.expt = expt;
 			this.register();
 			genome_index = "0.";
-			 this.resDir = resDir;
+		//	 this.resDir = resDir;
 			 int num_sources = 1;//type_nmes.length;
 			// outfile2 = new File(resDir, genome_index+"clusters.h5");
 			 //outfile10 = new File(resDir,genome_index+"isoforms.h5");
@@ -1086,7 +1086,7 @@ gson.fromJson(str1,  int[].class);
 		public static void makeOutputs(String resDir1, boolean append) throws FileNotFoundException, IOException {
 			Outputs.resDir = new File(resDir1);
 			System.err.println("resDir "+resDir);
-			if(resDir.exists() && !append) throw new IOException("need to do append if the directory exists, or delete "+resDir1);
+			if(resDir.exists() && resDir.listFiles().length>0 && !append) throw new IOException("need to do append if the directory exists, or delete "+resDir1);
 			resDir.mkdir();
 			boolean gz = gzip;
 			List<String> outps = Arrays.asList("join:overlap:nogap:splice:3:5:all".split(":")); //"all"
@@ -1107,7 +1107,7 @@ gson.fromJson(str1,  int[].class);
 		}
 
 
-		static List<PrintStream> ps = null;
+		static List<PrintStream> ps = new ArrayList<>();
 
 
 

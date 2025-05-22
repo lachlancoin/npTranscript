@@ -334,6 +334,7 @@ addBoolean("illumina", false, "use illumina libary");
 //				  output.endsWith(".json.gz") || output.endsWith(".json") ? "json" : "tsv";
 		}
 		String resDir = cmdLine.getStringVal("resDir");
+		System.err.println("resDir is "+resDir);
 		if(resDir!=null) {
 			Outputs.makeOutputs(resDir,append);
 		}
