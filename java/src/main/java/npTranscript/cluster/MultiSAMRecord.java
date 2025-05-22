@@ -215,7 +215,7 @@ public static class Breaks{
 		}
 		
 		public void reset(SAMRecord primary){
-			Integer polyA = (Integer) primary.getAttribute(SAMTag.PT);
+			Integer polyA = null;//(Integer) primary.getAttribute(SAMTag.PT);
 			this.readname = primary.getReadName();
 			sb.reset(readname, polyA);
 			bq = primary.getBaseQualities();
