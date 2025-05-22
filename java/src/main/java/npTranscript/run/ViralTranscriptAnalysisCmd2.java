@@ -36,11 +36,9 @@ package npTranscript.run;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -55,7 +53,6 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.zip.GZIPOutputStream;
 
 import com.google.gson.Gson;
 
@@ -79,6 +76,7 @@ import npTranscript.cluster.EmptyAnnotation;
 import npTranscript.cluster.GFFAnnotation;
 import npTranscript.cluster.IdentityProfile1;
 import npTranscript.cluster.IdentityProfileHolder;
+import npTranscript.cluster.MultiSAMRecord;
 import npTranscript.cluster.Outputs;
 import npTranscript.cluster.TranscriptUtils;
 
@@ -171,22 +169,23 @@ addBoolean("illumina", false, "use illumina libary");
 	
 		addBoolean("enforceStrand", false, "whether to enforce strandedness");
 		addString("readList", "", "List of reads", false);
-		addString("join_out",null, "Output for joining sequences");
+		
+		/*addString("join_out",null, "Output for joining sequences");
 		addString("overlap_out",null, "Output for overlap sequences");
 		addString("nogap_out",null, "Output for nogap  sequences");
 		addString("fasta_out",null, "Output for printing original reads in fasta");
 		addString("splice_out",null, "Output for printing observed splice sites");
 		addString("five_out",null, "Output for printing observed five sites");
 		addString("three_out",null, "Output for printing observed three sites");
-
+*/
 		
 		
 		addString("chroms_to_include", "all", "Restrict to these chroms, colon delimited", false);
 		addString("chroms_to_ignore", "none", "Ignore these chroms", false);
 	//	addString("bedChr", null, "Use this for the chrom in bed chr, e.g. NC_045512v2, false");
         addBoolean("singleGFF", false, "whether to have single output gff, rather than different for different input. ");
-addBoolean("3prime",false,"whether to order 3 to 5");
-        //	addString("resdir", "results"+System.currentTimeMillis(), "results directory");
+//addBoolean("3prime",false,"whether to order 3 to 5");
+        addString("resdir", null, "results directory for extra output files"); //"results"+System.currentTimeMillis()
 		addString("RNA", "name", "If is direct RNA.  Can be tab delimmited boolean, e.g. true:true  or if set to name it will look for RNA string in name");
 		addBoolean("trainStrand", false,"whether to produce training data for strand correction");
 		addBoolean("recordDepthByPosition", false, "whether to store position specific depth (high memory");
@@ -330,23 +329,22 @@ addBoolean("3prime",false,"whether to order 3 to 5");
 		if(output==null) {
 			Outputs.outputstream = System.out;
 		}else {
-		  Outputs.outputstream =  Outputs.getOutput(output, append);
-		  Outputs.format = output.endsWith(".json.gz") || output.endsWith(".json") ? "json" : "tsv";
+		  Outputs.outputstream =  Outputs.getOutput(new File( output), append);
+		  Outputs.format = "json";
+//				  output.endsWith(".json.gz") || output.endsWith(".json") ? "json" : "tsv";
 		}
-		Outputs.joinOut =Outputs.getOutput(cmdLine.getStringVal("join_out", null), append);
-		Outputs.overlapOut =Outputs.getOutput(cmdLine.getStringVal("overlap_out", null), append);
-		Outputs.noGap =Outputs.getOutput( cmdLine.getStringVal("nogap_out", null), append);//
-		Outputs.allOut =Outputs.getOutput(cmdLine.getStringVal("fasta_out", null), append);
-		Outputs.spliceOut =Outputs.getOutput(cmdLine.getStringVal("splice_out", null), append);
-		Outputs.threeOut =Outputs.getOutput(cmdLine.getStringVal("three_out", null), append);
-		Outputs.fiveOut =Outputs.getOutput(cmdLine.getStringVal("five_out", null), append);
-
+		String resDir = cmdLine.getStringVal("resDir");
+		if(resDir!=null) {
+			Outputs.makeOutputs(resDir,append);
+		}
+			
+		
 		Outputs.annotation_mode = Arrays.asList(cmdLine.getStringVal("annotation_mode").split(":"));
 		Outputs.writeH5 = cmdLine.getBooleanVal("writeH5");
 		Outputs.report = cmdLine.getIntVal("report");
-		String[] round = cmdLine.getStringVal("round", "10").split(":");
-		CigarHash2.round = new Integer[ round.length];
-		for(int i=0; i<round.length;i++)CigarHash2.round[i] = Integer.parseInt(round[i]);
+		
+		IdentityProfileHolder.round = 
+			Arrays.asList(cmdLine.getStringVal("round", "1").split(":")).stream().map(t->Integer.valueOf(t)).collect(Collectors.toList()).toArray(new Integer[0]);
 	//	CigarHash2.round1 = cmdLine.getIntVal("bin1");
 		String types_to_include = cmdLine.getStringVal("types_to_include", null);
 		if(types_to_include!=null) IdentityProfile1.types_to_include = Arrays.asList(types_to_include.split(":"));
@@ -388,7 +386,7 @@ addBoolean("3prime",false,"whether to order 3 to 5");
 
 		Pattern patt = Pattern.compile(":");
 		IdentityProfile1.includeStartEnd = cmdLine.getBooleanVal("includeStart");
-		IdentityProfileHolder.prime3 = cmdLine.getBooleanVal("3prime");
+	//	IdentityProfileHolder.prime3 = cmdLine.getBooleanVal("3prime");
 	SequenceOutputStream1.max_seqs_per_cluster = cmdLine.getIntVal("max_seqs_per_cluster");
 		 coronavirus = cmdLine.getBooleanVal("coronavirus");
 		String[] msaOpts = cmdLine.getStringVal("doMSA").split(":"); //e.g 5_3:sep or all:sep
@@ -734,6 +732,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 			flags.put("annot", Outputs.annotation_mode);
 			flags.put("round", CigarHash2.round);
 			flags.put("br", IdentityProfile1.break_thresh);
+			flags.put("direction", "3_5");
 			m.put("id", sampleID);
 			m.put("flags", flags);
 				samIter = samReaders.iterator();
@@ -747,6 +746,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 			expt.put("sampleID",sampleID); // prob not best sampleID
 			expt.put("flags",flags1);
 			flags1.put("RNA", ViralTranscriptAnalysisCmd2.RNA);
+			flags1.put("direction", "3_5");
 			Outputs 	outp = new Outputs( in_nmes,   true, CigarCluster.recordDepthByPosition,expt); 
 			
 			

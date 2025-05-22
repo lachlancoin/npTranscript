@@ -37,6 +37,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -54,6 +55,7 @@ import htsjdk.samtools.fastq.FastqWriterFactory;
 import japsa.seq.Sequence;
 import npTranscript.NW.PolyAT;
 import npTranscript.cluster.CigarCluster.Count;
+import npTranscript.cluster.MultiSAMRecord.StringBuffers;
 import npTranscript.run.Barcodes;
 import npTranscript.run.CompressDir;
 import npTranscript.run.SequenceOutputStream1;
@@ -61,7 +63,7 @@ import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 public class Outputs{
 	public static String readsOutputFile=null;
-	
+	public static boolean gzip =false;
 	public static String url="http://0.0.0.0:81";
 	public static PrintStream outputstream;  // this is the main output stream
 	public static PrintStream joinOut,overlapOut,noGap,allOut, spliceOut, fiveOut, threeOut;
@@ -164,7 +166,7 @@ public class Outputs{
 		// IHDF5SimpleWriter clusterW = null;
 		 //IHDF5Writer altT = null;
 		 //IHDF5Writer breakPW = null;
-		File resDir;
+		static File resDir;
 		CompressDir[] clusters;
 		
 		
@@ -174,17 +176,10 @@ public class Outputs{
 			System.err.println();
 			this.all_res.values().stream().forEach(t ->t.values().forEach(t1 -> t1.post()) );
 			Outputs.outputstream.close();
-			if(Outputs.joinOut!=null) Outputs.joinOut.close();
-			if(Outputs.overlapOut!=null) Outputs.overlapOut.close();
-			if(Outputs.noGap!=null) Outputs.noGap.close();
-			if(Outputs.allOut!=null) Outputs.allOut.close();
-			if(Outputs.spliceOut!=null) Outputs.spliceOut.close();
-			if(Outputs.fiveOut!=null) Outputs.fiveOut.close();
-			if(Outputs.threeOut!=null) Outputs.threeOut.close();
-		//	Map output1 = this.extract();
-			//System.err.println(output1);
-		//	if(plusMinus!=null) plusMinus.close();
-			//IdentityProfileHolder.waitOnThreads(100);
+			Outputs.ps.stream().forEach(t->t.close());
+			CompressDir cd = new CompressDir(resDir, false, gzip);
+			cd.writeAll();
+			cd.close();
 			if(writeCompressDirsExecutor!=null){
 				Outputs.waitOnThreads(writeCompressDirsExecutor,100);
 				
@@ -235,12 +230,12 @@ public class Outputs{
 			List<Integer> vals = new ArrayList<Integer>(new HashSet<Integer> (Outputs.msa_sources.values()));
 			Collections.sort(vals);
 			 if(doMSA!=null && ( Outputs.msa_sources.size()==0)){
-				 clusters = new CompressDir[] {new CompressDir(new File(resDir,  genome_index+"clusters"), true)};
+				 clusters = new CompressDir[] {new CompressDir(new File(resDir,  genome_index+"clusters"), true, gzip)};
 			 }else if(doMSA!=null &&  ( Outputs.msa_sources.size()>0)){
 				 clusters =  new CompressDir[vals.size()];
 				 for(int i=0; i<clusters.length; i++){
 					 String nmei =  genome_index+vals.get(i)+".";
-					 clusters[i] = new CompressDir(new File(resDir, nmei+"clusters"), true);
+					 clusters[i] = new CompressDir(new File(resDir, nmei+"clusters"), true, gzip);
 				 }
 			 }else{
 				clusters = new CompressDir[1];
@@ -748,7 +743,7 @@ gson.fromJson(str1,  int[].class);
 			Map<String, Object> flags1 = new HashMap<String, Object>();
 			JSONOut(String chr, String strand1, int br){
 				this.chr = chr; 
-				this.strand =String.join(";",strand1.split(""));
+				this.strand =strand1;//String.join(";",strand1.split(""));
 				all_res1.put("id", expt.get("sampleID"));
 				
 				
@@ -776,6 +771,7 @@ gson.fromJson(str1,  int[].class);
 			public  void post() {
 				flags1.put("read1", this.first_read);
 				flags1.put("nreads", this.reads.size());
+			
 			//	this.all_res.put("sessionID", sessionID);
 				Curl curl = new Curl(all_res1, "addreads");
 				Map output = curl.run();
@@ -836,7 +832,12 @@ gson.fromJson(str1,  int[].class);
 		
 		String first_read = null;
 		public Set<String> reads = new TreeSet<String>();
-		public synchronized void append(String readname,  String chrom, String strand, String endPos, String key,Integer polyA, Integer round){
+		public synchronized void append(
+				StringBuffers sb,
+				Integer round){
+			Integer polyA = sb.polyA();
+			String strand = sb.strand();
+			String chrom  = sb.chrom();
 			Map<String,JSONOut> all_res_round_strand = all_res.get(strand);
 			if(all_res_round_strand==null) {
 				all_res_round_strand = new HashMap<String, JSONOut>();
@@ -847,7 +848,7 @@ gson.fromJson(str1,  int[].class);
 				all_res_chr = new JSONOut(chrom,strand, IdentityProfile1.break_thresh);
 				all_res_round_strand.put(chrom, all_res_chr);
 			}
-			all_res_chr.append(readname, endPos, key, polyA, round);
+			all_res_chr.append(sb.readname, sb.end(round), sb.ref(round), polyA, round);
 		}
 		
 		Map<String, Object> expt;
@@ -1064,14 +1065,49 @@ gson.fromJson(str1,  int[].class);
 
 
 
-		public static PrintStream getOutput(String output_join, boolean append) throws FileNotFoundException, IOException {
-			return output_join==null ? null : (output_join.endsWith(".gz") ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output_join, append))) : new PrintStream(new FileOutputStream(output_join, append)));
-
+		public static PrintStream getOutput(File output_join, boolean append) {
+		//	File output_join = resdir==null ? new File(output_join1)  : new File(resdir, output_join1);
+			PrintStream p1 = null;
+			try {
+				p1 = (output_join.getName().endsWith(".gz") ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output_join, append))) : new PrintStream(new FileOutputStream(output_join, append)));
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			return p1;
 		}
 
 
 
 
+
+
+
+		public static void makeOutputs(String resDir1, boolean append) throws FileNotFoundException, IOException {
+			Outputs.resDir = new File(resDir1);
+			System.err.println("resDir "+resDir);
+			if(resDir.exists() && !append) throw new IOException("need to do append if the directory exists, or delete "+resDir1);
+			resDir.mkdir();
+			boolean gz = gzip;
+			List<String> outps = Arrays.asList("join:overlap:nogap:splice:3:5:all".split(":")); //"all"
+			Stream<File> files = outps.stream().map(t-> new File(resDir1, gz? t+".fa.gz" : t+".fa"));
+			Outputs.ps= files.map(t->getOutput(t, append)).collect(Collectors.toList());
+			Outputs.joinOut = ps.get(0);
+			Outputs.overlapOut = ps.get(1);
+			Outputs.noGap = ps.get(2);
+		
+			Outputs.spliceOut = ps.get(3);
+			Outputs.threeOut = ps.get(4);
+			Outputs.fiveOut = ps.get(5);
+			Outputs.allOut = ps.get(6);
+			//return (output_join1.endsWith(".gz") ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output_join, append))) : new PrintStream(new FileOutputStream(output_join, append)));
+
+			//Outputs.getOutput(resDir, t, append, gz)).collect(Collectors.toList());
+			
+		}
+
+
+		static List<PrintStream> ps = null;
 
 
 

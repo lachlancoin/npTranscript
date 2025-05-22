@@ -216,7 +216,8 @@ static char delim_start ='$';
 				parent.o.printRead(str+"\t"+str1+"\t"+str2);
 				
 				//String nme=sam.getReferenceName();
-				parent.o.append(sam.getReadName(),  chrom_, strand, endPosStr, id_, pt, round);
+				StringBuffers sb = null;
+				//parent.o.append(sam.getReadName(), null, round);
 		//}
 		
 		if(includeInConsensus  && Outputs.msa_sources.containsKey(source_index) && 
@@ -600,7 +601,7 @@ static char delim_start ='$';
 			
 			//if(!ViralTranscriptAnalysisCmd2.allowSuppAlignments){
 			  if(types_to_include==null || types_to_include.contains(profile.type_nme)){
-
+				 
 				profile.commit(readSeq, sams.get(primary_index), round);
 			}
 			}

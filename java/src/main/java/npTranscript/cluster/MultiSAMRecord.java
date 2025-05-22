@@ -10,37 +10,106 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import htsjdk.samtools.AlignmentBlock;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMTag;
 import npTranscript.NW.NeedlemanWunsch;
 import npTranscript.run.TranscriptUtils1;
 
 public class MultiSAMRecord{
 	
+	public static String toString1(List<Integer> pos, double round) {
+		StringBuffer sb1 = new StringBuffer();
+		for(int j=0; j<pos.size(); j+=2) {
+			if(j>0) sb1.append(",");
+			sb1.append(Math.round( pos.get(j).doubleValue()/round)+"_"+Math.round(pos.get(j+1).doubleValue()/round));
+		}
+		return sb1.toString();
+	}
+	public static String toString2(List<List<Integer>> pos, double round) {
+		StringBuffer sb1 = new StringBuffer();
+		for(int j=0; j<pos.size(); j++) {
+			if(j>0) sb1.append(";");
+			sb1.append(toString1(pos.get(j), round));
+		}
+		return sb1.toString();
+	}
+	
+	public static String toString3(List<String> l , boolean flip, CharSequence sep) {
+		List<String> l1 = flip ? l.reversed() : l;
+		return l1.stream().collect(Collectors.joining(sep));
+	}
+	
 	static class StringBuffers{
-		StringBuffer chrom = new StringBuffer();
-		StringBuffer strand = new StringBuffer();//sam1.get(0).getReadNegativeStrandFlag() ? '-': '+';
-		StringBuffer q_str = new StringBuffer();
-		StringBuffer q_str1 = new StringBuffer();
-		StringBuffer read_pos = new StringBuffer();
-		StringBuffer ref_pos = new StringBuffer();
-		StringBuffer ref_3 = new StringBuffer();
-		StringBuffer overlaps = new StringBuffer();
-		public void append(String string) {
-			read_pos.append(";");
-			chrom.append(";");//strand.append(";");
-			q_str.append(";");q_str1.append(";");
-			overlaps.append(";");
-			ref_pos.append(";");
-			ref_3.append(";");
+		String readname;
+		boolean prime3=false;
+		Integer polyA;
+		StringBuffers(){
+			
+		}
+		void reset(String readname, Integer polyA){
+			this.readname = readname;
+			this.polyA = polyA;
+			this.prime3 = false;
+		}
+		public void set3prime(boolean prime3) {
+			this.prime3 = prime3;
+		}
+		List<String >chrom = new ArrayList<String>();
+		List<String>strand = new ArrayList<String>();//sam1.get(0).getReadNegativeStrandFlag() ? '-': '+';
+		List<String> q_str = new ArrayList<String>();
+		List<String> q_str1 = new ArrayList<String>();
+		List<List<Integer>> ref_pos = new ArrayList<List<Integer>>();
+		List<List<Integer>> read_pos = new ArrayList<List<Integer>>();
+		//StringBuffer ref_3 = new StringBuffer("e:");
+		List<String> overlaps = new ArrayList<String>();
+		
+		public String getString() {
+			return getString(1);
+			
+		}
+		public String chrom() {return toString3(chrom, prime3, ";");}
+		public String strand() {
+			return toString3(strand, prime3, ";");
+			}
+		public String q_str() {return toString3(q_str, prime3, ";");}
+		public String q_str1() {return toString3(q_str1, prime3, ";");}
+		public String overlaps() {return toString3(overlaps, prime3, ";");}
+		
+		public String end(double round) {
+			String res = this.ref_pos.stream().map(t->String.valueOf((int) Math.round(t.get(0).doubleValue()/round))).collect(Collectors.joining(";"));
+			return res;
+		}
+		public String ref(double round) {
+			return toString2(this.ref_pos, round);
+		}
+		public String read(double round) {
+			return toString2(this.read_pos, round);
+		}
+		
+		
+		public String getString(double round) {
+			// TODO Auto-generated method stub
+			return chrom()+" "+strand()+" "+end(round)+" "+ q_str()+" "+q_str1()+" " +read(round)+" "+ref(round)+" "+overlaps();
+		}
+		
+		public void append(String chrom, char strand, int q_str, double q_str1, List<Integer> ref_pos2,List<Integer> read_pos2) {
+			this.chrom.add(chrom);
+			this.strand.add(strand+"");
+			this.q_str.add(q_str+"");
+			this.q_str1.add(q_str1+"");
+		//	this.overlaps.add(overlaps);
+			this.ref_pos.add(ref_pos2);
+			this.read_pos.add(read_pos2);
 			// TODO Auto-generated method stub
 			
 		}
-		public String getString() {
+		public Integer polyA() {
 			// TODO Auto-generated method stub
-			return chrom.toString()+" "+strand.toString()+" "+ref_3.toString()+" "+ q_str.toString()+" "+q_str1.toString()+" " +read_pos.toString()+" "+ref_pos.toString()+" "+overlaps.toString();
-		}	
+			return polyA;
+		}
 	}
 	
 	
@@ -71,6 +140,7 @@ public class MultiSAMRecord{
 	static ReadOrderComparator forward_comp = new ReadOrderComparator(false);
 	static ReadOrderComparator reverse_comp = new ReadOrderComparator(false);
 	
+	
 	static SortedMap<Integer[], String> copy(SortedMap<Integer[], SAMRecord> map) {
 		TreeMap<Integer[], String> tm = new TreeMap<Integer[], String>(map.comparator());
 		Iterator<Entry<Integer[], SAMRecord>> it = map.entrySet().iterator();
@@ -85,20 +155,11 @@ public class MultiSAMRecord{
 	}
 
 
-	public static String toString1(List<Integer> pos) {
-		StringBuffer sb = new StringBuffer();
-		for(int j=0; j<pos.size(); j+=2) {
-			if(j>0) sb.append(",");
-			sb.append(pos.get(j)+"_"+pos.get(j+1));
-		}
-		return sb.toString();
-	}
+	
 public static class Breaks{
 	List<Integer> pos = new ArrayList<Integer>();
 	boolean neg1;
-	boolean prime3;
-	Breaks(SAMRecord sr, int gap, boolean prime3){
-		this.prime3= prime3;
+	Breaks(SAMRecord sr, int gap){
 		Iterator<AlignmentBlock> ab = sr.getAlignmentBlocks().iterator();
 		AlignmentBlock ab1 = ab.next();
 			int st = ab1.getReferenceStart();
@@ -120,7 +181,7 @@ public static class Breaks{
 			
 		 neg1 = sr.getReadNegativeStrandFlag();
 		//if neg1 is false then it will be in 5 -> 3
-		if(!neg1 && prime3 || neg1 && !prime3) {
+		if(neg1) {
 			this.pos = this.pos.reversed();
 		}
 	}
@@ -128,7 +189,7 @@ public static class Breaks{
 		 return pos.get(0).toString();
 	 }
 	public String toString() {
-		return(toString1(this.pos));
+		return(toString1(this.pos,1.0));
 	}
 	
 }
@@ -136,20 +197,27 @@ public static class Breaks{
 		//SAMRecord s1;
 		String read_str, readname;
 		int read_length;
-		boolean primary_neg, prime3; 
+		boolean primary_neg;//, prime3; 
 	//	Integer[] read_coords = Integer[];
 		byte[] bq;
 		
-		StringBuffers sb = new StringBuffers();
+		StringBuffers sb;
 		// len; 
 		TreeMap<Integer[], SAMRecord> res;
 		TreeMap<Integer[], Breaks> res1;
 		int gap;
 		
-		MultiSAMRecord(SAMRecord primary, int gap, boolean prime3){
+		MultiSAMRecord(int gap){
 			this.gap = gap;
-			this.prime3=prime3;
+			this.sb  = new StringBuffers();
+			res = new TreeMap<Integer[],SAMRecord>(forward_comp);
+			res1 = new TreeMap<Integer[],Breaks>(forward_comp);
+		}
+		
+		public void reset(SAMRecord primary){
+			Integer polyA = (Integer) primary.getAttribute(SAMTag.PT);
 			this.readname = primary.getReadName();
+			sb.reset(readname, polyA);
 			bq = primary.getBaseQualities();
 			if(primary.isSecondaryAlignment()) throw new RuntimeException("!");
 		//	this.s1 = primary;
@@ -157,8 +225,7 @@ public static class Breaks{
 			read_length = primary.getReadLength();
 			primary_neg = primary.getReadNegativeStrandFlag();
 			//this.primary=true;
-			res = new TreeMap<Integer[],SAMRecord>(prime3 ? reverse_comp : forward_comp);
-			res1 = new TreeMap<Integer[],Breaks>(prime3 ? reverse_comp : forward_comp);
+			res1.clear();res.clear();
 			this.update(primary, true);
 		}
 		
@@ -171,17 +238,17 @@ public static class Breaks{
 			if(add) {
 				Integer[] key =this.getStEnd(supp); 
 				res.put(key, supp);
-				Breaks br = new Breaks(supp, gap, prime3);
+				Breaks br = new Breaks(supp, gap);
 				res1.put(key, br);
 			}
 		}
 		
 		public String toString() {
-			StringBuffer sb = new StringBuffer(this.readname+"\n");
-			sb.append(IdentityProfileHolder.gson.toJson(res.keySet()));
-			sb.append(IdentityProfileHolder.gson.toJson(copy(res).values()));
+			StringBuffer sb1 = new StringBuffer(this.readname+"\n");
+			sb1.append(IdentityProfileHolder.gson.toJson(res.keySet()));
+			sb1.append(IdentityProfileHolder.gson.toJson(copy(res).values()));
 			
-			return(sb.toString());
+			return(sb1.toString());
 		}
 
 		
@@ -192,7 +259,7 @@ public static class Breaks{
 			boolean removed=false;
 			String read_str1 = primary_neg ?  NeedlemanWunsch.reverseComplement(read_str) : read_str;
 			int cnt=1;
-			Set<Integer[]> keyset = prime3 ? res.descendingKeySet() : res.keySet();
+			Set<Integer[]> keyset =  res.keySet();//prime3 ? res.descendingKeySet() :
 			Iterator<Integer[]> it1 = keyset.iterator();
 			
 			
@@ -206,23 +273,20 @@ public static class Breaks{
 					String char2 = sr2.getReadNegativeStrandFlag() ? "-" : "+";
 					int st2 = sr2.getStart();
 					int len = sr2.getReadLength();
-					if(!first) sb.append(";");
-					sb.strand.append(sr2.getReadNegativeStrandFlag() ? '-': '+');
 					
-					sb.q_str.append(sr2.getMappingQuality());
 					//Breaks br2 = res1.get(se1);
 					
 					List<Integer> read_pos = this.getReadPos(se1);
 					List<Integer> ref_pos = this.getRefPos(se1);
 					boolean neg = sr2.getReadNegativeStrandFlag();
-					String header = ">"+readname+" cnt:"+cnt+" "+char2+" "+sr2.getReferenceName()+" "+st2;
+					String header = ">"+readname+" cnt:"+cnt+" S"+char2+" "+sr2.getReferenceName()+" "+st2;
 					if(Outputs.spliceOut!=null && read_pos.size()>2) {
 						for(int j=2; j<read_pos.size(); j+=2) {
 							int pos1 = read_pos.get(j-1);
 							int pos2 = read_pos.get(j);
 						
-							String substr = (neg && ! prime3 || !neg && prime3)  ? read_str1.substring(pos2-3, pos1+2) : read_str1.substring(pos1-3, pos2+2);
-							String substr1 = (neg && ! prime3 || !neg && prime3)  ? read_str1.substring(pos2-2, pos1+1) : read_str1.substring(pos1-2, pos2+1);
+							String substr = (neg)  ? read_str1.substring(pos2-3, pos1+2) : read_str1.substring(pos1-3, pos2+2);
+							String substr1 = (neg )  ? read_str1.substring(pos2-2, pos1+1) : read_str1.substring(pos1-2, pos2+1);
 								Outputs.spliceOut.println(header+" "+pos1+"-"+pos2+"\t"+substr+"\t"+substr1);
 						}
 						
@@ -254,27 +318,26 @@ public static class Breaks{
 						Outputs.threeOut.println(header+"\t"+substr+"\t"+substr1);
 					}
 					
-					
-					sb.ref_pos.append(toString1(ref_pos));
-					sb.ref_3.append(ref_pos.getFirst().toString());
+					//sb.ref_pos.append(toString1(ref_pos));
 					
 					int qstart = se1[0];//record.getReadPositionAtReferencePosition(record.getAlignmentStart());
 					int qend = se1[1];//record.getReadPositionAtReferencePosition(record.getAlignmentEnd());
-					sb.read_pos.append(toString1(read_pos));
-					sb.q_str1.append(TranscriptUtils1.median(bq, qstart, qend-qstart));
-				 	sb.chrom.append(sr2.getReferenceName());
+					//sb.appendRead(read_pos);
+				//	sb.read_pos.append(toString1(read_pos));
 					
-					
+					sb.append(sr2.getReferenceName(),sr2.getReadNegativeStrandFlag() ? '-': '+',sr2.getMappingQuality(),
+							TranscriptUtils1.median(bq, qstart, qend-qstart), ref_pos,read_pos);
+				//	public void append(String chrom, String strand, String q_str, String q_str1, String overlaps, List<Integer> ref_pos2,List<Integer> read_pos2) {
+
 					if(!first) {
-						sb.append(";");
 						int overlap = se_prev[1] - se1[0]+1;
-						sb.overlaps.append(overlap);
+						sb.overlaps.add(overlap+"");
 						SAMRecord sr1 = res.get(se_prev);
 						//SAMRecord sr2 = res.get(se1);
 						String char1 = sr1.getReadNegativeStrandFlag() ? "-" : "+";
 						int st1 = sr1.getStart();
 						boolean same =sr1.getReferenceName().equals(sr2.getReferenceName());
-						String header1 = ">"+readname+",overlap:"+overlap+" cnt:"+cnt+" "+se1[0]+","+se_prev[1]+" "+char1+"," +char2+" "+sr1.getReferenceName()+","+sr2.getReferenceName()+" "+st1+" "+st2+" "+same;
+						String header1 = ">"+readname+",overlap:"+overlap+" cnt:"+cnt+" "+se1[0]+","+se_prev[1]+" S"+char1+char2+" "+sr1.getReferenceName()+","+sr2.getReferenceName()+" "+st1+" "+st2+" "+same;
 						if(overlap>0) {
 							if(Outputs.overlapOut!=null) {
 								String substr = read_str1.substring(se1[0]-1,se_prev[1]-1);
@@ -288,7 +351,7 @@ public static class Breaks{
 
 						}else if(overlap <0) {
 							if(Outputs.joinOut!=null) {
-								String substr = read_str1.substring(se_prev[1]-1, se1[0]-1);
+								String substr = read_str1.substring(se_prev[1]-1, se1[0]);
 								//if(primary_neg) substr =  NeedlemanWunsch.reverseComplement(substr);
 								Outputs.joinOut.println(header1+"\t"+substr);
 							}
@@ -297,12 +360,14 @@ public static class Breaks{
 							}
 						}else if(overlap<2 && overlap >-2) {
 							if(Outputs.noGap!=null) {
-								String substr = read_str1.substring(se_prev[1]-6, se1[0]+5); //because its one based
+								String substr1 = read_str1.substring(se_prev[1]-6, se_prev[1]); //because its one based
+								String g = overlap>0 ? read_str1.substring(se_prev[1], se1[0]) : "";
+								String substr2 = read_str1.substring(se1[0]-1, se1[0]+6); //because its one based
 								
-								String substr1 = read_str1.substring(se_prev[1]-4, se1[0]+3); //because its one based
-								String substr2 = read_str1.substring(se_prev[1]-3, se1[0]+2); 
+//								String substr1 = read_str1.substring(se_prev[1]-4, se1[0]+3); //because its one based
+//								String substr2 = read_str1.substring(se_prev[1]-3, se1[0]+2); 
 								//if(primary_neg) substr =  NeedlemanWunsch.reverseComplement(substr);
-								Outputs.noGap.println(header1+"\t"+substr+"\t"+substr1+"\t"+substr2);
+								Outputs.noGap.println(header1+"\t"+substr1+"\t"+g+"\t"+substr2);
 							}
 							
 						}
@@ -319,7 +384,8 @@ public static class Breaks{
 				}
 				
 				if(Outputs.allOut!=null) {
-					Outputs.allOut.println(">"+readname+" "+sb.getString()+"\n"+read_str1);
+					String head = sb.getString();
+					Outputs.allOut.println(">"+readname+" "+head+"\t"+read_str1);
 				}
 				
 				

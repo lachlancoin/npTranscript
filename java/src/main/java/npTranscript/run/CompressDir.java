@@ -3,9 +3,12 @@ package npTranscript.run;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -13,6 +16,8 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.zip.Adler32;
 import java.util.zip.CheckedOutputStream;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -38,36 +43,49 @@ public class CompressDir {
 	
 	public static boolean doTrim = false;
 	
-	 FileOutputStream dest;
-	    CheckedOutputStream checksum;
+	 OutputStream dest;
+	    OutputStream checksum;
 	    ZipOutputStream outS;
 	    OutputStreamWriter osw;
 	    SequenceOutputStream1 osw_s;
-	    
+	    OutputStream bos;
 	   public  File inDir;
 	    int len;
-	    
-	    public CompressDir(File f, boolean includeFileLength) throws IOException{
+	    boolean gzip = false;
+	    public CompressDir(File f, boolean includeFileLength, boolean gz) throws IOException{
 	    	this.includeFileLength = includeFileLength;
-
+this.gzip = gz;
 	    	this.inDir = f;
 	    	inDir.mkdir();
 	    	len = inDir.getAbsolutePath().length()+1;
+	    	len =inDir.getAbsolutePath().indexOf(f.getName());
 	    	 dest = new FileOutputStream(new File(inDir.getParentFile(), inDir.getName()+".zip"));
+	    	 
 	         checksum = new   CheckedOutputStream(dest, new Adler32());
-	         outS = new 
-	         ZipOutputStream(new 
-	           BufferedOutputStream(checksum));
+	        
+	         if(gz) {
+	    		 bos  = new GZIPOutputStream(checksum);
+	    	 }else {
+	    		 bos =  new BufferedOutputStream(checksum);
+	    	 }
+	         outS = new ZipOutputStream(bos);
 	         osw = new OutputStreamWriter(outS);
 	         outS.setMethod(ZipOutputStream.DEFLATED);
 	    }
 	    
-	    public CompressDir(File parent, String name,boolean includeFileLength) throws IOException{
+	    public CompressDir(File parent, String name,boolean includeFileLength, boolean gz) throws IOException{
 	    	 dest = new FileOutputStream(new File(parent, name));
+	    	 this.gzip = gz;
+	    	 
 	         checksum = new   CheckedOutputStream(dest, new Adler32());
-	         outS = new 
-	         ZipOutputStream(new 
-	           BufferedOutputStream(checksum));
+	         
+	         if(gz) {
+	    		 bos  = new GZIPOutputStream(checksum);
+	    	 }else {
+	    		 bos =  new BufferedOutputStream(checksum);
+	    	 }
+	         outS = new ZipOutputStream(bos);
+	         
 	         osw = new OutputStreamWriter(outS);
 	         outS.setMethod(ZipOutputStream.DEFLATED);
 	         this.includeFileLength = includeFileLength;
@@ -169,7 +187,12 @@ public class CompressDir {
 	    	}
 	    	else{
 	    		OutputStreamWriter osw1 = this.getWriter(newname, true);
-	    		BufferedReader br = new BufferedReader(new FileReader(f));
+	    		BufferedReader br;
+	    		if(f.getName().endsWith(".gz")) {
+	    			br  = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(f))));
+	    		}else {
+	    			 br = new BufferedReader(new FileReader(f));
+	    		}
 	            String str = "";
 	            while((str = br.readLine())!=null){
 	        	  osw.write(str);osw.write("\n");
@@ -223,13 +246,18 @@ public class CompressDir {
 	    }
 	    public OutputStreamWriter getWriter(String entry, boolean writeDirectToZip, boolean append)throws IOException{
 	    	if(writeDirectToZip){
-	    	ZipEntry headings = new ZipEntry(entry);
-		    outS.putNextEntry(headings);
-		    return osw;
+	    		if(gzip && !entry.endsWith("gz") || !gzip && entry.endsWith("gz")) throw new IOException("gzip incomaptibility");
+			    	ZipEntry headings = new ZipEntry(entry);
+				    outS.putNextEntry(headings);
+				    return osw;
 	    	}else{
 	    		File f = new File(inDir, entry);
 	    		if(append && ! f.exists()) append=false;
-	    		return new OutputStreamWriter((new FileOutputStream(f,append)));
+	    		OutputStream fos = new FileOutputStream(f,append);
+	    		if(gzip) {
+	    			fos = new GZIPOutputStream(fos);
+	    		}
+	    		return new OutputStreamWriter(fos);
 	    	}
 		        
 	    }

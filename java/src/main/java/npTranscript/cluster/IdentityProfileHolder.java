@@ -27,12 +27,13 @@ import npTranscript.NW.PolyAT;
 import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 public class IdentityProfileHolder {
-	public static boolean prime3 = false;
+	//public static boolean prime3 = false;
 	static boolean CHECK=true;
 	public static double overlap_thresh = 0.33;
 	public static double overlap_max = 20;
 	public static double gap_max = 20;  // max gap on read between adjacent alignments
-
+	public static Integer[] round;
+	
 	static Gson gson = new Gson();
 	public static void waitOnThreads(int sleep) {
 		if(executor==null) return;
@@ -62,10 +63,10 @@ public class IdentityProfileHolder {
  final int num_sources;
  //Sequence chr5prime; Sequence chr3prime;
  
- Stack<IdentityProfile1> idents = new Stack<IdentityProfile1>();
+ Stack<MultiSAMRecord> idents = new Stack<MultiSAMRecord>();
  
  
- public synchronized void replace(IdentityProfile1 pr1){
+ public synchronized void replace(MultiSAMRecord pr1){
 	 //pr1.clear();
 	// System.err.print("returning");
 	 idents.push(pr1);
@@ -75,16 +76,15 @@ public class IdentityProfileHolder {
   * we assume that the primary alignment is first, and supplementary alignments follow
   * note that this breaks multi-threading
   * */
- public synchronized IdentityProfile1 get(){
+ public synchronized MultiSAMRecord get(){
 	 int len = idents.size();
-	 IdentityProfile1 idp;
+	 MultiSAMRecord idp;
 	 if(len==0){
-		idp =  new IdentityProfile1(this) ;
+		// System.err.println("new");
+		idp =  new MultiSAMRecord(IdentityProfile1.break_thresh);
 	 }else{
+		 System.err.println(idents.size());
 		 idp = idents.pop();
-	
-		 idp.clear(); // gets object clear for next use
-
 	 }
 	return idp;
  }
@@ -229,17 +229,7 @@ static AlignmentParameters align_p =new AlignmentParameters();
 		int end = ab.getReadStart()+ab.getLength();
 		return new int[] {st,end};
 	}
-	public void empty(){
-		int len =idents.size();
-		//if(len>1) {
-			//throw new RuntimeException(len+" !!");
-	//	}
-		for(int i=0; i<len; i++){
-			 IdentityProfile1 idp=idents.get(i);
-			// if(ViralTranscriptAnalysisCmd2.allowSuppAlignments) idp.commit();
-			idp.clear();
-		}
-	}
+	
 	SortedSet<String> geneNames = new TreeSet<String>();
 	
 		
@@ -298,26 +288,28 @@ return ;
 				}
 				Iterator<SAMRecord> sam_2 = sam_1.iterator();
 				
-				MultiSAMRecord primary= new MultiSAMRecord(sam_2.next(), IdentityProfile1.break_thresh, prime3);
+				MultiSAMRecord primary= 		new MultiSAMRecord(IdentityProfile1.break_thresh); //get()
+
+				primary.reset(sam_2.next() );
+				//System.err.println(primary.readname);
 				//System.err.println("readnme "+primary.readname);
 				while(sam_2.hasNext()) {
 					primary.update(sam_2.next(), true);
 				}
-				final IdentityProfile1 profile = get();
+				//final IdentityProfile1 profile = get();
 				int sze = sam_1.size();
+				Integer polyA = null;
 				int limit = 1;
 					List<Integer> overlaps = new ArrayList<Integer>();
 				boolean remove = primary.checkList();
 					if(!remove) {
-					int source_index=0;
-					 profile.setName(primary.readname, primary.sb,source_index, primary.fusion());
-					profile.identity1(genome, primary.read_str, sam_1, source_index, cluster_reads);
+						primary.sb.set3prime(true);
+							// TODO Auto-generated method stub
+							for(int i=0; i<round.length; i++) {
+								o.append(primary.sb, round[i]);
+							}
 					}
-				//	profile.commit();
-					
-					
-				//	removeStart(start);
-				replace(profile);
+//				replace(primary);
 			}
 
 		
