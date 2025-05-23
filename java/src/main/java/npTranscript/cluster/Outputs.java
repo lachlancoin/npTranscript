@@ -66,7 +66,7 @@ public class Outputs{
 	public static boolean gzip =false;
 	public static String url="http://0.0.0.0:81";
 	public static PrintStream outputstream;  // this is the main output stream
-	public static PrintStream joinOut,overlapOut,noGap,allOut, spliceOut, fiveOut, threeOut;
+	public static PrintStream joinOut,overlapOut,noGap,allOut, spliceOut, fiveOut, threeOut, remOut;
 	public static String format;
 	public static String sampleName;
 	public static List<String> annotation_mode;
@@ -1085,13 +1085,20 @@ gson.fromJson(str1,  int[].class);
 
 		public static void makeOutputs(String resDir1, boolean append) throws FileNotFoundException, IOException {
 			Outputs.resDir = new File(resDir1);
-			System.err.println("resDir "+resDir);
-			if(resDir.exists() && resDir.listFiles().length>0 && !append) throw new IOException("need to do append if the directory exists, or delete "+resDir1);
 			resDir.mkdir();
+			System.err.println("resDir "+resDir);
 			boolean gz = gzip;
-			List<String> outps = Arrays.asList("join:overlap:nogap:splice:3:5:all".split(":")); //"all"
-			Stream<File> files = outps.stream().map(t-> new File(resDir1, gz? t+".fa.gz" : t+".fa"));
-			Outputs.ps= files.map(t->getOutput(t, append)).collect(Collectors.toList());
+			List<String> outps = Arrays.asList("join:overlap:nogap:splice:3:5:all:rem".split(":")); //"all"
+			List<File> files = outps.stream().map(t-> new File(resDir1, gz? t+".fa.gz" : t+".fa")).collect(Collectors.toList());
+			
+			if(resDir.listFiles().length>0 && !append) {
+				files.stream().map(f->f.delete());
+				//throw new IOException("need to do append if the directory exists, or delete "+resDir1);
+			}
+		
+		
+			
+			Outputs.ps= files.stream().map(t->getOutput(t, append)).collect(Collectors.toList());
 			Outputs.joinOut = ps.get(0);
 			Outputs.overlapOut = ps.get(1);
 			Outputs.noGap = ps.get(2);
@@ -1099,6 +1106,7 @@ gson.fromJson(str1,  int[].class);
 			Outputs.spliceOut = ps.get(3);
 			Outputs.threeOut = ps.get(4);
 			Outputs.fiveOut = ps.get(5);
+			Outputs.remOut = ps.get(7);
 			Outputs.allOut = ps.get(6);
 			//return (output_join1.endsWith(".gz") ? new PrintStream(new GZIPOutputStream(new FileOutputStream(output_join, append))) : new PrintStream(new FileOutputStream(output_join, append)));
 

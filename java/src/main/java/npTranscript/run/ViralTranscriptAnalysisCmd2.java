@@ -309,7 +309,19 @@ addBoolean("illumina", false, "use illumina libary");
 		Outputs.readsOutputFile = cmdLine.getStringVal("readsOutputFile");
 		int breakThresh = cmdLine.getIntVal("breakThresh");
 		String pattern = cmdLine.getStringVal("pattern");
-		String readList = cmdLine.getStringVal("readList");
+		String rl = cmdLine.getStringVal("readList","");
+		Set<String> readList = null;
+		if(rl.length()>0  && ((new File(rl)).exists())) {
+			BufferedReader br = new BufferedReader(new FileReader(rl));
+			String st = br.readLine();
+			while(st!=null) {
+				readList.add(st);
+				st = br.readLine();
+			}
+			br.close();
+		}else if(rl.length()>0){
+		readList = Arrays.asList(rl.split(":")).stream().collect(Collectors.toSet());
+		}
 		//String genesToInclude = cmdLine.getStringVal("genesToInclude");
 		
 		//boolean overwrite  = cmdLine.getBooleanVal("overwrite");
@@ -660,7 +672,7 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 	 * Error analysis of a bam file. Assume it has been sorted
 	 */
 	static void errorAnalysis(String bamFile_,
-			 String refFile,  String readList,  
+			 String refFile,  Set<String> reads_to_include,  
 			String pattern, int qual, 
 			int break_thresh, int startThresh, int endThresh, int max_reads, 
 			boolean calcBreaks1 ,  boolean annotByBreakPosition, String chrToInclude, String chrToIgnore, 
@@ -776,10 +788,15 @@ barcode_file = cmdLine.getStringVal("barcode_file");
 			String prev_readnme = "";
 			System.err.println("RNA "+Arrays.asList(RNA));
 		
+			
+			
 			outer: for ( ij=0; samIter.hasNext() ;ij++ ) {
 				
 				
 				final SAMRecord sam=samIter.next();
+				if(reads_to_include!=null  && !reads_to_include.contains(sam.getReadName())) {
+					continue outer;
+				}
 				
 			    if(sam==null){
 			    	break outer;

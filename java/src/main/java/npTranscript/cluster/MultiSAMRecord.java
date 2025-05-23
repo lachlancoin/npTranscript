@@ -278,8 +278,9 @@ public static class Breaks{
 			
 			while(it1.hasNext()) {
 					boolean first = se_prev==null;
-				
+					
 					Integer[] se1 = it1.next();
+					
 					boolean last = !it1.hasNext();
 					SAMRecord sr2 = res.get(se1);
 					String char2 = sr2.getReadNegativeStrandFlag() ? "-" : "+";
@@ -289,17 +290,30 @@ public static class Breaks{
 					//Breaks br2 = res1.get(se1);
 					
 					List<Integer> read_pos = this.getReadPos(se1);
+					
+					
+					
 					List<Integer> ref_pos = this.getRefPos(se1);
 					boolean neg = sr2.getReadNegativeStrandFlag();
 					String header = ">"+readname+" cnt:"+cnt+" S"+char2+" "+sr2.getReferenceName()+" "+st2;
+					
+					
 					if(Outputs.spliceOut!=null && read_pos.size()>2) {
 						for(int j=2; j<read_pos.size(); j+=2) {
 							int pos1 = read_pos.get(j-1);
 							int pos2 = read_pos.get(j);
-						
+							//int gap = pos2 - pos1-1;
+							if(Math.abs(pos2-pos1) >1) {
+								String substr = (neg)  ? read_str1.substring(pos2-1, pos1) : read_str1.substring(pos1-1, pos2);
+
+								Outputs.remOut.println(header+" "+pos1+"-"+pos2+"\t"+substr);
+
+								
+							}
+							
 							String substr = (neg)  ? read_str1.substring(pos2-3, pos1+2) : read_str1.substring(pos1-3, pos2+2);
 							String substr1 = (neg )  ? read_str1.substring(pos2-2, pos1+1) : read_str1.substring(pos1-2, pos2+1);
-								Outputs.spliceOut.println(header+" "+pos1+"-"+pos2+"\t"+substr+"\t"+substr1);
+							Outputs.spliceOut.println(header+" "+pos1+"-"+pos2+"\t"+substr+"\t"+substr1);
 						}
 						
 					}
@@ -329,6 +343,21 @@ public static class Breaks{
 						//String substr1 = read_str1.substring(len-5, len);
 						Outputs.threeOut.println(header+"\t"+substr+"\t"+substr1);
 					}
+					
+					if(first && Outputs.remOut!=null &&se1[0]>10) {
+						String substr=neg ? read_str.substring(read_length-se1[0] ,read_length) : read_str.substring(0,se1[0]);
+						if(neg) {
+							substr = NeedlemanWunsch.reverseComplement(substr);
+						}
+						Outputs.remOut.println(header+" first\t"+substr);
+					}	
+					if(last && Outputs.remOut!=null &&se1[1]+5<this.read_length) {
+						String substr= neg ? read_str.substring(0, read_length-se1[1]): read_str.substring(se1[1], read_length);
+						if(neg) {
+							substr = NeedlemanWunsch.reverseComplement(substr);
+						}
+						Outputs.remOut.println(header+" last\t"+substr);
+					}	
 					
 					//sb.ref_pos.append(toString1(ref_pos));
 					
