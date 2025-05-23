@@ -20,19 +20,21 @@ import npTranscript.run.TranscriptUtils1;
 
 public class MultiSAMRecord{
 	
-	public static String toString1(List<Integer> pos, double round) {
+	public static String toString1(List<Integer> pos1, double round, boolean flip) {
 		StringBuffer sb1 = new StringBuffer();
+		List<Integer> pos = flip ? pos1.reversed() : pos1;
 		for(int j=0; j<pos.size(); j+=2) {
 			if(j>0) sb1.append(",");
 			sb1.append(Math.round( pos.get(j).doubleValue()/round)+"_"+Math.round(pos.get(j+1).doubleValue()/round));
 		}
 		return sb1.toString();
 	}
-	public static String toString2(List<List<Integer>> pos, double round) {
+	public static String toString2(List<List<Integer>> pos1, double round, boolean flip) {
+		List<List<Integer>> pos = flip ? pos1.reversed() : pos1;
 		StringBuffer sb1 = new StringBuffer();
 		for(int j=0; j<pos.size(); j++) {
 			if(j>0) sb1.append(";");
-			sb1.append(toString1(pos.get(j), round));
+			sb1.append(toString1(pos.get(j), round,flip));
 		}
 		return sb1.toString();
 	}
@@ -79,20 +81,30 @@ public class MultiSAMRecord{
 		public String overlaps() {return toString3(overlaps, prime3, ";");}
 		
 		public String end(double round) {
-			String res = this.ref_pos.stream().map(t->String.valueOf((int) Math.round(t.get(0).doubleValue()/round))).collect(Collectors.joining(";"));
+		String res;
+			if(prime3) {
+ 				 List<List<Integer>> l1 = ref_pos.reversed();
+				 res = l1.stream().map(t->String.valueOf((int) Math.round(t.get(t.size()-1).doubleValue()/round))).collect(Collectors.joining(";"));
+			}else {
+				List<List<Integer>> l1 = ref_pos;
+		  	 res = l1.stream().map(t->String.valueOf((int) Math.round(t.get(0).doubleValue()/round))).collect(Collectors.joining(";"));
+			}
 			return res;
 		}
 		public String ref(double round) {
-			return toString2(this.ref_pos, round);
+			return toString2(this.ref_pos, round, prime3);
 		}
 		public String read(double round) {
-			return toString2(this.read_pos, round);
+			return toString2(this.read_pos, round, prime3);
 		}
 		
 		
 		public String getString(double round) {
 			// TODO Auto-generated method stub
-			return chrom()+" "+strand()+" "+end(round)+" "+ q_str()+" "+q_str1()+" " +read(round)+" "+ref(round)+" "+overlaps();
+			return chrom()+" "+strand()+" "
+					+end(round)+" "+ref(round)+" "+ q_str()
+					+" "+q_str1()+" " 
+					+read(round)+" "+overlaps();
 		}
 		
 		public void append(String chrom, char strand, int q_str, double q_str1, List<Integer> ref_pos2,List<Integer> read_pos2) {
@@ -189,7 +201,7 @@ public static class Breaks{
 		 return pos.get(0).toString();
 	 }
 	public String toString() {
-		return(toString1(this.pos,1.0));
+		return(toString1(this.pos,1.0, false));
 	}
 	
 }
