@@ -55,6 +55,7 @@ public class MultiSAMRecord{
 			this.readname = readname;
 			this.polyA = polyA;
 			this.prime3 = false;
+			chrom.clear();strand.clear(); q_str.clear();q_str1.clear(); ref_pos.clear();read_pos.clear();overlaps.clear();
 		}
 		public void set3prime(boolean prime3) {
 			this.prime3 = prime3;
@@ -243,14 +244,14 @@ public static class Breaks{
 		
 		public void update(SAMRecord supp, boolean add) {
 			//boolean primary = !supp.isSecondaryOrSupplementary();
-			int len = supp.getReadLength();
-			String str1 = supp.getReadString();
-			boolean neg1=supp.getReadNegativeStrandFlag();
+			//int len = supp.getReadLength();
+		//	String str1 = supp.getReadString();
+			//boolean neg1=supp.getReadNegativeStrandFlag();
 		//	this.s1 = supp;
 			if(add) {
 				Integer[] key =this.getStEnd(supp); 
 				res.put(key, supp);
-				Breaks br = new Breaks(supp, gap);
+				Breaks br =  new Breaks(supp, gap);
 				res1.put(key, br);
 			}
 		}
@@ -380,6 +381,7 @@ public static class Breaks{
 						boolean same =sr1.getReferenceName().equals(sr2.getReferenceName());
 						String header1 = ">"+readname+",overlap:"+overlap+" cnt:"+cnt+" "+se1[0]+","+se_prev[1]+" S"+char1+char2+" "+sr1.getReferenceName()+","+sr2.getReferenceName()+" "+st1+" "+st2+" "+same;
 						if(overlap>0) {
+							//System.err.println(overlap+" "+se1[0]+" " +se_prev[1]);
 							if(Outputs.overlapOut!=null) {
 								String substr = read_str1.substring(se1[0]-1,se_prev[1]-1);
 							//	if(primary_neg) substr =  NeedlemanWunsch.reverseComplement(substr);
@@ -401,14 +403,16 @@ public static class Breaks{
 							}
 						}else if(overlap<2 && overlap >-2) {
 							if(Outputs.noGap!=null) {
+						
 								String substr1 = read_str1.substring(se_prev[1]-6, se_prev[1]); //because its one based
-								String g = overlap>0 ? read_str1.substring(se_prev[1], se1[0]) : "";
-								String substr2 = read_str1.substring(se1[0]-1, se1[0]+6); //because its one based
-								
+								//String g = overlap>0 ? read_str1.substring(se_prev[1], se1[0]) : "";
+								String substr2 = read_str1.substring(se1[0]-1, se1[0]+5); //because its one based
+								//System.err.println(readname+" "+read_str1.substring(se_prev[1] - 6, se1[0] +6));
+								//System.err.println(substr1+" " +substr2);
 //								String substr1 = read_str1.substring(se_prev[1]-4, se1[0]+3); //because its one based
 //								String substr2 = read_str1.substring(se_prev[1]-3, se1[0]+2); 
 								//if(primary_neg) substr =  NeedlemanWunsch.reverseComplement(substr);
-								Outputs.noGap.println(header1+"\t"+substr1+"\t"+g+"\t"+substr2);
+								Outputs.noGap.println(header1+"\t"+substr1+"\t"+substr2);
 							}
 							
 						}
@@ -464,7 +468,7 @@ public static class Breaks{
 //				throw new RuntimeException("this should not happen");
 	//		}
 			boolean adjusted=false;
-			if(len!=read_length   ) {
+			if(len!=read_length   ) { // important correction in case the read length given is just partial read
 		//		if(st_>5) throw new RuntimeException("!! should not happen");
 				String str = str1;
 				if(neg1) { 

@@ -63,13 +63,15 @@ this.gzip = gz;
 	    	 
 	         checksum = new   CheckedOutputStream(dest, new Adler32());
 	        
-	         if(gz) {
-	    		 bos  = new GZIPOutputStream(checksum);
-	    	 }else {
+	         
 	    		 bos =  new BufferedOutputStream(checksum);
-	    	 }
+	    	 
 	         outS = new ZipOutputStream(bos);
-	         osw = new OutputStreamWriter(outS);
+	         OutputStream outS1 = outS;
+	         if(gz) {
+		    		outS1 = new GZIPOutputStream(outS);
+	         }
+	         osw = new OutputStreamWriter(outS1);
 	         outS.setMethod(ZipOutputStream.DEFLATED);
 	    }
 	    
@@ -79,14 +81,13 @@ this.gzip = gz;
 	    	 
 	         checksum = new   CheckedOutputStream(dest, new Adler32());
 	         
-	         if(gz) {
-	    		 bos  = new GZIPOutputStream(checksum);
-	    	 }else {
-	    		 bos =  new BufferedOutputStream(checksum);
-	    	 }
+	        
 	         outS = new ZipOutputStream(bos);
-	         
-	         osw = new OutputStreamWriter(outS);
+	         OutputStream outS1 = outS;
+	         if(gz) {
+		    		outS1 = new GZIPOutputStream(outS);
+	         }
+	         osw = new OutputStreamWriter(outS1);
 	         outS.setMethod(ZipOutputStream.DEFLATED);
 	         this.includeFileLength = includeFileLength;
 	    }

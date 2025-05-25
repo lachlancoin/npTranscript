@@ -63,7 +63,7 @@ import npTranscript.run.ViralTranscriptAnalysisCmd2;
 
 public class Outputs{
 	public static String readsOutputFile=null;
-	public static boolean gzip =false;
+	public static boolean gzip =true;
 	public static String url="http://0.0.0.0:81";
 	public static PrintStream outputstream;  // this is the main output stream
 	public static PrintStream joinOut,overlapOut,noGap,allOut, spliceOut, fiveOut, threeOut, remOut;
@@ -98,7 +98,7 @@ public class Outputs{
 			writeCompressDirsExecutor.shutdown();
 		}
 	/*	if(fastQwriter!=null){
-			waitOnThreads(fastQwriter,100);
+			waitOnThreads(fastQwriter,100);writeC
 
 			Outputs.fastQwriter.shutdown();
 		}*/
@@ -177,9 +177,12 @@ public class Outputs{
 			this.all_res.values().stream().forEach(t ->t.values().forEach(t1 -> t1.post()) );
 			Outputs.outputstream.close();
 			Outputs.ps.stream().forEach(t->t.close());
-			CompressDir cd = new CompressDir(resDir, false, gzip);
-			cd.writeAll();
-			cd.close();
+			if(!gzip) {
+				CompressDir cd = new CompressDir(resDir, false, gzip);
+				System.err.println("writing compress dirs");
+				cd.writeAll();
+				cd.close();
+			}
 			if(writeCompressDirsExecutor!=null){
 				Outputs.waitOnThreads(writeCompressDirsExecutor,100);
 				

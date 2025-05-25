@@ -82,8 +82,9 @@ public class IdentityProfileHolder {
 	 if(len==0){
 		// System.err.println("new");
 		idp =  new MultiSAMRecord(IdentityProfile1.break_thresh);
+		
 	 }else{
-		 System.err.println(idents.size());
+		// System.err.println(idents.size());
 		 idp = idents.pop();
 	 }
 	return idp;
@@ -288,7 +289,7 @@ return ;
 				}
 				Iterator<SAMRecord> sam_2 = sam_1.iterator();
 				
-				MultiSAMRecord primary= 		new MultiSAMRecord(IdentityProfile1.break_thresh); //get()
+				MultiSAMRecord primary= 	get();//	new MultiSAMRecord(IdentityProfile1.break_thresh); //get()
 
 				primary.reset(sam_2.next() );
 				//System.err.println(primary.readname);
@@ -309,7 +310,7 @@ return ;
 								o.append(primary.sb, round[i]);
 							}
 					}
-//				replace(primary);
+				replace(primary);
 			}
 
 		
